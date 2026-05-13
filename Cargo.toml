@@ -1,0 +1,125 @@
+[package]
+name = "protoflight"
+version = "0.1.0"
+edition = "2024"
+authors = ["Martin Budden"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/martinbudden/crate-protoflight"
+description = "Protoflight flight controller."
+keywords = ["flight", "no-std"]
+categories = [
+    "embedded",
+    "mathematics",
+    "no-std",
+    "science::robotics",
+]
+
+[package.metadata.docs.rs]
+rustdoc-args = ["--html-in-header", "katex-header.html"]
+
+[build-dependencies]
+rustc_version = "0.4.1"
+
+
+[features]
+#default = ["std", "libm"]
+default = ["std", "blackbox", "libm", "osd", "rpm_filters"]
+#default = ["rp2350", "blackbox", "libm", "osd"]
+std = ["embassy-time/std", "critical-section/std", "embassy-executor/platform-std", "imu-sensors/std"]
+#rp2350 = ["embassy-rp/rp235xa"]
+rp2350 = []
+
+libm = []
+blackbox = []
+dashboard = []
+gps = []
+osd = []
+rpm_filters = []
+vtx = []
+multicore = []
+
+#[dependencies.embassy-rp]
+#optional = true
+#version = "0.10.0" # Make sure you're on the latest
+#features = ["time-driver", "critical-section-impl"]
+
+[dependencies]
+embassy-sync = "0.8.0"
+embassy-futures = {version = "0.1.2" }
+embassy-time = {version = "0.5.1", default-features = false}
+embassy-executor = { version = "0.10.0", features = ["executor-thread"] }
+#embassy-executor = { version = "0.10.0", features = ["platform-cortex-m", "executor-thread"] }#"task-arena-size-32768", 
+#embassy-rp = { version = "0.10.0", features = ["time-driver", "critical-section-impl"] }
+
+vqm = "0.1.4"
+signal-filters = "0.1.3"
+pidsk-controller = "0.1.3"
+sensor-fusion = "0.1.3"
+stream-buf = "0.1.0"
+motor-mixers = "0.1.3"
+#motor-mixers = { git = "https://github.com/martinbudden/crate-motor-mixers" }
+#motor-mixers = { path = "../motor-mixers" }
+radio-controllers = "0.1.3"
+#radio-controllers = { git = "https://github.com/martinbudden/crate-radio-controllers" }
+#radio-controllers = { path = "../radio-controllers" }
+blackbox-logger = "0.1.2"
+#blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger" }
+#blackbox-logger = { path = "../blackbox" }
+imu-sensors = "0.1.1"
+#imu-sensors = { git = "https://github.com/martinbudden/crate-imu-sensors" }
+#imu-sensors = { path = "../imu-sensors", default-features = false}
+
+embedded-storage-async = "0.4.1"
+sequential-storage = "7.2.0"
+serde = { version = "1.0.228", default-features = false, features = ["derive"] }
+postcard = { version = "1.0", features = ["embedded-io"] }
+
+
+critical-section = { version = "1.2.0", default-features = false}
+rand = { version = "0.10.1" }
+log = { version = "0.4.29" }
+env_logger = { version ="0.11.10" }
+static_cell = "2.1.1"
+
+
+[dev-dependencies]
+approx = { version = "0.5", default-features = false }
+
+# see https://doc.rust-lang.org/cargo/reference/profiles.html
+[profile.dev]
+opt-level = 0
+debug = "line-tables-only"
+# split-debuginfo = '...'  # Platform-specific.
+strip = "none"
+debug-assertions = true
+overflow-checks = true
+lto = false
+panic = 'unwind'
+incremental = true
+codegen-units = 256
+rpath = false
+
+[profile.dev.package."*"]
+debug = false
+
+[profile.debugging]
+inherits = "dev"
+debug = true
+
+[profile.release]
+opt-level = 3
+debug = false
+# split-debuginfo = '...'  # Platform-specific.
+strip = "none"
+debug-assertions = false
+overflow-checks = false
+lto = false
+panic = 'abort'
+incremental = false
+codegen-units = 16
+rpath = false
+
+[profile.release-lto]
+inherits = "release"
+lto = true

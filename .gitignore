@@ -1,0 +1,5 @@
+/target
+notes/*
+*.bbl
+*.event
+*.csv
