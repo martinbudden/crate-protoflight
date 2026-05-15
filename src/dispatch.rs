@@ -1,4 +1,3 @@
-#![allow(unused)]
 use blackbox_logger::{GyroPidMessage, SetpointMessage};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::watch::Watch;

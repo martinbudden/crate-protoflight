@@ -1,4 +1,3 @@
-#[allow(unused)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Osd {}
 
@@ -42,7 +41,6 @@ impl Osd {
     pub const _LOGO_ARMING_FIRST: u8 = 2;
 }
 
-#[allow(unused)]
 impl Osd {
     // TODO: placeholder OSD update display
     #[allow(clippy::unused_self)]

@@ -26,7 +26,6 @@ impl Default for PidConfig {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
-#[allow(unused)]
 pub struct PidConfigs {
     pub roll_rate: PidConfig,
     pub pitch_rate: PidConfig,
@@ -74,7 +73,6 @@ pub struct FlightControllerFiltersConfig {
     pub rc_smoothing_feedforward_cutoff: u8,
 }
 
-#[allow(unused)]
 impl FlightControllerFiltersConfig {
     pub const PT1: u8 = 0;
     pub const BIQUAD: u8 = 1;

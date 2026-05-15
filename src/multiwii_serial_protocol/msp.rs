@@ -34,6 +34,7 @@ impl Default for Msp {
 #[allow(unused)]
 impl Msp {
     const PID_CONTROLLER_BETAFLIGHT: u8 = 1;
+
     pub async fn process_write_command(cmd_msp: u16, dst: &mut StreamBufWriter<'_>) -> MspResult {
         match cmd_msp {
             Msp::API_VERSION => {

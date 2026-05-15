@@ -7,7 +7,6 @@ pub enum MspVersion {
     V2,
 }
 #[derive(Clone, Copy, Default, Debug, PartialEq)]
-#[allow(unused)]
 pub enum MspPacketType {
     #[default]
     Command,
@@ -453,7 +452,7 @@ mod tests {
 
     #[test]
     fn test_msp_v1_parsing() {
-        let mut stream = MspStream::default();
+        let mut stream = MspStream::new();
         let packet: [u8; 7] = [
             b'M', b'<', 2,   // Size
             100, // Cmd
@@ -471,7 +470,7 @@ mod tests {
     }
     #[test]
     fn test_msp_v2_native_parsing() {
-        let mut stream = MspStream::default();
+        let mut stream = MspStream::new();
         let packet: [u8; 10] = [
             b'X', b'<', 0, // Flags
             2, 1, // Cmd (0x0102)
@@ -492,7 +491,7 @@ mod tests {
     }
     #[test]
     fn test_msp_v2_over_v1_parsing() {
-        let mut stream = MspStream::default();
+        let mut stream = MspStream::new();
 
         // Crafted Packet: V2 Command 0x0102, Flags 0, Payload [0xAA, 0xBB]
         // Encapsulated in V1 (Cmd 255)

@@ -3,6 +3,7 @@
 mod config;
 mod video;
 
+#[cfg(feature = "vtx")]
 pub use config::VtxConfig;
-#[allow(unused)]
+#[cfg(feature = "vtx")]
 pub use video::Vtx;

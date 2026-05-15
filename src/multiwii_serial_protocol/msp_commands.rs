@@ -211,7 +211,7 @@ impl Msp {
     pub const SET_RAW_RC: u16 = 200; //in message          8 rc chan
     pub const SET_RAW_GPS: u16 = 201; //in message          fix; number of satellites; lat; lon; alt; speed
     pub const SET_PID: u16 = 202; //in message          P I D gains (9 are used currently)
-    // Legacy multiiwii command that was never used.
+    // Legacy multiwii command that was never used.
     //DEPRECATED - pub const SET_BOX             :u8 =203;    //in message          BOX setup (number is dependant of your setup)
     pub const SET_RC_TUNING: u16 = 204; //in message          rc rate; rc expo; roll pitch rate; yaw rate; dyn throttle PID; yaw expo
     pub const ACC_CALIBRATION: u16 = 205; //in message          no param

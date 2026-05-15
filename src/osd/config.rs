@@ -169,10 +169,8 @@ impl Default for OsdElementsConfig {
 mod tests {
     use super::*;
 
-    #[allow(unused)]
-    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
-    #[allow(unused)]
-    fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
+    fn _is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     fn is_config<
         T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq + Serialize + for<'a> Deserialize<'a>,
     >() {

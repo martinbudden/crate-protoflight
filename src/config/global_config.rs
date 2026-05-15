@@ -1,5 +1,3 @@
-#![allow(unused)]
-#![allow(non_camel_case_types)]
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::mutex::Mutex;
 use embassy_sync::pubsub::{PubSubChannel, Publisher, Subscriber};
@@ -13,11 +11,12 @@ use crate::flight::{
     AntiGravityConfig, CrashFlipConfig, CrashRecoveryConfig, DMaxConfig, FlightControllerFiltersConfig,
     ImuFilterBankConfig, PidConfig, TpaConfig, YawSpinRecoveryConfig,
 };
-use crate::{
-    gps::GpsConfig,
-    osd::{OsdConfig, OsdElementsConfig, OsdStatsConfig},
-    vtx::{Vtx, VtxConfig},
-};
+#[cfg(feature = "gps")]
+use crate::gps::GpsConfig;
+#[cfg(feature = "osd")]
+use crate::osd::{OsdConfig, OsdElementsConfig, OsdStatsConfig};
+#[cfg(feature = "vtx")]
+use crate::vtx::{Vtx, VtxConfig};
 
 /// The global configuration is a global static protected by a mutex, since it is used by several tasks.
 /// A `CriticalSectionRawMutex` is used since we need to be safe across multiple executors and interrupts.
@@ -131,6 +130,7 @@ define_configs!(
         (YawSpinRecovery, yaw_spin_recovery, YawSpinRecoveryConfig),
         (CrashFlip, crash_flip, CrashFlipConfig),
         (CrashRecovery, crash_recovery, CrashRecoveryConfig),
+        (AntiGravity, anti_gravity, AntiGravityConfig),
         (DMax, dmax, DMaxConfig),
         (Rx, rx, RxConfig),
         (RcModes, rc_modes, RcModes),
@@ -146,6 +146,10 @@ define_configs!(
 
         #[cfg(feature = "osd")]
         (Osd, osd, OsdConfig),
+        #[cfg(feature = "osd")]
+        (OsdElements, osd_elements, OsdElementsConfig),
+        #[cfg(feature = "osd")]
+        (OsdStats, osd_stats, OsdStatsConfig),
     ],
     // GyroPid configs are defined separately so they can have their own PubSub channel.
     gyro_pid: [
@@ -162,11 +166,9 @@ mod tests {
     use super::*;
     use serde::{Deserialize, Serialize};
 
-    #[allow(unused)]
-    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
-    #[allow(unused)]
-    fn is_config<
+    fn _is_config<
         T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq + Serialize + for<'a> Deserialize<'a>,
     >() {
     }
