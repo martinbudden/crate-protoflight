@@ -1,6 +1,5 @@
 #![doc = include_str!("../README.md")]
 #![no_std]
-//#![allow(unused)]
 #![deny(clippy::unwrap_used)]
 //#![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
@@ -66,12 +65,12 @@ static mut CORE1_STACK: Stack<4096> = Stack::new();
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
-    // Initialize the logger.
     env_logger::init();
+
     #[cfg(feature = "blackbox")]
     let mut config = GLOBAL_CONFIG.lock().await;
     #[cfg(not(feature = "blackbox"))]
-    let mut config = GLOBAL_CONFIG.lock().await;
+    let config = GLOBAL_CONFIG.lock().await;
 
     let gyro_pid_ctx = GYRO_CTX.init(GyroPidContext {
         radio_receiver: radio_receiver(),
@@ -79,13 +78,13 @@ async fn main(spawner: Spawner) {
         setpoint_sender: setpoint_sender(),
         gyro_pid_subscriber: GYRO_PID_PUB_SUB_CHANNEL.subscriber().expect("failed to create GYRO_PID subscriber"),
         imu: ImuMock::new(MockImuBus::new(), ImuAxesOrder::XPOS_YPOS_ZPOS),
-        imu_filters: ImuFilterBank::new(config.imu_filter_bank),
+        imu_filters: ImuFilterBank::with_config(config.imu_filter_bank),
         sensor_fusion: MadgwickFilterf32::new(),
         flight_controller: FlightController::new(),
     });
 
     let motor_mixer_ctx = MOTOR_MIXER_CTX.init(MotorMixerContext {
-        motor_mixer: MotorMixerQuadXPwm::new(MotorMixerCommon::new(config.mixer, config.motor)),
+        motor_mixer: MotorMixerQuadXPwm::new(MotorMixerCommon::with_config(config.mixer, config.motor)),
     });
 
     let msp_ctx = MSP_CTX.init(MspContext {

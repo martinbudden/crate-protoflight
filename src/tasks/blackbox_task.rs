@@ -1,7 +1,7 @@
 #![allow(unused)]
 use blackbox_logger::drivers::SdStorage;
 use blackbox_logger::sd_card::MockSdCard;
-use blackbox_logger::{Blackbox, SliceWriter, StateMachine};
+use blackbox_logger::{Blackbox, Event, SliceWriter, StateMachine};
 use log::info;
 use static_cell::StaticCell;
 
@@ -67,9 +67,8 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
             // write End of log
             let len = {
                 let mut slice_writer = BlackboxContext::slice_writer(&mut ctx.buffer, ctx.pos);
-                ctx.blackbox.logger.log_e_frame(&mut slice_writer, 255)
+                ctx.blackbox.logger.log_e_frame(&mut slice_writer, Event::LogEnd)
             };
-            #[allow(unused)]
             ctx.sd_card.write_all(&ctx.buffer[..len]).await;
             info!("BLACKBOX: END OF LOG");
         }

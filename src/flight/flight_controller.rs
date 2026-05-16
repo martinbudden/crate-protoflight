@@ -1,4 +1,3 @@
-#![allow(unused)]
 use crate::flight::{
     vehicle_controller::{VehicleControlInitializing, VehicleController},
     {FlightModeConfig, VehicleControl},
@@ -68,15 +67,15 @@ impl Default for FlightController {
 }
 
 impl FlightController {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             vehicle_controller: VehicleController::new(),
             angle_mode_calculation_state: AngleModeCalculationState::new(),
             pids: [Pidf32::new(PidGainsf32::new(1.0, 0.0, 0.0, 0.0, 0.0)); Self::PID_COUNT],
             pid_gains: [PidGainsf32::new(1.0, 0.0, 0.0, 0.0, 0.0); Self::PID_COUNT],
-            dterm_filters_0: [Pt1Filterf32::new(1.0); Self::PID_COUNT],
-            dterm_filters_1: [Pt1Filterf32::new(1.0); Self::PID_COUNT],
-            motor_commands_filter: Pt1FilterVector4df32::new(1.0),
+            dterm_filters_0: [Pt1Filterf32::new(); Self::PID_COUNT],
+            dterm_filters_1: [Pt1Filterf32::new(); Self::PID_COUNT],
+            motor_commands_filter: Pt1FilterVector4df32::new(),
             motor_commands_throttle: 0.0,
             flight_mode_config: FlightModeConfig::new(),
 
@@ -199,7 +198,7 @@ impl VehicleControl for FlightController {
         // Dterm is zero for yaw_rate, so call adjust_using_spi() with no Dterm filtering, no TPA, no dmax, no iterm relaxation, and no kterm (kick).
         //
         let motor_command_yaw_dps =
-            Self::yaw_rate_ned_dps(gyro_rps).adjust_using_spi(&mut self.pids[Self::YAW_RATE_DPS], delta_t);
+            Self::yaw_rate_ned_dps(gyro_rps).adjust_using(&mut self.pids[Self::YAW_RATE_DPS], delta_t);
         //.filter_using(&mut self.motor_command_filters[FD_YAW]);
 
         // Throttle.
@@ -265,6 +264,7 @@ impl FlightController {
     }
 }
 
+#[allow(unused)]
 impl FlightController {
     pub fn motors_switch_off(&mut self, motor_mixer: &mut MotorMixerCommon) {
         motor_mixer.motors_switch_off();

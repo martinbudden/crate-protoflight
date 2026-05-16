@@ -59,25 +59,32 @@ pub struct ImuFilterBank {
 
 impl Default for ImuFilterBank {
     fn default() -> Self {
-        Self::new(ImuFilterBankConfig::default())
+        Self::new()
     }
 }
 
 impl ImuFilterBank {
-    pub fn new(config: ImuFilterBankConfig) -> Self {
+    pub const fn with_config(config: ImuFilterBankConfig) -> Self {
         Self {
             motor_count: 4,
             config,
-            acc_lpf: Pt1FilterVector3df32::default(),
-            gyro_skew: [MedianFilter3f32::default(), MedianFilter3f32::default(), MedianFilter3f32::default()],
-            gyro_lpf1: Pt1FilterVector3df32::default(),
-            gyro_lpf2: Pt1FilterVector3df32::default(),
-            gyro_notch1: BiquadFilterVector3df32::default(),
-            gyro_notch2: BiquadFilterVector3df32::default(),
+            acc_lpf: Pt1FilterVector3df32::new(),
+            gyro_skew: [MedianFilter3f32::new(), MedianFilter3f32::new(), MedianFilter3f32::new()],
+            gyro_lpf1: Pt1FilterVector3df32::new(),
+            gyro_lpf2: Pt1FilterVector3df32::new(),
+            gyro_notch1: BiquadFilterVector3df32::new(),
+            gyro_notch2: BiquadFilterVector3df32::new(),
             #[cfg(feature = "rpm_filters")]
-            rpm_filters: RpmNotchFilterBank::default(),
+            rpm_filters: RpmNotchFilterBank::new(),
         }
     }
+
+    pub const fn new() -> Self {
+        Self::with_config(ImuFilterBankConfig::new())
+    }
+}
+
+impl ImuFilterBank {
     #[allow(unused)]
     pub fn set_config(&mut self, config: ImuFilterBankConfig, delta_t: f32) {
         self.config = config;
@@ -143,8 +150,7 @@ impl FilterAccGyro for ImuFilterBank {
 mod tests {
     use super::*;
 
-    #[allow(unused)]
-    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     fn is_config<
         T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq + Serialize + for<'a> Deserialize<'a>,

@@ -15,6 +15,10 @@ Once the API has stabilized this project will adopt semantic versioning, the fir
 
 ### Changed
 
+- Updated to latest crates.
+- Made constructors `const` where possible.
+- Code tidy.
+
 ### Removed
 
 ### Deprecated

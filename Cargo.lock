@@ -120,15 +120,16 @@ checksum = "c4512299f36f043ab09a583e57bceb5a5aab7a73db1805848e8fef3c9e8c78b3"
 
 [[package]]
 name = "blackbox-logger"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "711e8ddf0e5a5f88832bcaef7de73735e3b1a969faacec25bd85d14893758469"
+checksum = "6a38b23cd574c5ef62dabef8e76bcab6be5cb054eddac4f82743453b74aee34a"
 dependencies = [
  "embassy-executor",
  "embassy-futures",
  "postcard",
  "rustc_version 0.4.1",
  "serde",
+ "simple-bitset",
  "vqm",
 ]
 
@@ -627,8 +628,7 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 [[package]]
 name = "imu-sensors"
 version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c18d92fecb38624f23b1c41b62c2d8c95eb8bdbc81161d833546f2092d74402a"
+source = "git+https://github.com/martinbudden/crate-imu-sensors#1bc161f36d7c2fdf5b911a48536b6b94d23979dd"
 dependencies = [
  "cfg-if",
  "defmt",
@@ -773,8 +773,7 @@ checksum = "f8ca58f447f06ed17d5fc4043ce1b10dd205e060fb3ce5b979b8ed8e59ff3f79"
 [[package]]
 name = "motor-mixers"
 version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef070d615c1ed48cae2552c45d4385c10d596180ad265a439af12c077193db52"
+source = "git+https://github.com/martinbudden/crate-motor-mixers#c5cc974aa60b3f070bfc35f3323955b3e0e5df50"
 dependencies = [
  "cfg-if",
  "defmt",
@@ -872,9 +871,9 @@ dependencies = [
 
 [[package]]
 name = "pidsk-controller"
-version = "0.1.3"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff503fb327f0c4b296bae9de577c0b735c36f13ccb32f6d0eecbee55c33d2dde"
+checksum = "7dc2c01aa54f92a1819ec621f3a0c28a5aee617567a629d09e42ead4a547123b"
 dependencies = [
  "num-traits",
  "postcard",
@@ -1012,16 +1011,16 @@ checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
 name = "radio-controllers"
-version = "0.1.3"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ed6db47459d3a5f6ece44663797c109181da716297fd6356dd7cafe7be422d0"
+checksum = "8115fad2221f277063d5e43f77ed5bf835093da3379966c9a50e51bb1d8808c4"
 dependencies = [
  "embedded-hal 1.0.0",
  "embedded-hal-nb",
  "nb 1.1.0",
  "postcard",
  "serde",
- "vqm",
+ "simple-bitset",
 ]
 
 [[package]]
@@ -1129,9 +1128,9 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "sensor-fusion"
-version = "0.1.3"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9b1997b82f6ee9ccc3da500c4650e5aa0f45f84d7682f8dcfd626bc8842cac1"
+checksum = "c5839988d42109856b28bce20ccea5f33940ff88bc4a252a089c2c47a855a237"
 dependencies = [
  "num-traits",
  "rustc_version 0.4.1",
@@ -1207,13 +1206,23 @@ checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
 name = "signal-filters"
-version = "0.1.3"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b05f0f20d7085a6fa5e1865a95ce536fb6d95db1f4c543c130e4518b78db612"
+checksum = "999ea968bb2ec2aaa7779c29e3f0452621612cb6e1a0eec7416792e25d90dde5"
 dependencies = [
  "num-traits",
  "rustc_version 0.4.1",
  "vqm",
+]
+
+[[package]]
+name = "simple-bitset"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "431d1782913c4497aada32f32d37b6eee75bfc762c698aff472cf78c2c8a036f"
+dependencies = [
+ "postcard",
+ "serde",
 ]
 
 [[package]]
@@ -1454,9 +1463,9 @@ dependencies = [
 
 [[package]]
 name = "vqm"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc3d6118fdee2919466ba782c9819ef5ea8f861aa8eb1e7d0bc007dd5e0228ff"
+checksum = "d2473afa8b99e8cf9cf3692d80f304996cbff05a63bb060d6f0affe6c296e6cd"
 dependencies = [
  "approx",
  "cfg-if",
@@ -1545,9 +1554,9 @@ dependencies = [
 
 [[package]]
 name = "winnow"
-version = "1.0.2"
+version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ee1708bef14716a11bae175f579062d4554d95be2c6829f518df847b7b3fdd0"
+checksum = "0592e1c9d151f854e6fd382574c3a0855250e1d9b2f99d9281c6e6391af352f1"
 dependencies = [
  "memchr",
 ]
