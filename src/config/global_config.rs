@@ -4,17 +4,19 @@ use embassy_sync::pubsub::{PubSubChannel, Publisher, Subscriber};
 
 use blackbox_logger::BlackboxConfig;
 use motor_mixers::{MixerConfig, MotorConfig};
-use radio_controllers::{FailsafeConfig, RatesConfig, RcModes, RxConfig};
+use radio_controllers::{FailsafeConfig, RatesConfig, RcControlsConfig, RcModes, RxConfig};
 
+use crate::autopilot::AutopilotConfig;
 use crate::config::profiles::{PidProfile, RatesProfile, SchemaVersion};
 use crate::flight::{
-    AntiGravityConfig, CrashFlipConfig, CrashRecoveryConfig, DMaxConfig, FlightControllerFiltersConfig,
-    ImuFilterBankConfig, PidConfig, TpaConfig, YawSpinRecoveryConfig,
+    AntiGravityConfig, ArmingConfig, CrashFlipConfig, CrashRecoveryConfig, DMaxConfig, FeatureConfig,
+    FlightControllerFiltersConfig, ImuFilterBankConfig, PidConfig, TpaConfig, YawSpinRecoveryConfig,
 };
 #[cfg(feature = "gps")]
 use crate::gps::GpsConfig;
 #[cfg(feature = "osd")]
 use crate::osd::{OsdConfig, OsdElementsConfig, OsdStatsConfig};
+use crate::sensors::BatteryConfig;
 #[cfg(feature = "vtx")]
 use crate::vtx::{Vtx, VtxConfig};
 
@@ -134,6 +136,11 @@ define_configs!(
         (DMax, dmax, DMaxConfig),
         (Rx, rx, RxConfig),
         (RcModes, rc_modes, RcModes),
+        (RcControls, rc_controls, RcControlsConfig),
+        (ArmingConfig, arming, ArmingConfig),
+        (FeatureConfig, features, FeatureConfig),
+        (AutopilotConfig, autopilot, AutopilotConfig),
+        (BatteryConfig, battery, BatteryConfig),
 
         #[cfg(feature = "blackbox")]
         (Blackbox, blackbox, BlackboxConfig),

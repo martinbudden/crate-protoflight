@@ -12,6 +12,7 @@
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::doc_markdown)]
 
+mod autopilot;
 mod config;
 mod dispatch;
 mod display;
@@ -19,6 +20,7 @@ mod flight;
 mod gps;
 mod multiwii_serial_protocol;
 mod osd;
+mod sensors;
 mod tasks;
 mod vtx;
 

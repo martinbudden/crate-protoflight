@@ -48,6 +48,7 @@ impl Msp {
             }
             Msp::MODE_RANGES => Self::mode_ranges(dst).await,
             Msp::MODE_RANGES_EXTRA => Self::mode_ranges_extra(dst).await,
+            Msp::FEATURE_CONFIG => Self::feature_config(dst).await,
             Msp::MIXER_CONFIG => Self::mixer_config(dst).await,
             Msp::RX_CONFIG => Self::rx_config(dst).await,
             Msp::RSSI_CONFIG => Self::rssi_config(dst).await,
@@ -55,28 +56,29 @@ impl Msp {
                 dst.write_u8(Self::PID_CONTROLLER_BETAFLIGHT);
                 MspResult::Ack
             }
+            Msp::SONAR_ALTITUDE => {
+                dst.write_u32(0);
+                MspResult::Ack
+            }
+            Msp::ARMING_CONFIG => Self::arming_config(dst).await,
+            Msp::FAILSAFE_CONFIG => Self::failsafe_config(dst).await,
+            Msp::FILTER_CONFIG => Self::filter_config(dst).await,
+            Msp::RAW_IMU => Self::raw_imu(dst).await,
+            Msp::RC => Self::rc(dst).await,
             Msp::ALTITUDE => {
                 dst.write_u32(0);
                 dst.write_u16(0);
                 MspResult::Ack
             }
-            Msp::SONAR_ALTITUDE => {
-                dst.write_u32(0);
-                MspResult::Ack
-            }
-            Msp::FAILSAFE_CONFIG => Self::failsafe_config(dst).await,
-            Msp::FILTER_CONFIG => Self::filter_config(dst).await,
-            Msp::RAW_IMU => Self::raw_imu(dst).await,
-            Msp::RC => Self::rc(dst).await,
             Msp::RC_TUNING => Self::rc_tuning(dst).await,
             Msp::PID => Self::pid(dst).await,
             #[cfg(feature = "gps")]
             Msp::GPS_CONFIG => Self::gps_config(dst).await,
-            Msp::MOTOR_CONFIG
-            | Msp::MOTOR_TELEMETRY
-            | Msp::COMPASS_CONFIG
-            | Msp::ACC_TRIM
-            | Msp::MSP2_MOTOR_OUTPUT_REORDERING => MspResult::CmdUnknown,
+            Msp::MOTOR_CONFIG => Self::motor_config(dst).await,
+            Msp::RC_DEADBAND => Self::rc_controls_config(dst).await,
+            Msp::MOTOR_TELEMETRY | Msp::COMPASS_CONFIG | Msp::ACC_TRIM | Msp::MSP2_MOTOR_OUTPUT_REORDERING => {
+                MspResult::CmdUnknown
+            }
             _ => {
                 // we do not know how to handle the (valid) message, indicate an error MSP `$M!`.
                 MspResult::Error
@@ -92,13 +94,17 @@ impl Msp {
     ) -> MspResult {
         match cmd_msp {
             Msp::SET_MODE_RANGE => Self::set_mode_range(src, config_publisher).await,
+            Msp::SET_FEATURE_CONFIG => Self::set_feature_config(src, config_publisher).await,
             Msp::SET_MIXER_CONFIG => Self::set_mixer_config(src, config_publisher).await,
             Msp::SET_RX_CONFIG => Self::set_rx_config(src, config_publisher).await,
             Msp::SET_RSSI_CONFIG => Self::set_rssi_config(src, config_publisher).await,
+            Msp::SET_ARMING_CONFIG => Self::set_arming_config(src, config_publisher).await,
             Msp::SET_FAILSAFE_CONFIG => Self::set_failsafe_config(src, config_publisher).await,
             Msp::SET_FILTER_CONFIG => Self::set_filter_config(src, config_publisher).await,
+            Msp::RC_DEADBAND => Self::set_rc_controls_config(src, config_publisher).await,
             Msp::SET_RC_TUNING => Self::set_rc_tuning(src, config_publisher).await,
             Msp::SET_PID => Self::set_pid(src, gyro_pid_publisher).await,
+            Msp::SET_MOTOR_CONFIG => Self::set_motor_config(src, config_publisher).await,
             #[cfg(feature = "gps")]
             Msp::SET_GPS_CONFIG => Self::set_gps_config(src, config_publisher).await,
             _ => {
@@ -110,6 +116,31 @@ impl Msp {
 }
 
 impl Msp {
+    async fn feature_config(dst: &mut StreamBufWriter<'_>) -> MspResult {
+        let config = {
+            let global_config = GLOBAL_CONFIG.lock().await;
+            global_config.features
+        };
+        dst.write_u32(config.features);
+        MspResult::Ack
+    }
+    async fn set_feature_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {
+        // 1. Check if enough data is even present before locking anything
+        if src.bytes_remaining() < 4 {
+            return MspResult::Error;
+        }
+        let mut global_config = GLOBAL_CONFIG.lock().await;
+        let mut config = global_config.features;
+        let old_config = config;
+
+        config.features = src.read_u32();
+        if old_config != config {
+            global_config.features = config;
+            publisher.publish(ConfigItem::FeatureConfig(config)).await;
+        }
+        MspResult::Ack
+    }
+
     async fn mode_ranges(dst: &mut StreamBufWriter<'_>) -> MspResult {
         let rc_modes = {
             let global_config = GLOBAL_CONFIG.lock().await;
@@ -207,6 +238,79 @@ impl Msp {
         MspResult::Ack
     }
 
+    async fn motor_config(dst: &mut StreamBufWriter<'_>) -> MspResult {
+        let config = {
+            let global_config = GLOBAL_CONFIG.lock().await;
+            global_config.motor
+        };
+        dst.write_u16(0); // min_throttle deprecated in 4.6
+        dst.write_u16(config.max_throttle);
+        dst.write_u16(config.min_command);
+        dst.write_u8(config.motor_pole_count);
+        dst.write_u8(0); // use_dshot_telemetry
+        MspResult::Ack
+    }
+    async fn set_motor_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {
+        if src.bytes_remaining() < 6 {
+            return MspResult::Error;
+        }
+        let mut global_config = GLOBAL_CONFIG.lock().await;
+        let mut config = global_config.motor;
+        let old_config = config;
+
+        _ = src.read_u16(); // min_throttle deprecated in 4.6
+        config.max_throttle = src.read_u16();
+        config.min_command = src.read_u16();
+
+        // version 1.42
+        if src.bytes_remaining() > 2 {
+            config.motor_pole_count = src.read_u8();
+            _ = src.read_u8(); // TODO: use_dshot_telemetry
+        }
+
+        if config != old_config {
+            global_config.motor = config;
+            publisher.publish(ConfigItem::Motor(config)).await;
+        }
+        MspResult::Ack
+    }
+
+    async fn rc_controls_config(dst: &mut StreamBufWriter<'_>) -> MspResult {
+        let config = {
+            let global_config = GLOBAL_CONFIG.lock().await;
+            global_config.rc_controls
+        };
+        dst.write_u8(config.deadband);
+        dst.write_u8(config.yaw_deadband);
+        dst.write_u8(0); // TODO: position hold deadband
+        dst.write_u16(0); // TODO: deadband3d throttle
+        MspResult::Ack
+    }
+    async fn set_rc_controls_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {
+        if src.bytes_remaining() < 2 {
+            return MspResult::Error;
+        }
+        let mut global_config = GLOBAL_CONFIG.lock().await;
+        let mut config = global_config.rc_controls;
+        let old_config = config;
+
+        config.deadband = src.read_u8();
+        config.yaw_deadband = src.read_u8();
+
+        if src.bytes_remaining() > 1 {
+            _ = src.read_u8();
+        }
+        if src.bytes_remaining() > 1 {
+            _ = src.read_u8();
+        }
+
+        if config != old_config {
+            global_config.rc_controls = config;
+            publisher.publish(ConfigItem::RcControls(config)).await;
+        }
+        MspResult::Ack
+    }
+
     async fn rssi_config(dst: &mut StreamBufWriter<'_>) -> MspResult {
         let rx = {
             let global_config = GLOBAL_CONFIG.lock().await;
@@ -228,6 +332,41 @@ impl Msp {
         if old_rx != rx {
             global_config.rx = rx;
             publisher.publish(ConfigItem::Rx(rx)).await;
+        }
+        MspResult::Ack
+    }
+
+    async fn arming_config(dst: &mut StreamBufWriter<'_>) -> MspResult {
+        let config = {
+            let global_config = GLOBAL_CONFIG.lock().await;
+            global_config.arming
+        };
+        dst.write_u8(config.auto_disarm_delay);
+        dst.write_u8(0); // was disarm_kill_switch
+        dst.write_u8(0); // TODO: imu_config.small_angle
+        dst.write_u8(config.gyro_cal_on_first_arm);
+        MspResult::Ack
+    }
+    async fn set_arming_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {
+        // 1. Check if enough data is even present before locking anything
+        if src.bytes_remaining() < 1 {
+            return MspResult::Error;
+        }
+        let mut global_config = GLOBAL_CONFIG.lock().await;
+        let mut config = global_config.arming;
+        let old_config = config;
+
+        config.auto_disarm_delay = src.read_u8();
+        _ = src.read_u8(); // disarm_kill_switch has been removed
+        if src.bytes_remaining() < 1 {
+            _ = src.read_u8(); // TODO: imu_config.small_angle
+        }
+        if src.bytes_remaining() < 1 {
+            config.gyro_cal_on_first_arm = src.read_u8();
+        }
+        if old_config != config {
+            global_config.arming = config;
+            publisher.publish(ConfigItem::ArmingConfig(config)).await;
         }
         MspResult::Ack
     }

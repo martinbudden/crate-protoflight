@@ -13,24 +13,29 @@ categories = [
     "mathematics",
     "no-std",
     "science::robotics",
+    "aerospace::drones",
 ]
 
 [package.metadata.docs.rs]
+all-features = true
 rustdoc-args = ["--html-in-header", "katex-header.html"]
 
 [build-dependencies]
 rustc_version = "0.4.1"
 
-
 [features]
 #default = ["std", "libm"]
 default = ["std", "blackbox", "libm", "osd", "rpm_filters"]
 #default = ["rp2350", "blackbox", "libm", "osd"]
-std = ["embassy-time/std", "critical-section/std", "embassy-executor/platform-std", "imu-sensors/std"]
+libm = ["dep:libm", "vqm/libm", "signal-filters/libm", "pidsk-controller/libm", "radio-controllers/libm"]
+std = ["embassy-time/std", "critical-section/std", "embassy-executor/platform-std", "imu-sensors/std" ,"vqm/std", "signal-filters/std"]
+no_align = ["vqm/no_align", "signal-filters/no_align"]
+simd = ["vqm/simd", "signal-filters/simd"]
 #rp2350 = ["embassy-rp/rp235xa"]
 rp2350 = []
+serde = ["vqm/serde", "radio-controllers/serde", "motor-mixers/serde"]
 
-libm = []
+
 blackbox = []
 dashboard = []
 gps = []
@@ -52,33 +57,37 @@ embassy-executor = { version = "0.10.0", features = ["executor-thread"] }
 #embassy-executor = { version = "0.10.0", features = ["platform-cortex-m", "executor-thread"] }#"task-arena-size-32768", 
 #embassy-rp = { version = "0.10.0", features = ["time-driver", "critical-section-impl"] }
 
-vqm = "0.1.5"
-#vqm = { path = "../vqm" }
-signal-filters = "0.1.4"
-#signal-filters = { path = "../signal-filters" }
-pidsk-controller = "0.1.4"
-#pidsk-controller = { path = "../pidsk-controller" }
-sensor-fusion = "0.1.4"
-#sensor-fusion = { path = "../sensor-fusion" }
+num-traits = { version = "0.2.19", default-features = false }
+#vqm = { version = "0.1.7", default-features = false }
+vqm = { git = "https://github.com/martinbudden/crate-vector-quaternion-matrix" }
+#vqm = { path = "../vqm", default-features = false }
+#signal-filters = { version = "0.1.5", default-features = false }
+#signal-filters = { git = "https://github.com/martinbudden/crate-signal-filters" }
+signal-filters = { path = "../signal-filters" }
+#pidsk-controller = { version = "0.1.4", default-features = false }
+pidsk-controller = { path = "../pidsk-controller" }
+#sensor-fusion = "0.1.4"
+sensor-fusion = { path = "../sensor-fusion" }
 stream-buf = "0.1.0"
 #stream-buf = { path = "../stream-buf" }
 #motor-mixers = "0.1.3"
-motor-mixers = { git = "https://github.com/martinbudden/crate-motor-mixers" }
-#motor-mixers = { path = "../motor-mixers" }
-radio-controllers = "0.1.4"
+#motor-mixers = { git = "https://github.com/martinbudden/crate-motor-mixers" }
+motor-mixers = { path = "../motor-mixers", features = ["serde"] }
+# radio-controllers = { version = "0.1.4", default-features = false }
 #radio-controllers = { git = "https://github.com/martinbudden/crate-radio-controllers" }
-#radio-controllers = { path = "../radio-controllers" }
-blackbox-logger = "0.1.3"
+radio-controllers = { path = "../radio-controllers", default-features = false, features = ["serde"] }
+#blackbox-logger = "0.1.3"
 #blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger" }
-#blackbox-logger = { path = "../blackbox-logger" }
+blackbox-logger = { path = "../blackbox-logger", features = ["serde"]  }
 #imu-sensors = "0.1.1"
-imu-sensors = { git = "https://github.com/martinbudden/crate-imu-sensors" }
-#imu-sensors = { path = "../imu-sensors", default-features = false}
+#imu-sensors = { git = "https://github.com/martinbudden/crate-imu-sensors" }
+imu-sensors = { path = "../imu-sensors", features = ["serde"] }
 
 embedded-storage-async = "0.4.1"
 sequential-storage = "7.2.0"
+libm = { version = "0.2.16", optional = true } 
 serde = { version = "1.0.228", default-features = false, features = ["derive"] }
-postcard = { version = "1.1.3", features = ["embedded-io"] }
+postcard = { version = "1.1.3", default-features = false, features = ["embedded-io"] }
 
 
 critical-section = { version = "1.2.0", default-features = false}

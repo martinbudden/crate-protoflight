@@ -11,8 +11,8 @@ mod vehicle_controller;
 
 pub use flight_controller::FlightController;
 pub use flight_controller_config::{
-    AntiGravityConfig, CrashFlipConfig, CrashRecoveryConfig, DMaxConfig, FlightControllerFiltersConfig,
-    FlightModeConfig, PidConfig, TpaConfig, YawSpinRecoveryConfig,
+    AntiGravityConfig, ArmingConfig, CrashFlipConfig, CrashRecoveryConfig, DMaxConfig, FeatureConfig,
+    FlightControllerFiltersConfig, FlightModeConfig, PidConfig, TpaConfig, YawSpinRecoveryConfig,
 };
 pub use imu_filters::{FilterAccGyro, ImuFilterBank, ImuFilterBankConfig};
 pub use rc_adjustments::RcAdjustments;
