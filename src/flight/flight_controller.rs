@@ -4,7 +4,7 @@ use crate::flight::{
 };
 
 use motor_mixers::{MotorMixer, MotorMixerCommon};
-use pidsk_controller::{PidGainsf32, Pidf32, UpdatePidController};
+use pidsk_controller::{PidControllerf32, PidGainsf32};
 use radio_controllers::RadioControlMessage;
 use signal_filters::{Pt1FilterVector4df32, Pt1Filterf32, UpdateFilter};
 use vqm::{Quaternionf32, Vector3df32, Vector4df32};
@@ -14,7 +14,7 @@ use vqm::{Quaternionf32, Vector3df32, Vector4df32};
 pub struct FlightController {
     vehicle_controller: VehicleController,
     angle_mode_calculation_state: AngleModeCalculationState,
-    pub(crate) pids: [Pidf32; Self::PID_COUNT],
+    pub(crate) pids: [PidControllerf32; Self::PID_COUNT],
     // Copy of pid gains, so that gains can be adjusted by anti-gravity and then set back to their original values
     pub(crate) pid_gains: [PidGainsf32; Self::PID_COUNT],
     dterm_filters_0: [Pt1Filterf32; Self::PID_COUNT],
@@ -71,7 +71,7 @@ impl FlightController {
         Self {
             vehicle_controller: VehicleController::new(),
             angle_mode_calculation_state: AngleModeCalculationState::new(),
-            pids: [Pidf32::new(PidGainsf32::new(1.0, 0.0, 0.0, 0.0, 0.0)); Self::PID_COUNT],
+            pids: [PidControllerf32::new(1.0); Self::PID_COUNT],
             pid_gains: [PidGainsf32::new(1.0, 0.0, 0.0, 0.0, 0.0); Self::PID_COUNT],
             dterm_filters_0: [Pt1Filterf32::new(); Self::PID_COUNT],
             dterm_filters_1: [Pt1Filterf32::new(); Self::PID_COUNT],
@@ -168,7 +168,7 @@ impl VehicleControl for FlightController {
             * self.tpa;
 
         let motor_command_roll_dps =
-            roll_rate_dps.adjust_using_di(&mut self.pids[Self::ROLL_RATE_DPS], roll_dterm, roll_iterm_error, delta_t);
+            self.pids[Self::ROLL_RATE_DPS].update_delta_iterm(roll_rate_dps, roll_dterm, roll_iterm_error, delta_t);
         //.filter_using(&mut self.motor_command_filters[Self::FD_ROLL]);
 
         //
@@ -185,20 +185,16 @@ impl VehicleControl for FlightController {
             * self.dmax_multipliers[Self::PITCH_RATE_DPS]
             * self.tpa;
 
-        let motor_command_pitch_dps = pitch_rate_dps.adjust_using_di(
-            &mut self.pids[Self::PITCH_RATE_DPS],
-            pitch_dterm,
-            pitch_iterm_error,
-            delta_t,
-        );
+        let motor_command_pitch_dps =
+            self.pids[Self::PITCH_RATE_DPS].update_delta_iterm(pitch_rate_dps, pitch_dterm, pitch_iterm_error, delta_t);
         //.filter_using(&mut self.motor_command_filters[FD_PITCH]);
 
         //
         // Yaw axis
         // Dterm is zero for yaw_rate, so call adjust_using_spi() with no Dterm filtering, no TPA, no dmax, no iterm relaxation, and no kterm (kick).
         //
-        let motor_command_yaw_dps =
-            Self::yaw_rate_ned_dps(gyro_rps).adjust_using(&mut self.pids[Self::YAW_RATE_DPS], delta_t);
+        let yaw_rate_dps = Self::yaw_rate_ned_dps(gyro_rps);
+        let motor_command_yaw_dps = self.pids[Self::YAW_RATE_DPS].update(yaw_rate_dps, delta_t);
         //.filter_using(&mut self.motor_command_filters[FD_YAW]);
 
         // Throttle.

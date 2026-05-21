@@ -152,6 +152,30 @@ impl Default for AutopilotConfig {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+pub struct PositionHoldConfig {
+    pub deadband: u8,
+    pub position_source: u8,            // Position source selection
+    pub optical_flow_quality_min: u8,   // Minimum optical flow quality threshold
+    pub optical_flow_max_range_cm: u16, // Maximum altitude for optical flow (cm)
+}
+
+impl PositionHoldConfig {
+    pub const SOURCE_AUTO: u8 = 0;
+    pub const SOURCE_GPS_ONLY: u8 = 1;
+    pub const SOURCE_OPTICAL_FLOW_ONLY: u8 = 2;
+
+    pub const fn new() -> Self {
+        Self { deadband: 0, position_source: 0, optical_flow_quality_min: 0, optical_flow_max_range_cm: 0 }
+    }
+}
+
+impl Default for PositionHoldConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -166,6 +190,7 @@ mod tests {
     #[test]
     fn normal_types() {
         is_config::<AutopilotConfig>();
+        is_config::<PositionHoldConfig>();
     }
     #[test]
     fn test_new() {

@@ -62,6 +62,7 @@ impl Msp {
             }
             Msp::ARMING_CONFIG => Self::arming_config(dst).await,
             Msp::FAILSAFE_CONFIG => Self::failsafe_config(dst).await,
+            Msp::ADVANCED_CONFIG => Self::advanced_config(dst).await,
             Msp::FILTER_CONFIG => Self::filter_config(dst).await,
             Msp::RAW_IMU => Self::raw_imu(dst).await,
             Msp::RC => Self::rc(dst).await,
@@ -100,6 +101,7 @@ impl Msp {
             Msp::SET_RSSI_CONFIG => Self::set_rssi_config(src, config_publisher).await,
             Msp::SET_ARMING_CONFIG => Self::set_arming_config(src, config_publisher).await,
             Msp::SET_FAILSAFE_CONFIG => Self::set_failsafe_config(src, config_publisher).await,
+            Msp::SET_ADVANCED_CONFIG => Self::set_advanced_config(src, config_publisher).await,
             Msp::SET_FILTER_CONFIG => Self::set_filter_config(src, config_publisher).await,
             Msp::RC_DEADBAND => Self::set_rc_controls_config(src, config_publisher).await,
             Msp::SET_RC_TUNING => Self::set_rc_tuning(src, config_publisher).await,
@@ -136,7 +138,7 @@ impl Msp {
         config.features = src.read_u32();
         if old_config != config {
             global_config.features = config;
-            publisher.publish(ConfigItem::FeatureConfig(config)).await;
+            publisher.publish(ConfigItem::Features(config)).await;
         }
         MspResult::Ack
     }
@@ -215,7 +217,7 @@ impl Msp {
             global_config.mixer
         };
         dst.write_u8(config.mixer_type);
-        dst.write_u8(u8::from(config.yaw_motors_reversed));
+        dst.write_u8(config.yaw_motors_reversed);
         MspResult::Ack
     }
     async fn set_mixer_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {
@@ -228,7 +230,7 @@ impl Msp {
 
         config.mixer_type = src.read_u8();
         if src.bytes_remaining() > 0 {
-            config.yaw_motors_reversed = src.read_u8() != 0;
+            config.yaw_motors_reversed = src.read_u8();
         }
 
         if config != old_config {
@@ -276,13 +278,13 @@ impl Msp {
     }
 
     async fn rc_controls_config(dst: &mut StreamBufWriter<'_>) -> MspResult {
-        let config = {
+        let (rc_controls, position_hold) = {
             let global_config = GLOBAL_CONFIG.lock().await;
-            global_config.rc_controls
+            (global_config.rc_controls, global_config.position_hold)
         };
-        dst.write_u8(config.deadband);
-        dst.write_u8(config.yaw_deadband);
-        dst.write_u8(0); // TODO: position hold deadband
+        dst.write_u8(rc_controls.deadband);
+        dst.write_u8(rc_controls.yaw_deadband);
+        dst.write_u8(position_hold.deadband);
         dst.write_u16(0); // TODO: deadband3d throttle
         MspResult::Ack
     }
@@ -291,22 +293,28 @@ impl Msp {
             return MspResult::Error;
         }
         let mut global_config = GLOBAL_CONFIG.lock().await;
-        let mut config = global_config.rc_controls;
-        let old_config = config;
+        let mut rc_controls = global_config.rc_controls;
+        let old_rc_controls = rc_controls;
+        let mut position_hold = global_config.position_hold;
+        let old_position_hold = position_hold;
 
-        config.deadband = src.read_u8();
-        config.yaw_deadband = src.read_u8();
+        rc_controls.deadband = src.read_u8();
+        rc_controls.yaw_deadband = src.read_u8();
 
         if src.bytes_remaining() > 1 {
-            _ = src.read_u8();
+            position_hold.deadband = src.read_u8();
         }
         if src.bytes_remaining() > 1 {
             _ = src.read_u8();
         }
 
-        if config != old_config {
-            global_config.rc_controls = config;
-            publisher.publish(ConfigItem::RcControls(config)).await;
+        if rc_controls != old_rc_controls {
+            global_config.rc_controls = rc_controls;
+            publisher.publish(ConfigItem::RcControls(rc_controls)).await;
+        }
+        if old_position_hold != position_hold {
+            global_config.position_hold = position_hold;
+            publisher.publish(ConfigItem::PositionHold(position_hold)).await;
         }
         MspResult::Ack
     }
@@ -366,7 +374,7 @@ impl Msp {
         }
         if old_config != config {
             global_config.arming = config;
-            publisher.publish(ConfigItem::ArmingConfig(config)).await;
+            publisher.publish(ConfigItem::Arming(config)).await;
         }
         MspResult::Ack
     }
@@ -474,6 +482,75 @@ impl Msp {
         if config != old_config {
             global_config.failsafe = config;
             publisher.publish(ConfigItem::Failsafe(config)).await;
+        }
+        MspResult::Ack
+    }
+
+    async fn advanced_config(dst: &mut StreamBufWriter<'_>) -> MspResult {
+        let (gyro, motor, motor_device) = {
+            let global_config = GLOBAL_CONFIG.lock().await;
+            (global_config.gyro, global_config.motor, global_config.motor_device)
+        };
+        dst.write_u8(1); // was gyro_sync_denom - removed in API 1.43
+        // dst.write_u8(pid.pid_process_denom); TODO: pid process denom in MSP
+        dst.write_u8(1);
+        dst.write_u8(motor_device.use_continuous_update);
+        dst.write_u8(motor_device.motor_protocol);
+        dst.write_u16(motor_device.motor_pwm_rate);
+        dst.write_u16(motor.motor_idle);
+        dst.write_u8(0); // DEPRECATED: gyro_use_32kHz
+        dst.write_u8(motor_device.motor_inversion);
+        dst.write_u8(0); // deprecated gyro_to_use
+        dst.write_u8(gyro.gyro_high_fsr);
+        dst.write_u8(gyro.gyro_movement_calibration_threshold);
+        dst.write_u16(gyro.gyro_calibration_duration);
+        dst.write_u16(gyro.gyro_offset_yaw.cast_unsigned());
+        dst.write_u8(gyro.check_overflow);
+        //Added in MSP API 1.42
+        //dst.write_u8(system.debug_mode);
+        //dst.write_u8(DEBUG_COUNT);
+
+        MspResult::Ack
+    }
+    async fn set_advanced_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {
+        // Check if enough data is even present before locking anything
+        if src.bytes_remaining() < 8 {
+            return MspResult::Error;
+        }
+        let mut global_config = GLOBAL_CONFIG.lock().await;
+        let mut gyro = global_config.gyro;
+        let old_gyro = gyro;
+        let mut motor = global_config.motor;
+        let old_motor = motor;
+        let mut motor_device = global_config.motor_device;
+        let old_motor_device = motor_device;
+
+        _ = src.read_u8();
+        _ = src.read_u8();
+        motor_device.use_continuous_update = src.read_u8();
+        motor_device.motor_protocol = src.read_u8();
+        motor_device.motor_pwm_rate = src.read_u16();
+        motor.motor_idle = src.read_u16();
+        _ = src.read_u8(); // DEPRECATED: gyro_use_32kHz
+        motor_device.motor_inversion = src.read_u8();
+        _ = src.read_u8(); // deprecated gyro_to_use
+        gyro.gyro_high_fsr = src.read_u8();
+        gyro.gyro_movement_calibration_threshold = src.read_u8();
+        gyro.gyro_calibration_duration = src.read_u16();
+        gyro.gyro_offset_yaw = src.read_u16().cast_signed();
+        gyro.check_overflow = src.read_u8();
+
+        if gyro != old_gyro {
+            global_config.gyro = gyro;
+            publisher.publish(ConfigItem::Gyro(gyro)).await;
+        }
+        if motor != old_motor {
+            global_config.motor = motor;
+            publisher.publish(ConfigItem::Motor(motor)).await;
+        }
+        if motor_device != old_motor_device {
+            global_config.motor_device = motor_device;
+            publisher.publish(ConfigItem::MotorDevice(motor_device)).await;
         }
         MspResult::Ack
     }

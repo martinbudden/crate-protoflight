@@ -3,14 +3,14 @@ use embassy_sync::mutex::Mutex;
 use embassy_sync::pubsub::{PubSubChannel, Publisher, Subscriber};
 
 use blackbox_logger::BlackboxConfig;
-use motor_mixers::{MixerConfig, MotorConfig};
+use motor_mixers::{MixerConfig, MotorConfig, MotorDeviceConfig};
 use radio_controllers::{FailsafeConfig, RatesConfig, RcControlsConfig, RcModes, RxConfig};
 
-use crate::autopilot::AutopilotConfig;
+use crate::autopilot::{AutopilotConfig, PositionHoldConfig};
 use crate::config::profiles::{PidProfile, RatesProfile, SchemaVersion};
 use crate::flight::{
     AntiGravityConfig, ArmingConfig, CrashFlipConfig, CrashRecoveryConfig, DMaxConfig, FeatureConfig,
-    FlightControllerFiltersConfig, ImuFilterBankConfig, PidConfig, TpaConfig, YawSpinRecoveryConfig,
+    FlightControllerFiltersConfig, GyroConfig, ImuFilterBankConfig, PidConfig, TpaConfig, YawSpinRecoveryConfig,
 };
 #[cfg(feature = "gps")]
 use crate::gps::GpsConfig;
@@ -126,8 +126,10 @@ define_configs!(
         (Failsafe, failsafe, FailsafeConfig),
         (FlightControlFilters, flight_control_filters, FlightControllerFiltersConfig),
         (ImuFilters, imu_filter_bank, ImuFilterBankConfig),
+        (Gyro, gyro, GyroConfig),
         (Mixer, mixer, MixerConfig),
         (Motor, motor, MotorConfig),
+        (MotorDevice, motor_device, MotorDeviceConfig),
         (Tpa, tpa, TpaConfig),
         (YawSpinRecovery, yaw_spin_recovery, YawSpinRecoveryConfig),
         (CrashFlip, crash_flip, CrashFlipConfig),
@@ -137,9 +139,10 @@ define_configs!(
         (Rx, rx, RxConfig),
         (RcModes, rc_modes, RcModes),
         (RcControls, rc_controls, RcControlsConfig),
-        (ArmingConfig, arming, ArmingConfig),
-        (FeatureConfig, features, FeatureConfig),
-        (AutopilotConfig, autopilot, AutopilotConfig),
+        (Arming, arming, ArmingConfig),
+        (Features, features, FeatureConfig),
+        (Autopilot, autopilot, AutopilotConfig),
+        (PositionHold, position_hold, PositionHoldConfig),
         (BatteryConfig, battery, BatteryConfig),
 
         #[cfg(feature = "blackbox")]

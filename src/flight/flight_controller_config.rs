@@ -346,6 +346,91 @@ impl Default for FeatureConfig {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+pub struct GyroConfig {
+    pub gyro_movement_calibration_threshold: u8, // people keep forgetting that moving model while init results in wrong gyro offsets. and then they never reset gyro. so this is now on by default.
+    pub gyro_hardware_lpf: u8,                   // gyro DLPF setting
+    pub gyro_high_fsr: u8,
+
+    pub gyro_lpf1_static_hz: u16,
+    pub gyro_lpf2_static_hz: u16,
+
+    pub gyro_soft_notch_hz_1: u16,
+    pub gyro_soft_notch_cutoff_1: u16,
+    pub gyro_soft_notch_hz_2: u16,
+    pub gyro_soft_notch_cutoff_2: u16,
+    pub gyro_offset_yaw: i16,
+    pub check_overflow: u8,
+
+    // Lowpass primary/secondary
+    pub gyro_lpf1_type: u8,
+    pub gyro_lpf2_type: u8,
+
+    pub yaw_spin_recovery: u8,
+    pub yaw_spin_threshold: i16,
+
+    pub gyro_calibration_duration: u16, // Gyro calibration duration in 1/100 second
+
+    pub gyro_lpf1_dyn_min_hz: u16,
+    pub gyro_lpf1_dyn_max_hz: u16,
+
+    pub gyro_filter_debug_axis: u8,
+
+    pub gyros_detected: u8,     // What gyros should be shown as part of the cli status command.
+    pub gyro_lpf1_dyn_expo: u8, // set the curve for dynamic gyro lowpass filter
+    pub simplified_gyro_filter: u8,
+    pub simplified_gyro_filter_multiplier: u8,
+
+    pub gyro_enabled_bitmask: u8,
+}
+
+impl GyroConfig {
+    pub const fn new() -> Self {
+        Self {
+            gyro_movement_calibration_threshold: 0, // people keep forgetting that moving model while init results in wrong gyro offsets. and then they never reset gyro. so this is now on by default.
+            gyro_hardware_lpf: 0,                   // gyro DLPF setting
+            gyro_high_fsr: 0,
+
+            gyro_lpf1_static_hz: 0,
+            gyro_lpf2_static_hz: 0,
+
+            gyro_soft_notch_hz_1: 0,
+            gyro_soft_notch_cutoff_1: 0,
+            gyro_soft_notch_hz_2: 0,
+            gyro_soft_notch_cutoff_2: 0,
+            gyro_offset_yaw: 0,
+            check_overflow: 0,
+
+            // Lowpass primary/secondary
+            gyro_lpf1_type: 0,
+            gyro_lpf2_type: 0,
+
+            yaw_spin_recovery: 0,
+            yaw_spin_threshold: 0,
+
+            gyro_calibration_duration: 0, // Gyro calibration duration in 1/100 second
+
+            gyro_lpf1_dyn_min_hz: 0,
+            gyro_lpf1_dyn_max_hz: 0,
+
+            gyro_filter_debug_axis: 0,
+
+            gyros_detected: 0,     // What gyros should be shown as part of the cli status command.
+            gyro_lpf1_dyn_expo: 0, // set the curve for dynamic gyro lowpass filter
+            simplified_gyro_filter: 0,
+            simplified_gyro_filter_multiplier: 0,
+
+            gyro_enabled_bitmask: 0,
+        }
+    }
+}
+
+impl Default for GyroConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

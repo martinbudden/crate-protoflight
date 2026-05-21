@@ -1,5 +1,8 @@
 #![doc = include_str!("README.md")]
 
-mod altitude_kalman_filter;
+mod altitude_hold;
 mod config;
-pub use config::AutopilotConfig;
+mod pilot;
+mod position_controller;
+
+pub use config::{AutopilotConfig, PositionHoldConfig};
