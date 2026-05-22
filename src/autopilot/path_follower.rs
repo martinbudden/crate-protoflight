@@ -3,7 +3,7 @@ use core::f32::consts::{FRAC_1_SQRT_2, FRAC_PI_2};
 use vqm::Vector2df32;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct PositionController {
+pub struct PathFollower {
     lateral_accel: f32,    // Lateral acceleration setpoint in m/s^2
     l1_distance: f32,      // L1 lead distance, defined by period and damping
     nav_bearing: f32,      // bearing to L1 reference point
@@ -13,7 +13,7 @@ pub struct PositionController {
     k_l1: f32,             // L1 control gain for _L1_damping
 }
 
-impl PositionController {
+impl PathFollower {
     pub const fn new() -> Self {
         Self {
             lateral_accel: 0.0,
@@ -27,13 +27,13 @@ impl PositionController {
     }
 }
 
-impl Default for PositionController {
+impl Default for PathFollower {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl PositionController {
+impl PathFollower {
     // allow non snake_case so we can use the convention that AB means the vector from A to B.
     #![allow(non_snake_case)]
     pub fn navigate_waypoints(&mut self, A: Vector2df32, B: Vector2df32, P: Vector2df32, ground_velocity: Vector2df32) {
@@ -41,8 +41,7 @@ impl PositionController {
         let mut eta;
 
         // get the direction between the last (visited) and next waypoint
-        let PB = B - P;
-        let PB_normalized = PB.normalize();
+        let PB_normalized = (B - P).normalize();
         self.target_bearing = (PB_normalized.y).atan2(PB_normalized.x);
 
         // enforce a minimum ground speed of 0.1 m/s to avoid singularities
@@ -152,12 +151,12 @@ mod tests {
 
     #[test]
     fn normal_types() {
-        is_full::<PositionController>();
+        is_full::<PathFollower>();
     }
     #[test]
     #[allow(clippy::float_cmp)]
     fn test_new() {
-        let position_controller = PositionController::new();
-        assert_eq!(0.0, position_controller.lateral_accel);
+        let path_follower = PathFollower::new();
+        assert_eq!(0.0, path_follower.lateral_accel);
     }
 }

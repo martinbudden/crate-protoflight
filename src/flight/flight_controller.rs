@@ -226,8 +226,8 @@ impl FlightController {
         gyro_enu_rps.z.to_degrees()
     }
 
-    //    static inline float roll_sin_angle_ned(const Quaternion& orientation) { return orientation.sin_pitch_clipped(); } // sin(x-180) = -sin(x)
-    //    static inline float roll_cos_angle_ned(const Quaternion& orientation) { return orientation.cos_pitch(); }
+    // static inline float roll_sin_angle_ned(const Quaternion& orientation) { return orientation.sin_pitch_clipped(); } // sin(x-180) = -sin(x)
+    // static inline float roll_cos_angle_ned(const Quaternion& orientation) { return orientation.cos_pitch(); }
 
     #[inline]
     pub fn roll_sin_angle_ned(orientation: Quaternionf32) -> f32 {

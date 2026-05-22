@@ -60,7 +60,7 @@ pub struct GyroPidContext<'a> {
 /// The GYRO/PID task.
 #[embassy_executor::task]
 pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext<'static>) {
-    info!("GYRO_PID: task started");
+    info!(" GYRO_PID: task started");
     let mut time_us: u32 = 0;
     let mut loop_count: u32 = 0;
     let mut gyro_pid_send_count: u32 = 0;
@@ -176,7 +176,7 @@ pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext<'static>) {
             info!("GYRO_PID: time {time_us}");
         }*/
         if loop_count.is_multiple_of(100) {
-            info!("GYRO_PID: loop {loop_count}");
+            info!(" GYRO_PID: loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
 

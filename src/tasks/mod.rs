@@ -1,5 +1,6 @@
 #![doc = include_str!("README.md")]
 
+mod autopilot_task;
 mod blackbox_task;
 mod gyro_pid_task;
 mod motor_mixer_task;
@@ -28,3 +29,7 @@ pub use radio_task::{RadioContext, radio_task};
 
 pub(crate) use msp_task::MSP_CTX;
 pub use msp_task::{MspContext, msp_task};
+
+pub(crate) use autopilot_task::AUTOPILOT_CTX;
+pub use autopilot_task::{AutopilotContext, autopilot_task};
+

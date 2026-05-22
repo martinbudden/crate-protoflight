@@ -46,7 +46,7 @@ pub async fn msp_task(ctx: &'static mut MspContext) {
     let mut ticker = embassy_time::Ticker::every(Duration::from_millis(200));
     let mut loop_count: u32 = 0;
 
-    info!("     MSP: task started");
+    info!("      MSP: task started");
     loop {
         // Wait for msp packet
         // let msp_packet = msp.receive().await;
@@ -59,7 +59,7 @@ pub async fn msp_task(ctx: &'static mut MspContext) {
         let cmd_msp = Msp::SET_FAILSAFE_CONFIG;
         let _result = Msp::process_read_command(cmd_msp, &mut src, &config_publisher, &gyro_pid_publisher).await;
 
-        info!("     MSP:      loop {loop_count}");
+        info!("      MSP:      loop {loop_count}");
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }
 }

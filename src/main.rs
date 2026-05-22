@@ -28,24 +28,29 @@ use crate::config::{CONFIG_PUB_SUB_CHANNEL, GLOBAL_CONFIG, GYRO_PID_PUB_SUB_CHAN
 use crate::dispatch::{gyro_pid_sender, setpoint_sender};
 use crate::flight::{FlightController, ImuFilterBank, RcAdjustments};
 use crate::multiwii_serial_protocol::Msp;
-use crate::tasks::radio_task::{radio_receiver, radio_sender};
+use crate::tasks::radio_task::{autopilot_receiver, autopilot_sender, radio_receiver, radio_sender};
 use crate::tasks::{GYRO_CTX, GyroPidContext, gyro_pid_task};
 use crate::tasks::{MOTOR_MIXER_CTX, MotorMixerContext, motor_mixer_task};
 use crate::tasks::{MSP_CTX, MspContext, msp_task};
 use crate::tasks::{RADIO_CTX, RadioContext, radio_task};
+use crate::{
+    autopilot::pilot::Autopilot,
+    tasks::{AUTOPILOT_CTX, AutopilotContext, autopilot_task},
+};
 
 #[cfg(feature = "blackbox")]
 use crate::{
     dispatch::{gyro_pid_receiver, setpoint_receiver},
     tasks::{BLACKBOX_CTX, BlackboxContext, blackbox_task},
 };
+#[cfg(feature = "blackbox")]
+use blackbox_logger::{Blackbox, FieldSelect, drivers::sd_card::MockSdCard};
+
 #[cfg(feature = "osd")]
 use crate::{
     osd::Osd,
     tasks::{OSD_CTX, OsdContext, osd_task},
 };
-#[cfg(feature = "blackbox")]
-use blackbox_logger::{Blackbox, FieldSelect, drivers::sd_card::MockSdCard};
 
 use imu_sensors::ImuAxesOrder;
 use imu_sensors::{ImuMock, MockImuBus};
@@ -97,6 +102,7 @@ async fn main(spawner: Spawner) {
 
     let radio_ctx = RADIO_CTX.init(RadioContext {
         radio_sender: radio_sender(),
+        _autopilot_receiver: autopilot_receiver(),
         config_subscriber: CONFIG_PUB_SUB_CHANNEL.subscriber().expect("failed to create RADIO config subscriber"),
         rates: Rates::new(config.rates),
         rc_modes: RcModes::new(),
@@ -141,6 +147,12 @@ async fn main(spawner: Spawner) {
         osd: Osd::new(),
     });
 
+    let autopilot_ctx = AUTOPILOT_CTX.init(AutopilotContext {
+        gyro_pid_receiver: gyro_pid_receiver(),
+        setpoint_receiver: setpoint_receiver(),
+        autopilot_sender: autopilot_sender(),
+        autopilot: Autopilot::new(),
+    });
     drop(config); // unlocks
 
     /*
@@ -161,6 +173,7 @@ async fn main(spawner: Spawner) {
     spawner.spawn(motor_mixer_task(motor_mixer_ctx).expect("Failed to create motor mixer task")); // No receiver needed, since it uses a SIGNAL
     spawner.spawn(radio_task(radio_ctx).expect("Failed to create radio task"));
     spawner.spawn(msp_task(msp_ctx).expect("Failed to create msp task"));
+    spawner.spawn(autopilot_task(autopilot_ctx).expect("Failed to create autopilot task"));
 
     // The blackbox and OSD tasks use a Watch.
     #[cfg(feature = "blackbox")]

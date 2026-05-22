@@ -24,7 +24,7 @@ pub async fn osd_task(ctx: &'static mut OsdContext) {
     let mut loop_count: u32 = 0;
 
     //println!("OSD: Started at 50Hz.");
-    info!("     OSD: task started");
+    info!("      OSD: task started");
     loop {
         // Wait for the next 50Hz tick.
         ticker.next().await;
@@ -37,8 +37,7 @@ pub async fn osd_task(ctx: &'static mut OsdContext) {
         // Update the OSD with the latest data.
         ctx.osd.update_display();
         //println!("OSD [50Hz]: Latest Gyro X: {}", data.gyro_rps.x);
-        //info!("     OSD: gyro x: {}", gyro_pid_message.gyro_rps.x);
-        info!("     OSD:      loop {loop_count}");
+        //info!("   OSD:      loop {loop_count}");
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }
 }

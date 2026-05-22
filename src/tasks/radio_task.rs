@@ -27,9 +27,25 @@ pub fn radio_receiver() -> RadioReceiver {
     RADIO_WATCH.receiver().expect("radio receiver failed")
 }
 
+const AUTOPILOT_WATCH_COUNT: usize = 1;
+static AUTOPILOT_WATCH: Watch<CriticalSectionRawMutex, RadioControlMessage, AUTOPILOT_WATCH_COUNT> = Watch::new();
+
+pub type AutopilotSender =
+    embassy_sync::watch::Sender<'static, CriticalSectionRawMutex, RadioControlMessage, AUTOPILOT_WATCH_COUNT>;
+pub fn autopilot_sender() -> AutopilotSender {
+    AUTOPILOT_WATCH.sender()
+}
+
+pub type AutopilotReceiver =
+    embassy_sync::watch::Receiver<'static, CriticalSectionRawMutex, RadioControlMessage, AUTOPILOT_WATCH_COUNT>;
+pub fn autopilot_receiver() -> AutopilotReceiver {
+    AUTOPILOT_WATCH.receiver().expect("radio receiver failed")
+}
+
 /// Context for radio_task.
 pub struct RadioContext<'a> {
     pub radio_sender: RadioSender,
+    pub _autopilot_receiver: AutopilotReceiver,
     pub config_subscriber: ConfigSubscriber<'a>,
     pub rc_modes: RcModes,
     pub rates: Rates,
@@ -44,7 +60,7 @@ pub async fn radio_task(ctx: &'static mut RadioContext<'static>) {
     let mut ticker = embassy_time::Ticker::every(Duration::from_millis(20));
     let mut loop_count: u32 = 0;
 
-    info!("   RADIO: task started");
+    info!("    RADIO: task started");
 
     loop {
         // TODO: rx_frame should be obtained on an interrupt form the radio receiver (UART).
@@ -72,7 +88,7 @@ pub async fn radio_task(ctx: &'static mut RadioContext<'static>) {
         ctx.radio_sender.send(radio_control_message);
 
         if loop_count.is_multiple_of(5) {
-            info!("   RADIO:    loop {loop_count}");
+            info!("    RADIO:    loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }

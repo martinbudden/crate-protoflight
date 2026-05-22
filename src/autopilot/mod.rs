@@ -2,7 +2,7 @@
 
 mod altitude_hold;
 mod config;
-mod pilot;
-mod position_controller;
+pub mod pilot;
+mod path_follower;
 
 pub use config::{AutopilotConfig, PositionHoldConfig};

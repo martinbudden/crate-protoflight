@@ -6,8 +6,8 @@ use embassy_sync::watch::Watch;
 // --- GYRO_PID ---
 //
 
-// The telemetry watch has two clients: the blackbox and the OSD.
-const GYRO_PID_WATCH_COUNT: usize = 2;
+// The gyro_pid watch has three clients: the blackbox, the autopilot, and the OSD.
+const GYRO_PID_WATCH_COUNT: usize = 3;
 // Watch<Mutex, DataType, MaxReceivers>
 static GYRO_PID_WATCH: Watch<CriticalSectionRawMutex, GyroPidMessage, GYRO_PID_WATCH_COUNT> = Watch::new();
 
@@ -28,7 +28,7 @@ pub fn gyro_pid_receiver() -> GyroPidReceiver {
 // --- SETPOINT ---
 //
 
-const SETPOINT_WATCH_COUNT: usize = 2;
+const SETPOINT_WATCH_COUNT: usize = 3;
 static SETPOINT_WATCH: Watch<CriticalSectionRawMutex, SetpointMessage, SETPOINT_WATCH_COUNT> = Watch::new();
 
 pub type SetpointMessageSender =
