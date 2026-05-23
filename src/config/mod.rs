@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![doc = include_str!("README.md")]
 
 mod global_config;

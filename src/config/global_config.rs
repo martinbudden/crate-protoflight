@@ -26,40 +26,68 @@ pub static GLOBAL_CONFIG: Mutex<CriticalSectionRawMutex, GlobalConfig> = Mutex::
 
 const MAX_CONFIG_SUBSCRIBER_COUNT: usize = 10;
 const CONFIG_PUBLISHER_COUNT: usize = 2;
+const CONFIG_CAPACITY: usize = 8;
+
 /// `PubSubChannel` for handling `GlobalConfig` updates.
 pub static CONFIG_PUB_SUB_CHANNEL: PubSubChannel<
     CriticalSectionRawMutex,
     ConfigItem,
-    8,
+    CONFIG_CAPACITY,
     MAX_CONFIG_SUBSCRIBER_COUNT,
     CONFIG_PUBLISHER_COUNT,
 > = PubSubChannel::new();
 
-pub type ConfigPublisher<'a> =
-    Publisher<'a, CriticalSectionRawMutex, ConfigItem, 8, MAX_CONFIG_SUBSCRIBER_COUNT, CONFIG_PUBLISHER_COUNT>;
-pub type ConfigSubscriber<'a> =
-    Subscriber<'a, CriticalSectionRawMutex, ConfigItem, 8, MAX_CONFIG_SUBSCRIBER_COUNT, CONFIG_PUBLISHER_COUNT>;
+pub type ConfigPublisher<'a> = Publisher<
+    'a,
+    CriticalSectionRawMutex,
+    ConfigItem,
+    CONFIG_CAPACITY,
+    MAX_CONFIG_SUBSCRIBER_COUNT,
+    CONFIG_PUBLISHER_COUNT,
+>;
+pub type ConfigSubscriber<'a> = Subscriber<
+    'a,
+    CriticalSectionRawMutex,
+    ConfigItem,
+    CONFIG_CAPACITY,
+    MAX_CONFIG_SUBSCRIBER_COUNT,
+    CONFIG_PUBLISHER_COUNT,
+>;
 
 const MAX_GYRO_PID_SUBSCRIBER_COUNT: usize = 4;
 const GYRO_PID_PUBLISHER_COUNT: usize = 2;
+const GYRO_PID_CAPACITY: usize = 4;
+
 /// High speed `PubSubChannel` for handling `GlobalConfig` updates in the  `gyro_pid` task.
 pub static GYRO_PID_PUB_SUB_CHANNEL: PubSubChannel<
     CriticalSectionRawMutex,
     GyroPidItem,
-    4,
+    GYRO_PID_CAPACITY,
     MAX_GYRO_PID_SUBSCRIBER_COUNT,
     GYRO_PID_PUBLISHER_COUNT,
 > = PubSubChannel::new();
 
-pub type GyroPidPublisher<'a> =
-    Publisher<'a, CriticalSectionRawMutex, GyroPidItem, 4, MAX_GYRO_PID_SUBSCRIBER_COUNT, GYRO_PID_PUBLISHER_COUNT>;
-pub type GyroPidSubscriber<'a> =
-    Subscriber<'a, CriticalSectionRawMutex, GyroPidItem, 4, MAX_GYRO_PID_SUBSCRIBER_COUNT, GYRO_PID_PUBLISHER_COUNT>;
+pub type GyroPidPublisher<'a> = Publisher<
+    'a,
+    CriticalSectionRawMutex,
+    GyroPidItem,
+    GYRO_PID_CAPACITY,
+    MAX_GYRO_PID_SUBSCRIBER_COUNT,
+    GYRO_PID_PUBLISHER_COUNT,
+>;
+pub type GyroPidSubscriber<'a> = Subscriber<
+    'a,
+    CriticalSectionRawMutex,
+    GyroPidItem,
+    GYRO_PID_CAPACITY,
+    MAX_GYRO_PID_SUBSCRIBER_COUNT,
+    GYRO_PID_PUBLISHER_COUNT,
+>;
 
 /// Macro to generate the `GlobalConfig` struct.<br>
 /// Creates a new function that calls the new function of all the member configs.<br>
 /// Also generates data-carrying enums for the `config` and `gyro_pid` `PubSubChannel`s.<br>
-/// All member configs must define a static `new` function.<br>
+/// All member configs must define a const `new` function.<br>
 macro_rules! define_configs {
     (
         general: [ $( $(#[$g_meta:meta])* ($g_enum:ident, $g_field:ident, $g_type:ty)),* $(,)?],

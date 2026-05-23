@@ -25,7 +25,7 @@ rustc_version = "0.4.1"
 
 [features]
 #default = ["std", "libm"]
-default = ["std", "blackbox", "libm", "osd", "rpm_filters"]
+default = ["std", "blackbox", "libm", "osd", "rpm_filters", "barometer"]
 #default = ["rp2350", "blackbox", "libm", "osd"]
 libm = ["dep:libm", "vqm/libm", "signal-filters/libm", "pidsk-controller/libm", "radio-controllers/libm"]
 std = ["embassy-time/std", "critical-section/std", "embassy-executor/platform-std", "imu-sensors/std" ,"vqm/std", "signal-filters/std"]
@@ -36,6 +36,8 @@ rp2350 = []
 serde = ["vqm/serde", "radio-controllers/serde", "motor-mixers/serde"]
 
 
+autopilot = []
+barometer = []
 blackbox = []
 dashboard = []
 gps = []

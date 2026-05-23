@@ -20,6 +20,7 @@ mod flight;
 mod gps;
 mod multiwii_serial_protocol;
 mod osd;
+mod sensor_data;
 mod sensors;
 mod tasks;
 mod vtx;
@@ -28,15 +29,22 @@ use crate::config::{CONFIG_PUB_SUB_CHANNEL, GLOBAL_CONFIG, GYRO_PID_PUB_SUB_CHAN
 use crate::dispatch::{gyro_pid_sender, setpoint_sender};
 use crate::flight::{FlightController, ImuFilterBank, RcAdjustments};
 use crate::multiwii_serial_protocol::Msp;
-use crate::tasks::radio_task::{autopilot_receiver, autopilot_sender, radio_receiver, radio_sender};
+#[cfg(feature = "autopilot")]
+use crate::tasks::radio_task::autopilot_sender;
+use crate::tasks::radio_task::{autopilot_receiver, radio_receiver, radio_sender};
 use crate::tasks::{GYRO_CTX, GyroPidContext, gyro_pid_task};
 use crate::tasks::{MOTOR_MIXER_CTX, MotorMixerContext, motor_mixer_task};
 use crate::tasks::{MSP_CTX, MspContext, msp_task};
 use crate::tasks::{RADIO_CTX, RadioContext, radio_task};
+
+#[cfg(feature = "autopilot")]
 use crate::{
     autopilot::pilot::Autopilot,
     tasks::{AUTOPILOT_CTX, AutopilotContext, autopilot_task},
 };
+
+#[cfg(feature = "barometer")]
+use crate::tasks::{BAROMETER_CTX, BarometerContext, barometer_task};
 
 #[cfg(feature = "blackbox")]
 use crate::{
@@ -147,12 +155,15 @@ async fn main(spawner: Spawner) {
         osd: Osd::new(),
     });
 
+    #[cfg(feature = "autopilot")]
     let autopilot_ctx = AUTOPILOT_CTX.init(AutopilotContext {
         gyro_pid_receiver: gyro_pid_receiver(),
         setpoint_receiver: setpoint_receiver(),
         autopilot_sender: autopilot_sender(),
         autopilot: Autopilot::new(),
     });
+    #[cfg(feature = "barometer")]
+    let barometer_ctx = BAROMETER_CTX.init(BarometerContext {});
     drop(config); // unlocks
 
     /*
@@ -173,7 +184,10 @@ async fn main(spawner: Spawner) {
     spawner.spawn(motor_mixer_task(motor_mixer_ctx).expect("Failed to create motor mixer task")); // No receiver needed, since it uses a SIGNAL
     spawner.spawn(radio_task(radio_ctx).expect("Failed to create radio task"));
     spawner.spawn(msp_task(msp_ctx).expect("Failed to create msp task"));
+    #[cfg(feature = "autopilot")]
     spawner.spawn(autopilot_task(autopilot_ctx).expect("Failed to create autopilot task"));
+    #[cfg(feature = "barometer")]
+    spawner.spawn(barometer_task(barometer_ctx).expect("Failed to create barometer task"));
 
     // The blackbox and OSD tasks use a Watch.
     #[cfg(feature = "blackbox")]

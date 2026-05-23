@@ -19,7 +19,7 @@ impl Default for Autopilot {
 
 impl Autopilot {
     pub const fn new() -> Self {
-        Self { 
+        Self {
             altitude_kalman_filter: AltitudeKalmanFilterf32::new(),
             altitude_controller: AltitudeController::new(0.0),
         }

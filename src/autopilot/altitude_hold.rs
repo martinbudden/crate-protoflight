@@ -14,10 +14,10 @@ use vqm::Quaternionf32;
 ///
 /// Because vertical speed is the derivative of altitude, the outer loop does not need a Dterm,
 /// since the inner loop Pterm is effectively the outer loop Dterm.
-/// 
+///
 /// The inner loop incorporates some open-loop control via its Kterm (kick), so there is
 /// an immediate response when its setpoint changes (no need to wait for the error to accumulate).
-/// 
+///
 /// ```text
 /// [Target Altitude]
 ///       │
@@ -69,7 +69,7 @@ impl AltitudeController {
         Self {
             // Initialize height controller (Outer Loop)
             // Only needs Proportional (kp) to map distance error to speed:
-            // because the inner loop handles the physics of acceleration, 
+            // because the inner loop handles the physics of acceleration,
             // the outer loop only needs Kp to calculate the vertical speed setpoint
             height_controller: PidControllerf32::new(1.0),
             // Initialize velocity controller (Inner Loop)
@@ -123,17 +123,10 @@ impl AltitudeController {
         throttle_offset.clamp(-self.max_throttle_adjustment, self.max_throttle_adjustment)
     }
 
-    pub fn update(
-        &mut self,
-        altitude: f32,
-        vertical_speed: f32,
-        orientation: Quaternionf32,
-        delta_t: f32,
-    ) -> f32 {
+    pub fn update(&mut self, altitude: f32, vertical_speed: f32, orientation: Quaternionf32, delta_t: f32) -> f32 {
         self.hover_throttle + self.calculate_throttle_offset(altitude, vertical_speed, orientation, delta_t)
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -204,12 +197,7 @@ mod tests {
         // Simulate 5 seconds of real-time flight execution (10,000 loop cycles)
         let mut converged = false;
         for _ in 0..10_000 {
-            let throttle = controller.update(
-                multirotor.altitude,
-                multirotor.vertical_speed,
-                orientation,
-                delta_t,
-            );
+            let throttle = controller.update(multirotor.altitude, multirotor.vertical_speed, orientation, delta_t);
 
             multirotor.step(throttle, delta_t);
 

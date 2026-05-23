@@ -32,6 +32,7 @@ static AUTOPILOT_WATCH: Watch<CriticalSectionRawMutex, RadioControlMessage, AUTO
 
 pub type AutopilotSender =
     embassy_sync::watch::Sender<'static, CriticalSectionRawMutex, RadioControlMessage, AUTOPILOT_WATCH_COUNT>;
+#[cfg(feature = "autopilot")]
 pub fn autopilot_sender() -> AutopilotSender {
     AUTOPILOT_WATCH.sender()
 }
