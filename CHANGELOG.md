@@ -15,10 +15,6 @@ Once the API has stabilized this project will adopt semantic versioning, the fir
 
 ### Changed
 
-- Updated to latest crates.
-- Made constructors `const` where possible.
-- Code tidy.
-
 ### Removed
 
 ### Deprecated
@@ -26,6 +22,24 @@ Once the API has stabilized this project will adopt semantic versioning, the fir
 ### Fixed
 
 ### Security
+
+## [0.1.1] - 2026-05-24
+
+### Added
+
+- mock multirotors.
+- dual ring PIDs for altitude and xy position.
+- placeholders for new tasks.
+
+### Changed
+
+- Updated to latest crates.
+- Made constructors `const` where possible.
+- Code tidy.
+
+### Removed
+
+- `katex-header.html`.
 
 ## [0.1.0] - 2026-05-10
 

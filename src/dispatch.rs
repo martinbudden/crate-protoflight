@@ -20,6 +20,7 @@ pub fn gyro_pid_sender() -> GyroPidMessageSender {
 
 pub type GyroPidReceiver =
     embassy_sync::watch::Receiver<'static, CriticalSectionRawMutex, GyroPidMessage, GYRO_PID_WATCH_COUNT>;
+#[allow(unused)]
 pub fn gyro_pid_receiver() -> GyroPidReceiver {
     GYRO_PID_WATCH.receiver().expect("gyro_pid receiver failed")
 }
@@ -39,6 +40,7 @@ pub fn setpoint_sender() -> SetpointMessageSender {
 
 pub type SetpointReceiver =
     embassy_sync::watch::Receiver<'static, CriticalSectionRawMutex, SetpointMessage, SETPOINT_WATCH_COUNT>;
+#[allow(unused)]
 pub fn setpoint_receiver() -> SetpointReceiver {
     SETPOINT_WATCH.receiver().expect("setpoint receiver failed")
 }
