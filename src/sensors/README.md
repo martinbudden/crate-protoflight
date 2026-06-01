@@ -1,3 +1,3 @@
 # Sensors
 
-Sensors readme placeholder.
+Sensors other than the main sensors (IMU and GPS).

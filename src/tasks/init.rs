@@ -1,13 +1,11 @@
-#![allow(unused)]
+//#![allow(unused)]
 use crate::config::{
     GLOBAL_CONFIG, config_publisher, config_subscriber, fast_config_publisher, fast_config_subscriber,
-};
-use crate::sensor_data::{
-    fast_sensor_data_publisher, fast_sensor_data_subscriber, sensor_data_publisher, sensor_data_subscriber,
 };
 
 use crate::flight::{FlightController, ImuFilterBank, RcAdjustments};
 
+#[allow(unused)]
 use crate::tasks::dispatch::{gyro_pid_receiver, gyro_pid_sender, setpoint_receiver, setpoint_sender};
 use crate::tasks::non_volatile_storage as nvs;
 use crate::tasks::{GYRO_CTX, GyroPidContext, gyro_pid_task};
@@ -22,12 +20,13 @@ use crate::{
     autopilot::pilot::Autopilot,
     tasks::{
         AUTOPILOT_CTX, AutopilotContext, autopilot_task,
+        barometer_task::barometer_data_subscriber,
         radio_task::{autopilot_receiver, autopilot_sender},
     },
 };
 
 #[cfg(feature = "barometer")]
-use crate::tasks::{BAROMETER_CTX, BarometerContext, barometer_task};
+use crate::tasks::{BAROMETER_CTX, BarometerContext, barometer_task, barometer_task::barometer_data_publisher};
 
 #[cfg(feature = "blackbox")]
 use {
@@ -37,7 +36,7 @@ use {
 
 #[cfg(feature = "gps")]
 use crate::{
-    gps::Geodetic,
+    gps::{Geodetic, gps_data_publisher, gps_data_subscriber, yaw_heading_publisher, yaw_heading_subscriber},
     tasks::{GPS_CTX, GpsContext, gps_task},
 };
 
@@ -51,6 +50,12 @@ use crate::{
 use crate::{
     osd::Osd,
     tasks::{OSD_CTX, OsdContext, osd_task},
+};
+
+#[cfg(feature = "rangefinder")]
+use crate::tasks::{
+    RANGEFINDER_CTX, RangefinderContext, rangefinder_task,
+    rangefinder_task::{rangefinder_data_publisher, rangefinder_data_subscriber},
 };
 
 use imu_sensors::ImuAxesOrder;
@@ -79,6 +84,7 @@ static mut CORE1_STACK: Stack<4096> = Stack::new();
 // If building on your PC (x86_64, Mac, etc.)
 // FIX: Replace `_` with `impl embedded_storage_async::nor_flash::NorFlash`
 #[cfg(not(target_arch = "arm"))] // If building on your PC (x86_64, Mac, etc.)
+#[allow(unused)]
 fn init_flash_driver() -> impl embedded_storage_async::nor_flash::NorFlash {
     use embedded_storage_file::{NorMemoryAsync, NorMemoryInFile};
 
@@ -105,6 +111,7 @@ fn init_flash_driver(
     Flash::new(p.FLASH, p.DMA_CH0, FLASH_SIZE_BYTES)
 }
 
+#[allow(unused)]
 pub async fn load_system_configs_task<F>(flash: &mut F, flash_range: core::ops::Range<u32>)
 where
     F: NorFlash,
@@ -140,6 +147,7 @@ pub async fn init(spawner: Spawner) {
 
     load_system_configs_task(&mut flash_driver, config_flash_range).await;*/
 
+    #[allow(unused_mut)]
     let mut config = GLOBAL_CONFIG.lock().await;
 
     // load configs from non-volatile storage.
@@ -151,7 +159,8 @@ pub async fn init(spawner: Spawner) {
         gyro_pid_sender: gyro_pid_sender(),
         setpoint_sender: setpoint_sender(),
         fast_config_subscriber: fast_config_subscriber(),
-        fast_sensor_data_subscriber: fast_sensor_data_subscriber(),
+        #[cfg(feature = "gps")]
+        yaw_heading_subscriber: yaw_heading_subscriber(),
         imu: ImuMock::new(MockImuBus::new(), ImuAxesOrder::XPOS_YPOS_ZPOS),
         imu_filters: ImuFilterBank::with_config(config.imu_filter_bank),
         sensor_fusion: MadgwickFilterf32::new(),
@@ -181,7 +190,12 @@ pub async fn init(spawner: Spawner) {
         msp: Msp::new(),
         fast_config_publisher: fast_config_publisher(),
         config_publisher: config_publisher(),
-        sensor_data_subscriber: sensor_data_subscriber(),
+        #[cfg(feature = "gps")]
+        gps_data_subscriber: gps_data_subscriber(),
+        #[cfg(feature = "barometer")]
+        barometer_data_subscriber: barometer_data_subscriber(),
+        #[cfg(feature = "rangefinder")]
+        rangefinder_data_subscriber: rangefinder_data_subscriber(),
         read_buf: [0u8; MSP_READ_BUF_SIZE],
         write_buf: [0u8; MSP_WRITE_BUF_SIZE],
     });
@@ -224,7 +238,12 @@ pub async fn init(spawner: Spawner) {
 
     #[cfg(feature = "autopilot")]
     let autopilot_ctx: &mut AutopilotContext<'static> = AUTOPILOT_CTX.init(AutopilotContext {
-        sensor_data_subscriber: sensor_data_subscriber(),
+        #[cfg(feature = "gps")]
+        gps_data_subscriber: gps_data_subscriber(),
+        #[cfg(feature = "barometer")]
+        barometer_data_subscriber: barometer_data_subscriber(),
+        #[cfg(feature = "rangefinder")]
+        rangefinder_data_subscriber: rangefinder_data_subscriber(),
         gyro_pid_receiver: gyro_pid_receiver(),
         setpoint_receiver: setpoint_receiver(),
         autopilot_sender: autopilot_sender(),
@@ -232,12 +251,16 @@ pub async fn init(spawner: Spawner) {
     });
 
     #[cfg(feature = "barometer")]
-    let barometer_ctx = BAROMETER_CTX.init(BarometerContext { sensor_data_publisher: sensor_data_publisher() });
+    let barometer_ctx = BAROMETER_CTX.init(BarometerContext { barometer_data_publisher: barometer_data_publisher() });
+
+    #[cfg(feature = "rangefinder")]
+    let rangefinder_ctx =
+        RANGEFINDER_CTX.init(RangefinderContext { rangefinder_data_publisher: rangefinder_data_publisher() });
 
     #[cfg(feature = "gps")]
     let gps_ctx = GPS_CTX.init(GpsContext {
-        fast_sensor_data_publisher: fast_sensor_data_publisher(),
-        sensor_data_publisher: sensor_data_publisher(),
+        yaw_heading_publisher: yaw_heading_publisher(),
+        gps_data_publisher: gps_data_publisher(),
         home: Geodetic::new(),
     });
 
@@ -280,4 +303,6 @@ pub async fn init(spawner: Spawner) {
     spawner.spawn(msp_task(msp_ctx).expect("Failed to create MSP task"));
     #[cfg(feature = "osd")]
     spawner.spawn(osd_task(osd_ctx).expect("Failed to create OSD task"));
+    #[cfg(feature = "rangefinder")]
+    spawner.spawn(rangefinder_task(rangefinder_ctx).expect("Failed to create RANGEFINDER task"));
 }

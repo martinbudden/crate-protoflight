@@ -7,10 +7,12 @@ use rand::RngExt;
 use sensor_fusion::{MadgwickFilterf32, SensorFusion};
 use vqm::{Vector3df32, Vector3di32};
 
+#[cfg(feature = "gps")]
+use crate::gps::YawHeadingSubscriber;
+
 use crate::{
     config::{FastConfigItem, FastConfigSubscriber},
     flight::{FilterAccGyro, FlightController, ImuFilterBank, VehicleControl},
-    sensor_data::{FastSensorDataItem, FastSensorDataSubscriber},
     tasks::{
         dispatch::{GyroPidMessageSender, SetpointMessageSender},
         motor_mixer_task::MOTOR_MIXER_SIGNAL,
@@ -19,11 +21,10 @@ use crate::{
 };
 
 #[cfg(feature = "rp2350")]
-use embassy_rp::gpio::{Input, Pull};
-#[cfg(feature = "rp2350")]
-use embassy_rp::interrupt;
-#[cfg(feature = "rp2350")]
-use embassy_rp::interrupt::{InterruptExt, Priority};
+use embassy_rp::{
+    gpio::{Input, Pull},
+    interrupt::{self, InterruptExt, Priority},
+};
 
 #[cfg(feature = "multicore")]
 use embassy_executor::InterruptExecutor;
@@ -54,7 +55,8 @@ pub struct GyroPidContext<'a> {
     pub gyro_pid_sender: GyroPidMessageSender,
     pub setpoint_sender: SetpointMessageSender,
     pub fast_config_subscriber: FastConfigSubscriber<'a>,
-    pub fast_sensor_data_subscriber: FastSensorDataSubscriber<'a>,
+    #[cfg(feature = "gps")]
+    pub yaw_heading_subscriber: YawHeadingSubscriber<'a>,
     pub imu: ImuMock<MockImuBus>,
     pub imu_filters: ImuFilterBank,
     pub sensor_fusion: MadgwickFilterf32,
@@ -79,46 +81,9 @@ pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext<'static>) {
 
     // This is the famous GYRO/PID loop!
     loop {
-        // Drain all pending messages to get to the latest state
-        // try_next_message() is a simple pointer check. If there's no message, it returns None instantly,
-        // so it won't mess up the 8kHz timing.
-
-        // check if there has been in-flight adjustment of the PID gains, if so apply them.
-        // this is an unlikely occurrence.
-        if let Some(wait_result) = ctx.fast_config_subscriber.try_next_message()
-            && let embassy_sync::pubsub::WaitResult::Message(event) = wait_result
-        {
-            match event {
-                FastConfigItem::RollRate(gains) => {
-                    ctx.flight_controller.set_pid_gains(FlightController::ROLL_RATE_DPS, gains);
-                }
-                FastConfigItem::PitchRate(gains) => {
-                    ctx.flight_controller.set_pid_gains(FlightController::PITCH_RATE_DPS, gains);
-                }
-                FastConfigItem::YawRate(gains) => {
-                    ctx.flight_controller.set_pid_gains(FlightController::YAW_RATE_DPS, gains);
-                }
-                FastConfigItem::RollAngle(gains) => {
-                    ctx.flight_controller.set_pid_gains(FlightController::ROLL_ANGLE_DEGREES, gains);
-                }
-                FastConfigItem::PitchAngle(gains) => {
-                    ctx.flight_controller.set_pid_gains(FlightController::PITCH_ANGLE_DEGREES, gains);
-                }
-            }
-        }
-        if let Some(wait_result) = ctx.fast_sensor_data_subscriber.try_next_message()
-            && let embassy_sync::pubsub::WaitResult::Message(event) = wait_result
-        {
-            match event {
-                FastSensorDataItem::GpsYawHeading(gps_yaw_heading) => {
-                    _ = ctx.sensor_fusion.correct_yaw(gps_yaw_heading.yaw_heading_radians, gps_yaw_heading.delta_t);
-                }
-            }
-        }
-
-        //
+        // ****
         // The GYRO part of the GYRO/PID loop
-        //
+        // ****
 
         // For now we are just faking some gyro and acc values.
         let acc_rnd = Vector3df32 { x: 1.0, y: 0.5, z: 0.25 };
@@ -146,12 +111,20 @@ pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext<'static>) {
         // Filter the acc and gyro values. This includes RPM notch filtering, if that is enabled.
         let (acc, gyro_rps) = ctx.imu_filters.update(acc, gyro_rps, delta_t);
 
+        // Check if there has been a yaw heading correction from the GPS, if so, apply it.
+        #[cfg(feature = "gps")]
+        if let Some(wait_result) = ctx.yaw_heading_subscriber.try_next_message()
+            && let embassy_sync::pubsub::WaitResult::Message(gps_yaw_heading) = wait_result
+        {
+            _ = ctx.sensor_fusion.correct_yaw(gps_yaw_heading.yaw_heading_radians, gps_yaw_heading.delta_t);
+        }
+
         // Calculate the orientation quaternion using sensor fusion.
         let orientation = ctx.sensor_fusion.fuse_acc_gyro(acc, gyro_rps, delta_t);
 
-        //
+        // ****
         // The PID part of the GYRO/PID loop
-        //
+        // ****
 
         // If there is a new .
         if let Some(radio_control_message) = ctx.radio_receiver.try_changed() {
@@ -183,6 +156,36 @@ pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext<'static>) {
                 // TODO: put the new setpoints in the setpoints message
                 let setpoint_message = SetpointMessage::new();
                 ctx.setpoint_sender.send(setpoint_message);
+            }
+        }
+
+        // ****
+        // Check if there has been in-flight adjustment of the PID gains, if so apply them.
+        // This is an unlikely occurrence.
+        // ****
+        //
+        // Drain all pending messages to get to the latest state
+        // try_next_message() is a simple pointer check. If there's no message, it returns None instantly,
+        // so it won't mess up the 8kHz timing.
+        if let Some(wait_result) = ctx.fast_config_subscriber.try_next_message()
+            && let embassy_sync::pubsub::WaitResult::Message(fast_config_item) = wait_result
+        {
+            match fast_config_item {
+                FastConfigItem::RollRate(gains) => {
+                    ctx.flight_controller.set_pid_gains(FlightController::ROLL_RATE_DPS, gains);
+                }
+                FastConfigItem::PitchRate(gains) => {
+                    ctx.flight_controller.set_pid_gains(FlightController::PITCH_RATE_DPS, gains);
+                }
+                FastConfigItem::YawRate(gains) => {
+                    ctx.flight_controller.set_pid_gains(FlightController::YAW_RATE_DPS, gains);
+                }
+                FastConfigItem::RollAngle(gains) => {
+                    ctx.flight_controller.set_pid_gains(FlightController::ROLL_ANGLE_DEGREES, gains);
+                }
+                FastConfigItem::PitchAngle(gains) => {
+                    ctx.flight_controller.set_pid_gains(FlightController::PITCH_ANGLE_DEGREES, gains);
+                }
             }
         }
 

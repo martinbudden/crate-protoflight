@@ -1,19 +1,20 @@
-#![allow(unused)]
+#![cfg(feature = "gps")]
 
 use log::info;
 
 use crate::{
-    gps::{self, Geodetic, GeographicCoordinate},
-    sensor_data::{FastSensorDataItem, FastSensorDataPublisher, SensorDataItem, SensorDataPublisher},
-    sensors::{GpsData, GpsPosition, GpsYawHeadingData},
+    gps::{Geodetic, GeographicCoordinate, GpsSolutionData},
+    gps::{
+        GpsDataItem, GpsDataPublisher, YawHeadingPublisher, {GpsData, GpsPosition, GpsYawHeadingData},
+    },
 };
 
 pub(crate) static GPS_CTX: static_cell::StaticCell<GpsContext> = static_cell::StaticCell::new();
 
 /// Context for GPS task.
 pub struct GpsContext<'a> {
-    pub fast_sensor_data_publisher: FastSensorDataPublisher<'a>,
-    pub sensor_data_publisher: SensorDataPublisher<'a>,
+    pub yaw_heading_publisher: YawHeadingPublisher<'a>,
+    pub gps_data_publisher: GpsDataPublisher<'a>,
     pub home: Geodetic,
 }
 
@@ -30,14 +31,16 @@ pub async fn gps_task(ctx: &'static mut GpsContext<'static>) {
 
         // TODO: this should get the data from the actual GPS sensor.
         let gps_data = GpsData::default();
+        let gps_solution = GpsSolutionData::default();
 
         // Publish the raw gps data for use by (eg) the OSD.
-        ctx.sensor_data_publisher.publish_immediate(SensorDataItem::Gps(gps_data));
+        ctx.gps_data_publisher.publish_immediate(GpsDataItem::Gps(gps_data));
+        ctx.gps_data_publisher.publish_immediate(GpsDataItem::GpsSolution(gps_solution));
 
         // Convert the gps_data position to a GpsPosition item (ie position in meters from home) for use by the autopilot.
         let geographic_coordinate = GeographicCoordinate::from(gps_data.position);
         let gps_position = GpsPosition { position: ctx.home.distance_from_home_meters(geographic_coordinate) };
-        ctx.sensor_data_publisher.publish_immediate(SensorDataItem::GpsPosition(gps_position));
+        ctx.gps_data_publisher.publish_immediate(GpsDataItem::GpsPosition(gps_position));
 
         // Only trust GPS heading if moving faster than 1.5 m/s (150 cmps, approx 3 knots)
         if gps_data.ground_speed_cmps > 150 {
@@ -46,7 +49,7 @@ pub async fn gps_task(ctx: &'static mut GpsContext<'static>) {
                 delta_t: 0.1,
             };
             // publish the yaw heading so the gyro_pid task can use it to correct yaw drift in the sensor fusion filter.
-            ctx.fast_sensor_data_publisher.publish_immediate(FastSensorDataItem::GpsYawHeading(gps_yaw_heading_data));
+            ctx.yaw_heading_publisher.publish_immediate(gps_yaw_heading_data);
         }
 
         if loop_count.is_multiple_of(10) {

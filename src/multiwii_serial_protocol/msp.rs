@@ -3,10 +3,9 @@ use serde::{Deserialize, Serialize};
 use stream_buf::{StreamBufReader, StreamBufWriter};
 use vqm::{Quaternion, Vector3di16};
 
-use crate::{
-    config::{ConfigItem, ConfigPublisher, FastConfigItem, FastConfigPublisher, GLOBAL_CONFIG},
-    gps::GpsSolutionDataAbridged,
-};
+use crate::config::{ConfigItem, ConfigPublisher, FastConfigItem, FastConfigPublisher, GLOBAL_CONFIG};
+#[cfg(feature = "gps")]
+use crate::gps::GpsSolutionDataAbridged;
 
 // return positive for ACK, negative on error, zero for no reply
 pub enum MspResult {
@@ -19,7 +18,9 @@ pub enum MspResult {
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct MspSensorData {
+    #[cfg(feature = "barometer")]
     pub barometer_altitude_cm: u32,
+    #[cfg(feature = "rangefinder")]
     pub rangefinder_altitude_cm: u32,
     pub attitude: Vector3di16,
     // an unexpected use of generic - I didn't expect it might be used this way when I wrote the quaternion code!.
@@ -27,19 +28,23 @@ pub struct MspSensorData {
     pub acc: Vector3di16,
     pub gyro: Vector3di16,
     pub mag: Vector3di16,
+    #[cfg(feature = "gps")]
     pub gps_sol: GpsSolutionDataAbridged,
 }
 
 impl MspSensorData {
     pub const fn new() -> Self {
         Self {
+            #[cfg(feature = "barometer")]
             barometer_altitude_cm: 0,
+            #[cfg(feature = "rangefinder")]
             rangefinder_altitude_cm: 0,
             attitude: Vector3di16 { x: 0, y: 0, z: 0 },
             attitude_quaternion: Quaternion::<u16> { w: 0, x: 0, y: 0, z: 0 },
             acc: Vector3di16 { x: 0, y: 0, z: 0 },
             gyro: Vector3di16 { x: 0, y: 0, z: 0 },
             mag: Vector3di16 { x: 0, y: 0, z: 0 },
+            #[cfg(feature = "gps")]
             gps_sol: GpsSolutionDataAbridged::new(),
         }
     }
@@ -90,6 +95,7 @@ impl Msp {
                 dst.write_u8(Self::PID_CONTROLLER_BETAFLIGHT);
                 MspResult::Ack
             }
+            #[cfg(feature = "rangefinder")]
             Msp::SONAR_ALTITUDE => {
                 dst.write_u32(sensor_data.rangefinder_altitude_cm);
                 MspResult::Ack
@@ -100,6 +106,7 @@ impl Msp {
             Msp::FILTER_CONFIG => Self::filter_config(dst).await,
             Msp::RAW_IMU => Self::raw_imu(dst, sensor_data),
             Msp::RC => Self::rc(dst).await,
+            #[cfg(feature = "barometer")]
             Msp::ALTITUDE => {
                 dst.write_u32(sensor_data.barometer_altitude_cm);
                 dst.write_u16(0);

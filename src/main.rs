@@ -14,10 +14,10 @@ mod autopilot;
 mod config;
 mod display;
 mod flight;
+#[cfg(feature = "gps")]
 mod gps;
 mod multiwii_serial_protocol;
 mod osd;
-mod sensor_data;
 mod sensors;
 mod tasks;
 mod vtx;

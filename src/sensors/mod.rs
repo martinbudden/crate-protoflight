@@ -2,10 +2,10 @@
 
 mod barometer;
 mod battery;
-mod gps;
 mod rangefinder;
 
+#[cfg(feature = "barometer")]
 pub use barometer::BarometerData;
 pub use battery::BatteryConfig;
-pub use gps::{GpsData, GpsDataPosition, GpsPosition, GpsYawHeadingData};
+#[cfg(feature = "rangefinder")]
 pub use rangefinder::RangefinderData;

@@ -1,21 +1,32 @@
-#![allow(unused)]
+#![cfg(feature = "autopilot")]
+//#![allow(unused)]
 
 use log::info;
 use radio_controllers::RadioControlMessage;
 use vqm::Vector3df32;
 
-use crate::{
-    autopilot::pilot::Autopilot,
-    sensor_data::{SensorDataItem, SensorDataSubscriber},
-    tasks::dispatch::{GyroPidReceiver, SetpointReceiver},
-    tasks::radio_task::AutopilotSender,
-};
+use crate::tasks::dispatch::{GyroPidReceiver, SetpointReceiver};
+
+use crate::{autopilot::pilot::Autopilot, tasks::radio_task::AutopilotSender};
+
+#[cfg(feature = "barometer")]
+use crate::tasks::barometer_task::BarometerDataSubscriber;
+
+#[cfg(feature = "gps")]
+use crate::gps::{GpsDataItem, GpsDataSubscriber};
+
+#[cfg(feature = "rangefinder")]
+use crate::tasks::rangefinder_task::RangefinderDataSubscriber;
 
 pub(crate) static AUTOPILOT_CTX: static_cell::StaticCell<AutopilotContext> = static_cell::StaticCell::new();
 
 /// Context for Autopilot task.
 pub struct AutopilotContext<'a> {
-    pub sensor_data_subscriber: SensorDataSubscriber<'a>,
+    pub gps_data_subscriber: GpsDataSubscriber<'a>,
+    #[cfg(feature = "barometer")]
+    pub barometer_data_subscriber: BarometerDataSubscriber<'a>,
+    #[cfg(feature = "rangefinder")]
+    pub rangefinder_data_subscriber: RangefinderDataSubscriber<'a>,
     pub gyro_pid_receiver: GyroPidReceiver,
     #[allow(unused)]
     pub setpoint_receiver: SetpointReceiver,
@@ -34,35 +45,7 @@ pub async fn autopilot_task(ctx: &'static mut AutopilotContext<'static>) {
     loop {
         ticker.next().await;
 
-        // Note: `try_next_message` is the non-blocking polling form.
-        // If there is a message, it is removed and processed immediately.
-        // Lagged (missed) messages are ignored.
-        #[cfg(any(feature = "barometer", feature = "gps", feature = "rangefinder"))]
-        if let Some(wait_result) = ctx.sensor_data_subscriber.try_next_message()
-            && let embassy_sync::pubsub::WaitResult::Message(event) = wait_result
-        {
-            // TODO: choose position or altitude kalman filter based on settings
-            match event {
-                SensorDataItem::Barometer(barometer_data) => {
-                    ctx.autopilot.altitude_kalman_filter.correct_altitude_using_barometer(barometer_data.altitude_m);
-                    ctx.autopilot.position_kalman_filter.correct_altitude_using_barometer(barometer_data.altitude_m);
-                }
-                SensorDataItem::Rangefinder(rangefinder_data) => {
-                    let rangefinder_base_altitude_m = 0.0_f32;
-                    let altitude = rangefinder_base_altitude_m + rangefinder_data.distance_m;
-                    ctx.autopilot.altitude_kalman_filter.correct_altitude_using_rangefinder(altitude);
-                    ctx.autopilot.position_kalman_filter.correct_altitude_using_rangefinder(altitude);
-                }
-                SensorDataItem::GpsPosition(gps_position) => {
-                    ctx.autopilot.altitude_kalman_filter.correct_altitude_using_gps(gps_position.position.z);
-                    ctx.autopilot.position_kalman_filter.correct_position_using_gps(gps_position.position);
-                }
-                _ => {
-                    // Message type of interest to other subscribers, but not to me so intentionally do nothing,
-                    // this consumes the message and removes it from the queue.
-                }
-            }
-        }
+        // for the autopilot to provide any functionality, it has to have at least one of barometer, gps, or rangefinder
         #[cfg(any(feature = "barometer", feature = "gps", feature = "rangefinder"))]
         {
             if let Some(gyro_pid_message) = ctx.gyro_pid_receiver.try_get() {
@@ -82,6 +65,40 @@ pub async fn autopilot_task(ctx: &'static mut AutopilotContext<'static>) {
                 // Send the radio control message. This will be picked by the radio task.
                 let radio_control_message = RadioControlMessage { throttle_stick, ..Default::default() };
                 ctx.autopilot_sender.send(radio_control_message);
+            }
+        }
+
+        // Note: `try_next_message` is the non-blocking polling form.
+        // If there is a message, it is removed and processed immediately.
+        // Lagged (missed) messages are ignored.
+        #[cfg(feature = "barometer")]
+        if let Some(wait_result) = ctx.barometer_data_subscriber.try_next_message()
+            && let embassy_sync::pubsub::WaitResult::Message(barometer_data) = wait_result
+        {
+            ctx.autopilot.altitude_kalman_filter.correct_altitude_using_barometer(barometer_data.altitude_m);
+            ctx.autopilot.position_kalman_filter.correct_altitude_using_barometer(barometer_data.altitude_m);
+        }
+        #[cfg(feature = "rangefinder")]
+        if let Some(wait_result) = ctx.rangefinder_data_subscriber.try_next_message()
+            && let embassy_sync::pubsub::WaitResult::Message(rangefinder_data) = wait_result
+        {
+            let rangefinder_base_altitude_m = 0.0_f32;
+            let altitude = rangefinder_base_altitude_m + rangefinder_data.distance_m;
+            ctx.autopilot.altitude_kalman_filter.correct_altitude_using_rangefinder(altitude);
+            ctx.autopilot.position_kalman_filter.correct_altitude_using_rangefinder(altitude);
+        }
+
+        #[cfg(feature = "gps")]
+        if let Some(wait_result) = ctx.gps_data_subscriber.try_next_message()
+            && let embassy_sync::pubsub::WaitResult::Message(event) = wait_result
+        {
+            // TODO: choose position or altitude kalman filter based on settings
+            if let GpsDataItem::GpsPosition(gps_position) = event {
+                ctx.autopilot.altitude_kalman_filter.correct_altitude_using_gps(gps_position.position.z);
+                ctx.autopilot.position_kalman_filter.correct_position_using_gps(gps_position.position);
+            } else {
+                // Message type of interest to other subscribers, but not to me so intentionally do nothing,
+                // this consumes the message and removes it from the queue.
             }
         }
 

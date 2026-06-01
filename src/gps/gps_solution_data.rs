@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use crate::sensors::GpsDataPosition;
+use crate::gps::GpsDataPosition;
 
 /// A value below 100 means great accuracy is possible with the GPS satellite constellation.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

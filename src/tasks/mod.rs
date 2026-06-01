@@ -13,6 +13,7 @@ mod msp_task;
 mod non_volatile_storage;
 mod osd_task;
 mod radio_task;
+mod rangefinder_task;
 
 pub(crate) use gyro_pid_task::{GYRO_CTX, GyroPidContext, gyro_pid_task};
 
@@ -37,3 +38,6 @@ pub(crate) use msp_task::{MSP_CTX, MSP_READ_BUF_SIZE, MSP_WRITE_BUF_SIZE, MspCon
 
 #[cfg(feature = "osd")]
 pub(crate) use osd_task::{OSD_CTX, OsdContext, osd_task};
+
+#[cfg(feature = "rangefinder")]
+pub(crate) use rangefinder_task::{RANGEFINDER_CTX, RangefinderContext, rangefinder_task};

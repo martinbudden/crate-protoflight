@@ -6,8 +6,16 @@ use stream_buf::{StreamBufReader, StreamBufWriter};
 use crate::{
     config::{ConfigPublisher, FastConfigPublisher},
     multiwii_serial_protocol::{Msp, MspSensorData},
-    sensor_data::{SensorDataItem, SensorDataSubscriber},
 };
+
+#[cfg(feature = "barometer")]
+use crate::tasks::barometer_task::{self, BarometerDataSubscriber};
+
+#[cfg(feature = "gps")]
+use crate::gps::{GpsDataItem, GpsDataSubscriber};
+
+#[cfg(feature = "rangefinder")]
+use crate::tasks::rangefinder_task::{self, RangefinderDataSubscriber};
 
 pub(crate) static MSP_CTX: static_cell::StaticCell<MspContext> = static_cell::StaticCell::new();
 
@@ -18,7 +26,12 @@ pub const MSP_WRITE_BUF_SIZE: usize = 512;
 pub struct MspContext<'a> {
     pub fast_config_publisher: FastConfigPublisher<'a>,
     pub config_publisher: ConfigPublisher<'a>,
-    pub sensor_data_subscriber: SensorDataSubscriber<'a>,
+    #[cfg(feature = "gps")]
+    pub gps_data_subscriber: GpsDataSubscriber<'a>,
+    #[cfg(feature = "barometer")]
+    pub barometer_data_subscriber: BarometerDataSubscriber<'a>,
+    #[cfg(feature = "rangefinder")]
+    pub rangefinder_data_subscriber: RangefinderDataSubscriber<'a>,
     pub msp: Msp,
     pub read_buf: [u8; MSP_READ_BUF_SIZE],
     pub write_buf: [u8; MSP_WRITE_BUF_SIZE],
@@ -52,28 +65,32 @@ pub async fn msp_task(ctx: &'static mut MspContext<'static>) {
         // let msp_packet = msp.receive().await;
         ticker.next().await; // for now just wait on ticker
 
-        if let Some(wait_result) = ctx.sensor_data_subscriber.try_next_message()
-            && let embassy_sync::pubsub::WaitResult::Message(event) = wait_result
+        #[cfg(feature = "barometer")]
+        #[allow(clippy::cast_possible_truncation)]
+        if let Some(wait_result) = ctx.barometer_data_subscriber.try_next_message()
+            && let embassy_sync::pubsub::WaitResult::Message(barometer_data) = wait_result
         {
-            #[allow(clippy::cast_possible_truncation)]
-            match event {
-                SensorDataItem::Barometer(barometer_data) => {
-                    msp_sensor_data.barometer_altitude_cm =
-                        ((barometer_data.altitude_m * 100.0) as i32).cast_unsigned();
-                }
-                SensorDataItem::Rangefinder(rangefinder_data) => {
-                    msp_sensor_data.rangefinder_altitude_cm =
-                        ((rangefinder_data.distance_m * 100.0) as i32).cast_unsigned();
-                }
-                SensorDataItem::GpsSolution(gps_solution_data) => {
-                    msp_sensor_data.gps_sol.llh = gps_solution_data.llh;
-                    msp_sensor_data.gps_sol.satellite_count = gps_solution_data.satellite_count;
-                    msp_sensor_data.gps_sol.ground_speed_cmps = gps_solution_data.ground_speed_cmps;
-                    msp_sensor_data.gps_sol.ground_course_degrees_x10 = gps_solution_data.ground_course_degrees_x10;
-                    msp_sensor_data.gps_sol.dop_positional = gps_solution_data.dop.positional;
-                }
-                _ => {}
-            }
+            msp_sensor_data.barometer_altitude_cm = ((barometer_data.altitude_m * 100.0) as i32).cast_unsigned();
+        }
+
+        #[cfg(feature = "rangefinder")]
+        #[allow(clippy::cast_possible_truncation)]
+        if let Some(wait_result) = ctx.rangefinder_data_subscriber.try_next_message()
+            && let embassy_sync::pubsub::WaitResult::Message(rangefinder_data) = wait_result
+        {
+            msp_sensor_data.rangefinder_altitude_cm = ((rangefinder_data.distance_m * 100.0) as i32).cast_unsigned();
+        }
+
+        #[cfg(feature = "gps")]
+        if let Some(wait_result) = ctx.gps_data_subscriber.try_next_message()
+            && let embassy_sync::pubsub::WaitResult::Message(event) = wait_result
+            && let GpsDataItem::GpsSolution(gps_solution_data) = event
+        {
+            msp_sensor_data.gps_sol.llh = gps_solution_data.llh;
+            msp_sensor_data.gps_sol.satellite_count = gps_solution_data.satellite_count;
+            msp_sensor_data.gps_sol.ground_speed_cmps = gps_solution_data.ground_speed_cmps;
+            msp_sensor_data.gps_sol.ground_course_degrees_x10 = gps_solution_data.ground_course_degrees_x10;
+            msp_sensor_data.gps_sol.dop_positional = gps_solution_data.dop.positional;
         }
 
         // Generally, we don't want to store the Reader itself because it tracks a "cursor" (current position).
