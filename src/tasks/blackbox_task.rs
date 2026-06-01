@@ -1,17 +1,17 @@
 #![allow(unused)]
-use blackbox_logger::drivers::SdStorage;
-use blackbox_logger::sd_card::MockSdCard;
-use blackbox_logger::{Blackbox, Event, SliceWriter, StateMachine};
+use blackbox_logger::{
+    Blackbox, Event, SetpointMessage, SliceWriter, StateMachine, drivers::SdStorage, sd_card::MockSdCard,
+};
 use log::info;
-use static_cell::StaticCell;
 
-use crate::dispatch::{GyroPidReceiver, SetpointReceiver};
+use crate::tasks::dispatch::{GyroPidReceiver, SetpointReceiver};
 
-pub(crate) static BLACKBOX_CTX: StaticCell<BlackboxContext> = StaticCell::new();
+pub(crate) static BLACKBOX_CTX: static_cell::StaticCell<BlackboxContext> = static_cell::StaticCell::new();
 
 pub struct BlackboxContext {
     pub gyro_pid_receiver: GyroPidReceiver,
     pub setpoint_receiver: SetpointReceiver,
+    pub setpoint_message: SetpointMessage,
     pub blackbox: Blackbox,
     pub sd_card: MockSdCard,
     pub buffer: [u8; 1024],
@@ -30,6 +30,7 @@ impl BlackboxContext {
     }
 }
 
+/// Blackbox task placeholder.
 #[embassy_executor::task]
 pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
     info!(" BLACKBOX: task started");
@@ -57,8 +58,11 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
     loop {
         time_us = time_us.wrapping_add(125);
         let gyro_pid_msg = ctx.gyro_pid_receiver.changed().await; // blocking
-        let setpoint_msg = ctx.setpoint_receiver.get().await; // non-blocking
-        ctx.blackbox.load_telemetry(time_us, gyro_pid_msg, setpoint_msg);
+        // non-blocking
+        if let Some(setpoint_msg) = ctx.setpoint_receiver.try_get() {
+            ctx.setpoint_message = setpoint_msg;
+        }
+        ctx.blackbox.load_telemetry(time_us, gyro_pid_msg, ctx.setpoint_message);
         let len = {
             let mut slice_writer = BlackboxContext::slice_writer(&mut ctx.buffer, ctx.pos);
             ctx.blackbox.update(&mut slice_writer, time_us)

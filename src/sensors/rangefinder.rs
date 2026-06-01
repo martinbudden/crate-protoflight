@@ -1,20 +1,18 @@
 #![allow(unused)]
 
 #[derive(Clone, Copy, Debug, derive_more::Display, PartialEq)]
-#[display("Baro{{a:{altitude_m}, p:{pressure_pascals}, t:{temperature_celsius}}}")]
-pub struct BarometerData {
-    pub altitude_m: f32,
-    pub pressure_pascals: f32,
-    pub temperature_celsius: f32,
+#[display("Range{{d:{distance_m}}}")]
+pub struct RangefinderData {
+    pub distance_m: f32,
 }
 
-impl BarometerData {
+impl RangefinderData {
     pub const fn new() -> Self {
-        Self { altitude_m: 0.0, pressure_pascals: 0.0, temperature_celsius: 0.0 }
+        Self { distance_m: 0.0 }
     }
 }
 
-impl Default for BarometerData {
+impl Default for RangefinderData {
     fn default() -> Self {
         Self::new()
     }
@@ -30,6 +28,6 @@ mod tests {
 
     #[test]
     fn normal_types() {
-        is_full::<BarometerData>();
+        is_full::<RangefinderData>();
     }
 }

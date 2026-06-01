@@ -1,5 +1,4 @@
-#![allow(unused)]
-use pidsk_controller::{PidControllerf32, PidGainsf32, PidLimitsf32};
+use pidsk_controller::{PidControllerf32, PidGainsf32};
 use vqm::Quaternionf32;
 
 /// Altitude hold uses a standard **Dual-Ring Cascaded PID Loop**.
@@ -51,7 +50,7 @@ use vqm::Quaternionf32;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AltitudeDualRingPid {
     /// Outer Loop: Inputs Target Altitude -> Output Target Vertical Speed.
-    height_pid: PidControllerf32,
+    altitude_pid: PidControllerf32,
     /// Inner Loop: Input Target Vertical Speed -> Output Throttle Adjustment.
     speed_pid: PidControllerf32,
 
@@ -77,7 +76,7 @@ impl AltitudeDualRingPid {
             // Only needs Proportional (kp) to map distance error to speed:
             // because the inner loop handles the physics of acceleration,
             // the outer loop only needs Kp to calculate the vertical speed setpoint
-            height_pid: PidControllerf32::new(1.0),
+            altitude_pid: PidControllerf32::new(1.0),
             // Initialize velocity controller (Inner Loop)
             // Highly reactive: utilizes kp, ki, and kd.
             // TODO: check default PID gains.
@@ -89,9 +88,10 @@ impl AltitudeDualRingPid {
     }
 }
 
+#[allow(unused)]
 impl AltitudeDualRingPid {
     pub fn set_altitude_setpoint(&mut self, altitude_setpoint: f32) {
-        self.height_pid.set_setpoint(altitude_setpoint);
+        self.altitude_pid.set_setpoint(altitude_setpoint);
     }
 
     pub fn update(&mut self, altitude: f32, vertical_speed: f32, orientation: Quaternionf32, delta_t: f32) -> f32 {
@@ -112,7 +112,7 @@ impl AltitudeDualRingPid {
         }
         // --- STEP 1: Altitude Loop ---
         let vertical_speed_setpoint = self
-            .height_pid
+            .altitude_pid
             .update_sp(altitude) // just call update_sp, since ki and kd are zero.
             .clamp(-self.max_vertical_speed_mps, self.max_vertical_speed_mps);
 
@@ -127,7 +127,7 @@ impl AltitudeDualRingPid {
         throttle_offset.clamp(-self.max_throttle_adjustment, self.max_throttle_adjustment)
     }
     pub fn reset(&mut self) {
-        self.height_pid.reset();
+        self.altitude_pid.reset();
         self.speed_pid.reset();
     }
 }
@@ -135,8 +135,6 @@ impl AltitudeDualRingPid {
 #[cfg(test)]
 mod tests {
     #![allow(clippy::float_cmp)]
-    use log::info;
-    use vqm::Quaternion;
 
     use crate::autopilot::MockMultirotorZ;
 
@@ -160,7 +158,7 @@ mod tests {
         let mut multirotor = MockMultirotorZ::new(hover_throttle);
 
         // --- BALANCED TUNING FOR UNIT SIMULATION ---
-        controller.height_pid.set_gains(PidGainsf32 { kp: 0.29, ki: 0.0, kd: 0.0, ks: 0.0, kk: 0.0 });
+        controller.altitude_pid.set_gains(PidGainsf32 { kp: 0.29, ki: 0.0, kd: 0.0, ks: 0.0, kk: 0.0 });
         // Strong P braking, minor I, strong D damping, no kick.
         controller.speed_pid.set_gains(PidGainsf32 { kp: 1.0, ki: 0.05, kd: 0.1, ks: 0.0, kk: 0.0 });
 

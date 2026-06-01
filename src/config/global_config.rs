@@ -2,23 +2,31 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::mutex::Mutex;
 use embassy_sync::pubsub::{PubSubChannel, Publisher, Subscriber};
 
-use blackbox_logger::BlackboxConfig;
 use motor_mixers::{MixerConfig, MotorConfig, MotorDeviceConfig};
 use radio_controllers::{FailsafeConfig, RatesConfig, RcControlsConfig, RcModes, RxConfig};
 
 use crate::autopilot::{AutopilotConfig, PositionHoldConfig};
-use crate::config::profiles::{PidProfile, RatesProfile, SchemaVersion};
+use crate::config::{
+    ImuConfig,
+    profiles::{PidProfile, RatesProfile, SchemaVersion},
+};
 use crate::flight::{
     AntiGravityConfig, ArmingConfig, CrashFlipConfig, CrashRecoveryConfig, DMaxConfig, FeatureConfig,
     FlightControllerFiltersConfig, GyroConfig, ImuFilterBankConfig, PidConfig, TpaConfig, YawSpinRecoveryConfig,
 };
+use crate::sensors::BatteryConfig;
+
 #[cfg(feature = "gps")]
-use crate::gps::GpsConfig;
+use crate::gps::{GpsConfig, GpsRescueConfig};
+
 #[cfg(feature = "osd")]
 use crate::osd::{OsdConfig, OsdElementsConfig, OsdStatsConfig};
-use crate::sensors::BatteryConfig;
+
 #[cfg(feature = "vtx")]
 use crate::vtx::{Vtx, VtxConfig};
+
+#[cfg(feature = "blackbox")]
+use blackbox_logger::BlackboxConfig;
 
 /// The global configuration is a global static protected by a mutex, since it is used by several tasks.
 /// A `CriticalSectionRawMutex` is used since we need to be safe across multiple executors and interrupts.
@@ -29,7 +37,7 @@ const CONFIG_PUBLISHER_COUNT: usize = 2;
 const CONFIG_CAPACITY: usize = 8;
 
 /// `PubSubChannel` for handling `GlobalConfig` updates.
-pub static CONFIG_PUB_SUB_CHANNEL: PubSubChannel<
+static CONFIG_PUB_SUB_CHANNEL: PubSubChannel<
     CriticalSectionRawMutex,
     ConfigItem,
     CONFIG_CAPACITY,
@@ -45,6 +53,12 @@ pub type ConfigPublisher<'a> = Publisher<
     MAX_CONFIG_SUBSCRIBER_COUNT,
     CONFIG_PUBLISHER_COUNT,
 >;
+
+#[allow(unused)]
+pub fn config_publisher<'a>() -> ConfigPublisher<'a> {
+    CONFIG_PUB_SUB_CHANNEL.publisher().expect("config_publisher failed")
+}
+
 pub type ConfigSubscriber<'a> = Subscriber<
     'a,
     CriticalSectionRawMutex,
@@ -54,35 +68,50 @@ pub type ConfigSubscriber<'a> = Subscriber<
     CONFIG_PUBLISHER_COUNT,
 >;
 
-const MAX_GYRO_PID_SUBSCRIBER_COUNT: usize = 4;
-const GYRO_PID_PUBLISHER_COUNT: usize = 2;
-const GYRO_PID_CAPACITY: usize = 4;
+pub fn config_subscriber<'a>() -> ConfigSubscriber<'a> {
+    CONFIG_PUB_SUB_CHANNEL.subscriber().expect("config_subscriber failed")
+}
+
+/// The only subscriber is the `gyro_pid_task`.
+const FAST_CONFIG_SUBSCRIBER_COUNT: usize = 1;
+const FAST_CONFIG_PUBLISHER_COUNT: usize = 2;
+const FAST_CONFIG_CAPACITY: usize = 4;
 
 /// High speed `PubSubChannel` for handling `GlobalConfig` updates in the  `gyro_pid` task.
-pub static GYRO_PID_PUB_SUB_CHANNEL: PubSubChannel<
+static FAST_CONFIG_PUB_SUB_CHANNEL: PubSubChannel<
     CriticalSectionRawMutex,
-    GyroPidItem,
-    GYRO_PID_CAPACITY,
-    MAX_GYRO_PID_SUBSCRIBER_COUNT,
-    GYRO_PID_PUBLISHER_COUNT,
+    FastConfigItem,
+    FAST_CONFIG_CAPACITY,
+    FAST_CONFIG_SUBSCRIBER_COUNT,
+    FAST_CONFIG_PUBLISHER_COUNT,
 > = PubSubChannel::new();
 
-pub type GyroPidPublisher<'a> = Publisher<
+pub type FastConfigPublisher<'a> = Publisher<
     'a,
     CriticalSectionRawMutex,
-    GyroPidItem,
-    GYRO_PID_CAPACITY,
-    MAX_GYRO_PID_SUBSCRIBER_COUNT,
-    GYRO_PID_PUBLISHER_COUNT,
+    FastConfigItem,
+    FAST_CONFIG_CAPACITY,
+    FAST_CONFIG_SUBSCRIBER_COUNT,
+    FAST_CONFIG_PUBLISHER_COUNT,
 >;
-pub type GyroPidSubscriber<'a> = Subscriber<
+
+#[allow(unused)]
+pub fn fast_config_publisher<'a>() -> FastConfigPublisher<'a> {
+    FAST_CONFIG_PUB_SUB_CHANNEL.publisher().expect("fast_config_publisher failed")
+}
+
+pub type FastConfigSubscriber<'a> = Subscriber<
     'a,
     CriticalSectionRawMutex,
-    GyroPidItem,
-    GYRO_PID_CAPACITY,
-    MAX_GYRO_PID_SUBSCRIBER_COUNT,
-    GYRO_PID_PUBLISHER_COUNT,
+    FastConfigItem,
+    FAST_CONFIG_CAPACITY,
+    FAST_CONFIG_SUBSCRIBER_COUNT,
+    FAST_CONFIG_PUBLISHER_COUNT,
 >;
+
+pub fn fast_config_subscriber<'a>() -> FastConfigSubscriber<'a> {
+    FAST_CONFIG_PUB_SUB_CHANNEL.subscriber().expect("fast_config_subscriber failed")
+}
 
 /// Macro to generate the `GlobalConfig` struct.<br>
 /// Creates a new function that calls the new function of all the member configs.<br>
@@ -91,7 +120,7 @@ pub type GyroPidSubscriber<'a> = Subscriber<
 macro_rules! define_configs {
     (
         general: [ $( $(#[$g_meta:meta])* ($g_enum:ident, $g_field:ident, $g_type:ty)),* $(,)?],
-        gyro_pid: [ $( $(#[$p_meta:meta])* ($p_enum:ident, $p_field:ident, $p_type:ty)),* $(,)?]
+        fast: [ $( $(#[$p_meta:meta])* ($p_enum:ident, $p_field:ident, $p_type:ty)),* $(,)?]
     ) => {
         #[derive(Clone, Copy, Debug, PartialEq)]
         pub struct GlobalConfig {
@@ -126,7 +155,7 @@ macro_rules! define_configs {
             }
         }
 
-        #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Copy, PartialEq)]
+        #[derive(serde::Serialize, serde::Deserialize, Clone, Copy, Debug, PartialEq)]
         pub enum ConfigItem {
             $(
                 $(#[$g_meta])*
@@ -134,8 +163,8 @@ macro_rules! define_configs {
             ),*
         }
 
-        #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Copy, PartialEq)]
-        pub enum GyroPidItem {
+        #[derive(serde::Serialize, serde::Deserialize, Clone, Copy, Debug, PartialEq)]
+        pub enum FastConfigItem {
             $(
                 $(#[$p_meta])*
                 $p_enum($p_type)
@@ -171,7 +200,8 @@ define_configs!(
         (Features, features, FeatureConfig),
         (Autopilot, autopilot, AutopilotConfig),
         (PositionHold, position_hold, PositionHoldConfig),
-        (BatteryConfig, battery, BatteryConfig),
+        (Battery, battery, BatteryConfig),
+        (Imu, imu, ImuConfig),
 
         #[cfg(feature = "blackbox")]
         (Blackbox, blackbox, BlackboxConfig),
@@ -181,6 +211,8 @@ define_configs!(
 
         #[cfg(feature = "gps")]
         (Gps, gps, GpsConfig),
+        #[cfg(feature = "gps")]
+        (GpsRescue, gps_rescue, GpsRescueConfig),
 
         #[cfg(feature = "osd")]
         (Osd, osd, OsdConfig),
@@ -190,7 +222,7 @@ define_configs!(
         (OsdStats, osd_stats, OsdStatsConfig),
     ],
     // GyroPid configs are defined separately so they can have their own PubSub channel.
-    gyro_pid: [
+    fast: [
         (RollRate, pid_roll_rate, PidConfig),
         (PitchRate, pid_pitch_rate, PidConfig),
         (YawRate, pid_yaw_rate, PidConfig),
@@ -202,24 +234,21 @@ define_configs!(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde::{Deserialize, Serialize};
+    use {
+        sequential_storage::map::PostcardValue,
+        serde::{Deserialize, Serialize},
+    };
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
-    fn _is_config<
-        T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq + Serialize + for<'a> Deserialize<'a>,
-    >() {
-    }
-    fn is_config_no_default<
-        T: Sized + Send + Sync + Unpin + Copy + Clone + PartialEq + Serialize + for<'a> Deserialize<'a>,
-    >() {
-    }
+    fn is_full_no_default<T: Sized + Send + Sync + Unpin + Copy + Clone + PartialEq>() {}
+    fn _is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
         is_full::<GlobalConfig>();
-        is_config_no_default::<ConfigItem>();
-        is_config_no_default::<GyroPidItem>();
+        is_full_no_default::<ConfigItem>();
+        is_full_no_default::<FastConfigItem>();
     }
     #[test]
     fn global_config_new() {

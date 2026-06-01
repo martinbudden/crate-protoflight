@@ -1,5 +1,8 @@
 #![allow(unused)]
-use serde::{Deserialize, Serialize};
+use {
+    sequential_storage::map::PostcardValue,
+    serde::{Deserialize, Serialize},
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
 pub struct PidConfig {
@@ -18,6 +21,8 @@ impl PidConfig {
         Self { kp, ki, kd, ks, kk }
     }
 }
+
+impl PostcardValue<'_> for PidConfig {}
 
 impl Default for PidConfig {
     fn default() -> Self {
@@ -96,6 +101,8 @@ impl FlightControllerFiltersConfig {
     }
 }
 
+impl PostcardValue<'_> for FlightControllerFiltersConfig {}
+
 impl Default for FlightControllerFiltersConfig {
     fn default() -> Self {
         Self::new()
@@ -112,6 +119,8 @@ impl FlightModeConfig {
         Self { level_race_mode: 0 }
     }
 }
+
+impl PostcardValue<'_> for FlightModeConfig {}
 
 impl Default for FlightModeConfig {
     fn default() -> Self {
@@ -141,6 +150,8 @@ impl TpaConfig {
     }
 }
 
+impl PostcardValue<'_> for TpaConfig {}
+
 impl Default for TpaConfig {
     fn default() -> Self {
         Self::new()
@@ -160,6 +171,8 @@ impl AntiGravityConfig {
     }
 }
 
+impl PostcardValue<'_> for AntiGravityConfig {}
+
 impl Default for AntiGravityConfig {
     fn default() -> Self {
         Self::new()
@@ -178,6 +191,8 @@ impl CrashFlipConfig {
         Self { motor_percent: 0, rate: 0, auto_rearm: 0 }
     }
 }
+
+impl PostcardValue<'_> for CrashFlipConfig {}
 
 impl Default for CrashFlipConfig {
     fn default() -> Self {
@@ -200,6 +215,8 @@ impl YawSpinRecoveryConfig {
         Self { yaw_spin_threshold: 0, yaw_spin_recovery: Self::RECOVERY_OFF }
     }
 }
+
+impl PostcardValue<'_> for YawSpinRecoveryConfig {}
 
 impl Default for YawSpinRecoveryConfig {
     fn default() -> Self {
@@ -236,6 +253,8 @@ impl CrashRecoveryConfig {
     }
 }
 
+impl PostcardValue<'_> for CrashRecoveryConfig {}
+
 impl Default for CrashRecoveryConfig {
     fn default() -> Self {
         Self::new()
@@ -259,6 +278,8 @@ impl ItermRelaxConfig {
     }
 }
 
+impl PostcardValue<'_> for ItermRelaxConfig {}
+
 impl Default for ItermRelaxConfig {
     fn default() -> Self {
         Self::new()
@@ -278,6 +299,8 @@ impl DMaxConfig {
     }
 }
 
+impl PostcardValue<'_> for DMaxConfig {}
+
 impl Default for DMaxConfig {
     fn default() -> Self {
         Self::new()
@@ -296,6 +319,8 @@ impl ArmingConfig {
         Self { gyro_cal_on_first_arm: 0, auto_disarm_delay: 5, prearm_allow_rearm: 0 }
     }
 }
+
+impl PostcardValue<'_> for ArmingConfig {}
 
 impl Default for ArmingConfig {
     fn default() -> Self {
@@ -339,6 +364,8 @@ impl FeatureConfig {
         Self { features: Self::RX_SERIAL | Self::AIRMODE | Self::ANTI_GRAVITY }
     }
 }
+
+impl PostcardValue<'_> for FeatureConfig {}
 
 impl Default for FeatureConfig {
     fn default() -> Self {
@@ -425,6 +452,8 @@ impl GyroConfig {
     }
 }
 
+impl PostcardValue<'_> for GyroConfig {}
+
 impl Default for GyroConfig {
     fn default() -> Self {
         Self::new()
@@ -435,17 +464,25 @@ impl Default for GyroConfig {
 mod tests {
     use super::*;
 
-    #[allow(unused)]
-    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
-    #[allow(unused)]
+    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
-    fn is_config<
-        T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq + Serialize + for<'a> Deserialize<'a>,
-    >() {
-    }
+    fn is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
+        is_full::<PidConfig>();
+        is_full::<FlightControllerFiltersConfig>();
+        is_full::<FlightModeConfig>();
+        is_full::<TpaConfig>();
+        is_full::<CrashFlipConfig>();
+        is_full::<AntiGravityConfig>();
+        is_full::<CrashFlipConfig>();
+        is_full::<YawSpinRecoveryConfig>();
+        is_full::<CrashRecoveryConfig>();
+        is_full::<ItermRelaxConfig>();
+        is_full::<DMaxConfig>();
+
+        is_config::<PidConfig>();
         is_config::<FlightControllerFiltersConfig>();
         is_config::<FlightModeConfig>();
         is_config::<TpaConfig>();

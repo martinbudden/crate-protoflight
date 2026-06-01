@@ -1,17 +1,12 @@
 #![allow(unused)]
-/// OSD Task Placeholder.
-///
-use embassy_time::Duration;
-
 use log::info;
-use static_cell::StaticCell;
 
 use crate::{
-    dispatch::{GyroPidReceiver, SetpointReceiver},
     osd::Osd,
+    tasks::dispatch::{GyroPidReceiver, SetpointReceiver},
 };
 
-pub(crate) static OSD_CTX: StaticCell<OsdContext> = StaticCell::new();
+pub(crate) static OSD_CTX: static_cell::StaticCell<OsdContext> = static_cell::StaticCell::new();
 
 /// Context for OSD task.
 pub struct OsdContext {
@@ -20,9 +15,10 @@ pub struct OsdContext {
     pub osd: Osd,
 }
 
+/// OSD Task Placeholder.
 #[embassy_executor::task]
 pub async fn osd_task(ctx: &'static mut OsdContext) {
-    let mut ticker = embassy_time::Ticker::every(Duration::from_hz(50));
+    let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(50));
     let mut loop_count: u32 = 0;
 
     //println!("OSD: Started at 50Hz.");
@@ -32,8 +28,8 @@ pub async fn osd_task(ctx: &'static mut OsdContext) {
         ticker.next().await;
 
         // Peek(get) the latest messages without consuming the notifications.
-        let _gyro_pid_message = ctx.gyro_pid_receiver.get().await;
-        let _setpoint_message = ctx.setpoint_receiver.get().await;
+        if let Some(_gyro_pid_message) = ctx.gyro_pid_receiver.try_get() {}
+        if let Some(_setpoint_message) = ctx.setpoint_receiver.try_get() {}
         // TODO: subscribe to global_context messages as well.
 
         // Update the OSD with the latest data.

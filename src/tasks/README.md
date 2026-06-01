@@ -27,26 +27,28 @@ Note: The `motor_mixer` task runs in sync with the `gyro_pid` task. On each loop
 but it only outputs to the motors at typically 1kHz.
 
 Tasks communicate with each other through Embassy's intercommunication data areas (IDAs) `signal`, `watch`, `channel`, and `pubsub`.
-IDAs are guarded by synchronization primitives, so that only one task can access an IDA at a time.
+IDAs are guarded by synchronization primitives (eg mutexes), so that only one task can access an IDA at a time.
 The synchronization primitive `CriticalSectionRawMutex` is used so that tasks can execute on different CPU cores without interfering with each other.
 
 The `embassy-sync` crate provides the following structures to facilitate asynchronous communication and data sharing between tasks.
 
-1. Signal: A single-slot primitive for sending the latest value to exactly one consumer.
+1. `Signal`: A single-slot primitive for sending the latest value to exactly one consumer.
 
-2. Watch: A single-slot primitive that allows multiple receivers to concurrently await the latest value.
+2. `Watch`: A single-slot primitive that allows multiple receivers to concurrently await the latest value.
 
-3. Channel: A queue (MPMC) for sending values where each message is received by exactly one consumer from a pool.
+3. `Channel`: A queue (MPMC) for sending values where each message is received by exactly one consumer from a pool.
 
-4. PubSubChannel: every message is received by all active consumers.
+4. `PubSubChannel`: every message is received by all active consumers.
 
 Protoflight uses them in the following way:
 
-| IDA                      | Type   | Sending task(s) | Receiving Task(s)     |
-| ------------------------ | ------ | --------------- | --------------------- |
-| MOTOR_MIXER_SIGNAL       | Signal | gyro_pid        | motor_mixer           |
-| RADIO_WATCH              | Watch  | radio           | gyro_pid              |
-| GYRO_PID_WATCH           | Watch  | gyro_pid        | blackbox, osd         |
-| SETPOINT_WATCH           | Watch  | gyro_pid        | blackbox, osd         |
-| GYRO_PID_PUB_SUB_CHANNEL | PubSub | msp, radio      | gyro_pid              |
-| CONFIG_PUB_SUB_CHANNEL   | PubSub | msp, radio      | all except gyro_pid   |
+| IDA                              | Type   | Sending task(s) | Receiving Task(s)     |
+| -------------------------------- | ------ | --------------- | --------------------- |
+| MOTOR_MIXER_SIGNAL               | Signal | gyro_pid        | motor_mixer           |
+| RADIO_WATCH                      | Watch  | radio           | gyro_pid              |
+| GYRO_PID_WATCH                   | Watch  | gyro_pid        | blackbox, osd         |
+| SETPOINT_WATCH                   | Watch  | gyro_pid        | blackbox, osd         |
+| FAST_CONFIG_PUB_SUB_CHANNEL      | PubSub | msp, radio      | gyro_pid              |
+| CONFIG_PUB_SUB_CHANNEL           | PubSub | msp, radio      | all except gyro_pid   |
+| FAST_SENSOR_DATA_PUB_SUB_CHANNEL | PubSub | gps             | gyro_pid              |
+| SENSOR_DATA_PUB_SUB_CHANNEL      | PubSub | barometer, gps  | all except gyro_pid   |

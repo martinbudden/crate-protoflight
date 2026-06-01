@@ -1,5 +1,8 @@
 #![allow(unused)]
-use serde::{Deserialize, Serialize};
+use {
+    sequential_storage::map::PostcardValue,
+    serde::{Deserialize, Serialize},
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
 pub struct GpsConfig {
@@ -36,7 +39,77 @@ impl GpsConfig {
     }
 }
 
+impl PostcardValue<'_> for GpsConfig {}
+
 impl Default for GpsConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+pub struct GpsRescueConfig {
+    pub max_rescue_angle_degrees: u16,
+    pub return_altitude_m: u16,
+    pub descent_distance_m: u16,
+    pub ground_speed_cmps: u16,
+    pub yaw_kp: u8,
+    pub min_sats: u8,
+    pub vel_kp: u8,
+    pub vel_ki: u8,
+    pub vel_kd: u8,
+    pub min_start_dist_m: u16,
+    pub sanity_checks: u8,
+    pub allow_arming_without_fix: u8,
+    pub use_mag: u8,
+    pub altitude_mode: u8,
+    pub ascend_rate: u16,
+    pub descend_rate: u16,
+    pub initial_climb_m: u16,
+    pub roll_mix: u8,
+    pub disarm_threshold: u8,
+    pub pitch_cutoff_hz: u8,
+    pub imu_yaw_gain: u8,
+}
+
+impl GpsRescueConfig {
+    const SANITY_OFF: u8 = 0;
+    const SANITY_ON: u8 = 1;
+    const SANITY_FS_ONLY: u8 = 2;
+
+    const ALT_MODE_MAX: u8 = 0;
+    const ALT_MODE_FIXED: u8 = 1;
+    const ALT_MODE_CURRENT: u8 = 2;
+    pub const fn new() -> Self {
+        Self {
+            max_rescue_angle_degrees: 45,
+            return_altitude_m: 30,
+            descent_distance_m: 20,
+            ground_speed_cmps: 750,
+            yaw_kp: 20,
+            min_sats: 8,
+            vel_kp: 8,
+            vel_ki: 40,
+            vel_kd: 12,
+            min_start_dist_m: 15,
+            sanity_checks: Self::SANITY_FS_ONLY,
+            allow_arming_without_fix: 0,
+            use_mag: 0,
+            altitude_mode: Self::ALT_MODE_MAX,
+            ascend_rate: 750,
+            descend_rate: 150,
+            initial_climb_m: 10,
+            roll_mix: 150,
+            disarm_threshold: 30,
+            pitch_cutoff_hz: 75,
+            imu_yaw_gain: 10,
+        }
+    }
+}
+
+impl PostcardValue<'_> for GpsRescueConfig {}
+
+impl Default for GpsRescueConfig {
     fn default() -> Self {
         Self::new()
     }
@@ -97,14 +170,14 @@ mod tests {
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
-    fn is_config<
-        T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq + Serialize + for<'a> Deserialize<'a>,
-    >() {
-    }
+    fn is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
+        is_full::<GpsConfig>();
         is_config::<GpsConfig>();
+        is_full::<GpsRescueConfig>();
+        is_config::<GpsRescueConfig>();
         is_full::<Gps>();
     }
     #[test]

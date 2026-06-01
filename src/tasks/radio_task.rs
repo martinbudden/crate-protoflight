@@ -1,28 +1,28 @@
-use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, watch::Watch};
-use embassy_time::Duration;
+#![allow(unused)]
+use embassy_sync::{
+    blocking_mutex::raw::CriticalSectionRawMutex,
+    watch::{Receiver, Sender, Watch},
+};
 use radio_controllers::{RadioControlMessage, Rates, RcModes, RxFrame};
 
 use log::info;
-use static_cell::StaticCell;
 
 use crate::{
-    config::{CONFIG_PUB_SUB_CHANNEL, ConfigItem, ConfigSubscriber, GYRO_PID_PUB_SUB_CHANNEL},
+    config::{ConfigItem, ConfigPublisher, ConfigSubscriber, FastConfigPublisher},
     flight::RcAdjustments,
 };
 
-pub(crate) static RADIO_CTX: StaticCell<RadioContext> = StaticCell::new();
+pub(crate) static RADIO_CTX: static_cell::StaticCell<RadioContext> = static_cell::StaticCell::new();
 
 const RADIO_WATCH_COUNT: usize = 1;
 static RADIO_WATCH: Watch<CriticalSectionRawMutex, RadioControlMessage, RADIO_WATCH_COUNT> = Watch::new();
 
-pub type RadioSender =
-    embassy_sync::watch::Sender<'static, CriticalSectionRawMutex, RadioControlMessage, RADIO_WATCH_COUNT>;
+pub type RadioSender = Sender<'static, CriticalSectionRawMutex, RadioControlMessage, RADIO_WATCH_COUNT>;
 pub fn radio_sender() -> RadioSender {
     RADIO_WATCH.sender()
 }
 
-pub type RadioReceiver =
-    embassy_sync::watch::Receiver<'static, CriticalSectionRawMutex, RadioControlMessage, RADIO_WATCH_COUNT>;
+pub type RadioReceiver = Receiver<'static, CriticalSectionRawMutex, RadioControlMessage, RADIO_WATCH_COUNT>;
 pub fn radio_receiver() -> RadioReceiver {
     RADIO_WATCH.receiver().expect("radio receiver failed")
 }
@@ -30,24 +30,24 @@ pub fn radio_receiver() -> RadioReceiver {
 const AUTOPILOT_WATCH_COUNT: usize = 1;
 static AUTOPILOT_WATCH: Watch<CriticalSectionRawMutex, RadioControlMessage, AUTOPILOT_WATCH_COUNT> = Watch::new();
 
-pub type AutopilotSender =
-    embassy_sync::watch::Sender<'static, CriticalSectionRawMutex, RadioControlMessage, AUTOPILOT_WATCH_COUNT>;
-#[cfg(feature = "autopilot")]
+pub type AutopilotSender = Sender<'static, CriticalSectionRawMutex, RadioControlMessage, AUTOPILOT_WATCH_COUNT>;
 pub fn autopilot_sender() -> AutopilotSender {
     AUTOPILOT_WATCH.sender()
 }
 
-pub type AutopilotReceiver =
-    embassy_sync::watch::Receiver<'static, CriticalSectionRawMutex, RadioControlMessage, AUTOPILOT_WATCH_COUNT>;
+pub type AutopilotReceiver = Receiver<'static, CriticalSectionRawMutex, RadioControlMessage, AUTOPILOT_WATCH_COUNT>;
 pub fn autopilot_receiver() -> AutopilotReceiver {
-    AUTOPILOT_WATCH.receiver().expect("radio receiver failed")
+    AUTOPILOT_WATCH.receiver().expect("autopilot_receiver failed")
 }
 
-/// Context for radio_task.
+/// Context for `radio_task`.
 pub struct RadioContext<'a> {
     pub radio_sender: RadioSender,
-    pub _autopilot_receiver: AutopilotReceiver,
+    #[cfg(feature = "autopilot")]
+    pub autopilot_receiver: AutopilotReceiver,
     pub config_subscriber: ConfigSubscriber<'a>,
+    pub config_publisher: ConfigPublisher<'a>,
+    pub fast_config_publisher: FastConfigPublisher<'a>,
     pub rc_modes: RcModes,
     pub rates: Rates,
     pub rc_adjustments: RcAdjustments,
@@ -55,10 +55,8 @@ pub struct RadioContext<'a> {
 
 #[embassy_executor::task]
 pub async fn radio_task(ctx: &'static mut RadioContext<'static>) {
-    let config_publisher = CONFIG_PUB_SUB_CHANNEL.publisher().expect("failed to create Radio config publisher");
-    let gyro_pid_publisher = GYRO_PID_PUB_SUB_CHANNEL.publisher().expect("failed to create Radio gyro_pid publisher");
     // 50Hz = 20ms interval
-    let mut ticker = embassy_time::Ticker::every(Duration::from_millis(20));
+    let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_millis(20));
     let mut loop_count: u32 = 0;
 
     info!("    RADIO: task started");
@@ -72,15 +70,20 @@ pub async fn radio_task(ctx: &'static mut RadioContext<'static>) {
         let failsafe = 0;
 
         // check if there has been in-flight adjustment of the rates, if so apply them.
-        while let Some(wait_result) = ctx.config_subscriber.try_next_message() {
-            if let embassy_sync::pubsub::WaitResult::Message(ConfigItem::Rates(config)) = wait_result {
-                ctx.rates.set(config);
-            }
+        if let Some(wait_result) = ctx.config_subscriber.try_next_message()
+            && let embassy_sync::pubsub::WaitResult::Message(ConfigItem::Rates(rates_config)) = wait_result
+        {
+            ctx.rates.set(rates_config);
+        }
+
+        #[cfg(feature = "autopilot")]
+        if let Some(_autopilot_message) = ctx.autopilot_receiver.try_changed() {
+            // TODO: if there is a message from the autopilot, then act on it.
         }
 
         // Update rc_modes from the rx_frame that has just come in from the radio.
         ctx.rc_modes.update_activated_modes(&rx_frame);
-        ctx.rc_adjustments.process_adjustments(&config_publisher, &gyro_pid_publisher).await;
+        ctx.rc_adjustments.process_adjustments(&ctx.config_publisher, &ctx.fast_config_publisher).await;
 
         let radio_control_message =
             RadioControlMessage::new_from(&rx_frame, &ctx.rates, &ctx.rc_modes, loop_count, failsafe);

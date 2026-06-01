@@ -1,4 +1,7 @@
-use serde::{Deserialize, Serialize};
+use {
+    sequential_storage::map::PostcardValue,
+    serde::{Deserialize, Serialize},
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
 pub struct SchemaVersion {
@@ -30,6 +33,8 @@ impl PidProfile {
     }
 }
 
+impl PostcardValue<'_> for PidProfile {}
+
 impl Default for PidProfile {
     fn default() -> Self {
         Self::new()
@@ -48,6 +53,8 @@ impl RatesProfile {
         Self { profile: 0 }
     }
 }
+
+impl PostcardValue<'_> for RatesProfile {}
 
 impl Default for RatesProfile {
     fn default() -> Self {

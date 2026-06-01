@@ -3,10 +3,13 @@ use radio_controllers::{
     RatesConfig, RcAdjustmentConfig, RcAdjustmentMode, RcAdjustmentRange, RcContinuosAdjustmentState,
     RcTimedAdjustmentState,
 };
-use serde::{Deserialize, Serialize};
+use {
+    sequential_storage::map::PostcardValue,
+    serde::{Deserialize, Serialize},
+};
 
 use crate::{
-    config::{ConfigItem, ConfigPublisher, GLOBAL_CONFIG, GyroPidPublisher},
+    config::{ConfigItem, ConfigPublisher, FastConfigPublisher, GLOBAL_CONFIG},
     flight::FlightController,
 };
 
@@ -101,6 +104,8 @@ impl RcAdjustments {
     }
 }
 
+impl PostcardValue<'_> for RcAdjustments {}
+
 impl Default for RcAdjustments {
     fn default() -> Self {
         Self::new()
@@ -111,22 +116,22 @@ impl RcAdjustments {
     pub async fn process_adjustments(
         &mut self,
         config_publisher: &ConfigPublisher<'_>,
-        gyro_pid_publisher: &GyroPidPublisher<'_>,
+        fast_config_publisher: &FastConfigPublisher<'_>,
     ) {
-        self.process_stepwise_adjustments(config_publisher, gyro_pid_publisher).await;
-        self.process_continuos_adjustments(config_publisher, gyro_pid_publisher).await;
+        self.process_stepwise_adjustments(config_publisher, fast_config_publisher).await;
+        self.process_continuos_adjustments(config_publisher, fast_config_publisher).await;
     }
     async fn process_stepwise_adjustments(
         &mut self,
         config_publisher: &ConfigPublisher<'_>,
-        gyro_pid_publisher: &GyroPidPublisher<'_>,
+        fast_config_publisher: &FastConfigPublisher<'_>,
     ) {
         let mut global_config = GLOBAL_CONFIG.lock().await; // for now
     }
     async fn process_continuos_adjustments(
         &mut self,
         config_publisher: &ConfigPublisher<'_>,
-        gyro_pid_publisher: &GyroPidPublisher<'_>,
+        fast_config_publisher: &FastConfigPublisher<'_>,
     ) {
         let mut global_config = GLOBAL_CONFIG.lock().await; // for now
     }
@@ -160,7 +165,7 @@ impl RcAdjustments {
     async fn apply_absolute_adjustment(
         &mut self,
         config_publisher: &ConfigPublisher<'_>,
-        gyro_pid_publisher: &GyroPidPublisher<'_>,
+        fast_config_publisher: &FastConfigPublisher<'_>,
         adjustment: RcAdjustment,
         value: i32,
     ) {
@@ -190,7 +195,7 @@ impl RcAdjustments {
                 //blackbox_log_inflight_adjustment_event(blackbox, ADJUSTMENT_ROLL_RC_RATE, newValue);
                 if rates != old_rates {
                     global_config.rates = rates;
-                    config_publisher.publish(ConfigItem::Rates(rates)).await;
+                    config_publisher.publish_immediate(ConfigItem::Rates(rates));
                 }
             }
             _ => {}
@@ -203,14 +208,12 @@ mod tests {
     use super::*;
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
-    fn _is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
-    fn is_config<
-        T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq + Serialize + for<'a> Deserialize<'a>,
-    >() {
-    }
+    fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+    fn is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
+        is_full::<RcAdjustments>();
         is_config::<RcAdjustments>();
     }
     #[test]

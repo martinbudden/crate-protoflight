@@ -1,4 +1,4 @@
-use crate::{FlightController, flight::flight_controller_config::PidConfig};
+use crate::{flight::FlightController, flight::flight_controller_config::PidConfig};
 use pidsk_controller::PidGainsf32;
 
 impl FlightController {

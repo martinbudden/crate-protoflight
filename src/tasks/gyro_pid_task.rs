@@ -1,18 +1,21 @@
 use blackbox_logger::{GyroPidMessage, SetpointMessage};
-use embassy_time::{Duration, Timer};
 use imu_sensors::{Imu, ImuCommon, ImuMock, MockImuBus};
 use log::info;
 use motor_mixers::MotorMixerMessage;
+use radio_controllers::RadioControlMessage;
 use rand::RngExt;
 use sensor_fusion::{MadgwickFilterf32, SensorFusion};
-use static_cell::StaticCell;
 use vqm::{Vector3df32, Vector3di32};
 
 use crate::{
-    config::{GyroPidItem, GyroPidSubscriber},
-    dispatch::{GyroPidMessageSender, SetpointMessageSender},
+    config::{FastConfigItem, FastConfigSubscriber},
     flight::{FilterAccGyro, FlightController, ImuFilterBank, VehicleControl},
-    tasks::{motor_mixer_task::MOTOR_MIXER_SIGNAL, radio_task::RadioReceiver},
+    sensor_data::{FastSensorDataItem, FastSensorDataSubscriber},
+    tasks::{
+        dispatch::{GyroPidMessageSender, SetpointMessageSender},
+        motor_mixer_task::MOTOR_MIXER_SIGNAL,
+        radio_task::RadioReceiver,
+    },
 };
 
 #[cfg(feature = "rp2350")]
@@ -43,18 +46,20 @@ fn core1_entry(ctx_ptr: usize) -> ! {
     }
 }
 
-pub(crate) static GYRO_CTX: StaticCell<GyroPidContext> = StaticCell::new();
+pub(crate) static GYRO_CTX: static_cell::StaticCell<GyroPidContext> = static_cell::StaticCell::new();
 
-/// Context for gyro_pid_task.
+/// Context for `gyro_pid_task`.
 pub struct GyroPidContext<'a> {
     pub radio_receiver: RadioReceiver,
     pub gyro_pid_sender: GyroPidMessageSender,
     pub setpoint_sender: SetpointMessageSender,
-    pub gyro_pid_subscriber: GyroPidSubscriber<'a>,
+    pub fast_config_subscriber: FastConfigSubscriber<'a>,
+    pub fast_sensor_data_subscriber: FastSensorDataSubscriber<'a>,
     pub imu: ImuMock<MockImuBus>,
     pub imu_filters: ImuFilterBank,
     pub sensor_fusion: MadgwickFilterf32,
     pub flight_controller: FlightController,
+    pub radio_control_message: RadioControlMessage,
 }
 
 /// The GYRO/PID task.
@@ -79,24 +84,34 @@ pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext<'static>) {
         // so it won't mess up the 8kHz timing.
 
         // check if there has been in-flight adjustment of the PID gains, if so apply them.
-        while let Some(wait_result) = ctx.gyro_pid_subscriber.try_next_message() {
-            if let embassy_sync::pubsub::WaitResult::Message(event) = wait_result {
-                match event {
-                    GyroPidItem::RollRate(gains) => {
-                        ctx.flight_controller.set_pid_gains(FlightController::ROLL_RATE_DPS, gains);
-                    }
-                    GyroPidItem::PitchRate(gains) => {
-                        ctx.flight_controller.set_pid_gains(FlightController::PITCH_RATE_DPS, gains);
-                    }
-                    GyroPidItem::YawRate(gains) => {
-                        ctx.flight_controller.set_pid_gains(FlightController::YAW_RATE_DPS, gains);
-                    }
-                    GyroPidItem::RollAngle(gains) => {
-                        ctx.flight_controller.set_pid_gains(FlightController::ROLL_ANGLE_DEGREES, gains);
-                    }
-                    GyroPidItem::PitchAngle(gains) => {
-                        ctx.flight_controller.set_pid_gains(FlightController::PITCH_ANGLE_DEGREES, gains);
-                    }
+        // this is an unlikely occurrence.
+        if let Some(wait_result) = ctx.fast_config_subscriber.try_next_message()
+            && let embassy_sync::pubsub::WaitResult::Message(event) = wait_result
+        {
+            match event {
+                FastConfigItem::RollRate(gains) => {
+                    ctx.flight_controller.set_pid_gains(FlightController::ROLL_RATE_DPS, gains);
+                }
+                FastConfigItem::PitchRate(gains) => {
+                    ctx.flight_controller.set_pid_gains(FlightController::PITCH_RATE_DPS, gains);
+                }
+                FastConfigItem::YawRate(gains) => {
+                    ctx.flight_controller.set_pid_gains(FlightController::YAW_RATE_DPS, gains);
+                }
+                FastConfigItem::RollAngle(gains) => {
+                    ctx.flight_controller.set_pid_gains(FlightController::ROLL_ANGLE_DEGREES, gains);
+                }
+                FastConfigItem::PitchAngle(gains) => {
+                    ctx.flight_controller.set_pid_gains(FlightController::PITCH_ANGLE_DEGREES, gains);
+                }
+            }
+        }
+        if let Some(wait_result) = ctx.fast_sensor_data_subscriber.try_next_message()
+            && let embassy_sync::pubsub::WaitResult::Message(event) = wait_result
+        {
+            match event {
+                FastSensorDataItem::GpsYawHeading(gps_yaw_heading) => {
+                    _ = ctx.sensor_fusion.correct_yaw(gps_yaw_heading.yaw_heading_radians, gps_yaw_heading.delta_t);
                 }
             }
         }
@@ -138,15 +153,17 @@ pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext<'static>) {
         // The PID part of the GYRO/PID loop
         //
 
-        // get(peek) the latest radio control message - this is a non-blocking wait.
-        let radio_control_message = ctx.radio_receiver.get().await;
+        // If there is a new .
+        if let Some(radio_control_message) = ctx.radio_receiver.try_changed() {
+            ctx.radio_control_message = radio_control_message;
+        }
 
         // Calculate the motor commands:
         // the flight controller updates its setpoints from the radio control_message
         // and the updates the PIDs using `gyro_rps` and `orientation`.
         // Also returns if the setpoints have been updated because of a new radio_control_message.
         let (motor_commands, setpoints_updated) =
-            ctx.flight_controller.calculate_motor_commands(gyro_rps, orientation, delta_t, radio_control_message);
+            ctx.flight_controller.calculate_motor_commands(gyro_rps, orientation, delta_t, ctx.radio_control_message);
 
         // Convert the motor commands calculated by the flight controller into a motor mixer message and send that message.
         // The signal will be picked up by the motor mixer task.
@@ -182,6 +199,6 @@ pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext<'static>) {
 
         // Slow down the simulation for PC console
         // 100ms is good for seeing the prints; change to 1ms for "real speed".
-        Timer::after(Duration::from_millis(1)).await;
+        embassy_time::Timer::after(embassy_time::Duration::from_millis(1)).await;
     }
 }

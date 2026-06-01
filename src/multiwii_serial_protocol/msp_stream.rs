@@ -185,7 +185,6 @@ impl MspStream {
                 b'X' => MspPacketState::HeaderX,
                 _ => MspPacketState::Idle,
             },
-
             MspPacketState::HeaderM => match c {
                 b'<' | b'>' => {
                     self.packet_type = if c == b'<' { MspPacketType::Command } else { MspPacketType::Reply };
@@ -193,7 +192,6 @@ impl MspStream {
                 }
                 _ => MspPacketState::Idle,
             },
-
             MspPacketState::HeaderX => match c {
                 b'<' | b'>' => {
                     self.packet_type = if c == b'<' { MspPacketType::Command } else { MspPacketType::Reply };
@@ -205,12 +203,10 @@ impl MspStream {
                 self.in_buf[offset] = c;
                 checksum ^= c;
                 offset += 1;
-
                 if offset == 2 {
                     // Size and Cmd byte
                     let size = self.in_buf[0] as usize;
                     let cmd = self.in_buf[1];
-
                     if size > MspStream::INBUF_SIZE {
                         MspPacketState::Idle
                     } else if cmd == 255 {
@@ -230,12 +226,10 @@ impl MspStream {
                     MspPacketState::HeaderV1 { offset, checksum }
                 }
             }
-
             MspPacketState::PayloadV1 { len, cmd, mut offset, mut checksum } => {
                 self.in_buf[offset] = c;
                 checksum ^= c;
                 offset += 1;
-
                 if offset == len {
                     self.cmd_msp = u16::from(cmd);
                     MspPacketState::ChecksumV1 { checksum }
@@ -243,7 +237,6 @@ impl MspStream {
                     MspPacketState::PayloadV1 { len, cmd, offset, checksum }
                 }
             }
-
             MspPacketState::HeaderV2 { version, mut offset, mut checksum1, mut checksum2 } => {
                 self.in_buf[offset] = c;
                 if version == MspVersion::V2overV1 {
@@ -265,7 +258,6 @@ impl MspStream {
                     let cmd = u16::from_le_bytes([self.in_buf[start_index + 1], self.in_buf[start_index + 2]]);
                     let size =
                         u16::from_le_bytes([self.in_buf[start_index + 3], self.in_buf[start_index + 4]]) as usize;
-
                     if size > Self::INBUF_SIZE {
                         MspPacketState::Idle // <--- This is where your code was tripping!
                     } else {
@@ -283,7 +275,6 @@ impl MspStream {
                     MspPacketState::HeaderV2 { version, offset, checksum1, checksum2 }
                 }
             }
-
             MspPacketState::PayloadV2 { version, len, cmd, flags, mut offset, mut checksum1, mut checksum2 } => {
                 self.in_buf[offset] = c;
                 if version == MspVersion::V2overV1 {
@@ -291,7 +282,6 @@ impl MspStream {
                 }
                 checksum2 = crc8_dvb_s2(checksum2, c);
                 offset += 1;
-
                 if offset == len {
                     self.cmd_msp = cmd;
                     self.cmd_flags = flags;
@@ -300,12 +290,10 @@ impl MspStream {
                     MspPacketState::PayloadV2 { version, len, cmd, flags, offset, checksum1, checksum2 }
                 }
             }
-
             MspPacketState::ChecksumV1 { checksum } => {
                 self.checksum1 = checksum;
                 if checksum == c { MspPacketState::CommandReceived } else { MspPacketState::Idle }
             }
-
             MspPacketState::ChecksumV2 { version, mut checksum1, checksum2 } => {
                 self.checksum2 = checksum2;
                 if version == MspVersion::V2overV1 {

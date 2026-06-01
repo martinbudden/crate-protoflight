@@ -1,6 +1,10 @@
 #![allow(unused)]
-use serde::{Deserialize, Serialize};
+use {
+    sequential_storage::map::PostcardValue,
+    serde::{Deserialize, Serialize},
+};
 
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct BatteryState {}
 impl BatteryState {
     pub const OK: u8 = 0;
@@ -52,6 +56,8 @@ impl BatteryConfig {
     }
 }
 
+impl PostcardValue<'_> for BatteryConfig {}
+
 impl Default for BatteryConfig {
     fn default() -> Self {
         Self::new()
@@ -63,14 +69,13 @@ mod tests {
     use super::*;
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
-    fn _is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
-    fn is_config<
-        T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq + Serialize + for<'a> Deserialize<'a>,
-    >() {
-    }
+    fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+    fn is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
+        is_full::<BatteryState>();
+        is_full::<BatteryConfig>();
         is_config::<BatteryConfig>();
     }
     #[test]

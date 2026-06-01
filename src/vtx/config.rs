@@ -1,5 +1,8 @@
 #![allow(unused)]
-use serde::{Deserialize, Serialize};
+use {
+    sequential_storage::map::PostcardValue,
+    serde::{Deserialize, Serialize},
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
 pub struct VtxConfig {
@@ -26,8 +29,30 @@ impl VtxConfig {
     }
 }
 
+impl PostcardValue<'_> for VtxConfig {}
+
 impl Default for VtxConfig {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
+    fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+    fn is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
+
+    #[test]
+    fn normal_types() {
+        is_full::<VtxConfig>();
+        is_config::<VtxConfig>();
+    }
+    #[test]
+    fn test_new() {
+        let config = VtxConfig::new();
+        assert_eq!(5740, config.frequency_mhz);
     }
 }

@@ -1,4 +1,7 @@
-use serde::{Deserialize, Serialize};
+use {
+    sequential_storage::map::PostcardValue,
+    serde::{Deserialize, Serialize},
+};
 
 #[cfg(feature = "rpm_filters")]
 use motor_mixers::{RpmNotchFilterBank, RpmNotchFilterBankConfig, RpmNotchFilters};
@@ -34,6 +37,8 @@ impl ImuFilterBankConfig {
         }
     }
 }
+
+impl PostcardValue<'_> for ImuFilterBankConfig {}
 
 impl Default for ImuFilterBankConfig {
     fn default() -> Self {
@@ -152,13 +157,11 @@ mod tests {
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
-    fn is_config<
-        T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq + Serialize + for<'a> Deserialize<'a>,
-    >() {
-    }
+    fn is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
+        is_full::<ImuFilterBankConfig>();
         is_config::<ImuFilterBankConfig>();
         is_full::<ImuFilterBank>();
     }

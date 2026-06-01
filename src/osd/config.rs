@@ -1,4 +1,7 @@
-use serde::{Deserialize, Serialize};
+use {
+    sequential_storage::map::PostcardValue,
+    serde::{Deserialize, Serialize},
+};
 
 use crate::{
     display::{DisplayPortBackground, DisplayPortDeviceType},
@@ -112,6 +115,8 @@ impl OsdConfig {
     }
 }
 
+impl PostcardValue<'_> for OsdConfig {}
+
 impl Default for OsdConfig {
     fn default() -> Self {
         Self::new()
@@ -141,6 +146,8 @@ impl OsdStatsConfig {
     }
 }
 
+impl PostcardValue<'_> for OsdStatsConfig {}
+
 impl Default for OsdStatsConfig {
     fn default() -> Self {
         Self::new()
@@ -159,6 +166,8 @@ impl OsdElementsConfig {
     }
 }
 
+impl PostcardValue<'_> for OsdElementsConfig {}
+
 impl Default for OsdElementsConfig {
     fn default() -> Self {
         Self::new()
@@ -170,16 +179,16 @@ mod tests {
     use super::*;
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
-    fn _is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
-    fn is_config<
-        T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq + Serialize + for<'a> Deserialize<'a>,
-    >() {
-    }
+    fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+    fn is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
+        is_full::<OsdConfig>();
         is_config::<OsdConfig>();
+        is_full::<OsdStatsConfig>();
         is_config::<OsdStatsConfig>();
+        is_full::<OsdElementsConfig>();
         is_config::<OsdElementsConfig>();
     }
     #[test]

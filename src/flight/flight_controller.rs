@@ -44,7 +44,7 @@ pub struct FlightController {
     max_pitch_angle_degrees: f32,
     max_pitch_rate_dps: f32,
     tpa: f32,                   // Throttle PID Attenuation, reduces DTerm for large throttle values
-    dmax_multipliers: [f32; 2], // used even if dmax feature flag not set
+    dmax_multipliers: [f32; 2], // used even if dmax feature not used
 }
 
 impl FlightController {

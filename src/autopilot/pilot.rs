@@ -1,6 +1,6 @@
 #![allow(unused)]
-
 use sensor_fusion::AltitudeKalmanFilterf32;
+#[cfg(feature = "gps")]
 use sensor_fusion::PositionKalmanFilterf32;
 
 use crate::autopilot::altitude_dual_ring_pid::AltitudeDualRingPid;

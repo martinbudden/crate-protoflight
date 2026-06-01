@@ -1,6 +1,9 @@
 #![allow(unused)]
 use crate::flight::PidConfig;
-use serde::{Deserialize, Serialize};
+use {
+    sequential_storage::map::PostcardValue,
+    serde::{Deserialize, Serialize},
+};
 
 // RX Loss Policy: What to do when radio signal is lost during autopilot
 pub struct AutopilotRxLoss {}
@@ -146,6 +149,8 @@ impl AutopilotConfig {
     }
 }
 
+impl PostcardValue<'_> for AutopilotConfig {}
+
 impl Default for AutopilotConfig {
     fn default() -> Self {
         Self::new()
@@ -170,6 +175,8 @@ impl PositionHoldConfig {
     }
 }
 
+impl PostcardValue<'_> for PositionHoldConfig {}
+
 impl Default for PositionHoldConfig {
     fn default() -> Self {
         Self::new()
@@ -181,14 +188,13 @@ mod tests {
     use super::*;
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
-    fn _is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
-    fn is_config<
-        T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq + Serialize + for<'a> Deserialize<'a>,
-    >() {
-    }
+    fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+    fn is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
+        is_full::<AutopilotConfig>();
+        is_full::<PositionHoldConfig>();
         is_config::<AutopilotConfig>();
         is_config::<PositionHoldConfig>();
     }
