@@ -11,14 +11,14 @@ use rand::RngExt;
 use sensor_fusion::{MadgwickFilterf32, SensorFusion};
 use vqm::{Vector3df32, Vector3di32};
 
-#[cfg(feature = "gps")]
-use crate::tasks::gps_task::YawHeadingSubscriber;
-
 use crate::{
     config::{FastConfigItem, FastConfigSubscriber},
     flight::{FilterAccGyro, FlightController, ImuFilterBank, VehicleControl},
     tasks::{motor_mixer_task::MOTOR_MIXER_SIGNAL, radio_task::RadioReceiver},
 };
+
+#[cfg(feature = "gps")]
+use crate::tasks::gps_task::GPS_YAW_HEADING_SIGNAL;
 
 #[cfg(feature = "rp2350")]
 use embassy_rp::{
@@ -85,8 +85,6 @@ pub struct GyroPidContext<'a> {
     pub gyro_pid_sender: GyroPidMessageSender,
     pub setpoint_sender: SetpointMessageSender,
     pub fast_config_subscriber: FastConfigSubscriber<'a>,
-    #[cfg(feature = "gps")]
-    pub yaw_heading_subscriber: YawHeadingSubscriber<'a>,
     pub imu: ImuMock<MockImuBus>,
     pub imu_filters: ImuFilterBank,
     pub sensor_fusion: MadgwickFilterf32,
@@ -143,9 +141,7 @@ pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext<'static>) {
 
         // Check if there has been a yaw heading correction from the GPS, if so, apply it.
         #[cfg(feature = "gps")]
-        if let Some(wait_result) = ctx.yaw_heading_subscriber.try_next_message()
-            && let embassy_sync::pubsub::WaitResult::Message(gps_yaw_heading) = wait_result
-        {
+        if let Some(gps_yaw_heading) = GPS_YAW_HEADING_SIGNAL.try_take() {
             _ = ctx.sensor_fusion.correct_yaw(gps_yaw_heading.yaw_heading_radians, gps_yaw_heading.delta_t);
         }
 

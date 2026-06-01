@@ -9,8 +9,11 @@ use crate::{
     },
 };
 
-use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
-use embassy_sync::pubsub::{PubSubChannel, Publisher, Subscriber};
+use embassy_sync::{
+    pubsub::{PubSubChannel, Publisher, Subscriber},
+    {blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal},
+};
+
 const MAX_GPS_DATA_SUBSCRIBER_COUNT: usize = 8;
 const GPS_DATA_PUBLISHER_COUNT: usize = 1;
 const GPS_DATA_CAPACITY: usize = 4;
@@ -50,49 +53,10 @@ pub fn gps_data_subscriber<'a>() -> GpsDataSubscriber<'a> {
     GPS_DATA_PUB_SUB_CHANNEL.subscriber().expect("sensor_data_subscriber failed")
 }
 
-/// The only subscriber is the `gyro_pid_task`.
-const MAX_YAW_HEADING_SUBSCRIBER_COUNT: usize = 1;
-const YAW_HEADING_PUBLISHER_COUNT: usize = 1;
-const YAW_HEADING_CAPACITY: usize = 1;
-
-/// High speed `PubSubChannel` for handling `GpsData` updates in the  `gyro_pid` task.
-static YAW_HEADING_PUB_SUB_CHANNEL: PubSubChannel<
-    CriticalSectionRawMutex,
-    GpsYawHeadingData,
-    YAW_HEADING_CAPACITY,
-    MAX_YAW_HEADING_SUBSCRIBER_COUNT,
-    YAW_HEADING_PUBLISHER_COUNT,
-> = PubSubChannel::new();
-
-pub type YawHeadingPublisher<'a> = Publisher<
-    'a,
-    CriticalSectionRawMutex,
-    GpsYawHeadingData,
-    YAW_HEADING_CAPACITY,
-    MAX_YAW_HEADING_SUBSCRIBER_COUNT,
-    YAW_HEADING_PUBLISHER_COUNT,
->;
-
-pub fn yaw_heading_publisher<'a>() -> YawHeadingPublisher<'a> {
-    YAW_HEADING_PUB_SUB_CHANNEL.publisher().expect("yaw_heading_publisher failed")
-}
-
-pub type YawHeadingSubscriber<'a> = Subscriber<
-    'a,
-    CriticalSectionRawMutex,
-    GpsYawHeadingData,
-    YAW_HEADING_CAPACITY,
-    MAX_YAW_HEADING_SUBSCRIBER_COUNT,
-    YAW_HEADING_PUBLISHER_COUNT,
->;
-
-pub fn yaw_heading_subscriber<'a>() -> YawHeadingSubscriber<'a> {
-    YAW_HEADING_PUB_SUB_CHANNEL.subscriber().expect("yaw_heading_subscriber failed")
-}
+pub static GPS_YAW_HEADING_SIGNAL: Signal<CriticalSectionRawMutex, GpsYawHeadingData> = Signal::new();
 
 /// Context for GPS task.
 pub struct GpsContext<'a> {
-    pub yaw_heading_publisher: YawHeadingPublisher<'a>,
     pub gps_data_publisher: GpsDataPublisher<'a>,
     pub home: Geodetic,
 }
@@ -127,8 +91,8 @@ pub async fn gps_task(ctx: &'static mut GpsContext<'static>) {
                 yaw_heading_radians: (f32::from(gps_data.heading_deci_degrees) * 0.1).to_radians(),
                 delta_t: 0.1,
             };
-            // publish the yaw heading so the gyro_pid task can use it to correct yaw drift in the sensor fusion filter.
-            ctx.yaw_heading_publisher.publish_immediate(gps_yaw_heading_data);
+            // signal the yaw heading so the gyro_pid task can use it to correct yaw drift in the sensor fusion filter.
+            GPS_YAW_HEADING_SIGNAL.signal(gps_yaw_heading_data);
         }
 
         if loop_count.is_multiple_of(10) {

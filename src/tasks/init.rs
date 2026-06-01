@@ -39,7 +39,7 @@ use crate::{
     gps::Geodetic,
     tasks::{
         GpsContext, gps_task,
-        gps_task::{gps_data_publisher, gps_data_subscriber, yaw_heading_publisher, yaw_heading_subscriber},
+        gps_task::{gps_data_publisher, gps_data_subscriber},
     },
 };
 
@@ -61,10 +61,10 @@ use crate::tasks::{
     rangefinder_task::{rangefinder_data_publisher, rangefinder_data_subscriber},
 };
 
-use imu_sensors::{ImuAxesOrder,ImuMock, MockImuBus};
-use sensor_fusion::MadgwickFilterf32;
+use imu_sensors::{ImuAxesOrder, ImuMock, MockImuBus};
 use motor_mixers::{MotorMixerCommon, MotorMixerQuadXPwm};
 use radio_controllers::{RadioControlMessage, Rates, RcModes};
+use sensor_fusion::MadgwickFilterf32;
 
 use embedded_storage_async::nor_flash::NorFlash;
 use sequential_storage::{
@@ -188,8 +188,6 @@ pub async fn init(spawner: Spawner) {
         gyro_pid_sender: gyro_pid_sender(),
         setpoint_sender: setpoint_sender(),
         fast_config_subscriber: fast_config_subscriber(),
-        #[cfg(feature = "gps")]
-        yaw_heading_subscriber: yaw_heading_subscriber(),
         imu: ImuMock::new(MockImuBus::new(), ImuAxesOrder::XPOS_YPOS_ZPOS),
         imu_filters: ImuFilterBank::with_config(config.imu_filter_bank),
         sensor_fusion: MadgwickFilterf32::new(),
@@ -284,11 +282,7 @@ pub async fn init(spawner: Spawner) {
         RANGEFINDER_CTX.init(RangefinderContext { rangefinder_data_publisher: rangefinder_data_publisher() });
 
     #[cfg(feature = "gps")]
-    let gps_ctx = GPS_CTX.init(GpsContext {
-        yaw_heading_publisher: yaw_heading_publisher(),
-        gps_data_publisher: gps_data_publisher(),
-        home: Geodetic::new(),
-    });
+    let gps_ctx = GPS_CTX.init(GpsContext { gps_data_publisher: gps_data_publisher(), home: Geodetic::new() });
 
     #[cfg(feature = "osd")]
     let osd_ctx = OSD_CTX.init(OsdContext {
