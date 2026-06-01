@@ -5,11 +5,90 @@ use log::info;
 use crate::{
     gps::{Geodetic, GeographicCoordinate, GpsSolutionData},
     gps::{
-        GpsDataItem, GpsDataPublisher, YawHeadingPublisher, {GpsData, GpsPosition, GpsYawHeadingData},
+        GpsDataItem, {GpsData, GpsPosition, GpsYawHeadingData},
     },
 };
 
-pub(crate) static GPS_CTX: static_cell::StaticCell<GpsContext> = static_cell::StaticCell::new();
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+use embassy_sync::pubsub::{PubSubChannel, Publisher, Subscriber};
+const MAX_GPS_DATA_SUBSCRIBER_COUNT: usize = 8;
+const GPS_DATA_PUBLISHER_COUNT: usize = 1;
+const GPS_DATA_CAPACITY: usize = 4;
+
+/// `PubSubChannel` for handling `GpsData` updates.
+static GPS_DATA_PUB_SUB_CHANNEL: PubSubChannel<
+    CriticalSectionRawMutex,
+    GpsDataItem,
+    GPS_DATA_CAPACITY,
+    MAX_GPS_DATA_SUBSCRIBER_COUNT,
+    GPS_DATA_PUBLISHER_COUNT,
+> = PubSubChannel::new();
+
+pub type GpsDataPublisher<'a> = Publisher<
+    'a,
+    CriticalSectionRawMutex,
+    GpsDataItem,
+    GPS_DATA_CAPACITY,
+    MAX_GPS_DATA_SUBSCRIBER_COUNT,
+    GPS_DATA_PUBLISHER_COUNT,
+>;
+
+pub fn gps_data_publisher<'a>() -> GpsDataPublisher<'a> {
+    GPS_DATA_PUB_SUB_CHANNEL.publisher().expect("sensor_data_publisher failed")
+}
+
+pub type GpsDataSubscriber<'a> = Subscriber<
+    'a,
+    CriticalSectionRawMutex,
+    GpsDataItem,
+    GPS_DATA_CAPACITY,
+    MAX_GPS_DATA_SUBSCRIBER_COUNT,
+    GPS_DATA_PUBLISHER_COUNT,
+>;
+
+pub fn gps_data_subscriber<'a>() -> GpsDataSubscriber<'a> {
+    GPS_DATA_PUB_SUB_CHANNEL.subscriber().expect("sensor_data_subscriber failed")
+}
+
+/// The only subscriber is the `gyro_pid_task`.
+const MAX_YAW_HEADING_SUBSCRIBER_COUNT: usize = 1;
+const YAW_HEADING_PUBLISHER_COUNT: usize = 1;
+const YAW_HEADING_CAPACITY: usize = 1;
+
+/// High speed `PubSubChannel` for handling `GpsData` updates in the  `gyro_pid` task.
+static YAW_HEADING_PUB_SUB_CHANNEL: PubSubChannel<
+    CriticalSectionRawMutex,
+    GpsYawHeadingData,
+    YAW_HEADING_CAPACITY,
+    MAX_YAW_HEADING_SUBSCRIBER_COUNT,
+    YAW_HEADING_PUBLISHER_COUNT,
+> = PubSubChannel::new();
+
+pub type YawHeadingPublisher<'a> = Publisher<
+    'a,
+    CriticalSectionRawMutex,
+    GpsYawHeadingData,
+    YAW_HEADING_CAPACITY,
+    MAX_YAW_HEADING_SUBSCRIBER_COUNT,
+    YAW_HEADING_PUBLISHER_COUNT,
+>;
+
+pub fn yaw_heading_publisher<'a>() -> YawHeadingPublisher<'a> {
+    YAW_HEADING_PUB_SUB_CHANNEL.publisher().expect("yaw_heading_publisher failed")
+}
+
+pub type YawHeadingSubscriber<'a> = Subscriber<
+    'a,
+    CriticalSectionRawMutex,
+    GpsYawHeadingData,
+    YAW_HEADING_CAPACITY,
+    MAX_YAW_HEADING_SUBSCRIBER_COUNT,
+    YAW_HEADING_PUBLISHER_COUNT,
+>;
+
+pub fn yaw_heading_subscriber<'a>() -> YawHeadingSubscriber<'a> {
+    YAW_HEADING_PUB_SUB_CHANNEL.subscriber().expect("yaw_heading_subscriber failed")
+}
 
 /// Context for GPS task.
 pub struct GpsContext<'a> {

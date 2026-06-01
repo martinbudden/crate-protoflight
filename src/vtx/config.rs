@@ -1,4 +1,4 @@
-#![allow(unused)]
+#![cfg(feature = "vtx")]
 use {
     sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},

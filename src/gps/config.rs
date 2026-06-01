@@ -1,3 +1,4 @@
+#![cfg(feature = "gps")]
 #![allow(unused)]
 use {
     sequential_storage::map::PostcardValue,

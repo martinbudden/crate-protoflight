@@ -1,4 +1,5 @@
-#![allow(unused)]
+#![cfg(feature = "autopilot")]
+
 use sensor_fusion::AltitudeKalmanFilterf32;
 #[cfg(feature = "gps")]
 use sensor_fusion::PositionKalmanFilterf32;

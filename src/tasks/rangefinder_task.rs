@@ -45,8 +45,6 @@ pub fn rangefinder_data_subscriber<'a>() -> RangefinderDataSubscriber<'a> {
     RANGEFINDER_DATA_PUB_SUB_CHANNEL.subscriber().expect("rangefinder_data_subscriber failed")
 }
 
-pub(crate) static RANGEFINDER_CTX: static_cell::StaticCell<RangefinderContext> = static_cell::StaticCell::new();
-
 /// Context for Rangefinder task.
 pub struct RangefinderContext<'a> {
     pub rangefinder_data_publisher: RangefinderDataPublisher<'a>,

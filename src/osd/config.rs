@@ -1,3 +1,5 @@
+#![cfg(feature = "osd")]
+
 use {
     sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},

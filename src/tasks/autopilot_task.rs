@@ -1,37 +1,52 @@
 #![cfg(feature = "autopilot")]
-//#![allow(unused)]
 
+use embassy_sync::{
+    blocking_mutex::raw::CriticalSectionRawMutex,
+    watch::{Receiver, Sender, Watch},
+};
 use log::info;
 use radio_controllers::RadioControlMessage;
 use vqm::Vector3df32;
 
-use crate::tasks::dispatch::{GyroPidReceiver, SetpointReceiver};
+use crate::tasks::gyro_pid_task::{GyroPidReceiver, SetpointReceiver};
 
-use crate::{autopilot::pilot::Autopilot, tasks::radio_task::AutopilotSender};
+use crate::autopilot::pilot::Autopilot;
 
 #[cfg(feature = "barometer")]
 use crate::tasks::barometer_task::BarometerDataSubscriber;
 
 #[cfg(feature = "gps")]
-use crate::gps::{GpsDataItem, GpsDataSubscriber};
+use crate::{gps::GpsDataItem, tasks::gps_task::GpsDataSubscriber};
 
 #[cfg(feature = "rangefinder")]
 use crate::tasks::rangefinder_task::RangefinderDataSubscriber;
 
-pub(crate) static AUTOPILOT_CTX: static_cell::StaticCell<AutopilotContext> = static_cell::StaticCell::new();
+const AUTOPILOT_WATCH_COUNT: usize = 1;
+static AUTOPILOT_WATCH: Watch<CriticalSectionRawMutex, RadioControlMessage, AUTOPILOT_WATCH_COUNT> = Watch::new();
+
+pub type AutopilotSender = Sender<'static, CriticalSectionRawMutex, RadioControlMessage, AUTOPILOT_WATCH_COUNT>;
+pub fn autopilot_sender() -> AutopilotSender {
+    AUTOPILOT_WATCH.sender()
+}
+
+pub type AutopilotReceiver = Receiver<'static, CriticalSectionRawMutex, RadioControlMessage, AUTOPILOT_WATCH_COUNT>;
+pub fn autopilot_receiver() -> AutopilotReceiver {
+    AUTOPILOT_WATCH.receiver().expect("autopilot_receiver failed")
+}
 
 /// Context for Autopilot task.
 pub struct AutopilotContext<'a> {
-    pub gps_data_subscriber: GpsDataSubscriber<'a>,
-    #[cfg(feature = "barometer")]
-    pub barometer_data_subscriber: BarometerDataSubscriber<'a>,
-    #[cfg(feature = "rangefinder")]
-    pub rangefinder_data_subscriber: RangefinderDataSubscriber<'a>,
     pub gyro_pid_receiver: GyroPidReceiver,
     #[allow(unused)]
     pub setpoint_receiver: SetpointReceiver,
     pub autopilot_sender: AutopilotSender,
     pub autopilot: Autopilot,
+    #[cfg(feature = "barometer")]
+    pub barometer_data_subscriber: BarometerDataSubscriber<'a>,
+    #[cfg(feature = "gps")]
+    pub gps_data_subscriber: GpsDataSubscriber<'a>,
+    #[cfg(feature = "rangefinder")]
+    pub rangefinder_data_subscriber: RangefinderDataSubscriber<'a>,
 }
 
 /// Autopilot Placeholder.
@@ -76,6 +91,7 @@ pub async fn autopilot_task(ctx: &'static mut AutopilotContext<'static>) {
             && let embassy_sync::pubsub::WaitResult::Message(barometer_data) = wait_result
         {
             ctx.autopilot.altitude_kalman_filter.correct_altitude_using_barometer(barometer_data.altitude_m);
+            #[cfg(feature = "gps")]
             ctx.autopilot.position_kalman_filter.correct_altitude_using_barometer(barometer_data.altitude_m);
         }
         #[cfg(feature = "rangefinder")]

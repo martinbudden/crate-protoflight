@@ -1,4 +1,4 @@
-#![allow(unused)]
+#![cfg(feature = "rangefinder")]
 
 #[derive(Clone, Copy, Debug, derive_more::Display, PartialEq)]
 #[display("Range{{d:{distance_m}}}")]

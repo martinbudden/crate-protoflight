@@ -1,12 +1,11 @@
-#![allow(unused)]
+#![cfg(feature = "blackbox")]
+
 use blackbox_logger::{
     Blackbox, Event, SetpointMessage, SliceWriter, StateMachine, drivers::SdStorage, sd_card::MockSdCard,
 };
 use log::info;
 
-use crate::tasks::dispatch::{GyroPidReceiver, SetpointReceiver};
-
-pub(crate) static BLACKBOX_CTX: static_cell::StaticCell<BlackboxContext> = static_cell::StaticCell::new();
+use crate::tasks::gyro_pid_task::{GyroPidReceiver, SetpointReceiver};
 
 pub struct BlackboxContext {
     pub gyro_pid_receiver: GyroPidReceiver,
@@ -73,7 +72,7 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
                 let mut slice_writer = BlackboxContext::slice_writer(&mut ctx.buffer, ctx.pos);
                 ctx.blackbox.logger.log_e_frame(&mut slice_writer, Event::LogEnd)
             };
-            ctx.sd_card.write_all(&ctx.buffer[..len]).await;
+            _ = ctx.sd_card.write_all(&ctx.buffer[..len]).await;
             info!("**** BLACKBOX: END OF LOG");
         }
         _ = ctx.sd_card.write_all(&ctx.buffer[..len]).await;

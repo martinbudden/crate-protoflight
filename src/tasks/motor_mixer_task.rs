@@ -2,7 +2,6 @@ use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal}
 
 use motor_mixers::{MotorMixerMessage, MotorMixerOutput, MotorMixerQuadXPwm};
 
-pub(crate) static MOTOR_MIXER_CTX: static_cell::StaticCell<MotorMixerContext> = static_cell::StaticCell::new();
 // --- MOTOR_SIGNAL ---
 // High-speed trigger for Motors (8kHz)
 // no watch count, since a signal can only have one watcher.

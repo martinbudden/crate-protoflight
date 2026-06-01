@@ -6,70 +6,72 @@ use crate::config::{
 use crate::flight::{FlightController, ImuFilterBank, RcAdjustments};
 
 #[allow(unused)]
-use crate::tasks::dispatch::{gyro_pid_receiver, gyro_pid_sender, setpoint_receiver, setpoint_sender};
+use crate::tasks::gyro_pid_task::{gyro_pid_receiver, setpoint_receiver};
+#[allow(unused)]
 use crate::tasks::non_volatile_storage as nvs;
-use crate::tasks::{GYRO_CTX, GyroPidContext, gyro_pid_task};
-use crate::tasks::{MOTOR_MIXER_CTX, MotorMixerContext, motor_mixer_task};
 use crate::tasks::{
+    gyro_pid_task::{gyro_pid_sender, setpoint_sender},
     radio_task::{radio_receiver, radio_sender},
-    {RADIO_CTX, RadioContext, radio_task},
+    {GyroPidContext, gyro_pid_task}, {MotorMixerContext, motor_mixer_task}, {RadioContext, radio_task},
 };
 
 #[cfg(feature = "autopilot")]
 use crate::{
     autopilot::pilot::Autopilot,
     tasks::{
-        AUTOPILOT_CTX, AutopilotContext, autopilot_task,
+        AutopilotContext, autopilot_task,
+        autopilot_task::{autopilot_receiver, autopilot_sender},
         barometer_task::barometer_data_subscriber,
-        radio_task::{autopilot_receiver, autopilot_sender},
     },
 };
 
 #[cfg(feature = "barometer")]
-use crate::tasks::{BAROMETER_CTX, BarometerContext, barometer_task, barometer_task::barometer_data_publisher};
+use crate::tasks::{BarometerContext, barometer_task, barometer_task::barometer_data_publisher};
 
 #[cfg(feature = "blackbox")]
 use {
-    crate::tasks::{BLACKBOX_CTX, BlackboxContext, blackbox_task},
+    crate::tasks::{BlackboxContext, blackbox_task},
     blackbox_logger::{Blackbox, FieldSelect, drivers::sd_card::MockSdCard},
 };
 
 #[cfg(feature = "gps")]
 use crate::{
-    gps::{Geodetic, gps_data_publisher, gps_data_subscriber, yaw_heading_publisher, yaw_heading_subscriber},
-    tasks::{GPS_CTX, GpsContext, gps_task},
+    gps::Geodetic,
+    tasks::{
+        GpsContext, gps_task,
+        gps_task::{gps_data_publisher, gps_data_subscriber, yaw_heading_publisher, yaw_heading_subscriber},
+    },
 };
 
 #[cfg(feature = "msp")]
 use crate::{
     multiwii_serial_protocol::Msp,
-    tasks::{MSP_CTX, MSP_READ_BUF_SIZE, MSP_WRITE_BUF_SIZE, MspContext, msp_task},
+    tasks::{MSP_READ_BUF_SIZE, MSP_WRITE_BUF_SIZE, MspContext, msp_task},
 };
 
 #[cfg(feature = "osd")]
 use crate::{
     osd::Osd,
-    tasks::{OSD_CTX, OsdContext, osd_task},
+    tasks::{OsdContext, osd_task},
 };
 
 #[cfg(feature = "rangefinder")]
 use crate::tasks::{
-    RANGEFINDER_CTX, RangefinderContext, rangefinder_task,
+    RangefinderContext, rangefinder_task,
     rangefinder_task::{rangefinder_data_publisher, rangefinder_data_subscriber},
 };
 
-use imu_sensors::ImuAxesOrder;
-use imu_sensors::{ImuMock, MockImuBus};
-//use sequential_storage::cache::{self, NoCache};
-//use sequential_storage::map::SerializationError;
-
-use motor_mixers::{MotorMixerCommon, MotorMixerQuadXPwm};
+use imu_sensors::{ImuAxesOrder,ImuMock, MockImuBus};
 use sensor_fusion::MadgwickFilterf32;
+use motor_mixers::{MotorMixerCommon, MotorMixerQuadXPwm};
+use radio_controllers::{RadioControlMessage, Rates, RcModes};
 
 use embedded_storage_async::nor_flash::NorFlash;
-use radio_controllers::{RadioControlMessage, Rates, RcModes};
-use sequential_storage::cache::NoCache;
-use sequential_storage::map::{MapConfig, MapStorage};
+use sequential_storage::{
+    cache::NoCache,
+    map::{MapConfig, MapStorage},
+};
+//use sequential_storage::map::SerializationError;
 
 use embassy_executor::Spawner;
 #[cfg(feature = "multicore")]
@@ -100,6 +102,7 @@ fn init_flash_driver() -> impl embedded_storage_async::nor_flash::NorFlash {
     //    We remove the <256, 256, 4096> from NorMemoryAsync to satisfy the 1-generic rule!
     NorMemoryAsync::new(inner_sync_nor)
 }
+
 // --- 2. RP2350 (Embedded) Build Configuration ---
 #[cfg(target_arch = "arm")] // If building for your physical RP2350 chip
 fn init_flash_driver(
@@ -127,7 +130,28 @@ where
 /// Create all the contexts for the tasks, and then spawn the tasks.
 #[allow(clippy::too_many_lines)]
 pub async fn init(spawner: Spawner) {
-    env_logger::init();
+    // ****
+    // Statically allocate the task contexts.
+    // ****
+    static GYRO_CTX: static_cell::StaticCell<GyroPidContext> = static_cell::StaticCell::new();
+    static RADIO_CTX: static_cell::StaticCell<RadioContext> = static_cell::StaticCell::new();
+    static MOTOR_MIXER_CTX: static_cell::StaticCell<MotorMixerContext> = static_cell::StaticCell::new();
+
+    #[cfg(feature = "autopilot")]
+    static AUTOPILOT_CTX: static_cell::StaticCell<AutopilotContext> = static_cell::StaticCell::new();
+    #[cfg(feature = "barometer")]
+    static BAROMETER_CTX: static_cell::StaticCell<BarometerContext> = static_cell::StaticCell::new();
+    #[cfg(feature = "blackbox")]
+    static BLACKBOX_CTX: static_cell::StaticCell<BlackboxContext> = static_cell::StaticCell::new();
+    #[cfg(feature = "gps")]
+    static GPS_CTX: static_cell::StaticCell<GpsContext> = static_cell::StaticCell::new();
+    #[cfg(feature = "msp")]
+    static MSP_CTX: static_cell::StaticCell<MspContext> = static_cell::StaticCell::new();
+    #[cfg(feature = "osd")]
+    static OSD_CTX: static_cell::StaticCell<OsdContext> = static_cell::StaticCell::new();
+    #[cfg(feature = "rangefinder")]
+    static RANGEFINDER_CTX: static_cell::StaticCell<RangefinderContext> = static_cell::StaticCell::new();
+
     /*#[cfg(not(target_arch = "arm"))]
     let config_flash_range = 0..1024 * 1024; // Full 1MB simulated range for PC tests
 
@@ -147,6 +171,8 @@ pub async fn init(spawner: Spawner) {
 
     load_system_configs_task(&mut flash_driver, config_flash_range).await;*/
 
+    env_logger::init();
+
     #[allow(unused_mut)]
     let mut config = GLOBAL_CONFIG.lock().await;
 
@@ -154,6 +180,9 @@ pub async fn init(spawner: Spawner) {
     //nvs::load_imu_filter_bank_config(&mut config.imu_filter_bank, &mut flash_driver, config_flash_range.clone());
     //nvs::load_imu_filter_bank_config(&mut config.imu_filter_bank, &mut storage).await;
 
+    // ****
+    // Initialize the task contexts.
+    // ****
     let gyro_pid_ctx = GYRO_CTX.init(GyroPidContext {
         radio_receiver: radio_receiver(),
         gyro_pid_sender: gyro_pid_sender(),
@@ -175,11 +204,11 @@ pub async fn init(spawner: Spawner) {
     //nvs::load_rates_config(&mut config.rates, &mut flash_driver, config_flash_range.clone());
     let radio_ctx = RADIO_CTX.init(RadioContext {
         radio_sender: radio_sender(),
-        #[cfg(feature = "autopilot")]
-        autopilot_receiver: autopilot_receiver(),
         config_subscriber: config_subscriber(),
         config_publisher: config_publisher(),
         fast_config_publisher: fast_config_publisher(),
+        #[cfg(feature = "autopilot")]
+        autopilot_receiver: autopilot_receiver(),
         rates: Rates::new(config.rates),
         rc_modes: RcModes::new(),
         rc_adjustments: RcAdjustments::new(),
@@ -190,10 +219,10 @@ pub async fn init(spawner: Spawner) {
         msp: Msp::new(),
         fast_config_publisher: fast_config_publisher(),
         config_publisher: config_publisher(),
-        #[cfg(feature = "gps")]
-        gps_data_subscriber: gps_data_subscriber(),
         #[cfg(feature = "barometer")]
         barometer_data_subscriber: barometer_data_subscriber(),
+        #[cfg(feature = "gps")]
+        gps_data_subscriber: gps_data_subscriber(),
         #[cfg(feature = "rangefinder")]
         rangefinder_data_subscriber: rangefinder_data_subscriber(),
         read_buf: [0u8; MSP_READ_BUF_SIZE],
@@ -203,9 +232,8 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "blackbox")]
     let blackbox_ctx = {
         //nvs::load_blackbox_config(&mut config.blackbox, &mut flash_driver, config_flash_range.clone());
-
+        use crate::tasks::gyro_pid_task::gyro_pid_receiver;
         use blackbox_logger::SetpointMessage;
-
         config.blackbox.fields_disabled_mask = FieldSelect::PID_STERM_ROLL
         | FieldSelect::PID_STERM_PITCH
         | FieldSelect::PID_STERM_YAW
@@ -221,10 +249,8 @@ pub async fn init(spawner: Spawner) {
         | FieldSelect::RANGEFINDER
         | FieldSelect::ATTITUDE
         | FieldSelect::MAGNETOMETER;
-
         let mut blackbox = Blackbox::new(config.blackbox);
         blackbox.init();
-
         BLACKBOX_CTX.init(BlackboxContext {
             gyro_pid_receiver: gyro_pid_receiver(),
             setpoint_receiver: setpoint_receiver(),
@@ -238,16 +264,16 @@ pub async fn init(spawner: Spawner) {
 
     #[cfg(feature = "autopilot")]
     let autopilot_ctx: &mut AutopilotContext<'static> = AUTOPILOT_CTX.init(AutopilotContext {
-        #[cfg(feature = "gps")]
-        gps_data_subscriber: gps_data_subscriber(),
-        #[cfg(feature = "barometer")]
-        barometer_data_subscriber: barometer_data_subscriber(),
-        #[cfg(feature = "rangefinder")]
-        rangefinder_data_subscriber: rangefinder_data_subscriber(),
         gyro_pid_receiver: gyro_pid_receiver(),
         setpoint_receiver: setpoint_receiver(),
         autopilot_sender: autopilot_sender(),
         autopilot: Autopilot::new(),
+        #[cfg(feature = "barometer")]
+        barometer_data_subscriber: barometer_data_subscriber(),
+        #[cfg(feature = "gps")]
+        gps_data_subscriber: gps_data_subscriber(),
+        #[cfg(feature = "rangefinder")]
+        rangefinder_data_subscriber: rangefinder_data_subscriber(),
     });
 
     #[cfg(feature = "barometer")]
@@ -287,6 +313,11 @@ pub async fn init(spawner: Spawner) {
 
     // The gyro_pid task calculates the motor commands, sends them immediately to the motor_mixer task
     // and then updates the GyroPidMessage and sends it.
+
+    // ****
+    // Spawn the tasks.
+    // ****
+
     spawner.spawn(gyro_pid_task(gyro_pid_ctx).expect("Failed to create GYRO PID task"));
     spawner.spawn(motor_mixer_task(motor_mixer_ctx).expect("Failed to create MOTOR MIXER task")); // No receiver needed, since it uses a SIGNAL
     spawner.spawn(radio_task(radio_ctx).expect("Failed to create RADIO task"));

@@ -2,7 +2,7 @@
 
 use vqm::Vector3df32;
 
-use crate::gps::GeographicCoordinate;
+use crate::gps::{GeographicCoordinate, GpsSolutionData};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GpsPosition {
@@ -121,6 +121,14 @@ impl Default for GpsYawHeadingData {
     fn default() -> Self {
         Self::new()
     }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[non_exhaustive]
+pub enum GpsDataItem {
+    Gps(GpsData),
+    GpsPosition(GpsPosition),
+    GpsSolution(GpsSolutionData),
 }
 
 #[cfg(test)]

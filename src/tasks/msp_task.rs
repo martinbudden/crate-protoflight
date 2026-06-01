@@ -1,4 +1,6 @@
+#![cfg(feature = "msp")]
 #![allow(unused)]
+
 //use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, pubsub::PubSubChannel};
 use log::info;
 use stream_buf::{StreamBufReader, StreamBufWriter};
@@ -9,15 +11,13 @@ use crate::{
 };
 
 #[cfg(feature = "barometer")]
-use crate::tasks::barometer_task::{self, BarometerDataSubscriber};
+use crate::tasks::barometer_task::BarometerDataSubscriber;
 
 #[cfg(feature = "gps")]
-use crate::gps::{GpsDataItem, GpsDataSubscriber};
+use crate::{gps::GpsDataItem, tasks::gps_task::GpsDataSubscriber};
 
 #[cfg(feature = "rangefinder")]
-use crate::tasks::rangefinder_task::{self, RangefinderDataSubscriber};
-
-pub(crate) static MSP_CTX: static_cell::StaticCell<MspContext> = static_cell::StaticCell::new();
+use crate::tasks::rangefinder_task::RangefinderDataSubscriber;
 
 /// Context for MSP task.
 ///
@@ -26,10 +26,10 @@ pub const MSP_WRITE_BUF_SIZE: usize = 512;
 pub struct MspContext<'a> {
     pub fast_config_publisher: FastConfigPublisher<'a>,
     pub config_publisher: ConfigPublisher<'a>,
-    #[cfg(feature = "gps")]
-    pub gps_data_subscriber: GpsDataSubscriber<'a>,
     #[cfg(feature = "barometer")]
     pub barometer_data_subscriber: BarometerDataSubscriber<'a>,
+    #[cfg(feature = "gps")]
+    pub gps_data_subscriber: GpsDataSubscriber<'a>,
     #[cfg(feature = "rangefinder")]
     pub rangefinder_data_subscriber: RangefinderDataSubscriber<'a>,
     pub msp: Msp,

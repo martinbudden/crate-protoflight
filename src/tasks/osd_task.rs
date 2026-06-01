@@ -1,12 +1,9 @@
-#![allow(unused)]
+#![cfg(feature = "osd")]
+
 use log::info;
 
-use crate::{
-    osd::Osd,
-    tasks::dispatch::{GyroPidReceiver, SetpointReceiver},
-};
-
-pub(crate) static OSD_CTX: static_cell::StaticCell<OsdContext> = static_cell::StaticCell::new();
+use crate::osd::Osd;
+use crate::tasks::gyro_pid_task::{GyroPidReceiver, SetpointReceiver};
 
 /// Context for OSD task.
 pub struct OsdContext {

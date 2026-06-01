@@ -1,3 +1,4 @@
+#![cfg(feature = "osd")]
 #![doc = include_str!("README.md")]
 
 mod config;

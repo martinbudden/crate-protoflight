@@ -4,7 +4,9 @@ use radio_controllers::RatesConfig;
 extern crate paste;
 
 use crate::config::GLOBAL_CONFIG;
-use crate::{flight::ImuFilterBankConfig, osd::OsdConfig, sensors::BatteryConfig};
+#[cfg(feature = "osd")]
+use crate::osd::OsdConfig;
+use crate::{flight::ImuFilterBankConfig, sensors::BatteryConfig};
 
 use embedded_storage_async::nor_flash::{ErrorType, NorFlash};
 use sequential_storage::{
@@ -138,7 +140,9 @@ macro_rules! generate_config_handlers {
         }
     };
 }
+#[cfg(feature = "osd")]
 generate_config_handlers!(Osd, OSD_CONFIG_KEY, 128);
+#[cfg(feature = "blackbox")]
 generate_config_handlers!(Blackbox, BLACKBOX_CONFIG_KEY, 128);
 generate_config_handlers!(Rates, RATES_KEY, 128);
 

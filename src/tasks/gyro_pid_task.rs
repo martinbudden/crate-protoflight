@@ -1,4 +1,8 @@
 use blackbox_logger::{GyroPidMessage, SetpointMessage};
+use embassy_sync::{
+    blocking_mutex::raw::CriticalSectionRawMutex,
+    watch::{Receiver, Sender, Watch},
+};
 use imu_sensors::{Imu, ImuCommon, ImuMock, MockImuBus};
 use log::info;
 use motor_mixers::MotorMixerMessage;
@@ -8,16 +12,12 @@ use sensor_fusion::{MadgwickFilterf32, SensorFusion};
 use vqm::{Vector3df32, Vector3di32};
 
 #[cfg(feature = "gps")]
-use crate::gps::YawHeadingSubscriber;
+use crate::tasks::gps_task::YawHeadingSubscriber;
 
 use crate::{
     config::{FastConfigItem, FastConfigSubscriber},
     flight::{FilterAccGyro, FlightController, ImuFilterBank, VehicleControl},
-    tasks::{
-        dispatch::{GyroPidMessageSender, SetpointMessageSender},
-        motor_mixer_task::MOTOR_MIXER_SIGNAL,
-        radio_task::RadioReceiver,
-    },
+    tasks::{motor_mixer_task::MOTOR_MIXER_SIGNAL, radio_task::RadioReceiver},
 };
 
 #[cfg(feature = "rp2350")]
@@ -47,7 +47,37 @@ fn core1_entry(ctx_ptr: usize) -> ! {
     }
 }
 
-pub(crate) static GYRO_CTX: static_cell::StaticCell<GyroPidContext> = static_cell::StaticCell::new();
+// The gyro_pid watch has three clients: the blackbox, the autopilot, and the OSD.
+const GYRO_PID_WATCH_COUNT: usize = 3;
+// Watch<Mutex, DataType, MaxReceivers>
+static GYRO_PID_WATCH: Watch<CriticalSectionRawMutex, GyroPidMessage, GYRO_PID_WATCH_COUNT> = Watch::new();
+
+// Type aliases make the function signatures much easier to read.
+pub type GyroPidMessageSender = Sender<'static, CriticalSectionRawMutex, GyroPidMessage, GYRO_PID_WATCH_COUNT>;
+pub fn gyro_pid_sender() -> GyroPidMessageSender {
+    GYRO_PID_WATCH.sender()
+}
+
+#[allow(unused)]
+pub type GyroPidReceiver = Receiver<'static, CriticalSectionRawMutex, GyroPidMessage, GYRO_PID_WATCH_COUNT>;
+#[allow(unused)]
+pub fn gyro_pid_receiver() -> GyroPidReceiver {
+    GYRO_PID_WATCH.receiver().expect("gyro_pid receiver failed")
+}
+
+const SETPOINT_WATCH_COUNT: usize = 3;
+static SETPOINT_WATCH: Watch<CriticalSectionRawMutex, SetpointMessage, SETPOINT_WATCH_COUNT> = Watch::new();
+
+pub type SetpointMessageSender = Sender<'static, CriticalSectionRawMutex, SetpointMessage, SETPOINT_WATCH_COUNT>;
+pub fn setpoint_sender() -> SetpointMessageSender {
+    SETPOINT_WATCH.sender()
+}
+
+pub type SetpointReceiver = Receiver<'static, CriticalSectionRawMutex, SetpointMessage, SETPOINT_WATCH_COUNT>;
+#[allow(unused)]
+pub fn setpoint_receiver() -> SetpointReceiver {
+    SETPOINT_WATCH.receiver().expect("setpoint receiver failed")
+}
 
 /// Context for `gyro_pid_task`.
 pub struct GyroPidContext<'a> {
@@ -126,7 +156,7 @@ pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext<'static>) {
         // The PID part of the GYRO/PID loop
         // ****
 
-        // If there is a new .
+        // If there are new control values from the radio, then use them.
         if let Some(radio_control_message) = ctx.radio_receiver.try_changed() {
             ctx.radio_control_message = radio_control_message;
         }
@@ -161,10 +191,9 @@ pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext<'static>) {
 
         // ****
         // Check if there has been in-flight adjustment of the PID gains, if so apply them.
-        // This is an unlikely occurrence.
+        // This happens infrequently.
         // ****
         //
-        // Drain all pending messages to get to the latest state
         // try_next_message() is a simple pointer check. If there's no message, it returns None instantly,
         // so it won't mess up the 8kHz timing.
         if let Some(wait_result) = ctx.fast_config_subscriber.try_next_message()

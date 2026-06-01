@@ -45,8 +45,6 @@ pub fn barometer_data_subscriber<'a>() -> BarometerDataSubscriber<'a> {
     BAROMETER_DATA_PUB_SUB_CHANNEL.subscriber().expect("barometer_data_subscriber failed")
 }
 
-pub(crate) static BAROMETER_CTX: static_cell::StaticCell<BarometerContext> = static_cell::StaticCell::new();
-
 /// Context for Barometer task.
 pub struct BarometerContext<'a> {
     pub barometer_data_publisher: BarometerDataPublisher<'a>,

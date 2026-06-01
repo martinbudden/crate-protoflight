@@ -1,4 +1,3 @@
-#![allow(unused)]
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex,
     watch::{Receiver, Sender, Watch},
@@ -11,8 +10,6 @@ use crate::{
     config::{ConfigItem, ConfigPublisher, ConfigSubscriber, FastConfigPublisher},
     flight::RcAdjustments,
 };
-
-pub(crate) static RADIO_CTX: static_cell::StaticCell<RadioContext> = static_cell::StaticCell::new();
 
 const RADIO_WATCH_COUNT: usize = 1;
 static RADIO_WATCH: Watch<CriticalSectionRawMutex, RadioControlMessage, RADIO_WATCH_COUNT> = Watch::new();
@@ -27,27 +24,17 @@ pub fn radio_receiver() -> RadioReceiver {
     RADIO_WATCH.receiver().expect("radio receiver failed")
 }
 
-const AUTOPILOT_WATCH_COUNT: usize = 1;
-static AUTOPILOT_WATCH: Watch<CriticalSectionRawMutex, RadioControlMessage, AUTOPILOT_WATCH_COUNT> = Watch::new();
-
-pub type AutopilotSender = Sender<'static, CriticalSectionRawMutex, RadioControlMessage, AUTOPILOT_WATCH_COUNT>;
-pub fn autopilot_sender() -> AutopilotSender {
-    AUTOPILOT_WATCH.sender()
-}
-
-pub type AutopilotReceiver = Receiver<'static, CriticalSectionRawMutex, RadioControlMessage, AUTOPILOT_WATCH_COUNT>;
-pub fn autopilot_receiver() -> AutopilotReceiver {
-    AUTOPILOT_WATCH.receiver().expect("autopilot_receiver failed")
-}
+#[cfg(feature = "autopilot")]
+use crate::tasks::autopilot_task::AutopilotReceiver;
 
 /// Context for `radio_task`.
 pub struct RadioContext<'a> {
     pub radio_sender: RadioSender,
-    #[cfg(feature = "autopilot")]
-    pub autopilot_receiver: AutopilotReceiver,
     pub config_subscriber: ConfigSubscriber<'a>,
     pub config_publisher: ConfigPublisher<'a>,
     pub fast_config_publisher: FastConfigPublisher<'a>,
+    #[cfg(feature = "autopilot")]
+    pub autopilot_receiver: AutopilotReceiver,
     pub rc_modes: RcModes,
     pub rates: Rates,
     pub rc_adjustments: RcAdjustments,

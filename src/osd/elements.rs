@@ -1,3 +1,4 @@
+#![cfg(feature = "osd")]
 #![allow(unused)]
 
 use crate::osd::OsdElementsConfig;

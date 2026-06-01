@@ -1,3 +1,4 @@
+#![cfg(feature = "msp")]
 #![doc = include_str!("README.md")]
 
 mod msp;

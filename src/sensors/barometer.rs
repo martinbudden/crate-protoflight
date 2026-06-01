@@ -1,4 +1,4 @@
-#![allow(unused)]
+#![cfg(feature = "barometer")]
 
 #[derive(Clone, Copy, Debug, derive_more::Display, PartialEq)]
 #[display("Baro{{a:{altitude_m}, p:{pressure_pascals}, t:{temperature_celsius}}}")]
