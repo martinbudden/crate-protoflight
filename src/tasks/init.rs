@@ -10,55 +10,53 @@ use crate::tasks::gyro_pid_task::{gyro_pid_receiver, setpoint_receiver};
 #[allow(unused)]
 use crate::tasks::non_volatile_storage as nvs;
 use crate::tasks::{
-    gyro_pid_task::{gyro_pid_sender, setpoint_sender},
+    gyro_pid_task::{GyroPidContext, gyro_pid_sender, gyro_pid_task, setpoint_sender},
+    imu_task::{ImuContext, imu_task},
+    motor_mixer_task::{MotorMixerContext, motor_mixer_task},
+    radio_task::{RadioContext, radio_task},
     radio_task::{radio_receiver, radio_sender},
-    {GyroPidContext, gyro_pid_task}, {MotorMixerContext, motor_mixer_task}, {RadioContext, radio_task},
 };
 
 #[cfg(feature = "autopilot")]
 use crate::{
     autopilot::pilot::Autopilot,
     tasks::{
-        AutopilotContext, autopilot_task,
+        autopilot_task::{AutopilotContext, autopilot_task},
         autopilot_task::{autopilot_receiver, autopilot_sender},
         barometer_task::barometer_data_subscriber,
     },
 };
 
 #[cfg(feature = "barometer")]
-use crate::tasks::{BarometerContext, barometer_task, barometer_task::barometer_data_publisher};
+use crate::tasks::barometer_task::{BarometerContext, barometer_data_publisher, barometer_task};
 
 #[cfg(feature = "blackbox")]
 use {
-    crate::tasks::{BlackboxContext, blackbox_task},
+    crate::tasks::blackbox_task::{BlackboxContext, blackbox_task},
     blackbox_logger::{Blackbox, FieldSelect, drivers::sd_card::MockSdCard},
 };
 
 #[cfg(feature = "gps")]
 use crate::{
     gps::Geodetic,
-    tasks::{
-        GpsContext, gps_task,
-        gps_task::{gps_data_publisher, gps_data_subscriber},
-    },
+    tasks::gps_task::{GpsContext, gps_data_publisher, gps_data_subscriber, gps_task},
 };
 
 #[cfg(feature = "msp")]
 use crate::{
     multiwii_serial_protocol::Msp,
-    tasks::{MSP_READ_BUF_SIZE, MSP_WRITE_BUF_SIZE, MspContext, msp_task},
+    tasks::msp_task::{MSP_READ_BUF_SIZE, MSP_WRITE_BUF_SIZE, MspContext, msp_task},
 };
 
 #[cfg(feature = "osd")]
 use crate::{
     osd::Osd,
-    tasks::{OsdContext, osd_task},
+    tasks::osd_task::{OsdContext, osd_task},
 };
 
 #[cfg(feature = "rangefinder")]
-use crate::tasks::{
-    RangefinderContext, rangefinder_task,
-    rangefinder_task::{rangefinder_data_publisher, rangefinder_data_subscriber},
+use crate::tasks::rangefinder_task::{
+    RangefinderContext, rangefinder_data_publisher, rangefinder_data_subscriber, rangefinder_task,
 };
 
 use imu_sensors::{ImuAxesOrder, ImuMock, MockImuBus};
@@ -133,7 +131,8 @@ pub async fn init(spawner: Spawner) {
     // ****
     // Statically allocate the task contexts.
     // ****
-    static GYRO_CTX: static_cell::StaticCell<GyroPidContext> = static_cell::StaticCell::new();
+    static IMU_CTX: static_cell::StaticCell<ImuContext> = static_cell::StaticCell::new();
+    static GYRO_PID_CTX: static_cell::StaticCell<GyroPidContext> = static_cell::StaticCell::new();
     static RADIO_CTX: static_cell::StaticCell<RadioContext> = static_cell::StaticCell::new();
     static MOTOR_MIXER_CTX: static_cell::StaticCell<MotorMixerContext> = static_cell::StaticCell::new();
 
@@ -183,17 +182,18 @@ pub async fn init(spawner: Spawner) {
     // ****
     // Initialize the task contexts.
     // ****
-    let gyro_pid_ctx = GYRO_CTX.init(GyroPidContext {
+    let gyro_pid_ctx = GYRO_PID_CTX.init(GyroPidContext {
         radio_receiver: radio_receiver(),
         gyro_pid_sender: gyro_pid_sender(),
         setpoint_sender: setpoint_sender(),
         fast_config_subscriber: fast_config_subscriber(),
-        imu: ImuMock::new(MockImuBus::new(), ImuAxesOrder::XPOS_YPOS_ZPOS),
         imu_filters: ImuFilterBank::with_config(config.imu_filter_bank),
         sensor_fusion: MadgwickFilterf32::new(),
         flight_controller: FlightController::new(),
         radio_control_message: RadioControlMessage::new(),
     });
+
+    let imu_ctx = IMU_CTX.init(ImuContext { imu: ImuMock::new(MockImuBus::new(), ImuAxesOrder::XPOS_YPOS_ZPOS) });
 
     let motor_mixer_ctx = MOTOR_MIXER_CTX.init(MotorMixerContext {
         motor_mixer: MotorMixerQuadXPwm::new(MotorMixerCommon::with_config(config.mixer, config.motor)),
@@ -313,6 +313,7 @@ pub async fn init(spawner: Spawner) {
     // ****
 
     spawner.spawn(gyro_pid_task(gyro_pid_ctx).expect("Failed to create GYRO PID task"));
+    spawner.spawn(imu_task(imu_ctx).expect("Failed to create IMU task"));
     spawner.spawn(motor_mixer_task(motor_mixer_ctx).expect("Failed to create MOTOR MIXER task")); // No receiver needed, since it uses a SIGNAL
     spawner.spawn(radio_task(radio_ctx).expect("Failed to create RADIO task"));
 

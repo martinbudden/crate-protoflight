@@ -6,7 +6,7 @@ pub trait VehicleControlInitializing {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct VehicleController {
-    pub(crate) sensor_fusion_filter_is_initializing: bool,
+    pub sensor_fusion_filter_is_initializing: bool,
 }
 
 impl VehicleController {

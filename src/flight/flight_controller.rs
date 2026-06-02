@@ -14,9 +14,9 @@ use vqm::{Quaternionf32, Vector3df32, Vector4df32};
 pub struct FlightController {
     vehicle_controller: VehicleController,
     angle_mode_calculation_state: AngleModeCalculationState,
-    pub(crate) pids: [PidControllerf32; Self::PID_COUNT],
+    pub pids: [PidControllerf32; Self::PID_COUNT],
     // Copy of pid gains, so that gains can be adjusted by anti-gravity and then set back to their original values
-    pub(crate) pid_gains: [PidGainsf32; Self::PID_COUNT],
+    pub pid_gains: [PidGainsf32; Self::PID_COUNT],
     dterm_filters_0: [Pt1Filterf32; Self::PID_COUNT],
     dterm_filters_1: [Pt1Filterf32; Self::PID_COUNT],
     motor_commands_filter: Pt1FilterVector4df32,

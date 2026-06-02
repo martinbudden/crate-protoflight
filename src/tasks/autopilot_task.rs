@@ -24,7 +24,7 @@ use crate::tasks::rangefinder_task::RangefinderDataSubscriber;
 const AUTOPILOT_WATCH_COUNT: usize = 1;
 static AUTOPILOT_WATCH: Watch<CriticalSectionRawMutex, RadioControlMessage, AUTOPILOT_WATCH_COUNT> = Watch::new();
 
-pub type AutopilotSender = Sender<'static, CriticalSectionRawMutex, RadioControlMessage, AUTOPILOT_WATCH_COUNT>;
+type AutopilotSender = Sender<'static, CriticalSectionRawMutex, RadioControlMessage, AUTOPILOT_WATCH_COUNT>;
 pub fn autopilot_sender() -> AutopilotSender {
     AUTOPILOT_WATCH.sender()
 }

@@ -1,7 +1,7 @@
+#![cfg(feature = "vtx")]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Vtx {}
 
-#[allow(unused)]
 impl Vtx {
     pub const BAND_USER: u8 = 0;
     pub const BAND_A: u8 = 1;

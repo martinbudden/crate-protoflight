@@ -4,7 +4,7 @@
 use crate::osd::OsdElementsConfig;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-enum OsdEnum {
+pub enum OsdEnum {
     RssiValue,
     MainBatteryVoltage,
     Crosshairs,

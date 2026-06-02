@@ -14,7 +14,7 @@ use crate::{
 const RADIO_WATCH_COUNT: usize = 1;
 static RADIO_WATCH: Watch<CriticalSectionRawMutex, RadioControlMessage, RADIO_WATCH_COUNT> = Watch::new();
 
-pub type RadioSender = Sender<'static, CriticalSectionRawMutex, RadioControlMessage, RADIO_WATCH_COUNT>;
+type RadioSender = Sender<'static, CriticalSectionRawMutex, RadioControlMessage, RADIO_WATCH_COUNT>;
 pub fn radio_sender() -> RadioSender {
     RADIO_WATCH.sender()
 }
@@ -63,17 +63,21 @@ pub async fn radio_task(ctx: &'static mut RadioContext<'static>) {
             ctx.rates.set(rates_config);
         }
 
-        #[cfg(feature = "autopilot")]
-        if let Some(_autopilot_message) = ctx.autopilot_receiver.try_changed() {
-            // TODO: if there is a message from the autopilot, then act on it.
-        }
-
         // Update rc_modes from the rx_frame that has just come in from the radio.
         ctx.rc_modes.update_activated_modes(&rx_frame);
         ctx.rc_adjustments.process_adjustments(&ctx.config_publisher, &ctx.fast_config_publisher).await;
 
-        let radio_control_message =
+        #[allow(unused_mut)]
+        let mut radio_control_message =
             RadioControlMessage::new_from(&rx_frame, &ctx.rates, &ctx.rc_modes, loop_count, failsafe);
+
+        #[cfg(feature = "autopilot")]
+        if let Some(autopilot_message) = ctx.autopilot_receiver.try_changed() {
+            // TODO: if there is a message from the autopilot, then act on it.
+            if ctx.rc_modes.is_mode_active(radio_controllers::RcModesArray::ALTITUDE_HOLD) {
+                radio_control_message.throttle_stick = autopilot_message.throttle_stick;
+            }
+        }
 
         // Send the radio control message. This will be picked by the gyro_pid task.
         ctx.radio_sender.send(radio_control_message);

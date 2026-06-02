@@ -1,4 +1,3 @@
-#![allow(unused)]
 use {
     sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
