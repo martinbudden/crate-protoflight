@@ -5,12 +5,13 @@ use embassy_sync::{
     watch::{Receiver, Sender, Watch},
 };
 use log::info;
-use radio_controllers::RadioControlMessage;
 use vqm::Vector3df32;
 
 use crate::tasks::gyro_pid_task::{GyroPidReceiver, SetpointReceiver};
 
 use crate::autopilot::pilot::Autopilot;
+
+use crate::flight::FlightControlMessage;
 
 #[cfg(feature = "barometer")]
 use crate::tasks::barometer_task::BarometerDataSubscriber;
@@ -22,14 +23,14 @@ use crate::{gps::GpsDataItem, tasks::gps_task::GpsDataSubscriber};
 use crate::tasks::rangefinder_task::RangefinderDataSubscriber;
 
 const AUTOPILOT_WATCH_COUNT: usize = 1;
-static AUTOPILOT_WATCH: Watch<CriticalSectionRawMutex, RadioControlMessage, AUTOPILOT_WATCH_COUNT> = Watch::new();
+static AUTOPILOT_WATCH: Watch<CriticalSectionRawMutex, FlightControlMessage, AUTOPILOT_WATCH_COUNT> = Watch::new();
 
-type AutopilotSender = Sender<'static, CriticalSectionRawMutex, RadioControlMessage, AUTOPILOT_WATCH_COUNT>;
+type AutopilotSender = Sender<'static, CriticalSectionRawMutex, FlightControlMessage, AUTOPILOT_WATCH_COUNT>;
 pub fn autopilot_sender() -> AutopilotSender {
     AUTOPILOT_WATCH.sender()
 }
 
-pub type AutopilotReceiver = Receiver<'static, CriticalSectionRawMutex, RadioControlMessage, AUTOPILOT_WATCH_COUNT>;
+pub type AutopilotReceiver = Receiver<'static, CriticalSectionRawMutex, FlightControlMessage, AUTOPILOT_WATCH_COUNT>;
 pub fn autopilot_receiver() -> AutopilotReceiver {
     AUTOPILOT_WATCH.receiver().expect("autopilot_receiver failed")
 }
@@ -78,7 +79,7 @@ pub async fn autopilot_task(ctx: &'static mut AutopilotContext<'static>) {
                 );
 
                 // Send the radio control message. This will be picked by the radio task.
-                let radio_control_message = RadioControlMessage { throttle_stick, ..Default::default() };
+                let radio_control_message = FlightControlMessage { throttle_stick, ..Default::default() };
                 ctx.autopilot_sender.send(radio_control_message);
             }
         }

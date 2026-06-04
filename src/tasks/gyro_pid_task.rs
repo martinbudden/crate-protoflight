@@ -6,13 +6,12 @@ use log::info;
 
 use blackbox_logger::{GyroPidMessage, SetpointMessage};
 use motor_mixers::MotorMixerMessage;
-use radio_controllers::RadioControlMessage;
 use sensor_fusion::{MadgwickFilterf32, SensorFusion};
 
 use crate::{
     config::{FastConfigItem, FastConfigSubscriber},
-    flight::{FilterAccGyro, FlightController, ImuFilterBank, VehicleControl},
-    tasks::{imu_task::IMU_SIGNAL, motor_mixer_task::MOTOR_MIXER_SIGNAL, radio_task::RadioReceiver},
+    flight::{FilterAccGyro, FlightControlMessage, FlightController, ImuFilterBank, VehicleControl},
+    tasks::{flight_control_task::FlightControlReceiver, imu_task::IMU_SIGNAL, motor_mixer_task::MOTOR_MIXER_SIGNAL},
 };
 
 #[cfg(feature = "gps")]
@@ -71,14 +70,14 @@ pub fn setpoint_receiver() -> SetpointReceiver {
 
 /// Context for `gyro_pid_task`.
 pub struct GyroPidContext<'a> {
-    pub radio_receiver: RadioReceiver,
+    pub flight_control_receiver: FlightControlReceiver,
     pub gyro_pid_sender: GyroPidMessageSender,
     pub setpoint_sender: SetpointMessageSender,
     pub fast_config_subscriber: FastConfigSubscriber<'a>,
     pub imu_filters: ImuFilterBank,
     pub sensor_fusion: MadgwickFilterf32,
     pub flight_controller: FlightController,
-    pub radio_control_message: RadioControlMessage,
+    pub flight_control_message: FlightControlMessage,
 }
 
 /// The GYRO/PID task.
@@ -96,6 +95,8 @@ pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext<'static>) {
         // The GYRO part of the GYRO/PID loop
         // ****
 
+        // TODO: this signal should be replaced by an interrupt driven DMA read from the IMU.
+        // I'm using a Signal like this during development to keep things simple.
         let imu_data = IMU_SIGNAL.wait().await;
         let delta_t = imu_data.delta_t;
 
@@ -119,8 +120,8 @@ pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext<'static>) {
         // ****
 
         // If there are new control values from the radio, then use them.
-        if let Some(radio_control_message) = ctx.radio_receiver.try_changed() {
-            ctx.radio_control_message = radio_control_message;
+        if let Some(flight_control_message) = ctx.flight_control_receiver.try_changed() {
+            ctx.flight_control_message = flight_control_message;
         }
 
         // Calculate the motor commands:
@@ -128,7 +129,7 @@ pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext<'static>) {
         // and the updates the PIDs using `gyro_rps` and `orientation`.
         // Also returns if the setpoints have been updated because of a new radio_control_message.
         let (motor_commands, setpoints_updated) =
-            ctx.flight_controller.calculate_motor_commands(gyro_rps, orientation, delta_t, ctx.radio_control_message);
+            ctx.flight_controller.calculate_motor_commands(gyro_rps, orientation, delta_t, ctx.flight_control_message);
 
         // Convert the motor commands calculated by the flight controller into a motor mixer message and send that message.
         // The signal will be picked up by the motor mixer task.

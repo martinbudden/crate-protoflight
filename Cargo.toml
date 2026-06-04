@@ -62,6 +62,7 @@ embassy-executor = { version = "0.10.0", features = ["executor-thread"] }
 
 derive_more = { version = "2.1.1", features = ["display"] }
 num-traits = { version = "0.2.19", default-features = false }
+simple-bitset = "0.1.0"
 stream-buf = "0.1.0"
 vqm = { version = "0.1.10" }
 #vqm = { git = "https://github.com/martinbudden/crate-vector-quaternion-matrix" }

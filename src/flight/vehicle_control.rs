@@ -1,5 +1,4 @@
-use crate::flight::vehicle_controller::VehicleController;
-use radio_controllers::RadioControlMessage;
+use crate::flight::{flight_control_message::FlightControlMessage, vehicle_controller::VehicleController};
 use vqm::{Quaternionf32, Vector3df32, Vector4df32};
 
 #[allow(unused)]
@@ -12,6 +11,6 @@ pub trait VehicleControl {
         gyro_rps: Vector3df32,
         orientation: Quaternionf32,
         delta_t: f32,
-        controls: RadioControlMessage,
+        controls: FlightControlMessage,
     ) -> (Vector4df32, bool);
 }

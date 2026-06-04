@@ -4,6 +4,7 @@
 mod autopilot_task;
 mod barometer_task;
 mod blackbox_task;
+mod flight_control_task;
 mod gps_task;
 mod gyro_pid_task;
 mod imu_task;
@@ -12,5 +13,4 @@ mod motor_mixer_task;
 mod msp_task;
 mod non_volatile_storage;
 mod osd_task;
-mod radio_task;
 mod rangefinder_task;

@@ -1054,6 +1054,7 @@ dependencies = [
  "sequential-storage",
  "serde",
  "signal-filters",
+ "simple-bitset",
  "static_cell",
  "stream-buf",
  "vqm",

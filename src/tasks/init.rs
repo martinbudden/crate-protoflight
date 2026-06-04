@@ -3,18 +3,17 @@ use crate::config::{
     GLOBAL_CONFIG, config_publisher, config_subscriber, fast_config_publisher, fast_config_subscriber,
 };
 
-use crate::flight::{FlightController, ImuFilterBank, RcAdjustments};
+use crate::flight::{FlightControlMessage, FlightController, ImuFilterBank, RcAdjustments};
 
 #[allow(unused)]
 use crate::tasks::gyro_pid_task::{gyro_pid_receiver, setpoint_receiver};
 #[allow(unused)]
 use crate::tasks::non_volatile_storage as nvs;
 use crate::tasks::{
+    flight_control_task::{FlightControlContext, flight_control_receiver, flight_control_sender, flight_control_task},
     gyro_pid_task::{GyroPidContext, gyro_pid_sender, gyro_pid_task, setpoint_sender},
     imu_task::{ImuContext, imu_task},
     motor_mixer_task::{MotorMixerContext, motor_mixer_task},
-    radio_task::{RadioContext, radio_task},
-    radio_task::{radio_receiver, radio_sender},
 };
 
 #[cfg(feature = "autopilot")]
@@ -61,7 +60,7 @@ use crate::tasks::rangefinder_task::{
 
 use imu_sensors::{ImuAxesOrder, ImuMock, MockImuBus};
 use motor_mixers::{MotorMixerCommon, MotorMixerQuadXPwm};
-use radio_controllers::{RadioControlMessage, Rates, RcModes};
+use radio_controllers::{Rates, RcModes};
 use sensor_fusion::MadgwickFilterf32;
 
 use embedded_storage_async::nor_flash::NorFlash;
@@ -133,7 +132,7 @@ pub async fn init(spawner: Spawner) {
     // ****
     static IMU_CTX: static_cell::StaticCell<ImuContext> = static_cell::StaticCell::new();
     static GYRO_PID_CTX: static_cell::StaticCell<GyroPidContext> = static_cell::StaticCell::new();
-    static RADIO_CTX: static_cell::StaticCell<RadioContext> = static_cell::StaticCell::new();
+    static FLIGHT_CONTROL_CTX: static_cell::StaticCell<FlightControlContext> = static_cell::StaticCell::new();
     static MOTOR_MIXER_CTX: static_cell::StaticCell<MotorMixerContext> = static_cell::StaticCell::new();
 
     #[cfg(feature = "autopilot")]
@@ -183,14 +182,14 @@ pub async fn init(spawner: Spawner) {
     // Initialize the task contexts.
     // ****
     let gyro_pid_ctx = GYRO_PID_CTX.init(GyroPidContext {
-        radio_receiver: radio_receiver(),
+        flight_control_receiver: flight_control_receiver(),
         gyro_pid_sender: gyro_pid_sender(),
         setpoint_sender: setpoint_sender(),
         fast_config_subscriber: fast_config_subscriber(),
         imu_filters: ImuFilterBank::with_config(config.imu_filter_bank),
         sensor_fusion: MadgwickFilterf32::new(),
         flight_controller: FlightController::new(),
-        radio_control_message: RadioControlMessage::new(),
+        flight_control_message: FlightControlMessage::new(),
     });
 
     let imu_ctx = IMU_CTX.init(ImuContext { imu: ImuMock::new(MockImuBus::new(), ImuAxesOrder::XPOS_YPOS_ZPOS) });
@@ -200,8 +199,8 @@ pub async fn init(spawner: Spawner) {
     });
 
     //nvs::load_rates_config(&mut config.rates, &mut flash_driver, config_flash_range.clone());
-    let radio_ctx = RADIO_CTX.init(RadioContext {
-        radio_sender: radio_sender(),
+    let flight_control_ctx = FLIGHT_CONTROL_CTX.init(FlightControlContext {
+        flight_control_sender: flight_control_sender(),
         config_subscriber: config_subscriber(),
         config_publisher: config_publisher(),
         fast_config_publisher: fast_config_publisher(),
@@ -315,7 +314,7 @@ pub async fn init(spawner: Spawner) {
     spawner.spawn(gyro_pid_task(gyro_pid_ctx).expect("Failed to create GYRO PID task"));
     spawner.spawn(imu_task(imu_ctx).expect("Failed to create IMU task"));
     spawner.spawn(motor_mixer_task(motor_mixer_ctx).expect("Failed to create MOTOR MIXER task")); // No receiver needed, since it uses a SIGNAL
-    spawner.spawn(radio_task(radio_ctx).expect("Failed to create RADIO task"));
+    spawner.spawn(flight_control_task(flight_control_ctx).expect("Failed to create FLIGHT_CONTROL task"));
 
     #[cfg(feature = "autopilot")]
     spawner.spawn(autopilot_task(autopilot_ctx).expect("Failed to create AUTOPILOT task"));

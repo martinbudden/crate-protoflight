@@ -1,11 +1,12 @@
 use crate::flight::{
+    flight_control_message::FlightControlMessage,
     vehicle_controller::{VehicleControlInitializing, VehicleController},
     {FlightModeConfig, VehicleControl},
 };
 
 use motor_mixers::{MotorMixer, MotorMixerCommon};
 use pidsk_controller::{PidControllerf32, PidGainsf32};
-use radio_controllers::RadioControlMessage;
+use radio_controllers::RcModes;
 use signal_filters::{Pt1FilterVector4df32, Pt1Filterf32, UpdateFilter};
 use vqm::{Quaternionf32, Vector3df32, Vector4df32};
 
@@ -122,7 +123,7 @@ impl VehicleControl for FlightController {
         gyro_rps: Vector3df32,
         orientation: Quaternionf32,
         delta_t: f32,
-        controls: RadioControlMessage,
+        controls: FlightControlMessage,
     ) -> (Vector4df32, bool) {
         let mut setpoints_updated: bool = false;
         if controls.tick_count > self.controls_tick_count {
@@ -322,7 +323,7 @@ impl FlightController {
         Vector4df32::default()
     }
 
-    pub fn update_setpoints(&mut self, controls: RadioControlMessage) {
+    pub fn update_setpoints(&mut self, controls: FlightControlMessage) {
         //detect_crash_or_spin();
 
         self.set_stabilization_mode(controls.stabilization_mode);
@@ -388,9 +389,8 @@ impl FlightController {
         // Angle Mode is used if the control_mode is set to angle mode, or failsafe is on.
         // Angle Mode is prevented when in Ground Mode, so the aircraft doesn't try and self-level while it is still on the ground.
         // This value is cached here, to avoid evaluating a reasonably complex condition in update_outputs_using_pids()
-        self.use_angle_mode =
-            (self.stabilization_mode >= RadioControlMessage::STABILIZATION_MODE_ANGLE) && !self.ground_mode;
-        self.use_level_race_mode = (self.stabilization_mode == RadioControlMessage::STABILIZATION_MODE_LEVEL_RACE)
+        self.use_angle_mode = (self.stabilization_mode >= RcModes::STABILIZATION_MODE_ANGLE) && !self.ground_mode;
+        self.use_level_race_mode = (self.stabilization_mode == RcModes::STABILIZATION_MODE_LEVEL_RACE)
             || (self.flight_mode_config.level_race_mode != 0);
     }
 }
