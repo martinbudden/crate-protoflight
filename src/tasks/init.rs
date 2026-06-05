@@ -6,14 +6,15 @@ use crate::flight::{FlightControlMessage, FlightController, ImuFilterBank, RcAdj
 
 #[allow(unused)]
 use crate::tasks::gyro_pid_task::{gyro_pid_receiver, setpoint_receiver};
-#[allow(unused)]
-use crate::tasks::non_volatile_storage as nvs;
 use crate::tasks::{
     flight_control_task::{FlightControlContext, flight_control_receiver, flight_control_sender, flight_control_task},
     gyro_pid_task::{GyroPidContext, gyro_pid_sender, gyro_pid_task, setpoint_sender},
     imu_task::{ImuContext, imu_task},
     motor_mixer_task::{MotorMixerContext, motor_mixer_task},
 };
+
+#[cfg(feature = "serde")]
+use crate::tasks::non_volatile_storage as nvs;
 
 #[cfg(feature = "autopilot")]
 use crate::{
@@ -62,11 +63,12 @@ use motor_mixers::{MotorMixerCommon, MotorMixerQuadXPwm};
 use radio_controllers::{Rates, RcModes};
 use sensor_fusion::MadgwickFilterf32;
 
-use embedded_storage_async::nor_flash::NorFlash;
-use sequential_storage::{
+#[cfg(feature = "serde")]
+use {embedded_storage_async::nor_flash::NorFlash,
+sequential_storage::{
     cache::NoCache,
     map::{MapConfig, MapStorage},
-};
+}};
 
 use static_cell::StaticCell;
 
@@ -111,8 +113,8 @@ fn init_flash_driver(
     Flash::new(p.FLASH, p.DMA_CH0, FLASH_SIZE_BYTES)
 }
 
-#[allow(unused)]
-pub async fn load_system_configs_task<F>(flash: &mut F, flash_range: core::ops::Range<u32>)
+#[cfg(feature = "serde")]
+pub async fn _load_system_configs_task<F>(flash: &mut F, flash_range: core::ops::Range<u32>)
 where
     F: NorFlash,
 {

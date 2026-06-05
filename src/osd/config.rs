@@ -1,5 +1,6 @@
 #![cfg(feature = "osd")]
 
+#[cfg(feature = "serde")]
 use {
     sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
@@ -10,7 +11,8 @@ use crate::{
     osd::{Osd, elements::OsdElements},
 };
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct OsdConfig {
     pub profile: [[u8; Osd::PROFILE_COUNT]; Osd::PROFILE_NAME_LENGTH + 2], // extra byte for zero terminator and extra byte to even-align
     pub rc_channels: [i8; Osd::RC_CHANNELS_COUNT],                         // RC channel values to display, -1 if none
@@ -60,6 +62,9 @@ pub struct OsdConfig {
     pub osd_use_quick_menu: u8,
     pub osd_show_spec_prearm: u8,
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for OsdConfig {}
 
 impl OsdConfig {
     pub const fn new() -> Self {
@@ -117,15 +122,14 @@ impl OsdConfig {
     }
 }
 
-impl PostcardValue<'_> for OsdConfig {}
-
 impl Default for OsdConfig {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct OsdStatsConfig {
     pub total_flights: u32,
     pub total_time_s: u32,
@@ -134,6 +138,9 @@ pub struct OsdStatsConfig {
     pub min_armed_time_s: i8,
     pub save_move_limit: u8, // gyro rate limit for saving stats upon disarm
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for OsdStatsConfig {}
 
 impl OsdStatsConfig {
     pub const fn new() -> Self {
@@ -148,27 +155,27 @@ impl OsdStatsConfig {
     }
 }
 
-impl PostcardValue<'_> for OsdStatsConfig {}
-
 impl Default for OsdStatsConfig {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 /// Osd Elements configuration array: 2 bits for type, 2 bits for profile, 6 bits for y, 6 bits for x.
 pub struct OsdElementsConfig {
     pub positions: [u16; OsdElements::COUNT],
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for OsdElementsConfig {}
 
 impl OsdElementsConfig {
     pub const fn new() -> Self {
         Self { positions: [0u16; OsdElements::COUNT] }
     }
 }
-
-impl PostcardValue<'_> for OsdElementsConfig {}
 
 impl Default for OsdElementsConfig {
     fn default() -> Self {
@@ -182,15 +189,19 @@ mod tests {
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+#[cfg(feature = "serde")]
     fn is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
         is_full::<OsdConfig>();
+#[cfg(feature = "serde")]
         is_config::<OsdConfig>();
         is_full::<OsdStatsConfig>();
+#[cfg(feature = "serde")]
         is_config::<OsdStatsConfig>();
         is_full::<OsdElementsConfig>();
+#[cfg(feature = "serde")]
         is_config::<OsdElementsConfig>();
     }
     #[test]

@@ -1,4 +1,5 @@
 use radio_controllers::{Rates, RatesConfig, RcModes, RcModesArray};
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use stream_buf::{StreamBufReader, StreamBufWriter};
 use vqm::{Quaternion, Vector3di16};
@@ -50,7 +51,8 @@ impl MspSensorData {
     }
 }
 /// MSP configurator. Reads and writes data in Betaflight MSP-compatible format.
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Msp {
     pub version: u8,
 }

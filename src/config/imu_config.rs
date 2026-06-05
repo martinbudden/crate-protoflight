@@ -1,9 +1,11 @@
+#[cfg(feature = "serde")]
 use {
     sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
 };
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ImuConfig {
     // DCM filter proportional gain ( x 10000)
     pub imu_dcm_kp_x1e4: u16,
@@ -14,6 +16,9 @@ pub struct ImuConfig {
     // Magnetic declination in degrees * 10
     pub mag_declination_degrees_x10: i16,
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for ImuConfig {}
 
 impl ImuConfig {
     pub const fn new() -> Self {
@@ -27,8 +32,6 @@ impl ImuConfig {
     }
 }
 
-impl PostcardValue<'_> for ImuConfig {}
-
 impl Default for ImuConfig {
     fn default() -> Self {
         Self::new()
@@ -40,11 +43,13 @@ mod tests {
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+#[cfg(feature = "serde")]
     fn is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
         is_full::<ImuConfig>();
+#[cfg(feature = "serde")]
         is_config::<ImuConfig>();
     }
     #[test]

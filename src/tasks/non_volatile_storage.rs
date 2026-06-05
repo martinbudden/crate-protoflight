@@ -1,4 +1,6 @@
+#![cfg(feature = "serde")]
 #![allow(unused)]
+
 use blackbox_logger::BlackboxConfig;
 use radio_controllers::RatesConfig;
 extern crate paste;

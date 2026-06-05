@@ -4,7 +4,8 @@ use {
     serde::{Deserialize, Serialize},
 };
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct PidConfig {
     pub kp: u8, // proportional gain
     pub ki: u8, // integral gain
@@ -12,6 +13,9 @@ pub struct PidConfig {
     pub ks: u8, // setpoint gain
     pub kk: u8, // setpoint derivative gain ('kick')
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for PidConfig {}
 
 impl PidConfig {
     pub const fn new() -> Self {
@@ -22,15 +26,14 @@ impl PidConfig {
     }
 }
 
-impl PostcardValue<'_> for PidConfig {}
-
 impl Default for PidConfig {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct PidConfigs {
     pub roll_rate: PidConfig,
     pub pitch_rate: PidConfig,
@@ -60,7 +63,8 @@ impl Default for PidConfigs {
 
 /// Configuration data for the flight controller filters.
 /// These the dterm filters, the output filters, and the RC smoothing filters.
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct FlightControllerFiltersConfig {
     //enum { PT1 : 0, BIQUAD, PT2, PT3 }
     pub dterm_lpf1_hz: u16,
@@ -77,6 +81,9 @@ pub struct FlightControllerFiltersConfig {
     pub output_lpf_hz: u16,
     pub rc_smoothing_feedforward_cutoff: u8,
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for FlightControllerFiltersConfig {}
 
 impl FlightControllerFiltersConfig {
     pub const PT1: u8 = 0;
@@ -101,26 +108,26 @@ impl FlightControllerFiltersConfig {
     }
 }
 
-impl PostcardValue<'_> for FlightControllerFiltersConfig {}
-
 impl Default for FlightControllerFiltersConfig {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct FlightModeConfig {
     pub level_race_mode: u8, // aka "NFE(not fast enough) race mode": angle mode on roll, acro mode on pitch
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for FlightModeConfig {}
 
 impl FlightModeConfig {
     pub const fn new() -> Self {
         Self { level_race_mode: 0 }
     }
 }
-
-impl PostcardValue<'_> for FlightModeConfig {}
 
 impl Default for FlightModeConfig {
     fn default() -> Self {
@@ -130,7 +137,8 @@ impl Default for FlightModeConfig {
 
 /// Configuration data for Throttle PID Attenuation (TPA),
 /// Allows dynamic adjustment of the PID gains according to the throttle value.
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct TpaConfig {
     pub mode: u8,
     pub rate: u8,
@@ -139,6 +147,9 @@ pub struct TpaConfig {
     pub low_always: u8,
     pub low_breakpoint: u16,
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for TpaConfig {}
 
 impl TpaConfig {
     pub const TPA_MODE_P: u8 = 0;
@@ -150,20 +161,22 @@ impl TpaConfig {
     }
 }
 
-impl PostcardValue<'_> for TpaConfig {}
-
 impl Default for TpaConfig {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct AntiGravityConfig {
     pub cutoff_hz: u8,
     pub p_gain: u8,
     pub i_gain: u8,
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for AntiGravityConfig {}
 
 impl AntiGravityConfig {
     pub const fn new() -> Self {
@@ -171,20 +184,22 @@ impl AntiGravityConfig {
     }
 }
 
-impl PostcardValue<'_> for AntiGravityConfig {}
-
 impl Default for AntiGravityConfig {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct CrashFlipConfig {
     pub motor_percent: u8,
     pub rate: u8,
     pub auto_rearm: u8,
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for CrashFlipConfig {}
 
 impl CrashFlipConfig {
     pub const fn new() -> Self {
@@ -192,19 +207,21 @@ impl CrashFlipConfig {
     }
 }
 
-impl PostcardValue<'_> for CrashFlipConfig {}
-
 impl Default for CrashFlipConfig {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct YawSpinRecoveryConfig {
     pub yaw_spin_threshold: i16,
     pub yaw_spin_recovery: u8,
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for YawSpinRecoveryConfig {}
 
 impl YawSpinRecoveryConfig {
     pub const RECOVERY_OFF: u8 = 0;
@@ -216,15 +233,14 @@ impl YawSpinRecoveryConfig {
     }
 }
 
-impl PostcardValue<'_> for YawSpinRecoveryConfig {}
-
 impl Default for YawSpinRecoveryConfig {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct CrashRecoveryConfig {
     pub d_threshold: u16,        // dterm crash value
     pub g_threshold: u16,        // gyro crash value
@@ -236,6 +252,9 @@ pub struct CrashRecoveryConfig {
     pub recovery_rate: u8,       // degrees per second
     pub recovery: u8,            // off, on, on and beeps when it is in crash recovery mode
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for CrashRecoveryConfig {}
 
 impl CrashRecoveryConfig {
     pub const fn new() -> Self {
@@ -253,21 +272,23 @@ impl CrashRecoveryConfig {
     }
 }
 
-impl PostcardValue<'_> for CrashRecoveryConfig {}
-
 impl Default for CrashRecoveryConfig {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ItermRelaxConfig {
     pub relax_type: u8,                   // not used
     pub relax: u8,                        // Enable iterm suppression during stick input
     pub relax_setpoint_threshold_dps: u8, // Full iterm suppression once setpoint has exceeded this value (degrees per second)
     pub relax_cutoff: u8, // Cutoff frequency used by low pass filter which predicts average response of the quad to setpoint
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for ItermRelaxConfig {}
 
 impl ItermRelaxConfig {
     #[allow(unused)]
@@ -278,20 +299,22 @@ impl ItermRelaxConfig {
     }
 }
 
-impl PostcardValue<'_> for ItermRelaxConfig {}
-
 impl Default for ItermRelaxConfig {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct DMaxConfig {
     pub d_max: [u8; 2], // Maximum D value on each axis
     pub gain: u8,       // gain factor for amount of gyro / setpoint activity required to boost D
     pub advance: u8,    // percentage multiplier for setpoint
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for DMaxConfig {}
 
 impl DMaxConfig {
     pub const fn new() -> Self {
@@ -299,15 +322,14 @@ impl DMaxConfig {
     }
 }
 
-impl PostcardValue<'_> for DMaxConfig {}
-
 impl Default for DMaxConfig {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct GyroConfig {
     pub gyro_movement_calibration_threshold: u8, // people keep forgetting that moving model while init results in wrong gyro offsets. and then they never reset gyro. so this is now on by default.
     pub gyro_hardware_lpf: u8,                   // gyro DLPF setting
@@ -344,6 +366,9 @@ pub struct GyroConfig {
 
     pub gyro_enabled_bitmask: u8,
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for GyroConfig {}
 
 impl GyroConfig {
     pub const fn new() -> Self {
@@ -386,8 +411,6 @@ impl GyroConfig {
     }
 }
 
-impl PostcardValue<'_> for GyroConfig {}
-
 impl Default for GyroConfig {
     fn default() -> Self {
         Self::new()
@@ -400,6 +423,7 @@ mod tests {
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+#[cfg(feature = "serde")]
     fn is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
@@ -416,16 +440,27 @@ mod tests {
         is_full::<ItermRelaxConfig>();
         is_full::<DMaxConfig>();
 
+#[cfg(feature = "serde")]
         is_config::<PidConfig>();
+#[cfg(feature = "serde")]
         is_config::<FlightControllerFiltersConfig>();
+#[cfg(feature = "serde")]
         is_config::<FlightModeConfig>();
+#[cfg(feature = "serde")]
         is_config::<TpaConfig>();
+#[cfg(feature = "serde")]
         is_config::<CrashFlipConfig>();
+#[cfg(feature = "serde")]
         is_config::<AntiGravityConfig>();
+#[cfg(feature = "serde")]
         is_config::<CrashFlipConfig>();
+#[cfg(feature = "serde")]
         is_config::<YawSpinRecoveryConfig>();
+#[cfg(feature = "serde")]
         is_config::<CrashRecoveryConfig>();
+#[cfg(feature = "serde")]
         is_config::<ItermRelaxConfig>();
+#[cfg(feature = "serde")]
         is_config::<DMaxConfig>();
     }
     #[test]

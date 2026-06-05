@@ -22,7 +22,8 @@ impl AutopilotYawMode {
     pub const DAMPENER: u8 = 4; // Wing: yaw rate damper (coordinated turns)
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct AutopilotConfig {
     pub landing_altitude_m: u8, // altitude below which landing behaviors can change, metres
     pub hover_throttle: u16,    // value used at the start of a rescue or position hold
@@ -89,6 +90,9 @@ pub struct AutopilotConfig {
     pub geofence_action: u8,
 }
 
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for AutopilotConfig {}
+
 impl AutopilotConfig {
     pub const fn new() -> Self {
         Self {
@@ -149,8 +153,6 @@ impl AutopilotConfig {
     }
 }
 
-impl PostcardValue<'_> for AutopilotConfig {}
-
 impl Default for AutopilotConfig {
     fn default() -> Self {
         Self::new()
@@ -195,7 +197,9 @@ mod tests {
     fn normal_types() {
         is_full::<AutopilotConfig>();
         is_full::<PositionHoldConfig>();
+#[cfg(feature = "serde")]
         is_config::<AutopilotConfig>();
+#[cfg(feature = "serde")]
         is_config::<PositionHoldConfig>();
     }
     #[test]

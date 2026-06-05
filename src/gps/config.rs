@@ -1,11 +1,13 @@
 #![cfg(feature = "gps")]
-#![allow(unused)]
+
+#[cfg(feature = "serde")]
 use {
     sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
 };
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct GpsConfig {
     pub provider: u8,
     pub sbas_mode: u8,
@@ -20,6 +22,9 @@ pub struct GpsConfig {
     pub sbas_integrity: u8,
     pub gps_ublox_utc_standard: u8,
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for GpsConfig {}
 
 impl GpsConfig {
     pub const fn new() -> Self {
@@ -40,15 +45,14 @@ impl GpsConfig {
     }
 }
 
-impl PostcardValue<'_> for GpsConfig {}
-
 impl Default for GpsConfig {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct GpsRescueConfig {
     pub max_rescue_angle_degrees: u16,
     pub return_altitude_m: u16,
@@ -73,6 +77,7 @@ pub struct GpsRescueConfig {
     pub imu_yaw_gain: u8,
 }
 
+#[allow(unused)]
 impl GpsRescueConfig {
     const SANITY_OFF: u8 = 0;
     const SANITY_ON: u8 = 1;

@@ -1,4 +1,4 @@
-#![allow(unused)]
+#[cfg(feature = "serde")]
 use {
     sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
@@ -6,6 +6,8 @@ use {
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct BatteryState {}
+
+#[allow(unused)]
 impl BatteryState {
     pub const OK: u8 = 0;
     pub const WARNING: u8 = 1;
@@ -14,7 +16,8 @@ impl BatteryState {
     pub const INIT: u8 = 4;
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct BatteryConfig {
     pub vbat_not_present_cell_voltage: u16, // Between vbat_max_cell_voltage and 2*this is considered to be USB powered. Below this it is not present
     pub lvc_percentage: u8,                 // Percentage of throttle when lvc is triggered
@@ -33,6 +36,9 @@ pub struct BatteryConfig {
     pub vbat_duration_for_warning: u8, // Period voltage has to sustain before the battery state is set to BATTERY_WARNING (in 0.1 s)
     pub vbat_duration_for_critical: u8, // Period voltage has to sustain before the battery state is set to BATTERY_CRIT (in 0.1 s)
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for BatteryConfig {}
 
 impl BatteryConfig {
     pub const fn new() -> Self {
@@ -56,8 +62,6 @@ impl BatteryConfig {
     }
 }
 
-impl PostcardValue<'_> for BatteryConfig {}
-
 impl Default for BatteryConfig {
     fn default() -> Self {
         Self::new()
@@ -70,12 +74,14 @@ mod tests {
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+    #[cfg(feature = "serde")]
     fn is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
         is_full::<BatteryState>();
         is_full::<BatteryConfig>();
+        #[cfg(feature = "serde")]
         is_config::<BatteryConfig>();
     }
     #[test]
