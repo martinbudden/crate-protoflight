@@ -1,9 +1,7 @@
 use crate::{
     flight::ArmingFlags,
     osd::{
-        OsdDrawContext,
-        elements::{OsdElement, OsdElements},
-        symbols::OsdSymbols,
+        OsdConfig, OsdDrawContext, elements::{OsdElement, OsdElements}, symbols::OsdSymbols
     },
     sensors::SensorFlags,
 };
@@ -294,7 +292,7 @@ impl OsdElements {
         match self.active_element.id {
             OsdElementId::Rssi => self.active_element.draw_rssi(),
             OsdElementId::MainBatteryVoltage => self.active_element.draw_battery(),
-            OsdElementId::ArtificialHorizon => self.active_element.draw_horizon(),
+            OsdElementId::ArtificialHorizon => self.active_element.draw_artificial_horizon(),
             OsdElementId::PitchAngle => self.active_element.draw_pitch_angle(self.pitch_angle_degrees),
             OsdElementId::RollAngle => self.active_element.draw_roll_angle(self.roll_angle_degrees),
             OsdElementId::Altitude => self.active_element.draw_altitude(),
@@ -315,9 +313,6 @@ impl OsdElement {
         true
     }
     fn draw_battery(&mut self) -> bool {
-        true
-    }
-    fn draw_horizon(&mut self) -> bool {
         true
     }
     fn draw_disarmed(&mut self, draw_context: &OsdDrawContext) -> bool {
@@ -361,6 +356,49 @@ impl OsdElement {
         self.buf[3] = 0;
         true
     }
+
+    fn draw_artificial_horizon(&mut self) -> bool {
+        const AH_SYMBOL_COUNT:i32 = 9;
+        let osd_config = OsdConfig::new();
+        // Get pitch and roll limits in tenths of degrees
+        let max_pitch = i32::from(osd_config.ah_max_pitch * 10);
+        let max_roll = i32::from(osd_config.ah_max_roll * 10);
+        let ah_sign =  if osd_config.ah_invert ==0  { 1 } else { -1 };
+        let roll = 0;
+        let pitch = 0;
+        let roll_angle = (roll * ah_sign).clamp(-max_roll, max_roll);
+        let mut pitch_angle = (pitch * ah_sign).clamp( -max_pitch, max_pitch);
+        // Convert pitchAngle to y compensation value
+        // (max_pitch / 25) divisor matches previous settings of fixed divisor of 8 and fixed max AHI pitch angle of 20.0 degrees
+        if max_pitch > 0 {
+            pitch_angle = (pitch_angle * 25) / max_pitch;
+        }
+        pitch_angle -= 4 * AH_SYMBOL_COUNT + 5;
+
+        let y :i32 = (-roll_angle * self.horizon_x) / 64 - pitch_angle;
+        #[allow(clippy::cast_possible_truncation)]
+        if (0..=81).contains(&y) {
+            self.offset_x = self.horizon_x.cast_unsigned() as u8;
+            self.offset_y = (y / AH_SYMBOL_COUNT).cast_unsigned() as u8;
+
+            self.buf[0] = OsdSymbols::AH_BAR9_0 + (y % AH_SYMBOL_COUNT).cast_unsigned() as u8;
+            self.draw_element = true;
+        } else {
+            self.draw_element = false;  // element does not need to be rendered
+        }
+
+        if self.horizon_x == 4 {
+            // Rendering is complete, so prepare to start again
+            self.horizon_x = -4;
+        } else {
+            // Rendering not yet complete
+            self.rendered = false;
+            self.horizon_x +=1;
+        }
+        self.draw_element
+    }
+
+
 }
 
 impl OsdElements {

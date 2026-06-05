@@ -37,6 +37,7 @@ pub struct OsdElement {
     pub attr: u8,
     pub rendered: bool,
     pub draw_element: bool,
+    pub horizon_x: i32,
 }
 
 impl OsdElement {
@@ -54,6 +55,7 @@ impl OsdElement {
             attr: 0,
             rendered: false,
             draw_element: false,
+            horizon_x: -4,
         }
     }
 }
@@ -427,6 +429,7 @@ impl OsdElements {
             attr: DisplayPortSeverity::Normal as u8,
             rendered: true,
             draw_element: true,
+            horizon_x: -4,
         };
 
         // TODO: need to check drawing of SYS elements
@@ -453,6 +456,7 @@ impl OsdElements {
             attr: DisplayPortSeverity::Normal as u8,
             rendered: true,
             draw_element: true,
+            horizon_x: -4,
         };
 
         if self.draw_element_background(draw_context) {
