@@ -1,6 +1,8 @@
 #![doc = include_str!("README.md")]
 
+mod arming;
 mod configuration;
+mod features;
 mod flight_control_message;
 mod flight_controller;
 mod flight_controller_config;
@@ -9,11 +11,14 @@ mod rc_adjustments;
 mod vehicle_control;
 mod vehicle_controller;
 
+#[allow(unused)]
+pub use arming::{ArmingConfig, ArmingFlags};
+pub use features::FeatureConfig;
 pub use flight_control_message::FlightControlMessage;
 pub use flight_controller::FlightController;
 pub use flight_controller_config::{
-    AntiGravityConfig, ArmingConfig, CrashFlipConfig, CrashRecoveryConfig, DMaxConfig, FeatureConfig,
-    FlightControllerFiltersConfig, FlightModeConfig, GyroConfig, PidConfig, TpaConfig, YawSpinRecoveryConfig,
+    AntiGravityConfig, CrashFlipConfig, CrashRecoveryConfig, DMaxConfig, FlightControllerFiltersConfig,
+    FlightModeConfig, GyroConfig, PidConfig, TpaConfig, YawSpinRecoveryConfig,
 };
 pub use imu_filters::{FilterAccGyro, ImuFilterBank, ImuFilterBankConfig};
 pub use rc_adjustments::RcAdjustments;

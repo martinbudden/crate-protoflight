@@ -26,17 +26,19 @@ rustc_version = "0.4.1"
 autopilot = []
 barometer = []
 blackbox = []
+cms = []
 dashboard = []
 gps = []
 multicore = []
 msp = []
 osd = []
+osd_hd = []
 rangefinder = []
 rpm_filters = []
 vtx = []
 
 #default = ["std", "libm"]
-default = ["std", "libm", "blackbox", "osd", "rpm_filters", "barometer", "gps", "msp", "autopilot", "rangefinder"]
+default = ["std", "libm", "blackbox", "osd", "rpm_filters", "barometer", "gps", "msp", "autopilot", "rangefinder", "serde"]
 #default = ["std", "libm", "blackbox", "rpm_filters", "barometer", "msp", "autopilot"]
 #default = ["rp2350", "blackbox", "libm", "osd"]
 libm = ["dep:libm", "vqm/libm", "signal-filters/libm", "pidsk-controller/libm", "radio-controllers/libm"]
@@ -60,6 +62,8 @@ embassy-executor = { version = "0.10.0", features = ["executor-thread"] }
 #embassy-executor = { version = "0.10.0", features = ["platform-cortex-m", "executor-thread"] }#"task-arena-size-32768",
 #embassy-rp = { version = "0.10.0", features = ["time-driver", "critical-section-impl"] }
 
+# Ensure both default-features are false (for no_std) AND the derive feature is active
+strum = { version = "0.28,0", default-features = false, features = ["derive"] }
 derive_more = { version = "2.1.1", features = ["display"] }
 num-traits = { version = "0.2.19", default-features = false }
 simple-bitset = "0.1.0"
@@ -81,9 +85,9 @@ motor-mixers = { path = "../motor-mixers", features = ["serde"] }
 #radio-controllers = { version = "0.1.5", features = ["serde"] }
 #radio-controllers = { git = "https://github.com/martinbudden/crate-radio-controllers", features = ["serde"] }
 radio-controllers = { path = "../radio-controllers", features = ["serde"] }
-blackbox-logger = { version = "0.1.6", features = ["serde"] }
+#blackbox-logger = { version = "0.1.6", features = ["serde"] }
 #blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger", features = ["serde"] }
-#blackbox-logger = { path = "../blackbox-logger", features = ["serde"]  }
+blackbox-logger = { path = "../blackbox-logger", features = ["serde"]  }
 imu-sensors = { version = "0.1.2", features = ["serde"] }
 #imu-sensors = { git = "https://github.com/martinbudden/crate-imu-sensors", features = ["serde"] }
 #imu-sensors = { path = "../imu-sensors", features = ["serde"] }

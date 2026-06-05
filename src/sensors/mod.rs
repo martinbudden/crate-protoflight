@@ -2,10 +2,13 @@
 
 mod barometer;
 mod battery;
+mod config;
 mod rangefinder;
+
+pub use battery::BatteryConfig;
+pub use config::SensorConfig;
 
 #[cfg(feature = "barometer")]
 pub use barometer::BarometerData;
-pub use battery::BatteryConfig;
 #[cfg(feature = "rangefinder")]
 pub use rangefinder::RangefinderData;

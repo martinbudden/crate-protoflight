@@ -104,6 +104,7 @@ impl Msp {
             Msp::FAILSAFE_CONFIG => Self::failsafe_config(dst).await,
             Msp::ADVANCED_CONFIG => Self::advanced_config(dst).await,
             Msp::FILTER_CONFIG => Self::filter_config(dst).await,
+            Msp::STATUS => Self::status(dst).await,
             Msp::RAW_IMU => Self::raw_imu(dst, sensor_data),
             Msp::RC => Self::rc(dst).await,
             #[cfg(feature = "barometer")]
@@ -755,6 +756,21 @@ impl Msp {
             global_config.imu_filter_bank = imu_filters;
             publisher.publish(ConfigItem::ImuFilters(imu_filters)).await;
         }
+
+        MspResult::Ack
+    }
+
+    // TODO: MSP status placeholder
+    async fn status(dst: &mut StreamBufWriter<'_>) -> MspResult {
+        let (sensors, pid_profile) = {
+            let global_config = GLOBAL_CONFIG.lock().await;
+            (global_config.sensors, global_config.pid_profile)
+        };
+        dst.write_u16(0); // pid task delta time
+        dst.write_u16(0); // I2C error counter
+        dst.write_u16(sensors.flags()); // sensors
+        dst.write_u32(0); // flightmode flags
+        dst.write_u8(pid_profile.profile);
 
         MspResult::Ack
     }

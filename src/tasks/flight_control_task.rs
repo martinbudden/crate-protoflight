@@ -22,7 +22,8 @@ pub fn flight_control_sender() -> FlightControlSender {
     FLIGHT_CONTROL_WATCH.sender()
 }
 
-pub type FlightControlReceiver = Receiver<'static, CriticalSectionRawMutex, FlightControlMessage, FLIGHT_CONTROL_WATCH_COUNT>;
+pub type FlightControlReceiver =
+    Receiver<'static, CriticalSectionRawMutex, FlightControlMessage, FLIGHT_CONTROL_WATCH_COUNT>;
 pub fn flight_control_receiver() -> FlightControlReceiver {
     FLIGHT_CONTROL_WATCH.receiver().expect("flight control receiver failed")
 }

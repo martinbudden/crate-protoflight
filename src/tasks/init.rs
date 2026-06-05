@@ -1,4 +1,3 @@
-//#![allow(unused)]
 use crate::config::{
     GLOBAL_CONFIG, config_publisher, config_subscriber, fast_config_publisher, fast_config_subscriber,
 };
@@ -68,7 +67,8 @@ use sequential_storage::{
     cache::NoCache,
     map::{MapConfig, MapStorage},
 };
-//use sequential_storage::map::SerializationError;
+
+use static_cell::StaticCell;
 
 use embassy_executor::Spawner;
 #[cfg(feature = "multicore")]
@@ -130,25 +130,25 @@ pub async fn init(spawner: Spawner) {
     // ****
     // Statically allocate the task contexts.
     // ****
-    static IMU_CTX: static_cell::StaticCell<ImuContext> = static_cell::StaticCell::new();
-    static GYRO_PID_CTX: static_cell::StaticCell<GyroPidContext> = static_cell::StaticCell::new();
-    static FLIGHT_CONTROL_CTX: static_cell::StaticCell<FlightControlContext> = static_cell::StaticCell::new();
-    static MOTOR_MIXER_CTX: static_cell::StaticCell<MotorMixerContext> = static_cell::StaticCell::new();
+    static IMU_CTX: StaticCell<ImuContext> = StaticCell::new();
+    static GYRO_PID_CTX: StaticCell<GyroPidContext> = StaticCell::new();
+    static FLIGHT_CONTROL_CTX: StaticCell<FlightControlContext> = StaticCell::new();
+    static MOTOR_MIXER_CTX: StaticCell<MotorMixerContext> = StaticCell::new();
 
     #[cfg(feature = "autopilot")]
-    static AUTOPILOT_CTX: static_cell::StaticCell<AutopilotContext> = static_cell::StaticCell::new();
+    static AUTOPILOT_CTX: StaticCell<AutopilotContext> = StaticCell::new();
     #[cfg(feature = "barometer")]
-    static BAROMETER_CTX: static_cell::StaticCell<BarometerContext> = static_cell::StaticCell::new();
+    static BAROMETER_CTX: StaticCell<BarometerContext> = StaticCell::new();
     #[cfg(feature = "blackbox")]
-    static BLACKBOX_CTX: static_cell::StaticCell<BlackboxContext> = static_cell::StaticCell::new();
+    static BLACKBOX_CTX: StaticCell<BlackboxContext> = StaticCell::new();
     #[cfg(feature = "gps")]
-    static GPS_CTX: static_cell::StaticCell<GpsContext> = static_cell::StaticCell::new();
+    static GPS_CTX: StaticCell<GpsContext> = StaticCell::new();
     #[cfg(feature = "msp")]
-    static MSP_CTX: static_cell::StaticCell<MspContext> = static_cell::StaticCell::new();
+    static MSP_CTX: StaticCell<MspContext> = StaticCell::new();
     #[cfg(feature = "osd")]
-    static OSD_CTX: static_cell::StaticCell<OsdContext> = static_cell::StaticCell::new();
+    static OSD_CTX: StaticCell<OsdContext> = StaticCell::new();
     #[cfg(feature = "rangefinder")]
-    static RANGEFINDER_CTX: static_cell::StaticCell<RangefinderContext> = static_cell::StaticCell::new();
+    static RANGEFINDER_CTX: StaticCell<RangefinderContext> = StaticCell::new();
 
     /*#[cfg(not(target_arch = "arm"))]
     let config_flash_range = 0..1024 * 1024; // Full 1MB simulated range for PC tests
@@ -229,7 +229,7 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "blackbox")]
     let blackbox_ctx = {
         //nvs::load_blackbox_config(&mut config.blackbox, &mut flash_driver, config_flash_range.clone());
-        use crate::tasks::gyro_pid_task::gyro_pid_receiver;
+        use crate::{flight::FeatureConfig, tasks::gyro_pid_task::gyro_pid_receiver};
         use blackbox_logger::SetpointMessage;
         config.blackbox.fields_disabled_mask = FieldSelect::PID_STERM_ROLL
         | FieldSelect::PID_STERM_PITCH
@@ -246,7 +246,9 @@ pub async fn init(spawner: Spawner) {
         | FieldSelect::RANGEFINDER
         | FieldSelect::ATTITUDE
         | FieldSelect::MAGNETOMETER;
-        let mut blackbox = Blackbox::new(config.blackbox);
+
+        let features = FeatureConfig::INFLIGHT_ACC_CAL | FeatureConfig::RX_SERIAL | FeatureConfig::RSSI_ADC;
+        let mut blackbox = Blackbox::new(config.blackbox, features);
         blackbox.init();
         BLACKBOX_CTX.init(BlackboxContext {
             gyro_pid_receiver: gyro_pid_receiver(),
@@ -287,6 +289,10 @@ pub async fn init(spawner: Spawner) {
     let osd_ctx = OSD_CTX.init(OsdContext {
         gyro_pid_receiver: gyro_pid_receiver(),
         setpoint_receiver: setpoint_receiver(),
+        #[cfg(feature = "barometer")]
+        barometer_data_subscriber: barometer_data_subscriber(),
+        #[cfg(feature = "gps")]
+        gps_data_subscriber: gps_data_subscriber(),
         osd: Osd::new(),
     });
 

@@ -14,7 +14,7 @@ use crate::flight::{
     AntiGravityConfig, ArmingConfig, CrashFlipConfig, CrashRecoveryConfig, DMaxConfig, FeatureConfig,
     FlightControllerFiltersConfig, GyroConfig, ImuFilterBankConfig, PidConfig, TpaConfig, YawSpinRecoveryConfig,
 };
-use crate::sensors::BatteryConfig;
+use crate::sensors::{BatteryConfig, SensorConfig};
 
 #[cfg(feature = "gps")]
 use crate::gps::{GpsConfig, GpsRescueConfig};
@@ -155,7 +155,9 @@ macro_rules! define_configs {
             }
         }
 
-        #[derive(serde::Serialize, serde::Deserialize, Clone, Copy, Debug, PartialEq)]
+        #[allow(unused)]
+        #[derive(Clone, Copy, Debug, PartialEq)]
+        #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         pub enum ConfigItem {
             $(
                 $(#[$g_meta])*
@@ -163,7 +165,9 @@ macro_rules! define_configs {
             ),*
         }
 
-        #[derive(serde::Serialize, serde::Deserialize, Clone, Copy, Debug, PartialEq)]
+        #[allow(unused)]
+        #[derive(Clone, Copy, Debug, PartialEq)]
+        #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         pub enum FastConfigItem {
             $(
                 $(#[$p_meta])*
@@ -202,6 +206,7 @@ define_configs!(
         (PositionHold, position_hold, PositionHoldConfig),
         (Battery, battery, BatteryConfig),
         (Imu, imu, ImuConfig),
+        (Sensors, sensors, SensorConfig),
 
         #[cfg(feature = "blackbox")]
         (Blackbox, blackbox, BlackboxConfig),

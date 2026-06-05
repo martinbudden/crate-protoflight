@@ -1,5 +1,3 @@
-#![cfg(feature = "osd")]
-
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal};
 use log::info;
 use rand::RngExt;

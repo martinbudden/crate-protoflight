@@ -121,8 +121,6 @@ checksum = "2c61cd05405eb1d0f3a4660f802bad76ece84b6e722426342ba5dd511f724e97"
 [[package]]
 name = "blackbox-logger"
 version = "0.1.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bea5e3f57d781c4343c8d7e31d146d4695a33516ff30bb30ac8769a3f7099c94"
 dependencies = [
  "embassy-executor",
  "embassy-futures",
@@ -1057,6 +1055,7 @@ dependencies = [
  "simple-bitset",
  "static_cell",
  "stream-buf",
+ "strum",
  "vqm",
 ]
 
@@ -1341,6 +1340,9 @@ name = "strum"
 version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9628de9b8791db39ceda2b119bbe13134770b56c138ec1d3af810d045c04f9bd"
+dependencies = [
+ "strum_macros",
+]
 
 [[package]]
 name = "strum_macros"
