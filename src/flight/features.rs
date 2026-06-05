@@ -6,12 +6,12 @@ use {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct FeatureConfig {
-    pub features: u32,
+pub struct FeatureFlags {
+    flags: u32,
 }
 
 #[allow(unused)]
-impl FeatureConfig {
+impl FeatureFlags {
     pub const RX_PPM: u32 = 1 << 0;
     pub const INFLIGHT_ACC_CAL: u32 = 1 << 2;
     pub const RX_SERIAL: u32 = 1 << 3;
@@ -39,25 +39,29 @@ impl FeatureConfig {
     //pub const DYNAMIC_FILTER:u32 =1 << 29; (removed)
 
     pub const fn new() -> Self {
-        Self { features: Self::RX_SERIAL | Self::AIRMODE | Self::ANTI_GRAVITY }
+        Self { flags: Self::RX_SERIAL | Self::AIRMODE | Self::ANTI_GRAVITY }
     }
     pub fn set(&mut self, feature: u32) {
-        self.features |= feature;
+        self.flags |= feature;
     }
 
     pub fn is_set(self, feature: u32) -> bool {
-        self.features & feature != 0
+        self.flags & feature != 0
     }
 
-    pub fn features(self) -> u32 {
-        self.features
+    pub fn flags(self) -> u32 {
+        self.flags
+    }
+
+    pub fn set_flags(&mut self, flags: u32) {
+        self.flags = flags;
     }
 }
 
 #[cfg(feature = "serde")]
-impl PostcardValue<'_> for FeatureConfig {}
+impl PostcardValue<'_> for FeatureFlags {}
 
-impl Default for FeatureConfig {
+impl Default for FeatureFlags {
     fn default() -> Self {
         Self::new()
     }
@@ -74,9 +78,9 @@ mod tests {
 
     #[test]
     fn normal_types() {
-        is_full::<FeatureConfig>();
+        is_full::<FeatureFlags>();
 
         #[cfg(feature = "serde")]
-        is_config::<FeatureConfig>();
+        is_config::<FeatureFlags>();
     }
 }

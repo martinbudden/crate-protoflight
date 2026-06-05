@@ -195,11 +195,11 @@ impl Msp {
 
 impl Msp {
     async fn feature_config(dst: &mut StreamBufWriter<'_>) -> MspResult {
-        let config = {
+        let feature = {
             let global_config = GLOBAL_CONFIG.lock().await;
             global_config.features
         };
-        dst.write_u32(config.features);
+        dst.write_u32(feature.flags());
         MspResult::Ack
     }
     async fn set_feature_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {
@@ -208,12 +208,12 @@ impl Msp {
             return MspResult::Error;
         }
         let mut global_config = GLOBAL_CONFIG.lock().await;
-        let mut config = global_config.features;
+        let mut features = global_config.features;
 
-        config.features = src.read_u32();
-        if config != global_config.features {
-            global_config.features = config;
-            publisher.publish(ConfigItem::Features(config)).await;
+        features.set_flags(src.read_u32());
+        if features != global_config.features {
+            global_config.features = features;
+            publisher.publish(ConfigItem::Features(features)).await;
         }
         MspResult::Ack
     }

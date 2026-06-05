@@ -13,7 +13,7 @@ mod vehicle_controller;
 
 #[allow(unused)]
 pub use arming::{ArmingConfig, ArmingFlags};
-pub use features::FeatureConfig;
+pub use features::FeatureFlags;
 pub use flight_control_message::FlightControlMessage;
 pub use flight_controller::FlightController;
 pub use flight_controller_config::{

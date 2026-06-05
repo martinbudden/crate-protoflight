@@ -6,12 +6,12 @@ use {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct SensorConfig {
+pub struct SensorFlags {
     pub flags: u32,
 }
 
 #[allow(unused)]
-impl SensorConfig {
+impl SensorFlags {
     pub const GYRO: u32 = 1 << 0;
     pub const ACC: u32 = 1 << 1;
     pub const BAROMETER: u32 = 1 << 2;
@@ -23,7 +23,7 @@ impl SensorConfig {
     pub const OPTICAL_FLOW: u32 = 1 << 6;
 
     pub const fn new() -> Self {
-        Self { flags: SensorConfig::GYRO | SensorConfig::ACC }
+        Self { flags: SensorFlags::GYRO | SensorFlags::ACC }
     }
 
     pub fn set(&mut self, flag: u32) {
@@ -38,12 +38,16 @@ impl SensorConfig {
     pub fn flags(self) -> u16 {
         self.flags as u16
     }
+
+    pub fn set_flags(&mut self, flags: u32) {
+        self.flags = flags;
+    }
 }
 
 #[cfg(feature = "serde")]
-impl PostcardValue<'_> for SensorConfig {}
+impl PostcardValue<'_> for SensorFlags {}
 
-impl Default for SensorConfig {
+impl Default for SensorFlags {
     fn default() -> Self {
         Self::new()
     }
@@ -60,14 +64,14 @@ mod tests {
 
     #[test]
     fn normal_types() {
-        is_full::<SensorConfig>();
+        is_full::<SensorFlags>();
         #[cfg(feature = "serde")]
-        is_config::<SensorConfig>();
+        is_config::<SensorFlags>();
     }
     #[test]
     fn test_new() {
-        let features = SensorConfig::default();
-        assert!(features.is_set(SensorConfig::ACC));
-        assert!(features.is_set(SensorConfig::GYRO));
+        let features = SensorFlags::default();
+        assert!(features.is_set(SensorFlags::ACC));
+        assert!(features.is_set(SensorFlags::GYRO));
     }
 }

@@ -2,11 +2,11 @@
 
 mod barometer;
 mod battery;
-mod config;
 mod rangefinder;
+mod sensor_flags;
 
 pub use battery::BatteryConfig;
-pub use config::SensorConfig;
+pub use sensor_flags::SensorFlags;
 
 #[cfg(feature = "barometer")]
 pub use barometer::BarometerData;

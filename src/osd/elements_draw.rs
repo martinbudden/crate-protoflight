@@ -5,7 +5,7 @@ use crate::{
         elements::{OsdElement, OsdElements},
         symbols::OsdSymbols,
     },
-    sensors::SensorConfig,
+    sensors::SensorFlags,
 };
 use core::convert::TryFrom;
 use strum::EnumCount;
@@ -272,13 +272,13 @@ pub static OSD_ELEMENT_DISPLAY_ORDER: &[OsdElementId] = {
 // element drawing functions
 #[allow(unused)]
 impl OsdElements {
-    pub fn add_active_elements(&mut self, sensors: SensorConfig) {
+    pub fn add_active_elements(&mut self, sensors: SensorFlags) {
         for element in OSD_ELEMENT_DISPLAY_ORDER {
             self.add_active_element(*element);
         }
 
         #[cfg(feature = "gps")]
-        if sensors.is_set(SensorConfig::GPS) {
+        if sensors.is_set(SensorFlags::GPS) {
             self.add_active_element(OsdElementId::GpsSats);
             self.add_active_element(OsdElementId::GpsSpeed);
             self.add_active_element(OsdElementId::GpsLat);
