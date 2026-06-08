@@ -3,6 +3,7 @@
 mod display_port;
 mod display_port_max7456;
 mod display_port_mock;
+mod display_port_msp;
 
 pub use display_port::Display;
 pub use display_port::{

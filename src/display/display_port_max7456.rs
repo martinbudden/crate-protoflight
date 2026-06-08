@@ -2,7 +2,7 @@
 
 use embedded_hal_async::spi::SpiBus;
 
-use crate::display::{Display, DisplayClear, DisplayPort, DisplayPortLayer};
+use crate::display::{Display, DisplayClear, DisplayPort, DisplayPortDeviceType, DisplayPortLayer};
 use core::ops::Deref;
 
 const SPI_BUFFER_SIZE: usize = 512;
@@ -66,12 +66,11 @@ impl<SPI: SpiBus> DisplayPortMax7456<SPI> {
 
 #[allow(unused)]
 impl<SPI: SpiBus> DisplayPortMax7456<SPI> {
-    /// Creates a new MAX7456 OSD driver instance wrapping an Embassy SPI peripheral.
+    /// Create a new MAX7456 OSD driver instance wrapping an Embassy SPI peripheral.
     pub fn new(spi_device: SPI) -> Self {
         Self {
-            display_port: DisplayPort::new(),
+            display_port: DisplayPort::new(DisplayPortDeviceType::Max7456),
             shadow_buffer: [0u8; DisplayPort::VIDEO_BUFFER_PAL_CHARACTER_COUNT],
-            // This works perfectly because DisplayLayer derives 'Copy'
             display_layers: [DisplayLayer::new(); DisplayPort::LAYER_COUNT],
             buffer: [0u8; 32],
             spi_buffer: [0u8; SPI_BUFFER_SIZE],

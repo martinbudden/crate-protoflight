@@ -9,7 +9,7 @@ pub struct DisplayPortMock {
 
 impl DisplayPortMock {
     pub const fn new() -> Self {
-        Self { display_port: DisplayPort::new() }
+        Self { display_port: DisplayPort::new(super::DisplayPortDeviceType::Auto) }
     }
 }
 

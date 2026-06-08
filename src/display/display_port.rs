@@ -67,6 +67,9 @@ pub struct DisplayPort {
 }
 
 impl DisplayPort {
+    /// blink attribute bit.
+    pub const BLINK:u8 = 0x80; 
+
     pub const SMALL_ARROW_UP: u8 = b'^';
     pub const SMALL_ARROW_DOWN: u8 = b'v';
 
@@ -84,9 +87,9 @@ impl DisplayPort {
 }
 
 impl DisplayPort {
-    pub const fn new() -> Self {
+    pub const fn new(device_type: DisplayPortDeviceType) -> Self {
         Self {
-            device_type: DisplayPortDeviceType::None,
+            device_type,
             background_type: DisplayPortBackground::Transparent,
             active_layer: DisplayPortLayer::Foreground,
             max_screen_size: Self::VIDEO_LINES_PAL as u16 * Self::VIDEO_COLUMNS_SD as u16,
@@ -100,7 +103,7 @@ impl DisplayPort {
 
 impl Default for DisplayPort {
     fn default() -> Self {
-        Self::new()
+        Self::new(DisplayPortDeviceType::Auto)
     }
 }
 
@@ -153,7 +156,7 @@ pub trait Display {
     fn redraw(&self);
     fn heartbeat(&mut self) -> i32;
 
-    fn write_string(&mut self, x: u8, y: u8, s: &[u8], attr: u8) -> usize;
+    fn write_string(&mut self, x: u8, y: u8, text: &[u8], attr: u8) -> usize;
     fn write_char(&mut self, x: u8, y: u8, c: u8, attr: u8) -> usize;
     fn layer_supported(&self, layer: DisplayPortLayer) -> bool;
     fn layer_select(&mut self, layer: DisplayPortLayer);
