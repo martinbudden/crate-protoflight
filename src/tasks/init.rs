@@ -53,6 +53,27 @@ use crate::{
     tasks::osd_task::{OsdContext, osd_task},
 };
 
+#[cfg(feature = "max7456")]
+use crate::display::DisplayPortMax7456;
+
+#[cfg(not(feature = "max7456"))]
+use crate::display::DisplayPortMock;
+
+use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
+#[cfg(feature = "max7456")]
+use embedded_hal_async::spi::SpiBus;
+
+// --- 1. RASPBERRY PI RP2350 ARCHITECTURE CONFIGURATION ---
+#[cfg(all(feature = "max7456", feature = "rp2350"))]
+pub type ConcreteSpi = embassy_rp::spi::Spi<'static, embassy_rp::peripherals::SPI0, embassy_rp::spi::Async>;
+
+#[cfg(all(feature = "max7456", feature = "rp2350"))]
+pub type SharedDisplay = Mutex<CriticalSectionRawMutex, DisplayPortMax7456<&'static mut ConcreteSpi>>;
+
+// --- 2. HOST ARCHITECTURE TESTING / MOCK CONFIGURATION ---
+#[cfg(not(feature = "max7456"))]
+pub type SharedDisplay = Mutex<CriticalSectionRawMutex, DisplayPortMock>;
+
 #[cfg(feature = "rangefinder")]
 use crate::tasks::rangefinder_task::{
     RangefinderContext, rangefinder_data_publisher, rangefinder_data_subscriber, rangefinder_task,
@@ -64,11 +85,13 @@ use radio_controllers::{Rates, RcModes};
 use sensor_fusion::MadgwickFilterf32;
 
 #[cfg(feature = "serde")]
-use {embedded_storage_async::nor_flash::NorFlash,
-sequential_storage::{
-    cache::NoCache,
-    map::{MapConfig, MapStorage},
-}};
+use {
+    embedded_storage_async::nor_flash::NorFlash,
+    sequential_storage::{
+        cache::NoCache,
+        map::{MapConfig, MapStorage},
+    },
+};
 
 use static_cell::StaticCell;
 
@@ -81,9 +104,9 @@ use embassy_rp::multicore::{Stack, spawn_core1};
 static mut CORE1_STACK: Stack<4096> = Stack::new();
 
 // --- 1. PC (Host) Build Configuration ---
-#[cfg(not(target_arch = "arm"))]
 // If building on your PC (x86_64, Mac, etc.)
 // FIX: Replace `_` with `impl embedded_storage_async::nor_flash::NorFlash`
+#[cfg(feature = "serde")]
 #[cfg(not(target_arch = "arm"))] // If building on your PC (x86_64, Mac, etc.)
 #[allow(unused)]
 fn init_flash_driver() -> impl embedded_storage_async::nor_flash::NorFlash {
@@ -151,6 +174,62 @@ pub async fn init(spawner: Spawner) {
     static OSD_CTX: StaticCell<OsdContext> = StaticCell::new();
     #[cfg(feature = "rangefinder")]
     static RANGEFINDER_CTX: StaticCell<RangefinderContext> = StaticCell::new();
+
+    #[cfg(feature = "rp2350")]
+    static SPI_BUS_CELL: StaticCell<ConcreteSpiType> = StaticCell::new();
+    static SHARED_DISPLAY_CELL: StaticCell<SharedDisplay> = StaticCell::new();
+
+    // Take ownership of the raw RP2350 hardware peripherals block
+    #[cfg(feature = "rp2350")]
+    let p = embassy_rp::init(Default::default());
+    // --- INITIALIZE HARDWARE PERIPHERALS (RP2350 SPECIFIC) ---
+    #[cfg(all(feature = "max7456", feature = "rp2350"))]
+    let display_ref = {
+        use embassy_rp::spi::{Config, Spi};
+
+        // Define SPI hardware transmission speed limits (e.g. 10MHz for MAX7456)
+        let mut spi_config = Config::default();
+        spi_config.frequency = 10_000_000;
+        let spi_irq = interrupt::take!(SPI0);
+
+        // Create the asynchronous SPI instance wrapping hardware SPI0 and DMA Channel 0
+        let raw_spi = Spi::new(
+            p.SPI0,    // Hardware Peripheral Identifier
+            p.PIN_18,  // CLK Pin
+            p.PIN_19,  // TX (MOSI) Pin
+            p.PIN_16,  // RX (MISO) Pin
+            p.DMA_CH0, // TX DMA Channel assignment
+            p.DMA_CH1, // RX DMA Channel assignment
+            spi_irq, spi_config,
+        );
+
+        // Leak to a safe static reference for the tasks
+        let static_spi = SPI_DEVICE_CELL.init(raw_spi);
+        let raw_display = DisplayPortMax7456::new(static_spi);
+
+        SHARED_DISPLAY_CELL.init(Mutex::new(raw_display))
+    };
+    // --- INITIALIZE MOCK STUB (HOST PROFILE ENVIRONMENT) ---
+    #[allow(unused)]
+    #[cfg(not(feature = "max7456"))]
+    let display_ref = {
+        let raw_display = DisplayPortMock::new();
+        SHARED_DISPLAY_CELL.init(Mutex::new(raw_display))
+    };
+    /*     // Allocate a static block of memory for our shared display mutex.
+      // 1. Initialize your hardware SPI bus normally
+
+        // 2. Turn it into a &'static mut dyn SpiBus
+        let spi_static_ref = SPI_BUS_CELL.init(raw_spi);
+
+        // 3. Construct your driver and shared mutex container
+        #[cfg(feature = "max7456")]
+        let raw_display = DisplayPortMax7456::new(spi_static_ref);
+        #[cfg(not(feature = "max7456"))]
+        let raw_display = DisplayPortMock::new();
+
+        let display_ref = SHARED_DISPLAY.init(Mutex::new(raw_display));
+    */
 
     /*#[cfg(not(target_arch = "arm"))]
     let config_flash_range = 0..1024 * 1024; // Full 1MB simulated range for PC tests
@@ -335,7 +414,7 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "msp")]
     spawner.spawn(msp_task(msp_ctx).expect("Failed to create MSP task"));
     #[cfg(feature = "osd")]
-    spawner.spawn(osd_task(osd_ctx).expect("Failed to create OSD task"));
+    spawner.spawn(osd_task(osd_ctx, display_ref).expect("Failed to create OSD task"));
     #[cfg(feature = "rangefinder")]
     spawner.spawn(rangefinder_task(rangefinder_ctx).expect("Failed to create RANGEFINDER task"));
 }

@@ -1,6 +1,6 @@
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal};
 use log::info;
-use rand::RngExt;
+use tinyrand::{RandRange, StdRand};
 
 use imu_sensors::{ImuCommon, ImuMock, MockImuBus};
 use vqm::{Vector3df32, Vector3di32};
@@ -48,7 +48,7 @@ pub async fn imu_task(ctx: &'static mut ImuContext) {
     let delta_t = 0.001_f32;
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_micros(delta_t_us));
     let mut loop_count: u32 = 0;
-    let mut my_rng = rand::rng();
+    let mut rand = StdRand::default();
     // Base signal levels
     let mut x_base: i32 = 0;
 
@@ -61,11 +61,11 @@ pub async fn imu_task(ctx: &'static mut ImuContext) {
         // For now we are just faking some gyro and acc values.
         let acc_rnd = Vector3df32 { x: 1.0, y: 0.5, z: 0.25 };
         ctx.imu.set_acc(acc_rnd).await;
-        x_base += my_rng.random_range(-5..=5);
+        x_base += rand.next_range(0..5_u32).cast_signed() - 2;
         let gyro_raw = Vector3di32 {
-            x: x_base + my_rng.random_range(-2..=2),
-            y: my_rng.random_range(-5..=5),
-            z: my_rng.random_range(-5..=5),
+            x: x_base + rand.next_range(0..5_u32).cast_signed() - 2,
+            y: rand.next_range(0..11_u32).cast_signed() - 5,
+            z: rand.next_range(0..11_u32).cast_signed() - 5,
         };
         let gyro_dps_rnd = Vector3df32::from(gyro_raw);
         ctx.imu.set_gyro_dps(gyro_dps_rnd).await;

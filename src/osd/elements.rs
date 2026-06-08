@@ -343,7 +343,7 @@ impl OsdElements {
         self.active_element_count
     }
 
-    pub fn draw_next_active_element(&mut self, draw_context: &OsdDrawContext) -> bool {
+    pub fn draw_next_active_element<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
         if self.active_element_index >= self.active_element_count {
             self.active_element_index = 0;
             return false;
@@ -373,7 +373,7 @@ impl OsdElements {
         true
     }
 
-    pub fn display_active_element(&mut self, draw_context: &mut OsdDrawContext) -> bool {
+    pub fn display_active_element<D: Display>(&mut self, draw_context: &mut OsdDrawContext<D>) -> bool {
         if self.active_element_index >= self.active_element_count {
             return false;
         }
@@ -406,7 +406,11 @@ impl OsdElements {
         true
     }
 
-    pub fn draw_element_by_id(&mut self, element_id: OsdElementId, draw_context: &OsdDrawContext) -> bool {
+    pub fn draw_element_by_id<D: Display>(
+        &mut self,
+        element_id: OsdElementId,
+        draw_context: &OsdDrawContext<D>,
+    ) -> bool {
         // By default mark the element as rendered in case it's in the off blink state
 
         /*if (!DrawFunctions[element_index]) {
@@ -441,7 +445,11 @@ impl OsdElements {
         self.active_element.rendered
     }
 
-    pub fn draw_element_background_by_id(&mut self, element_id: OsdElementId, draw_context: &OsdDrawContext) -> bool {
+    pub fn draw_element_background_by_id<D: Display>(
+        &mut self,
+        element_id: OsdElementId,
+        draw_context: &OsdDrawContext<D>,
+    ) -> bool {
         /*if (!DrawBackgroundFunctions[element_index]) {
             return true;
         }*/
@@ -466,7 +474,7 @@ impl OsdElements {
         self.active_element.rendered
     }
 
-    pub fn draw_active_elements_background(&mut self, draw_context: &mut OsdDrawContext) {
+    pub fn draw_active_elements_background<D: Display>(&mut self, draw_context: &mut OsdDrawContext<D>) {
         if self.background_layer_supported {
             draw_context.display_port.layer_select(DisplayPortLayer::Background);
             draw_context.display_port.clear_screen(DisplayClear::Wait);

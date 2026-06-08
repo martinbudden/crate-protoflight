@@ -1,0 +1,10 @@
+[build]
+# Automatically compile for the RP2350 core when running generic 'cargo build'
+#target = "thumbv8m.main-none-eabihf"
+
+[target.thumbv8m.main-none-eabihf]
+# Required flags for compilation and linking embedded binaries
+rustflags = [
+    "-C", "link-args=-Tlink.x -Tdefmt.x", 
+    "-C", "no-vectorize-loops"
+]

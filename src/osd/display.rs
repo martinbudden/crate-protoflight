@@ -32,12 +32,12 @@ pub enum OsdState {
 }
 
 #[derive(Debug)]
-pub struct OsdDrawContext<'a> {
-    pub display_port: &'a mut DisplayPort,
+pub struct OsdDrawContext<'a, D: Display> {
+    // Accepts any type that implements the Display trait
+    pub display_port: &'a mut D,
     pub orientation: Quaternionf32,
     pub arming_flags: ArmingFlags,
 }
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Osd {
     /// The current operational state of the display loop.
@@ -147,17 +147,17 @@ impl Osd {
 impl Osd {
     // TODO: placeholder OSD update display
     #[allow(clippy::unused_self)]
-    pub fn update_display(&mut self, draw_ctx: &mut OsdDrawContext, time_microseconds: u32) {
-        if draw_ctx.display_port.is_grabbed() {
+    pub async fn update_display<D: Display>(&mut self, draw_ctx: &mut OsdDrawContext<'_, D>, time_microseconds: u32) {
+        /*if draw_ctx.display_port.is_grabbed() {
             return;
-        }
+        }*/
         if self.state == OsdState::Idle {
             self.state = OsdState::Check;
         } else if self.state != OsdState::Init {
             return;
         }
         while self.state != OsdState::Idle {
-            self.update_display_iteration(draw_ctx, time_microseconds);
+            self.update_display_iteration(draw_ctx, time_microseconds).await;
         }
     }
 }
@@ -165,7 +165,12 @@ impl Osd {
 impl Osd {
     #[allow(clippy::too_many_lines)]
     #[allow(clippy::unused_self)]
-    pub fn update_display_iteration(&mut self, draw_ctx: &mut OsdDrawContext, time_microseconds: u32) {
+    //pub async fn update_display_iteration<D: Display>(&mut self, draw_ctx: &mut OsdDrawContext<D>, time_microseconds: u32) {
+    pub async fn update_display_iteration<D: Display>(
+        &mut self,
+        draw_ctx: &mut OsdDrawContext<'_, D>,
+        time_microseconds: u32,
+    ) {
         match self.state {
             OsdState::Init => {
                 if !draw_ctx.display_port.check_ready(false) {
@@ -309,15 +314,18 @@ impl Osd {
                 self.state = if self.resume_refresh_at_us != 0 { OsdState::Idle } else { OsdState::Transfer };
             }
             OsdState::Transfer => {
-                // Wait for any current transfer to complete
-                if draw_ctx.display_port.is_transfer_in_progress() {
-                    return;
+                match draw_ctx.display_port.draw_screen().await {
+                    Ok(screen_still_transferring) => {
+                        if screen_still_transferring {
+                            return; // DMA buffer filled up, keep streaming next iteration
+                        }
+                        self.state = OsdState::Idle;
+                    }
+                    Err(_err) => {
+                        // Handle SPI bus or hardware faults gracefully
+                        self.state = OsdState::Idle;
+                    }
                 }
-                // Transfer may be broken into many parts
-                if draw_ctx.display_port.draw_screen() {
-                    return;
-                }
-                self.state = OsdState::Idle;
             }
             OsdState::Idle => {
                 //_state = STATE_CHECK;
@@ -330,13 +338,13 @@ impl Osd {
 mod tests {
     use super::*;
 
-    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
 
     #[test]
     fn normal_types() {
         is_full::<Osd>();
         is_full::<OsdState>();
-        is_normal::<OsdDrawContext>();
+        //is_normal::<OsdDrawContext>();
     }
 }

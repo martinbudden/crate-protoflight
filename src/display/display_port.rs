@@ -1,3 +1,4 @@
+#![allow(unused)]
 #[derive(Clone, Copy, Default, Debug, PartialEq)]
 pub enum DisplayPortDeviceType {
     #[default]
@@ -68,9 +69,14 @@ pub struct DisplayPort {
 impl DisplayPort {
     pub const SMALL_ARROW_UP: u8 = b'^';
     pub const SMALL_ARROW_DOWN: u8 = b'v';
+
+    pub const LAYER_COUNT: usize = 2;
     pub const VIDEO_COLUMNS_SD: u8 = 30;
     pub const VIDEO_LINES_NTSC: u8 = 13;
     pub const VIDEO_LINES_PAL: u8 = 16;
+
+    pub const VIDEO_BUFFER_NTSC_CHARACTER_COUNT: usize = 390;
+    pub const VIDEO_BUFFER_PAL_CHARACTER_COUNT: usize = 480;
 
     pub const DISPLAY_TRANSACTION_OPTION_NONE: u8 = 0x00;
     pub const DISPLAY_TRANSACTION_OPTION_PROFILED: u8 = 0x01;
@@ -98,13 +104,21 @@ impl Default for DisplayPort {
     }
 }
 
-#[allow(clippy::unused_self)]
 impl DisplayPort {
     pub fn device_type(&self) -> DisplayPortDeviceType {
         self.device_type
     }
-    pub fn screen_size(&self) -> u32 {
-        u32::from(self.row_count) * u32::from(self.column_count)
+    pub fn background_type(&self) -> DisplayPortBackground {
+        self.background_type
+    }
+    pub fn active_layer(&self) -> DisplayPortLayer {
+        self.active_layer
+    }
+    pub fn set_active_layer(&mut self, layer: DisplayPortLayer) {
+        self.active_layer = layer;
+    }
+    pub fn screen_size(&self) -> usize {
+        (u32::from(self.row_count) * u32::from(self.column_count)) as usize
     }
     pub fn row_count(&self) -> u8 {
         self.row_count
@@ -112,56 +126,42 @@ impl DisplayPort {
     pub fn column_count(&self) -> u8 {
         self.column_count
     }
-
-    pub fn check_ready(&self, _val: bool) -> bool {
-        true
-    }
-    pub fn redraw(&self) {}
-    pub fn begin_transaction(&self, _options: u8) {}
-    pub fn commit_transaction(&self) {}
-    pub fn is_transfer_in_progress(&self) -> bool {
-        false
-    }
-    pub fn is_grabbed(&self) -> bool {
-        false
-    }
-    pub fn layer_supported(&self, layer: DisplayPortLayer) -> bool {
-        if layer == DisplayPortLayer::Foreground {
-            // Every device must support the foreground (default) layer
-            return true;
-        }
-        /*if layer < DisplayPortBase::LAYER_COUNT {
-            return _display_port.layer_supported(layer);
-        }*/
-        false
-    }
-    pub fn layer_select(&mut self, layer: DisplayPortLayer) {}
-    pub fn layer_copy(&mut self, _src: DisplayPortLayer, _dest: DisplayPortLayer) {}
-}
-
-impl Display for DisplayPort {
-    fn clear_screen(&mut self, display_clear: DisplayClear) {}
-    fn draw_screen(&mut self) -> bool {
-        false
-    }
-    fn heartbeat(&mut self) -> i32 {
-        0
-    }
-    fn write_string(&mut self, x: u8, y: u8, s: &[u8], attr: u8) -> usize {
-        0
-    }
-    fn write_char(&mut self, x: u8, y: u8, c: u8, attr: u8) -> usize {
-        0
-    }
 }
 
 pub trait Display {
+    fn display_port(&self) -> &DisplayPort;
+
+    fn device_type(&self) -> DisplayPortDeviceType {
+        self.display_port().device_type()
+    }
+
+    fn screen_size(&self) -> usize {
+        self.display_port().screen_size()
+    }
+
+    fn row_count(&self) -> u8 {
+        self.display_port().row_count()
+    }
+
+    fn column_count(&self) -> u8 {
+        self.display_port().column_count()
+    }
+
     fn clear_screen(&mut self, display_clear: DisplayClear);
-    fn draw_screen(&mut self) -> bool; // Returns true if screen still being transferred
+    async fn draw_screen(&mut self) -> Result<bool, &'static str>;
+
+    fn redraw(&self);
     fn heartbeat(&mut self) -> i32;
 
     fn write_string(&mut self, x: u8, y: u8, s: &[u8], attr: u8) -> usize;
     fn write_char(&mut self, x: u8, y: u8, c: u8, attr: u8) -> usize;
+    fn layer_supported(&self, layer: DisplayPortLayer) -> bool;
+    fn layer_select(&mut self, layer: DisplayPortLayer);
+    fn layer_copy(&mut self, _src: DisplayPortLayer, _dest: DisplayPortLayer);
+    fn begin_transaction(&self, _options: u8);
+    fn commit_transaction(&self);
+    fn is_transfer_in_progress(&self) -> bool;
+    fn check_ready(&self, _val: bool) -> bool;
 }
 
 #[cfg(test)]

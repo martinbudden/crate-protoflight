@@ -1,7 +1,10 @@
 use crate::{
+    display::Display,
     flight::ArmingFlags,
     osd::{
-        OsdConfig, OsdDrawContext, elements::{OsdElement, OsdElements}, symbols::OsdSymbols
+        OsdConfig, OsdDrawContext,
+        elements::{OsdElement, OsdElements},
+        symbols::OsdSymbols,
     },
     sensors::SensorFlags,
 };
@@ -124,8 +127,7 @@ impl TryFrom<u8> for OsdElementId {
     type Error = OsdElementIdError;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
-        #[allow(clippy::cast_possible_truncation)]
-        if value < (OsdElementId::COUNT as u8) {
+        if usize::from(value) < OsdElementId::COUNT {
             // Safe because our enum maps sequentially from 0 up to OSD_ELEMENT_COUNT - 1
             // and contains no custom gaps.
             unsafe { core::mem::transmute::<u8, core::result::Result<OsdElementId, OsdElementIdError>>(value) }
@@ -140,11 +142,13 @@ impl TryFrom<usize> for OsdElementId {
     type Error = OsdElementIdError;
 
     fn try_from(value: usize) -> Result<Self, Self::Error> {
-        #[allow(clippy::cast_possible_truncation)]
         if value < OsdElementId::COUNT {
             // Safe because our enum maps sequentially from 0 up to OSD_ELEMENT_COUNT - 1
             // and contains no custom gaps.
-            unsafe { core::mem::transmute::<u8, core::result::Result<OsdElementId, OsdElementIdError>>(value as u8) }
+            #[allow(clippy::cast_possible_truncation)]
+            unsafe {
+                core::mem::transmute::<u8, core::result::Result<OsdElementId, OsdElementIdError>>(value as u8)
+            }
         } else {
             Err(OsdElementIdError)
         }
@@ -288,7 +292,7 @@ impl OsdElements {
         }
     }
 
-    pub fn draw_element(&mut self, draw_context: &OsdDrawContext) -> bool {
+    pub fn draw_element<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
         match self.active_element.id {
             OsdElementId::Rssi => self.active_element.draw_rssi(),
             OsdElementId::MainBatteryVoltage => self.active_element.draw_battery(),
@@ -315,7 +319,7 @@ impl OsdElement {
     fn draw_battery(&mut self) -> bool {
         true
     }
-    fn draw_disarmed(&mut self, draw_context: &OsdDrawContext) -> bool {
+    fn draw_disarmed<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
         if !draw_context.arming_flags.is_set(ArmingFlags::ARMED) {
             self.set_text("DISARMED");
         }
@@ -358,16 +362,16 @@ impl OsdElement {
     }
 
     fn draw_artificial_horizon(&mut self) -> bool {
-        const AH_SYMBOL_COUNT:i32 = 9;
+        const AH_SYMBOL_COUNT: i32 = 9;
         let osd_config = OsdConfig::new();
         // Get pitch and roll limits in tenths of degrees
         let max_pitch = i32::from(osd_config.ah_max_pitch * 10);
         let max_roll = i32::from(osd_config.ah_max_roll * 10);
-        let ah_sign =  if osd_config.ah_invert ==0  { 1 } else { -1 };
+        let ah_sign = if osd_config.ah_invert == 0 { 1 } else { -1 };
         let roll = 0;
         let pitch = 0;
         let roll_angle = (roll * ah_sign).clamp(-max_roll, max_roll);
-        let mut pitch_angle = (pitch * ah_sign).clamp( -max_pitch, max_pitch);
+        let mut pitch_angle = (pitch * ah_sign).clamp(-max_pitch, max_pitch);
         // Convert pitchAngle to y compensation value
         // (max_pitch / 25) divisor matches previous settings of fixed divisor of 8 and fixed max AHI pitch angle of 20.0 degrees
         if max_pitch > 0 {
@@ -375,7 +379,7 @@ impl OsdElement {
         }
         pitch_angle -= 4 * AH_SYMBOL_COUNT + 5;
 
-        let y :i32 = (-roll_angle * self.horizon_x) / 64 - pitch_angle;
+        let y: i32 = (-roll_angle * self.horizon_x) / 64 - pitch_angle;
         #[allow(clippy::cast_possible_truncation)]
         if (0..=81).contains(&y) {
             self.offset_x = self.horizon_x.cast_unsigned() as u8;
@@ -384,7 +388,7 @@ impl OsdElement {
             self.buf[0] = OsdSymbols::AH_BAR9_0 + (y % AH_SYMBOL_COUNT).cast_unsigned() as u8;
             self.draw_element = true;
         } else {
-            self.draw_element = false;  // element does not need to be rendered
+            self.draw_element = false; // element does not need to be rendered
         }
 
         if self.horizon_x == 4 {
@@ -393,16 +397,14 @@ impl OsdElement {
         } else {
             // Rendering not yet complete
             self.rendered = false;
-            self.horizon_x +=1;
+            self.horizon_x += 1;
         }
         self.draw_element
     }
-
-
 }
 
 impl OsdElements {
-    pub fn draw_element_background(&mut self, _draw_context: &OsdDrawContext) -> bool {
+    pub fn draw_element_background<D: Display>(&mut self, _draw_context: &OsdDrawContext<D>) -> bool {
         match self.active_element.id {
             OsdElementId::HorizonSidebars => self.active_element.draw_background_horizon_sidebars(),
             OsdElementId::CraftName => self.active_element.draw_background_craft_name(),
