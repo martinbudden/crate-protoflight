@@ -104,8 +104,9 @@ impl Default for GpsData {
         Self::new()
     }
 }
-#[derive(Clone, Copy, Debug, derive_more::Display, PartialEq)]
-#[display("Gps{{yaw_rate:{yaw_heading_radians}}}")]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "std", derive(derive_more::Display))]
+#[cfg_attr(feature = "std", display("Gps{{yaw_rate: {yaw_heading_radians}}}"))]
 pub struct GpsYawHeadingData {
     pub yaw_heading_radians: f32,
     pub delta_t: f32,

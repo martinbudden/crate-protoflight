@@ -43,13 +43,13 @@ mod tests {
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
-#[cfg(feature = "serde")]
+    #[cfg(feature = "serde")]
     fn is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
         is_full::<ImuConfig>();
-#[cfg(feature = "serde")]
+        #[cfg(feature = "serde")]
         is_config::<ImuConfig>();
     }
     #[test]

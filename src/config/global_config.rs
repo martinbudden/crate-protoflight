@@ -239,6 +239,7 @@ define_configs!(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(feature = "serde")]
     use {
         sequential_storage::map::PostcardValue,
         serde::{Deserialize, Serialize},
@@ -247,6 +248,7 @@ mod tests {
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     fn is_full_no_default<T: Sized + Send + Sync + Unpin + Copy + Clone + PartialEq>() {}
+    #[cfg(feature = "serde")]
     fn _is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]

@@ -1,7 +1,8 @@
 #![cfg(feature = "barometer")]
 
-#[derive(Clone, Copy, Debug, derive_more::Display, PartialEq)]
-#[display("Baro{{a:{altitude_m}, p:{pressure_pascals}, t:{temperature_celsius}}}")]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "std", derive(derive_more::Display))]
+#[cfg_attr(feature = "std", display("Baro{{a:{altitude_m}, p:{pressure_pascals}, t:{temperature_celsius}}}"))]
 pub struct BarometerData {
     pub altitude_m: f32,
     pub pressure_pascals: f32,

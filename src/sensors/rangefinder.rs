@@ -1,7 +1,8 @@
 #![cfg(feature = "rangefinder")]
 
-#[derive(Clone, Copy, Debug, derive_more::Display, PartialEq)]
-#[display("Range{{d:{distance_m}}}")]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "std", derive(derive_more::Display))]
+#[cfg_attr(feature = "std", display("Range{{d:{distance_m}}}"))]
 pub struct RangefinderData {
     pub distance_m: f32,
 }

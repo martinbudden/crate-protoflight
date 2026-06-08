@@ -1,5 +1,6 @@
 #![allow(unused)]
 use crate::flight::PidConfig;
+#[cfg(feature = "serde")]
 use {
     sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
@@ -159,7 +160,8 @@ impl Default for AutopilotConfig {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct PositionHoldConfig {
     pub deadband: u8,
     pub position_source: u8,            // Position source selection
@@ -177,6 +179,7 @@ impl PositionHoldConfig {
     }
 }
 
+#[cfg(feature = "serde")]
 impl PostcardValue<'_> for PositionHoldConfig {}
 
 impl Default for PositionHoldConfig {
@@ -191,15 +194,16 @@ mod tests {
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+    #[cfg(feature = "serde")]
     fn is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
         is_full::<AutopilotConfig>();
         is_full::<PositionHoldConfig>();
-#[cfg(feature = "serde")]
+        #[cfg(feature = "serde")]
         is_config::<AutopilotConfig>();
-#[cfg(feature = "serde")]
+        #[cfg(feature = "serde")]
         is_config::<PositionHoldConfig>();
     }
     #[test]

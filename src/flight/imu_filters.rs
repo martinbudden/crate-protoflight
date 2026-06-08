@@ -166,7 +166,7 @@ mod tests {
     #[test]
     fn normal_types() {
         is_full::<ImuFilterBankConfig>();
-    #[cfg(feature = "serde")]
+        #[cfg(feature = "serde")]
         is_config::<ImuFilterBankConfig>();
         is_full::<ImuFilterBank>();
     }

@@ -1,4 +1,5 @@
 #![allow(unused)]
+#[cfg(feature = "serde")]
 use {
     sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
@@ -423,7 +424,7 @@ mod tests {
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
-#[cfg(feature = "serde")]
+    #[cfg(feature = "serde")]
     fn is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
@@ -440,27 +441,27 @@ mod tests {
         is_full::<ItermRelaxConfig>();
         is_full::<DMaxConfig>();
 
-#[cfg(feature = "serde")]
+        #[cfg(feature = "serde")]
         is_config::<PidConfig>();
-#[cfg(feature = "serde")]
+        #[cfg(feature = "serde")]
         is_config::<FlightControllerFiltersConfig>();
-#[cfg(feature = "serde")]
+        #[cfg(feature = "serde")]
         is_config::<FlightModeConfig>();
-#[cfg(feature = "serde")]
+        #[cfg(feature = "serde")]
         is_config::<TpaConfig>();
-#[cfg(feature = "serde")]
+        #[cfg(feature = "serde")]
         is_config::<CrashFlipConfig>();
-#[cfg(feature = "serde")]
+        #[cfg(feature = "serde")]
         is_config::<AntiGravityConfig>();
-#[cfg(feature = "serde")]
+        #[cfg(feature = "serde")]
         is_config::<CrashFlipConfig>();
-#[cfg(feature = "serde")]
+        #[cfg(feature = "serde")]
         is_config::<YawSpinRecoveryConfig>();
-#[cfg(feature = "serde")]
+        #[cfg(feature = "serde")]
         is_config::<CrashRecoveryConfig>();
-#[cfg(feature = "serde")]
+        #[cfg(feature = "serde")]
         is_config::<ItermRelaxConfig>();
-#[cfg(feature = "serde")]
+        #[cfg(feature = "serde")]
         is_config::<DMaxConfig>();
     }
     #[test]
