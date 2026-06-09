@@ -31,6 +31,7 @@
         "Bumpless",
         "bytemuck",
         "byteorder",
+        "centiampere",
         "chacha",
         "Cleanflight",
         "clippy",

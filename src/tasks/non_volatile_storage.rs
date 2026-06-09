@@ -6,9 +6,11 @@ use radio_controllers::RatesConfig;
 extern crate paste;
 
 use crate::config::GLOBAL_CONFIG;
+use crate::flight::ImuFilterBankConfig;
 #[cfg(feature = "osd")]
 use crate::osd::OsdConfig;
-use crate::{flight::ImuFilterBankConfig, sensors::BatteryConfig};
+#[cfg(feature = "battery")]
+use crate::sensors::BatteryConfig;
 
 use embedded_storage_async::nor_flash::{ErrorType, NorFlash};
 use sequential_storage::{
@@ -124,7 +126,7 @@ macro_rules! generate_config_handlers {
 
                 // 1. READ BEFORE DELETE: Check what is currently stored under this key
                 // .fetch_item returns Ok(Some(StoredValue)) if the key is found.
-                // StoredValue itself is an Option<Config>. If it is already `None`, it's deleted!
+                // StoredValue itself is an Option<Config>. If it is already `None`, it's deleted.
                 if let Ok(Some(None)) = storage
                     .fetch_item::<Option<[<$prefix Config>]>>(&mut buffer, &$key)
                     .await
@@ -201,13 +203,15 @@ where
     let mut buffer = [0u8; 64];
 
     // Appends `None` to flash. This acts as a deletion marker instantly
-    let delete_marker: Option<BatteryConfig> = None;
+    let delete_marker: Option<ImuFilterBankConfig> = None;
     storage.store_item(&mut buffer, &IMU_FILTERS_CONFIG_KEY, &delete_marker).await
 }
 
 // ==========================================
 // 1. LOADING PATTERN (Unwraps internal Option)
 // ==========================================
+
+#[cfg(feature = "battery")]
 pub async fn load_battery_config<F>(
     config: &mut BatteryConfig, // Keeps your plain struct signature
     storage: &mut MapStorage<u16, F, NoCache>,
@@ -227,6 +231,7 @@ pub async fn load_battery_config<F>(
 // ==========================================
 // 2. SAVING PATTERN (Wraps with Some right before flash write)
 // ==========================================
+#[cfg(feature = "battery")]
 pub async fn save_battery_config<F>(
     config: &BatteryConfig,
     storage: &mut MapStorage<u16, F, NoCache>,
@@ -248,6 +253,7 @@ where
 // ==========================================
 // 3. DELETION PATTERN (Appends a raw None marker to flash)
 // ==========================================
+#[cfg(feature = "battery")]
 pub async fn delete_battery_config<F>(
     storage: &mut MapStorage<u16, F, NoCache>,
 ) -> Result<(), sequential_storage::Error<<F as ErrorType>::Error>>

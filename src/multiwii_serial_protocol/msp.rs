@@ -131,6 +131,9 @@ impl Msp {
             Msp::RC_TUNING => Self::rc_tuning(dst).await,
             Msp::PID => Self::pid(dst).await,
 
+            #[cfg(feature = "battery")]
+            Msp::BATTERY_CONFIG => Self::battery_config(dst).await,
+
             #[cfg(feature = "gps")]
             Msp::GPS_RESCUE => Self::gps_rescue(dst).await,
 
@@ -180,6 +183,9 @@ impl Msp {
             Msp::SET_RC_TUNING => Self::set_rc_tuning(src, config_publisher).await,
             Msp::SET_PID => Self::set_pid(src, fast_config_publisher).await,
             Msp::SET_MOTOR_CONFIG => Self::set_motor_config(src, config_publisher).await,
+
+            #[cfg(feature = "battery")]
+            Msp::SET_BATTERY_CONFIG => Self::set_battery_config(src, config_publisher).await,
 
             #[cfg(feature = "gps")]
             Msp::SET_GPS_CONFIG => Self::set_gps_config(src, config_publisher).await,
@@ -963,6 +969,64 @@ impl Msp {
             publisher.publish(FastConfigItem::PitchRate(pitch_angle)).await;
         }
 
+        MspResult::Ack
+    }
+
+    #[cfg(feature = "battery")]
+    async fn battery_config(dst: &mut StreamBufWriter<'_>) -> MspResult {
+        let (config, profile) = {
+            let global_config = GLOBAL_CONFIG.lock().await;
+            (global_config.battery, global_config.battery_profile)
+        };
+
+        #[allow(clippy::cast_possible_truncation)]
+        {
+            dst.write_u8(((profile.min_cell_voltage_v_x100 + 5) / 10) as u8);
+            dst.write_u8(((profile.max_cell_voltage_v_x100 + 5) / 10) as u8);
+            dst.write_u8(((profile.warning_cell_voltage_v_x100 + 5) / 10) as u8);
+        }
+        dst.write_u16(profile.battery_capacity_mah);
+        dst.write_u8(config.voltage_meter_source);
+        dst.write_u8(config.current_meter_source);
+        dst.write_u16(profile.min_cell_voltage_v_x100);
+        dst.write_u16(profile.max_cell_voltage_v_x100);
+        dst.write_u16(profile.warning_cell_voltage_v_x100);
+
+        MspResult::Ack
+    }
+    #[cfg(feature = "battery")]
+    async fn set_battery_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {
+        if src.bytes_remaining() < 7 {
+            return MspResult::Error;
+        }
+        let mut global_config = GLOBAL_CONFIG.lock().await;
+        let mut config = global_config.battery;
+        let mut profile = global_config.battery_profile;
+
+        let mut min_voltage = u16::from(src.read_u8()) * 10 - 5;
+        let mut max_voltage = u16::from(src.read_u8()) * 10 - 5;
+        let mut warning_voltage = u16::from(src.read_u8()) * 10 - 5;
+        config.voltage_meter_source = src.read_u8();
+        config.current_meter_source = src.read_u8();
+        if src.bytes_remaining() >= 6 {
+            min_voltage = src.read_u16();
+            max_voltage = src.read_u16();
+            warning_voltage = src.read_u16();
+        }
+        if config != global_config.battery {
+            global_config.battery = config;
+            publisher.publish(ConfigItem::Battery(config)).await;
+        }
+        if !(min_voltage..=max_voltage).contains(&warning_voltage) {
+            return MspResult::Error;
+        }
+        profile.min_cell_voltage_v_x100 = min_voltage;
+        profile.max_cell_voltage_v_x100 = max_voltage;
+        profile.warning_cell_voltage_v_x100 = warning_voltage;
+        if profile != global_config.battery_profile {
+            global_config.battery_profile = profile;
+            publisher.publish(ConfigItem::BatteryProfile(profile)).await;
+        }
         MspResult::Ack
     }
 

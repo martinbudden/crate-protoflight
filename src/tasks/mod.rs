@@ -3,6 +3,7 @@
 
 mod autopilot_task;
 mod barometer_task;
+mod battery_task;
 mod blackbox_task;
 mod flight_control_task;
 mod gps_task;

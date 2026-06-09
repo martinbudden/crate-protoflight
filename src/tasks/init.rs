@@ -4,6 +4,8 @@ use crate::config::{
 
 use crate::flight::{FlightControlMessage, FlightController, ImuFilterBank, RcAdjustments};
 
+#[cfg(feature = "battery")]
+use crate::tasks::battery_task::battery_data_publisher;
 #[allow(unused)]
 use crate::tasks::gyro_pid_task::{gyro_pid_receiver, setpoint_receiver};
 use crate::tasks::{
@@ -28,6 +30,9 @@ use crate::{
 
 #[cfg(feature = "barometer")]
 use crate::tasks::barometer_task::{BarometerContext, barometer_data_publisher, barometer_task};
+
+#[cfg(feature = "battery")]
+use crate::tasks::battery_task::{BatteryContext, battery_task};
 
 #[cfg(feature = "blackbox")]
 use {
@@ -121,7 +126,7 @@ fn init_flash_driver() -> impl embedded_storage_async::nor_flash::NorFlash {
         .expect("Failed to create synchronous mock flash file");
 
     // 2. FIX: Wrap it using the single-parameter asynchronous wrapper.
-    //    We remove the <256, 256, 4096> from NorMemoryAsync to satisfy the 1-generic rule!
+    //    We remove the <256, 256, 4096> from NorMemoryAsync to satisfy the 1-generic rule.
     NorMemoryAsync::new(inner_sync_nor)
 }
 
@@ -164,6 +169,8 @@ pub async fn init(spawner: Spawner) {
     static AUTOPILOT_CTX: StaticCell<AutopilotContext> = StaticCell::new();
     #[cfg(feature = "barometer")]
     static BAROMETER_CTX: StaticCell<BarometerContext> = StaticCell::new();
+    #[cfg(feature = "battery")]
+    static BATTERY_CTX: StaticCell<BatteryContext> = StaticCell::new();
     #[cfg(feature = "blackbox")]
     static BLACKBOX_CTX: StaticCell<BlackboxContext> = StaticCell::new();
     #[cfg(feature = "gps")]
@@ -363,6 +370,9 @@ pub async fn init(spawner: Spawner) {
     let rangefinder_ctx =
         RANGEFINDER_CTX.init(RangefinderContext { rangefinder_data_publisher: rangefinder_data_publisher() });
 
+    #[cfg(feature = "battery")]
+    let battery_ctx = BATTERY_CTX.init(BatteryContext { battery_data_publisher: battery_data_publisher() });
+
     #[cfg(feature = "gps")]
     let gps_ctx = GPS_CTX.init(GpsContext { gps_data_publisher: gps_data_publisher(), home: Geodetic::new() });
 
@@ -407,6 +417,8 @@ pub async fn init(spawner: Spawner) {
     spawner.spawn(autopilot_task(autopilot_ctx).expect("Failed to create AUTOPILOT task"));
     #[cfg(feature = "barometer")]
     spawner.spawn(barometer_task(barometer_ctx).expect("Failed to create BAROMETER task"));
+    #[cfg(feature = "battery")]
+    spawner.spawn(battery_task(battery_ctx).expect("Failed to create BATTERY task"));
     #[cfg(feature = "blackbox")]
     spawner.spawn(blackbox_task(blackbox_ctx).expect("Failed to create BLACKBOX task"));
     #[cfg(feature = "gps")]

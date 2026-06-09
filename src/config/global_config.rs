@@ -14,7 +14,11 @@ use crate::flight::{
     AntiGravityConfig, ArmingConfig, CrashFlipConfig, CrashRecoveryConfig, DMaxConfig, FeatureFlags,
     FlightControllerFiltersConfig, GyroConfig, ImuFilterBankConfig, PidConfig, TpaConfig, YawSpinRecoveryConfig,
 };
-use crate::sensors::{BatteryConfig, SensorFlags};
+
+use crate::sensors::SensorFlags;
+
+#[cfg(feature = "battery")]
+use crate::sensors::{BatteryConfig, BatteryProfile};
 
 #[cfg(feature = "gps")]
 use crate::gps::{GpsConfig, GpsRescueConfig};
@@ -204,12 +208,17 @@ define_configs!(
         (Features, features, FeatureFlags),
         (Autopilot, autopilot, AutopilotConfig),
         (PositionHold, position_hold, PositionHoldConfig),
-        (Battery, battery, BatteryConfig),
         (Imu, imu, ImuConfig),
         (Sensors, sensors, SensorFlags),
 
         #[cfg(feature = "blackbox")]
         (Blackbox, blackbox, BlackboxConfig),
+
+        #[cfg(feature = "battery")]
+        (Battery, battery, BatteryConfig),
+
+        #[cfg(feature = "battery")]
+        (BatteryProfile, battery_profile, BatteryProfile),
 
         #[cfg(feature = "vtx")]
         (Vtx, vtx, VtxConfig),
