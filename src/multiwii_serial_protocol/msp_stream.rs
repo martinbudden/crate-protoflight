@@ -253,7 +253,7 @@ impl MspStream {
                 let header_end = start_index + 5;
 
                 if offset == header_end {
-                    // Use the start_index to find the V2 fields!
+                    // Use the start_index to find the V2 fields
                     let flags = self.in_buf[start_index];
                     let cmd = u16::from_le_bytes([self.in_buf[start_index + 1], self.in_buf[start_index + 2]]);
                     let size =

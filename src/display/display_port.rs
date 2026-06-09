@@ -68,7 +68,7 @@ pub struct DisplayPort {
 
 impl DisplayPort {
     /// blink attribute bit.
-    pub const BLINK:u8 = 0x80; 
+    pub const BLINK: u8 = 0x80;
 
     pub const SMALL_ARROW_UP: u8 = b'^';
     pub const SMALL_ARROW_DOWN: u8 = b'v';

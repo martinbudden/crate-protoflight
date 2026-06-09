@@ -29,7 +29,7 @@ pub struct DisplayPortMsp {
 
 #[allow(unused)]
 impl DisplayPortMsp {
-    const MSP_DISPLAYPORT:u16 = 182;  // out message: External OSD displayport mode
+    const MSP_DISPLAYPORT: u16 = 182; // out message: External OSD displayport mode
 
     const ATTR_VERSION: u8 = 0b_1000_0000; // BIT(7) Format indicator; must be zero for V2 and V1
     const ATTR_BLINK: u8 = 0b_0100_0000; // BIT(6) Device local blink
