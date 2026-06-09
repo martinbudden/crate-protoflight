@@ -67,10 +67,7 @@ pub async fn osd_task(ctx: &'static mut OsdContext<'static>) {
 */
 
 #[embassy_executor::task]
-pub async fn osd_task(
-    ctx: &'static mut OsdContext<'static>,
-    display_mutex: &'static SharedDisplay, // Perfectly legal now!
-) {
+pub async fn osd_task(ctx: &'static mut OsdContext<'static>, display_mutex: &'static SharedDisplay) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(50));
     let mut loop_count: u32 = 0;
 
@@ -107,11 +104,11 @@ pub async fn osd_task(
             ctx.osd.update_display(&mut draw_context, time_microseconds).await;
 
             if loop_count.is_multiple_of(10) {
-                info!("      OSD:      loop {loop_count}");
+                info!("           OSD:      loop {loop_count}");
             }
             loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
             // display_guard is automatically dropped at the end of this block,
-            // releasing the Mutex lock for cms_task!
+            // releasing the Mutex lock for cms_task.
         }
     }
 }

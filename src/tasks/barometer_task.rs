@@ -66,7 +66,7 @@ pub async fn barometer_task(ctx: &'static mut BarometerContext<'static>) {
         ctx.barometer_data_publisher.publish_immediate(barometer_data);
 
         if loop_count.is_multiple_of(10) {
-            info!("BAROMETER:loop {loop_count}");
+            info!("     BAROMETER:loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }

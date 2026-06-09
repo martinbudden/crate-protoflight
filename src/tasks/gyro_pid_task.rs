@@ -185,7 +185,7 @@ pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext<'static>) {
         time_us = time_us.wrapping_add(125); // use wrapping_add to handle when time rolls over at max u32.
 
         if loop_count.is_multiple_of(100) {
-            info!(" GYRO_PID: loop {loop_count}");
+            info!("      GYRO_PID: loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }

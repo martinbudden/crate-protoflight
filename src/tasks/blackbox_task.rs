@@ -77,7 +77,7 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
         }
         _ = ctx.sd_card.write_all(&ctx.buffer[..len]).await;
         if loop_count.is_multiple_of(10) {
-            info!(" BLACKBOX: loop {loop_count}");
+            info!("      BLACKBOX: loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
         index += 1;

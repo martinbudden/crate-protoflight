@@ -66,7 +66,7 @@ pub async fn rangefinder_task(ctx: &'static mut RangefinderContext<'static>) {
         ctx.rangefinder_data_publisher.publish_immediate(rangefinder_data);
 
         if loop_count.is_multiple_of(10) {
-            info!("RANGEFINDER:loop {loop_count}");
+            info!("   RANGE:    loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }

@@ -94,7 +94,7 @@ pub async fn flight_control_task(ctx: &'static mut FlightControlContext<'static>
         ctx.flight_control_sender.send(flight_control_message);
 
         if loop_count.is_multiple_of(5) {
-            info!("   FLIGHT:    loop {loop_count}");
+            info!("FLIGHT:   loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }
