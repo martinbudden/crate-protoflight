@@ -12,6 +12,14 @@ impl OsdSymbols {
     // Artificial horizon bars
     pub const AH_BAR9_0: u8 = 0x80;
 
+    // Progress bar
+    pub const PB_START: u8 = 0x8A;
+    pub const PB_FULL: u8 = 0x8B;
+    pub const PB_HALF: u8 = 0x8C;
+    pub const PB_EMPTY: u8 = 0x8D;
+    pub const PB_END: u8 = 0x8E;
+    pub const PB_CLOSE: u8 = 0x8F;
+
     //Misc
     pub const NONE: u8 = 0x00;
     pub const END_OF_FONT: u8 = 0xFF;

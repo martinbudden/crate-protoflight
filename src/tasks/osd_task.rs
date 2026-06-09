@@ -5,14 +5,19 @@ use vqm::Quaternionf32;
 
 use crate::flight::ArmingFlags;
 use crate::osd::{Osd, OsdDrawContext};
-use crate::tasks::gyro_pid_task::{GyroPidReceiver, SetpointReceiver};
+use crate::tasks::{
+    gyro_pid_task::{GyroPidReceiver, SetpointReceiver},
+    init::SharedDisplay,
+};
 
 #[cfg(feature = "barometer")]
 use crate::tasks::barometer_task::BarometerDataSubscriber;
 
+#[cfg(feature = "battery")]
+use crate::{sensors::BatteryData, tasks::battery_task::BatteryDataSubscriber};
+
 #[cfg(feature = "gps")]
 use crate::tasks::gps_task::GpsDataSubscriber;
-use crate::tasks::init::SharedDisplay;
 
 /// Context for OSD task.
 #[allow(unused)]
@@ -21,6 +26,8 @@ pub struct OsdContext<'a> {
     pub setpoint_receiver: SetpointReceiver,
     #[cfg(feature = "barometer")]
     pub barometer_data_subscriber: BarometerDataSubscriber<'a>,
+    #[cfg(feature = "battery")]
+    pub battery_data_subscriber: BatteryDataSubscriber<'a>,
     #[cfg(feature = "gps")]
     pub gps_data_subscriber: GpsDataSubscriber<'a>,
     pub osd: Osd,
@@ -91,12 +98,16 @@ pub async fn osd_task(ctx: &'static mut OsdContext<'static>, display_mutex: &'st
                 Quaternionf32::default()
             };
             let arming_flags = ArmingFlags::new();
+            #[cfg(feature = "battery")]
+            let battery_data = BatteryData::new();
 
             // 3. Construct your context directly borrowing the inner guard
             let mut draw_context = OsdDrawContext {
                 display_port: &mut *display_guard, // Deref to get &mut Driver
                 orientation,
                 arming_flags,
+                #[cfg(feature = "battery")]
+                battery_data,
             };
 
             #[allow(clippy::cast_possible_truncation)]

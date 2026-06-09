@@ -6,10 +6,8 @@ use motor_mixers::{MixerConfig, MotorConfig, MotorDeviceConfig};
 use radio_controllers::{FailsafeConfig, RatesConfig, RcControlsConfig, RcModes, RxConfig};
 
 use crate::autopilot::{AutopilotConfig, PositionHoldConfig};
-use crate::config::{
-    ImuConfig,
-    profiles::{PidProfile, RatesProfile, SchemaVersion},
-};
+use crate::config::SystemConfig;
+use crate::config::{ImuConfig, profiles::SchemaVersion};
 use crate::flight::{
     AntiGravityConfig, ArmingConfig, CrashFlipConfig, CrashRecoveryConfig, DMaxConfig, FeatureFlags,
     FlightControllerFiltersConfig, GyroConfig, ImuFilterBankConfig, PidConfig, TpaConfig, YawSpinRecoveryConfig,
@@ -17,14 +15,26 @@ use crate::flight::{
 
 use crate::sensors::SensorFlags;
 
+#[cfg(feature = "barometer")]
+use crate::sensors::BarometerConfig;
+
 #[cfg(feature = "battery")]
-use crate::sensors::{BatteryConfig, BatteryProfile};
+use crate::sensors::{BatteryConfig, BatteryProfiles};
 
 #[cfg(feature = "gps")]
 use crate::gps::{GpsConfig, GpsRescueConfig};
 
+#[cfg(feature = "magnetometer")]
+use crate::sensors::MagnetometerConfig;
+
+#[cfg(feature = "optical_flow")]
+use crate::sensors::OpticalFlowConfig;
+
 #[cfg(feature = "osd")]
 use crate::osd::{OsdConfig, OsdElementsConfig, OsdStatsConfig};
+
+#[cfg(feature = "rangefinder")]
+use crate::sensors::RangefinderConfig;
 
 #[cfg(feature = "vtx")]
 use crate::vtx::{Vtx, VtxConfig};
@@ -184,9 +194,8 @@ macro_rules! define_configs {
 define_configs!(
     // (enum, field, struct)
     general: [
+        (System, system, SystemConfig),
         (Schema, schema_version, SchemaVersion),
-        (PidProfile, pid_profile, PidProfile),
-        (RatesProfile, rates_profile, RatesProfile),
         (Rates, rates, RatesConfig),
         (Failsafe, failsafe, FailsafeConfig),
         (FlightControlFilters, flight_control_filters, FlightControllerFiltersConfig),
@@ -211,22 +220,24 @@ define_configs!(
         (Imu, imu, ImuConfig),
         (Sensors, sensors, SensorFlags),
 
-        #[cfg(feature = "blackbox")]
-        (Blackbox, blackbox, BlackboxConfig),
+        #[cfg(feature = "barometer")]
+        (Barometer, barometer, BarometerConfig),
 
         #[cfg(feature = "battery")]
         (Battery, battery, BatteryConfig),
-
         #[cfg(feature = "battery")]
-        (BatteryProfile, battery_profile, BatteryProfile),
+        (BatteryProfile, battery_profiles, BatteryProfiles),
 
-        #[cfg(feature = "vtx")]
-        (Vtx, vtx, VtxConfig),
+        #[cfg(feature = "blackbox")]
+        (Blackbox, blackbox, BlackboxConfig),
 
         #[cfg(feature = "gps")]
         (Gps, gps, GpsConfig),
         #[cfg(feature = "gps")]
         (GpsRescue, gps_rescue, GpsRescueConfig),
+
+        #[cfg(feature = "magnetometer")]
+        (Magnetometer, magnetometer, MagnetometerConfig),
 
         #[cfg(feature = "osd")]
         (Osd, osd, OsdConfig),
@@ -234,6 +245,15 @@ define_configs!(
         (OsdElements, osd_elements, OsdElementsConfig),
         #[cfg(feature = "osd")]
         (OsdStats, osd_stats, OsdStatsConfig),
+
+        #[cfg(feature = "optical_flow")]
+        (OpticalFlow, optical_flow, OpticalFlowConfig),
+
+        #[cfg(feature = "rangefinder")]
+        (Rangefinder, rangefinder, RangefinderConfig),
+
+        #[cfg(feature = "vtx")]
+        (Vtx, vtx, VtxConfig),
     ],
     // GyroPid configs are defined separately so they can have their own PubSub channel.
     fast: [

@@ -106,6 +106,7 @@ impl Msp {
             Msp::FAILSAFE_CONFIG => Self::failsafe_config(dst).await,
             Msp::ADVANCED_CONFIG => Self::advanced_config(dst).await,
             Msp::FILTER_CONFIG => Self::filter_config(dst).await,
+            Msp::SENSOR_CONFIG => Self::sensor_config(dst).await,
             Msp::STATUS => Self::status(dst).await,
             Msp::RAW_IMU => Self::raw_imu(dst, sensor_data),
             Msp::RC => Self::rc(dst).await,
@@ -121,6 +122,15 @@ impl Msp {
                 dst.write_u16(sensor_data.attitude.z.cast_unsigned());
                 MspResult::Ack
             }
+            Msp::ANALOG => {
+                // TODO: Msp:ANALOG
+                dst.write_u8(0); // legacy battery voltage
+                dst.write_u16(0); // mAh drawn from battery
+                dst.write_u16(0); // RSSI
+                dst.write_u16(0); // current in 0.01 A steps, range is -320A to 320A
+                dst.write_u16(0); // battery voltage
+                MspResult::Ack
+            }
             Msp::ATTITUDE_QUATERNION => {
                 dst.write_u16(sensor_data.attitude_quaternion.w);
                 dst.write_u16(sensor_data.attitude_quaternion.x);
@@ -130,6 +140,9 @@ impl Msp {
             }
             Msp::RC_TUNING => Self::rc_tuning(dst).await,
             Msp::PID => Self::pid(dst).await,
+
+            #[cfg(feature = "magnetometer")]
+            Msp::COMPASS_CONFIG => Self::compass_config(dst).await,
 
             #[cfg(feature = "battery")]
             Msp::BATTERY_CONFIG => Self::battery_config(dst).await,
@@ -182,7 +195,12 @@ impl Msp {
             Msp::RC_DEADBAND => Self::set_rc_controls_config(src, config_publisher).await,
             Msp::SET_RC_TUNING => Self::set_rc_tuning(src, config_publisher).await,
             Msp::SET_PID => Self::set_pid(src, fast_config_publisher).await,
+            Msp::SELECT_SETTING => Self::select_setting(src),
+            Msp::SET_HEADING => Self::set_heading(src),
             Msp::SET_MOTOR_CONFIG => Self::set_motor_config(src, config_publisher).await,
+
+            #[cfg(feature = "magnetometer")]
+            Msp::SET_COMPASS_CONFIG => Self::set_compass_config(src, config_publisher).await,
 
             #[cfg(feature = "battery")]
             Msp::SET_BATTERY_CONFIG => Self::set_battery_config(src, config_publisher).await,
@@ -321,6 +339,25 @@ impl Msp {
         MspResult::Ack
     }
 
+    fn select_setting(_src: &mut StreamBufReader<'_>) -> MspResult {
+        /*const RATE_PROFILE_MASK:u8 = 1 << 7;
+        const BATTERY_PROFILE_MASK:u8 = 1 << 6;
+        let mut value = src.read_u8();
+        if value & BATTERY_PROFILE_MASK != 0 {
+            value = (value & !BATTERY_PROFILE_MASK).clamp(0, BatteryProfiles::MAX);
+            change_battery_profile(value);
+        } else if value & RATE_PROFILE_MASK == 0 {
+            if not armed ) {
+                value = value.clamp(0, 4);
+                change_pid_profile(value);
+            }
+        } else {
+            value = (value & !RATE_PROFILE_MASK).clamp(0, 3);
+            change_rate_profile(value);
+        }*/
+        MspResult::Ack
+    }
+
     async fn motor_config(dst: &mut StreamBufWriter<'_>) -> MspResult {
         let config = {
             let global_config = GLOBAL_CONFIG.lock().await;
@@ -353,6 +390,29 @@ impl Msp {
         if config != global_config.motor {
             global_config.motor = config;
             publisher.publish(ConfigItem::Motor(config)).await;
+        }
+        MspResult::Ack
+    }
+
+    #[cfg(feature = "magnetometer")]
+    async fn compass_config(dst: &mut StreamBufWriter<'_>) -> MspResult {
+        let config = {
+            let global_config = GLOBAL_CONFIG.lock().await;
+            global_config.imu
+        };
+        dst.write_u16(config.mag_declination_degrees_x10.cast_unsigned());
+        MspResult::Ack
+    }
+    #[cfg(feature = "magnetometer")]
+    async fn set_compass_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {
+        let mut global_config = GLOBAL_CONFIG.lock().await;
+        let mut config = global_config.imu;
+
+        config.mag_declination_degrees_x10 = src.read_u16().cast_signed();
+
+        if config != global_config.imu {
+            global_config.imu = config;
+            publisher.publish(ConfigItem::Imu(config)).await;
         }
         MspResult::Ack
     }
@@ -564,9 +624,9 @@ impl Msp {
     }
 
     async fn advanced_config(dst: &mut StreamBufWriter<'_>) -> MspResult {
-        let (gyro, motor, motor_device) = {
+        let (gyro, motor, motor_device, system) = {
             let global_config = GLOBAL_CONFIG.lock().await;
-            (global_config.gyro, global_config.motor, global_config.motor_device)
+            (global_config.gyro, global_config.motor, global_config.motor_device, global_config.system)
         };
         dst.write_u8(1); // was gyro_sync_denom - removed in API 1.43
         // dst.write_u8(pid.pid_process_denom); TODO: pid process denom in MSP
@@ -584,8 +644,8 @@ impl Msp {
         dst.write_u16(gyro.gyro_offset_yaw.cast_unsigned());
         dst.write_u8(gyro.check_overflow);
         //Added in MSP API 1.42
-        //dst.write_u8(system.debug_mode);
-        //dst.write_u8(DEBUG_COUNT);
+        dst.write_u8(system.debug_mode);
+        dst.write_u8(8); // TODO: DEBUG_COUNT;
 
         MspResult::Ack
     }
@@ -598,9 +658,10 @@ impl Msp {
         let mut gyro = global_config.gyro;
         let mut motor = global_config.motor;
         let mut motor_device = global_config.motor_device;
+        let mut system = global_config.system;
 
-        _ = src.read_u8();
-        _ = src.read_u8();
+        _ = src.read_u8(); // was gyro_sync_denom - removed in API 1.43
+        _ = src.read_u8(); // pid_process_denom
         motor_device.use_continuous_update = src.read_u8();
         motor_device.motor_protocol = src.read_u8();
         motor_device.motor_pwm_rate = src.read_u16();
@@ -613,6 +674,9 @@ impl Msp {
         gyro.gyro_calibration_duration = src.read_u16();
         gyro.gyro_offset_yaw = src.read_u16().cast_signed();
         gyro.check_overflow = src.read_u8();
+        if src.bytes_remaining() >= 1 {
+            system.debug_mode = src.read_u8();
+        }
 
         if gyro != global_config.gyro {
             global_config.gyro = gyro;
@@ -626,6 +690,32 @@ impl Msp {
             global_config.motor_device = motor_device;
             publisher.publish(ConfigItem::MotorDevice(motor_device)).await;
         }
+        if system != global_config.system {
+            global_config.system = system;
+            publisher.publish(ConfigItem::System(system)).await;
+        }
+        MspResult::Ack
+    }
+
+    async fn sensor_config(dst: &mut StreamBufWriter<'_>) -> MspResult {
+        #[allow(unused)]
+        let global_config = GLOBAL_CONFIG.lock().await;
+        dst.write_u8(0); // acc hardware
+        #[cfg(feature = "barometer")]
+        dst.write_u8(global_config.barometer.hardware);
+        #[cfg(not(feature = "barometer"))]
+        dst.write_u8(0);
+
+        // Added in MSP API 1.46
+        #[cfg(feature = "rangefinder")]
+        dst.write_u8(global_config.rangefinder.hardware);
+        #[cfg(not(feature = "rangefinder"))]
+        dst.write_u8(0);
+        #[cfg(feature = "optical_flow")]
+        dst.write_u8(global_config.optical_flow.hardware);
+        #[cfg(not(feature = "optical_flow"))]
+        dst.write_u8(0);
+
         MspResult::Ack
     }
 
@@ -770,15 +860,15 @@ impl Msp {
 
     // TODO: MSP status placeholder
     async fn status(dst: &mut StreamBufWriter<'_>) -> MspResult {
-        let (sensors, pid_profile) = {
+        let (sensors, pid_profile_index) = {
             let global_config = GLOBAL_CONFIG.lock().await;
-            (global_config.sensors, global_config.pid_profile)
+            (global_config.sensors, global_config.system.pid_profile_index)
         };
         dst.write_u16(0); // pid task delta time
         dst.write_u16(0); // I2C error counter
         dst.write_u16(sensors.flags()); // sensors
         dst.write_u32(0); // flightmode flags
-        dst.write_u8(pid_profile.profile);
+        dst.write_u8(pid_profile_index);
 
         MspResult::Ack
     }
@@ -972,13 +1062,23 @@ impl Msp {
         MspResult::Ack
     }
 
+    fn set_heading(src: &mut StreamBufReader<'_>) -> MspResult {
+        if src.bytes_remaining() < 2 {
+            return MspResult::Error;
+        }
+        _ = src.read_u16();
+        // TODO: update the sensor fusion filter with the new heading
+        MspResult::Ack
+    }
+
     #[cfg(feature = "battery")]
     async fn battery_config(dst: &mut StreamBufWriter<'_>) -> MspResult {
-        let (config, profile) = {
+        let (config, profiles) = {
             let global_config = GLOBAL_CONFIG.lock().await;
-            (global_config.battery, global_config.battery_profile)
+            (global_config.battery, global_config.battery_profiles)
         };
 
+        let profile = profiles.profiles[0];
         #[allow(clippy::cast_possible_truncation)]
         {
             dst.write_u8(((profile.min_cell_voltage_v_x100 + 5) / 10) as u8);
@@ -996,18 +1096,21 @@ impl Msp {
     }
     #[cfg(feature = "battery")]
     async fn set_battery_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {
+        use crate::sensors::{CurrentMeterReading, VoltageMeterReading};
+
         if src.bytes_remaining() < 7 {
             return MspResult::Error;
         }
         let mut global_config = GLOBAL_CONFIG.lock().await;
         let mut config = global_config.battery;
-        let mut profile = global_config.battery_profile;
+        let profile_index = global_config.system.active_battery_profile() as usize;
+        let mut profile = global_config.battery_profiles[profile_index];
 
         let mut min_voltage = u16::from(src.read_u8()) * 10 - 5;
         let mut max_voltage = u16::from(src.read_u8()) * 10 - 5;
         let mut warning_voltage = u16::from(src.read_u8()) * 10 - 5;
-        config.voltage_meter_source = src.read_u8();
-        config.current_meter_source = src.read_u8();
+        config.voltage_meter_source = src.read_u8().clamp(0, VoltageMeterReading::SOURCE_MAX);
+        config.current_meter_source = src.read_u8().clamp(0, CurrentMeterReading::SOURCE_MAX);
         if src.bytes_remaining() >= 6 {
             min_voltage = src.read_u16();
             max_voltage = src.read_u16();
@@ -1023,9 +1126,9 @@ impl Msp {
         profile.min_cell_voltage_v_x100 = min_voltage;
         profile.max_cell_voltage_v_x100 = max_voltage;
         profile.warning_cell_voltage_v_x100 = warning_voltage;
-        if profile != global_config.battery_profile {
-            global_config.battery_profile = profile;
-            publisher.publish(ConfigItem::BatteryProfile(profile)).await;
+        if profile != global_config.battery_profiles.profiles[profile_index] {
+            global_config.battery_profiles[profile_index] = profile;
+            // TODO: publisher.publish(ConfigItem::BatteryProfiles(profile)).await;
         }
         MspResult::Ack
     }

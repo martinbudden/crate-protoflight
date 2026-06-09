@@ -1,4 +1,7 @@
+#![cfg(feature = "battery")]
 #![allow(unused)]
+
+use core::ops::{Index, IndexMut};
 #[cfg(feature = "serde")]
 use {
     sequential_storage::map::PostcardValue,
@@ -14,7 +17,6 @@ pub enum BatteryState {
     NotPresent,
     Init,
 }
-
 /// Per-profile battery settings (voltage thresholds, capacity).
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -39,12 +41,11 @@ pub struct BatteryProfile {
 impl PostcardValue<'_> for BatteryProfile {}
 
 impl BatteryProfile {
-    const COUNT: usize = 3;
-    const MAX_NAME_LENGTH: usize = 8;
-    const CELL_VOLTAGE_RANGE_MIN: u16 = 100;
-    const CELL_VOLTAGE_RANGE_MAX: u16 = 500;
-    const CELL_VOLTAGE_DEFAULT_MIN: u16 = 330;
-    const CELL_VOLTAGE_DEFAULT_MAX: u16 = 430;
+    pub const COUNT: usize = 3;
+    pub const MAX_NAME_LENGTH: usize = 8;
+    pub const CELL_VOLTAGE_RANGE_MIN: u16 = 100;
+    pub const CELL_VOLTAGE_RANGE_MAX: u16 = 500;
+    pub const CELL_VOLTAGE_DEFAULT_MIN: u16 = 330;
     pub const fn new() -> Self {
         Self {
             max_cell_voltage_v_x100: Self::CELL_VOLTAGE_RANGE_MAX,
@@ -64,7 +65,43 @@ impl Default for BatteryProfile {
         Self::new()
     }
 }
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct BatteryProfiles {
+    pub profiles: [BatteryProfile; Self::COUNT],
+}
 
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for BatteryProfiles {}
+
+impl BatteryProfiles {
+    pub const MAX: u8 = 2;
+    pub const COUNT: usize = 3;
+    pub const fn new() -> Self {
+        Self { profiles: [BatteryProfile::new(); Self::COUNT] }
+    }
+}
+
+impl Default for BatteryProfiles {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Index<usize> for BatteryProfiles {
+    type Output = BatteryProfile;
+    #[inline]
+    fn index(&self, index: usize) -> &BatteryProfile {
+        &self.profiles[index]
+    }
+}
+
+impl IndexMut<usize> for BatteryProfiles {
+    #[inline]
+    fn index_mut(&mut self, index: usize) -> &mut BatteryProfile {
+        &mut self.profiles[index]
+    }
+}
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct BatteryConfig {
@@ -94,9 +131,9 @@ impl BatteryConfig {
         Self {
             vbat_not_present_cell_voltage: 300,
             lvc_percentage: 100, // off by default at 100%
-            voltage_meter_source: VoltageMeter::SOURCE_NONE,
+            voltage_meter_source: VoltageMeterReading::SOURCE_NONE,
 
-            current_meter_source: CurrentMeter::SOURCE_NONE,
+            current_meter_source: CurrentMeterReading::SOURCE_NONE,
 
             use_vbat_alerts: 1,
             use_consumption_alerts: 0,
@@ -118,7 +155,7 @@ impl Default for BatteryConfig {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct VoltageMeter {
+pub struct VoltageMeterReading {
     /// Voltage in 0.01V steps.
     pub display_filtered_x100: u16,
     /// Last filtered voltage sample.
@@ -133,10 +170,11 @@ pub struct VoltageMeter {
     pub low_voltage_cutoff: bool,
 }
 
-impl VoltageMeter {
+impl VoltageMeterReading {
     pub const SOURCE_NONE: u8 = 0;
     pub const SOURCE_ADC: u8 = 1;
     pub const SOURCE_ESC: u8 = 2;
+    pub const SOURCE_MAX: u8 = 2;
     pub const SOURCE_COUNT: usize = 3;
     pub const SOURCE_NAMES: [&str; Self::SOURCE_COUNT] = ["NONE", "ADC", "ESC"];
 
@@ -153,14 +191,14 @@ impl VoltageMeter {
     }
 }
 
-impl Default for VoltageMeter {
+impl Default for VoltageMeterReading {
     fn default() -> Self {
         Self::new()
     }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct CurrentMeter {
+pub struct CurrentMeterReading {
     /// Current read by current sensor in centiampere (1/100th A).
     pub amperage_x100: i32,
     /// Current read by current sensor in centiampere (1/100th A) (unfiltered).
@@ -171,12 +209,13 @@ pub struct CurrentMeter {
     pub mah_drawn_offset: i32,
 }
 
-impl CurrentMeter {
+impl CurrentMeterReading {
     pub const SOURCE_NONE: u8 = 0;
     pub const SOURCE_ADC: u8 = 1;
     pub const SOURCE_VIRTUAL: u8 = 2;
     pub const SOURCE_ESC: u8 = 3;
     pub const SOURCE_MSP: u8 = 4;
+    pub const SOURCE_MAX: u8 = 4;
     pub const SOURCE_COUNT: usize = 5;
     pub const SOURCE_NAMES: [&str; Self::SOURCE_COUNT] = ["NONE", "ADC", "VIRTUAL", "ESC", "MSP"];
     pub const fn new() -> Self {
@@ -184,7 +223,29 @@ impl CurrentMeter {
     }
 }
 
-impl Default for CurrentMeter {
+impl Default for CurrentMeterReading {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BatteryData {
+    voltage: VoltageMeterReading,
+    current: CurrentMeterReading,
+    state: BatteryState,
+}
+
+impl BatteryData {
+    pub fn new() -> Self {
+        Self {
+            voltage: VoltageMeterReading::new(),
+            current: CurrentMeterReading::new(),
+            state: BatteryState::default(),
+        }
+    }
+}
+
+impl Default for BatteryData {
     fn default() -> Self {
         Self::new()
     }
@@ -204,10 +265,14 @@ mod tests {
         is_full::<BatteryState>();
         is_full::<BatteryConfig>();
         is_full::<BatteryProfile>();
+        is_full::<BatteryProfiles>();
+        is_full::<BatteryData>();
         #[cfg(feature = "serde")]
         is_config::<BatteryConfig>();
         #[cfg(feature = "serde")]
         is_config::<BatteryProfile>();
+        #[cfg(feature = "serde")]
+        is_config::<BatteryProfiles>();
     }
     #[test]
     fn test_new() {

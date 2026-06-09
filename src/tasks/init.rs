@@ -4,8 +4,6 @@ use crate::config::{
 
 use crate::flight::{FlightControlMessage, FlightController, ImuFilterBank, RcAdjustments};
 
-#[cfg(feature = "battery")]
-use crate::tasks::battery_task::battery_data_publisher;
 #[allow(unused)]
 use crate::tasks::gyro_pid_task::{gyro_pid_receiver, setpoint_receiver};
 use crate::tasks::{
@@ -15,24 +13,22 @@ use crate::tasks::{
     motor_mixer_task::{MotorMixerContext, motor_mixer_task},
 };
 
-#[cfg(feature = "serde")]
-use crate::tasks::non_volatile_storage as nvs;
-
 #[cfg(feature = "autopilot")]
 use crate::{
     autopilot::pilot::Autopilot,
     tasks::{
         autopilot_task::{AutopilotContext, autopilot_task},
         autopilot_task::{autopilot_receiver, autopilot_sender},
-        barometer_task::barometer_data_subscriber,
     },
 };
 
 #[cfg(feature = "barometer")]
-use crate::tasks::barometer_task::{BarometerContext, barometer_data_publisher, barometer_task};
+use crate::tasks::barometer_task::{
+    BarometerContext, barometer_data_publisher, barometer_data_subscriber, barometer_task,
+};
 
 #[cfg(feature = "battery")]
-use crate::tasks::battery_task::{BatteryContext, battery_task};
+use crate::tasks::battery_task::{BatteryContext, battery_data_publisher, battery_data_subscriber, battery_task};
 
 #[cfg(feature = "blackbox")]
 use {
@@ -58,15 +54,21 @@ use crate::{
     tasks::osd_task::{OsdContext, osd_task},
 };
 
+#[cfg(feature = "rangefinder")]
+use crate::tasks::rangefinder_task::{
+    RangefinderContext, rangefinder_data_publisher, rangefinder_data_subscriber, rangefinder_task,
+};
+
+#[cfg(feature = "serde")]
+use crate::tasks::non_volatile_storage as nvs;
+
 #[cfg(feature = "max7456")]
-use crate::display::DisplayPortMax7456;
+use {crate::display::DisplayPortMax7456, embedded_hal_async::spi::SpiBus};
 
 #[cfg(not(feature = "max7456"))]
 use crate::display::DisplayPortMock;
 
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
-#[cfg(feature = "max7456")]
-use embedded_hal_async::spi::SpiBus;
 
 // --- 1. RASPBERRY PI RP2350 ARCHITECTURE CONFIGURATION ---
 #[cfg(all(feature = "max7456", feature = "rp2350"))]
@@ -78,11 +80,6 @@ pub type SharedDisplay = Mutex<CriticalSectionRawMutex, DisplayPortMax7456<&'sta
 // --- 2. HOST ARCHITECTURE TESTING / MOCK CONFIGURATION ---
 #[cfg(not(feature = "max7456"))]
 pub type SharedDisplay = Mutex<CriticalSectionRawMutex, DisplayPortMock>;
-
-#[cfg(feature = "rangefinder")]
-use crate::tasks::rangefinder_task::{
-    RangefinderContext, rangefinder_data_publisher, rangefinder_data_subscriber, rangefinder_task,
-};
 
 use imu_sensors::{ImuAxesOrder, ImuMock, MockImuBus};
 use motor_mixers::{MotorMixerCommon, MotorMixerQuadXPwm};
@@ -306,6 +303,8 @@ pub async fn init(spawner: Spawner) {
         config_publisher: config_publisher(),
         #[cfg(feature = "barometer")]
         barometer_data_subscriber: barometer_data_subscriber(),
+        #[cfg(feature = "battery")]
+        battery_data_subscriber: battery_data_subscriber(),
         #[cfg(feature = "gps")]
         gps_data_subscriber: gps_data_subscriber(),
         #[cfg(feature = "rangefinder")]
@@ -382,6 +381,8 @@ pub async fn init(spawner: Spawner) {
         setpoint_receiver: setpoint_receiver(),
         #[cfg(feature = "barometer")]
         barometer_data_subscriber: barometer_data_subscriber(),
+        #[cfg(feature = "battery")]
+        battery_data_subscriber: battery_data_subscriber(),
         #[cfg(feature = "gps")]
         gps_data_subscriber: gps_data_subscriber(),
         osd: Osd::new(),

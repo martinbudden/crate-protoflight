@@ -5,6 +5,8 @@ use embassy_sync::{
     watch::{Receiver, Sender, Watch},
 };
 use log::info;
+use radio_controllers::RcModesArray;
+use simple_bitset::BitSet64;
 use vqm::Vector3df32;
 
 use crate::tasks::gyro_pid_task::{GyroPidReceiver, SetpointReceiver};
@@ -54,33 +56,37 @@ pub struct AutopilotContext<'a> {
 #[embassy_executor::task]
 pub async fn autopilot_task(ctx: &'static mut AutopilotContext<'static>) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_millis(1));
-    let delta_t = 0.01;
+    let delta_t = 0.001;
     let mut loop_count: u32 = 0;
+
+    // TODO: get rc_modes from the flight_control task.
+    let rc_modes = BitSet64::new();
 
     info!("AUTOPILOT:task started");
     loop {
         ticker.next().await;
 
-        // for the autopilot to provide any functionality, it has to have at least one of barometer, gps, or rangefinder
-        #[cfg(any(feature = "barometer", feature = "gps", feature = "rangefinder"))]
+        // for the autopilot to provide any functionality, it has to have at least one of: barometer, gps, optical_flow, or rangefinder.
+        #[cfg(any(feature = "barometer", feature = "gps", feature = "optical_flow", feature = "rangefinder"))]
         {
             if let Some(gyro_pid_message) = ctx.gyro_pid_receiver.try_get() {
                 let vertical_acceleration = gyro_pid_message.acc.z;
 
-                let estimate = ctx.autopilot.altitude_kalman_filter.predict(vertical_acceleration, delta_t);
-                let Vector3df32 { x: estimated_vertical_speed, y: estimated_altitude, z: _estimated_bias } = estimate;
+                let Vector3df32 { x: estimated_vertical_speed, y: estimated_altitude, z: _estimated_bias } =
+                    ctx.autopilot.altitude_kalman_filter.predict(vertical_acceleration, delta_t);
 
-                // TODO: choose type of autopilot control based on settings: altitude hold, position hold, or path following.
-                let throttle_stick = ctx.autopilot.altitude_controller.update(
-                    estimated_altitude,
-                    estimated_vertical_speed,
-                    gyro_pid_message.orientation,
-                    delta_t,
-                );
+                if rc_modes.test(RcModesArray::ALTITUDE_HOLD) {
+                    let throttle_stick = ctx.autopilot.altitude_controller.update(
+                        estimated_altitude,
+                        estimated_vertical_speed,
+                        gyro_pid_message.orientation,
+                        delta_t,
+                    );
 
-                // Send the radio control message. This will be picked by the radio task.
-                let radio_control_message = FlightControlMessage { throttle_stick, ..Default::default() };
-                ctx.autopilot_sender.send(radio_control_message);
+                    // Send the flight control message. This will be picked by the radio task.
+                    let flight_control_message = FlightControlMessage { throttle_stick, ..Default::default() };
+                    ctx.autopilot_sender.send(flight_control_message);
+                }
             }
         }
 
@@ -95,6 +101,7 @@ pub async fn autopilot_task(ctx: &'static mut AutopilotContext<'static>) {
             #[cfg(feature = "gps")]
             ctx.autopilot.position_kalman_filter.correct_altitude_using_barometer(barometer_data.altitude_m);
         }
+
         #[cfg(feature = "rangefinder")]
         if let Some(wait_result) = ctx.rangefinder_data_subscriber.try_next_message()
             && let embassy_sync::pubsub::WaitResult::Message(rangefinder_data) = wait_result
@@ -102,6 +109,7 @@ pub async fn autopilot_task(ctx: &'static mut AutopilotContext<'static>) {
             let rangefinder_base_altitude_m = 0.0_f32;
             let altitude = rangefinder_base_altitude_m + rangefinder_data.distance_m;
             ctx.autopilot.altitude_kalman_filter.correct_altitude_using_rangefinder(altitude);
+            #[cfg(feature = "gps")]
             ctx.autopilot.position_kalman_filter.correct_altitude_using_rangefinder(altitude);
         }
 

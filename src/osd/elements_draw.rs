@@ -6,7 +6,7 @@ use crate::{
         elements::{OsdElement, OsdElements},
         symbols::OsdSymbols,
     },
-    sensors::SensorFlags,
+    sensors::{BatteryData, SensorFlags},
 };
 use core::convert::TryFrom;
 use strum::EnumCount;
@@ -295,7 +295,7 @@ impl OsdElements {
     pub fn draw_element<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
         match self.active_element.id {
             OsdElementId::Rssi => self.active_element.draw_rssi(),
-            OsdElementId::MainBatteryVoltage => self.active_element.draw_battery(),
+            OsdElementId::MainBatteryVoltage => self.active_element.draw_main_battery_usage(&draw_context.battery_data),
             OsdElementId::ArtificialHorizon => self.active_element.draw_artificial_horizon(),
             OsdElementId::PitchAngle => self.active_element.draw_pitch_angle(self.pitch_angle_degrees),
             OsdElementId::RollAngle => self.active_element.draw_roll_angle(self.roll_angle_degrees),
@@ -316,9 +316,27 @@ impl OsdElement {
     fn draw_rssi(&mut self) -> bool {
         true
     }
-    fn draw_battery(&mut self) -> bool {
+    fn draw_main_battery_usage(&mut self, _battery_data: &BatteryData) -> bool {
+        const USAGE_STEPS: usize = 11; // Use an odd number so the bar can be centered.
+        // TODO: calculate battery bars from the battery data
+        let remaining_capacity_bars = 4;
+        // Setup the boundaries
+        self.buf[0] = OsdSymbols::PB_START;
+        self.buf[USAGE_STEPS + 1] = OsdSymbols::PB_CLOSE;
+
+        // Fill the battery bar using an iterator slice
+        let range = 1..=USAGE_STEPS;
+        for (ii, symbol) in self.buf[range].iter_mut().enumerate() {
+            *symbol = if ii < remaining_capacity_bars { OsdSymbols::PB_FULL } else { OsdSymbols::PB_EMPTY };
+        }
+
+        // Handle the end-cap symbol if needed
+        if (1..USAGE_STEPS).contains(&remaining_capacity_bars) {
+            self.buf[1 + remaining_capacity_bars] = OsdSymbols::PB_END;
+        }
         true
     }
+
     fn draw_disarmed<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
         if !draw_context.arming_flags.is_set(ArmingFlags::ARMED) {
             self.set_text("DISARMED");

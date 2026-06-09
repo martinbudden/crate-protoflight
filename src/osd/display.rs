@@ -7,6 +7,7 @@ use crate::{
     display::{Display, DisplayClear, DisplayPort, DisplayPortDeviceType, DisplayPortLayer},
     flight::ArmingFlags,
     osd::{OsdConfig, elements::OsdElements},
+    sensors::BatteryData,
 };
 
 #[allow(unused)]
@@ -37,6 +38,8 @@ pub struct OsdDrawContext<'a, D: Display> {
     pub display_port: &'a mut D,
     pub orientation: Quaternionf32,
     pub arming_flags: ArmingFlags,
+    #[cfg(feature = "battery")]
+    pub battery_data: BatteryData,
 }
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Osd {

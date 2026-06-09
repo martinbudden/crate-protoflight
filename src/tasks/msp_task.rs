@@ -13,6 +13,9 @@ use crate::{
 #[cfg(feature = "barometer")]
 use crate::tasks::barometer_task::BarometerDataSubscriber;
 
+#[cfg(feature = "battery")]
+use crate::tasks::battery_task::BatteryDataSubscriber;
+
 #[cfg(feature = "gps")]
 use crate::{gps::GpsDataItem, tasks::gps_task::GpsDataSubscriber};
 
@@ -28,6 +31,8 @@ pub struct MspContext<'a> {
     pub config_publisher: ConfigPublisher<'a>,
     #[cfg(feature = "barometer")]
     pub barometer_data_subscriber: BarometerDataSubscriber<'a>,
+    #[cfg(feature = "battery")]
+    pub battery_data_subscriber: BatteryDataSubscriber<'a>,
     #[cfg(feature = "gps")]
     pub gps_data_subscriber: GpsDataSubscriber<'a>,
     #[cfg(feature = "rangefinder")]

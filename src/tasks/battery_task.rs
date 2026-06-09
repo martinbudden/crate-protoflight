@@ -4,16 +4,16 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::pubsub::{PubSubChannel, Publisher, Subscriber};
 use log::info;
 
-use crate::sensors::BatteryState;
+use crate::sensors::BatteryData;
 
-const MAX_BATTERY_DATA_SUBSCRIBER_COUNT: usize = 10;
+const MAX_BATTERY_DATA_SUBSCRIBER_COUNT: usize = 4;
 const BATTERY_DATA_PUBLISHER_COUNT: usize = 1;
 const BATTERY_DATA_CAPACITY: usize = 1; // only keep the last item
 
 /// `PubSubChannel` for handling `SensorData` updates.
 static BATTERY_DATA_PUB_SUB_CHANNEL: PubSubChannel<
     CriticalSectionRawMutex,
-    BatteryState,
+    BatteryData,
     BATTERY_DATA_CAPACITY,
     MAX_BATTERY_DATA_SUBSCRIBER_COUNT,
     BATTERY_DATA_PUBLISHER_COUNT,
@@ -22,7 +22,7 @@ static BATTERY_DATA_PUB_SUB_CHANNEL: PubSubChannel<
 type BatteryDataPublisher<'a> = Publisher<
     'a,
     CriticalSectionRawMutex,
-    BatteryState,
+    BatteryData,
     BATTERY_DATA_CAPACITY,
     MAX_BATTERY_DATA_SUBSCRIBER_COUNT,
     BATTERY_DATA_PUBLISHER_COUNT,
@@ -36,7 +36,7 @@ pub fn battery_data_publisher<'a>() -> BatteryDataPublisher<'a> {
 pub type BatteryDataSubscriber<'a> = Subscriber<
     'a,
     CriticalSectionRawMutex,
-    BatteryState,
+    BatteryData,
     BATTERY_DATA_CAPACITY,
     MAX_BATTERY_DATA_SUBSCRIBER_COUNT,
     BATTERY_DATA_PUBLISHER_COUNT,
@@ -65,7 +65,8 @@ pub async fn battery_task(ctx: &'static mut BatteryContext<'static>) {
         // Wait for the next 50Hz tick.
         ticker.next().await;
 
-        let battery_data = BatteryState::default();
+        // TODO: get the battery data by reading the battery.
+        let battery_data = BatteryData::default();
         ctx.battery_data_publisher.publish_immediate(battery_data);
 
         if loop_count.is_multiple_of(10) {

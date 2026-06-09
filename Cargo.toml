@@ -25,7 +25,20 @@ rustc_version = "0.4.1"
 [features]
 #default = ["std", "libm"]
 #default = ["rp2350", "libm"]
-default = ["std", "libm", "battery", "blackbox", "osd", "rpm_filters", "barometer", "gps", "msp", "autopilot", "rangefinder", "serde"]
+default = ["std", "libm", 
+    "autopilot",
+    "barometer",
+    "battery",
+    "blackbox",
+    "gps",
+    #"magnetometer",
+    "msp",
+    #"optical_flow",
+    "osd",
+    #"rangefinder",
+    "rpm_filters",
+    "serde"
+]
 #default = ["rp2350", "libm", "blackbox", "max7456", "osd", "rpm_filters", "barometer", "gps", "msp", "autopilot", "rangefinder"]
 #default = ["rp2350", "libm", "max7456", "osd"]
 #default = ["std", "libm", "blackbox", "rpm_filters", "barometer", "msp", "autopilot"]
@@ -38,9 +51,11 @@ blackbox = []
 cms = []
 dashboard = []
 gps = []
+magnetometer = []
 max7456 = []
 multicore = []
 msp = []
+optical_flow = []
 osd = []
 osd_hd = []
 rangefinder = []
