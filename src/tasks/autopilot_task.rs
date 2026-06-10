@@ -23,6 +23,9 @@ use crate::tasks::barometer_task::BarometerSubscriber;
 #[cfg(feature = "gps")]
 use crate::{gps::GpsMessage, tasks::gps_task::GpsSubscriber};
 
+#[cfg(feature = "optical_flow")]
+use crate::{tasks::optical_flow_task::OpticalFlowSubscriber};
+
 #[cfg(feature = "rangefinder")]
 use crate::tasks::rangefinder_task::RangefinderSubscriber;
 
@@ -51,6 +54,9 @@ pub struct AutopilotContext<'a> {
     pub barometer_subscriber: BarometerSubscriber<'a>,
     #[cfg(feature = "gps")]
     pub gps_subscriber: GpsSubscriber<'a>,
+    #[allow(unused)]
+    #[cfg(feature = "optical_flow")]
+    pub optical_flow_subscriber: OpticalFlowSubscriber<'a>,
     #[cfg(feature = "rangefinder")]
     pub rangefinder_subscriber: RangefinderSubscriber<'a>,
 }

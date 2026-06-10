@@ -5,9 +5,13 @@ use vqm::Quaternionf32;
 
 use crate::flight::ArmingFlags;
 use crate::osd::{Osd, OsdDrawContext};
+#[cfg(feature = "optical_flow")]
+use crate::tasks::optical_flow_task::OpticalFlowSubscriber;
+#[cfg(feature = "rangefinder")]
+use crate::tasks::rangefinder_task::RangefinderSubscriber;
 use crate::tasks::{
     gyro_pid_task::{GyroPidReceiver, SetpointReceiver},
-    init::SharedDisplay,
+    init::DisplayPortMutex,
 };
 
 #[cfg(feature = "barometer")]
@@ -30,6 +34,10 @@ pub struct OsdContext<'a> {
     pub battery_subscriber: BatterySubscriber<'a>,
     #[cfg(feature = "gps")]
     pub gps_subscriber: GpsSubscriber<'a>,
+    #[cfg(feature = "optical_flow")]
+    pub optical_flow_subscriber: OpticalFlowSubscriber<'a>,
+    #[cfg(feature = "rangefinder")]
+    pub rangefinder_subscriber: RangefinderSubscriber<'a>,
     pub osd: Osd,
 }
 
@@ -74,7 +82,7 @@ pub async fn osd_task(ctx: &'static mut OsdContext<'static>) {
 */
 
 #[embassy_executor::task]
-pub async fn osd_task(ctx: &'static mut OsdContext<'static>, display_mutex: &'static SharedDisplay) {
+pub async fn osd_task(ctx: &'static mut OsdContext<'static>, display_mutex: &'static DisplayPortMutex) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(50));
     let mut loop_count: u32 = 0;
 

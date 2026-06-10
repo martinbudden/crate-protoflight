@@ -41,16 +41,17 @@ The `embassy-sync` crate provides the following structures to facilitate asynchr
 
 Protoflight uses them in the following way:
 
-| IDA                         | Type   | Message              | Max Subscribers | Sending task(s)     | Receiving Task(s)        |
-| --------------------------- | ------ | -------------------- | --------------- | ------------------- | ------------------------ |
-| MOTOR_MIXER_SIGNAL          | Signal | MotorMixerMessage    | 1               | gyro_pid            | motor_mixer              |
-| GPS_YAW_HEADING_SIGNAL      | Signal | GpsYawHeadingMessage | 1               | gps                 | gyro_pid                 |
-| FLIGHT_CONTROL_WATCH        | Watch  | FlightControlMessage | 2               | flight_control      | gyro_pid, autopilot      |
-| GYRO_PID_WATCH              | Watch  | GyroPidMessage       | 3               | gyro_pid            | blackbox, osd, autopilot |
-| SETPOINT_WATCH              | Watch  | SetpointMessage      | 3               | gyro_pid            | blackbox, osd. autopilot |
-| AUTOPILOT_WATCH             | Watch  | FlightControlMessage | 1               | autopilot           | flight_control           |
-| FAST_CONFIG_PUB_SUB_CHANNEL | PubSub | FastConfigItem       | 1               | msp, flight_control | gyro_pid                 |
-| CONFIG_PUB_SUB_CHANNEL      | PubSub | ConfigItem           | 8               | msp, flight_control | all except gyro_pid      |
-| BAROMETER_PUB_SUB_CHANNEL   | PubSub | BarometerMessage     | 4               | barometer           | autopilot, msp, osd      |
-| GPS_PUB_SUB_CHANNEL         | PubSub | GpsMessage           | 4               | gps                 | autopilot, msp, osd      |
-| RANGEFINDER_PUB_SUB_CHANNEL | PubSub | RangefinderMessage   | 4               | rangefinder         | autopilot, msp, osd      |
+| IDA                          | Type   | Message              | Max Subscribers | Sending task(s)     | Receiving Task(s)        |
+| ---------------------------- | ------ | -------------------- | --------------- | ------------------- | ------------------------ |
+| MOTOR_MIXER_SIGNAL           | Signal | MotorMixerMessage    | 1               | gyro_pid            | motor_mixer              |
+| GPS_YAW_HEADING_SIGNAL       | Signal | GpsYawHeadingMessage | 1               | gps                 | gyro_pid                 |
+| FLIGHT_CONTROL_WATCH         | Watch  | FlightControlMessage | 2               | flight_control      | gyro_pid, autopilot      |
+| GYRO_PID_WATCH               | Watch  | GyroPidMessage       | 3               | gyro_pid            | blackbox, osd, autopilot |
+| SETPOINT_WATCH               | Watch  | SetpointMessage      | 3               | gyro_pid            | blackbox, osd. autopilot |
+| AUTOPILOT_WATCH              | Watch  | FlightControlMessage | 1               | autopilot           | flight_control           |
+| FAST_CONFIG_PUB_SUB_CHANNEL  | PubSub | FastConfigItem       | 1               | msp, flight_control | gyro_pid                 |
+| CONFIG_PUB_SUB_CHANNEL       | PubSub | ConfigItem           | 8               | msp, flight_control | all except gyro_pid      |
+| BAROMETER_PUB_SUB_CHANNEL    | PubSub | BarometerMessage     | 4               | barometer           | autopilot, msp, osd      |
+| GPS_PUB_SUB_CHANNEL          | PubSub | GpsMessage           | 4               | gps                 | autopilot, msp, osd      |
+| OPTICAL_FLOW_PUB_SUB_CHANNEL | PubSub | OpticalFlowMessage   | 4               | optical_flow        | autopilot, msp, osd      |
+| RANGEFINDER_PUB_SUB_CHANNEL  | PubSub | RangefinderMessage   | 4               | rangefinder         | autopilot, msp, osd      |

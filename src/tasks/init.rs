@@ -46,6 +46,11 @@ use crate::{
     tasks::msp_task::{MSP_READ_BUF_SIZE, MSP_WRITE_BUF_SIZE, MspContext, msp_task},
 };
 
+#[cfg(feature = "optical_flow")]
+use crate::tasks::optical_flow_task::{
+    OpticalFlowContext, optical_flow_publisher, optical_flow_subscriber, optical_flow_task,
+};
+
 #[cfg(feature = "osd")]
 use crate::{
     osd::Osd,
@@ -77,7 +82,7 @@ pub type SharedDisplay = Mutex<CriticalSectionRawMutex, DisplayPortMax7456<&'sta
 
 // --- 2. HOST ARCHITECTURE TESTING / MOCK CONFIGURATION ---
 #[cfg(not(feature = "max7456"))]
-pub type SharedDisplay = Mutex<CriticalSectionRawMutex, DisplayPortMock>;
+pub type DisplayPortMutex = Mutex<CriticalSectionRawMutex, DisplayPortMock>;
 
 use imu_sensors::{ImuAxesOrder, ImuMock, MockImuBus};
 use motor_mixers::{MotorMixerCommon, MotorMixerQuadXPwm};
@@ -172,6 +177,8 @@ pub async fn init(spawner: Spawner) {
     static GPS_CTX: StaticCell<GpsContext> = StaticCell::new();
     #[cfg(feature = "msp")]
     static MSP_CTX: StaticCell<MspContext> = StaticCell::new();
+    #[cfg(feature = "optical_flow")]
+    static OPTICAL_FLOW_CTX: StaticCell<OpticalFlowContext> = StaticCell::new();
     #[cfg(feature = "osd")]
     static OSD_CTX: StaticCell<OsdContext> = StaticCell::new();
     #[cfg(feature = "rangefinder")]
@@ -179,7 +186,7 @@ pub async fn init(spawner: Spawner) {
 
     #[cfg(feature = "rp2350")]
     static SPI_BUS_CELL: StaticCell<ConcreteSpiType> = StaticCell::new();
-    static SHARED_DISPLAY_CELL: StaticCell<SharedDisplay> = StaticCell::new();
+    static DISPLAY_PORT_MUTEX_CELL: StaticCell<DisplayPortMutex> = StaticCell::new();
 
     // Take ownership of the raw RP2350 hardware peripherals block
     #[cfg(feature = "rp2350")]
@@ -209,14 +216,14 @@ pub async fn init(spawner: Spawner) {
         let static_spi = SPI_DEVICE_CELL.init(raw_spi);
         let raw_display = DisplayPortMax7456::new(static_spi);
 
-        SHARED_DISPLAY_CELL.init(Mutex::new(raw_display))
+        DISPLAY_PORT_MUTEX_CELL.init(Mutex::new(raw_display))
     };
     // --- INITIALIZE MOCK STUB (HOST PROFILE ENVIRONMENT) ---
     #[allow(unused)]
     #[cfg(not(feature = "max7456"))]
     let display_ref = {
         let raw_display = DisplayPortMock::new();
-        SHARED_DISPLAY_CELL.init(Mutex::new(raw_display))
+        DISPLAY_PORT_MUTEX_CELL.init(Mutex::new(raw_display))
     };
     /*     // Allocate a static block of memory for our shared display mutex.
       // 1. Initialize your hardware SPI bus normally
@@ -305,6 +312,8 @@ pub async fn init(spawner: Spawner) {
         battery_subscriber: battery_subscriber(),
         #[cfg(feature = "gps")]
         gps_subscriber: gps_subscriber(),
+        #[cfg(feature = "optical_flow")]
+        optical_flow_subscriber: optical_flow_subscriber(),
         #[cfg(feature = "rangefinder")]
         rangefinder_subscriber: rangefinder_subscriber(),
         read_buf: [0u8; MSP_READ_BUF_SIZE],
@@ -357,6 +366,8 @@ pub async fn init(spawner: Spawner) {
         barometer_subscriber: barometer_subscriber(),
         #[cfg(feature = "gps")]
         gps_subscriber: gps_subscriber(),
+        #[cfg(feature = "optical_flow")]
+        optical_flow_subscriber: optical_flow_subscriber(),
         #[cfg(feature = "rangefinder")]
         rangefinder_subscriber: rangefinder_subscriber(),
     });
@@ -365,14 +376,16 @@ pub async fn init(spawner: Spawner) {
     let barometer_ctx = BAROMETER_CTX.init(BarometerContext { barometer_publisher: barometer_publisher() });
 
     #[cfg(feature = "rangefinder")]
-    let rangefinder_ctx =
-        RANGEFINDER_CTX.init(RangefinderContext { rangefinder_publisher: rangefinder_publisher() });
+    let rangefinder_ctx = RANGEFINDER_CTX.init(RangefinderContext { rangefinder_publisher: rangefinder_publisher() });
 
     #[cfg(feature = "battery")]
     let battery_ctx = BATTERY_CTX.init(BatteryContext { battery_publisher: battery_publisher() });
 
     #[cfg(feature = "gps")]
     let gps_ctx = GPS_CTX.init(GpsContext { gps_publisher: gps_publisher(), home: Geodetic::new() });
+
+    #[cfg(feature = "optical_flow")]
+    let optical_flow_ctx = OPTICAL_FLOW_CTX.init(OpticalFlowContext { optical_flow_publisher: optical_flow_publisher() });
 
     #[cfg(feature = "osd")]
     let osd_ctx = OSD_CTX.init(OsdContext {
@@ -384,6 +397,10 @@ pub async fn init(spawner: Spawner) {
         battery_subscriber: battery_subscriber(),
         #[cfg(feature = "gps")]
         gps_subscriber: gps_subscriber(),
+        #[cfg(feature = "optical_flow")]
+        optical_flow_subscriber: optical_flow_subscriber(),
+        #[cfg(feature = "rangefinder")]
+        rangefinder_subscriber: rangefinder_subscriber(),
         osd: Osd::new(),
     });
 
@@ -425,6 +442,8 @@ pub async fn init(spawner: Spawner) {
     spawner.spawn(gps_task(gps_ctx).expect("Failed to create GPS task"));
     #[cfg(feature = "msp")]
     spawner.spawn(msp_task(msp_ctx).expect("Failed to create MSP task"));
+    #[cfg(feature = "optical_flow")]
+    spawner.spawn(optical_flow_task(optical_flow_ctx).expect("Failed to create OSD task"));
     #[cfg(feature = "osd")]
     spawner.spawn(osd_task(osd_ctx, display_ref).expect("Failed to create OSD task"));
     #[cfg(feature = "rangefinder")]
