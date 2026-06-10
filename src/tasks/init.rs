@@ -23,12 +23,10 @@ use crate::{
 };
 
 #[cfg(feature = "barometer")]
-use crate::tasks::barometer_task::{
-    BarometerContext, barometer_data_publisher, barometer_data_subscriber, barometer_task,
-};
+use crate::tasks::barometer_task::{BarometerContext, barometer_publisher, barometer_subscriber, barometer_task};
 
 #[cfg(feature = "battery")]
-use crate::tasks::battery_task::{BatteryContext, battery_data_publisher, battery_data_subscriber, battery_task};
+use crate::tasks::battery_task::{BatteryContext, battery_publisher, battery_subscriber, battery_task};
 
 #[cfg(feature = "blackbox")]
 use {
@@ -39,7 +37,7 @@ use {
 #[cfg(feature = "gps")]
 use crate::{
     gps::Geodetic,
-    tasks::gps_task::{GpsContext, gps_data_publisher, gps_data_subscriber, gps_task},
+    tasks::gps_task::{GpsContext, gps_publisher, gps_subscriber, gps_task},
 };
 
 #[cfg(feature = "msp")]
@@ -56,7 +54,7 @@ use crate::{
 
 #[cfg(feature = "rangefinder")]
 use crate::tasks::rangefinder_task::{
-    RangefinderContext, rangefinder_data_publisher, rangefinder_data_subscriber, rangefinder_task,
+    RangefinderContext, rangefinder_publisher, rangefinder_subscriber, rangefinder_task,
 };
 
 #[cfg(feature = "serde")]
@@ -302,13 +300,13 @@ pub async fn init(spawner: Spawner) {
         fast_config_publisher: fast_config_publisher(),
         config_publisher: config_publisher(),
         #[cfg(feature = "barometer")]
-        barometer_data_subscriber: barometer_data_subscriber(),
+        barometer_subscriber: barometer_subscriber(),
         #[cfg(feature = "battery")]
-        battery_data_subscriber: battery_data_subscriber(),
+        battery_subscriber: battery_subscriber(),
         #[cfg(feature = "gps")]
-        gps_data_subscriber: gps_data_subscriber(),
+        gps_subscriber: gps_subscriber(),
         #[cfg(feature = "rangefinder")]
-        rangefinder_data_subscriber: rangefinder_data_subscriber(),
+        rangefinder_subscriber: rangefinder_subscriber(),
         read_buf: [0u8; MSP_READ_BUF_SIZE],
         write_buf: [0u8; MSP_WRITE_BUF_SIZE],
     });
@@ -352,39 +350,40 @@ pub async fn init(spawner: Spawner) {
     let autopilot_ctx: &mut AutopilotContext<'static> = AUTOPILOT_CTX.init(AutopilotContext {
         gyro_pid_receiver: gyro_pid_receiver(),
         setpoint_receiver: setpoint_receiver(),
+        flight_control_receiver: flight_control_receiver(),
         autopilot_sender: autopilot_sender(),
         autopilot: Autopilot::new(),
         #[cfg(feature = "barometer")]
-        barometer_data_subscriber: barometer_data_subscriber(),
+        barometer_subscriber: barometer_subscriber(),
         #[cfg(feature = "gps")]
-        gps_data_subscriber: gps_data_subscriber(),
+        gps_subscriber: gps_subscriber(),
         #[cfg(feature = "rangefinder")]
-        rangefinder_data_subscriber: rangefinder_data_subscriber(),
+        rangefinder_subscriber: rangefinder_subscriber(),
     });
 
     #[cfg(feature = "barometer")]
-    let barometer_ctx = BAROMETER_CTX.init(BarometerContext { barometer_data_publisher: barometer_data_publisher() });
+    let barometer_ctx = BAROMETER_CTX.init(BarometerContext { barometer_publisher: barometer_publisher() });
 
     #[cfg(feature = "rangefinder")]
     let rangefinder_ctx =
-        RANGEFINDER_CTX.init(RangefinderContext { rangefinder_data_publisher: rangefinder_data_publisher() });
+        RANGEFINDER_CTX.init(RangefinderContext { rangefinder_publisher: rangefinder_publisher() });
 
     #[cfg(feature = "battery")]
-    let battery_ctx = BATTERY_CTX.init(BatteryContext { battery_data_publisher: battery_data_publisher() });
+    let battery_ctx = BATTERY_CTX.init(BatteryContext { battery_publisher: battery_publisher() });
 
     #[cfg(feature = "gps")]
-    let gps_ctx = GPS_CTX.init(GpsContext { gps_data_publisher: gps_data_publisher(), home: Geodetic::new() });
+    let gps_ctx = GPS_CTX.init(GpsContext { gps_publisher: gps_publisher(), home: Geodetic::new() });
 
     #[cfg(feature = "osd")]
     let osd_ctx = OSD_CTX.init(OsdContext {
         gyro_pid_receiver: gyro_pid_receiver(),
         setpoint_receiver: setpoint_receiver(),
         #[cfg(feature = "barometer")]
-        barometer_data_subscriber: barometer_data_subscriber(),
+        barometer_subscriber: barometer_subscriber(),
         #[cfg(feature = "battery")]
-        battery_data_subscriber: battery_data_subscriber(),
+        battery_subscriber: battery_subscriber(),
         #[cfg(feature = "gps")]
-        gps_data_subscriber: gps_data_subscriber(),
+        gps_subscriber: gps_subscriber(),
         osd: Osd::new(),
     });
 

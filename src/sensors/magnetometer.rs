@@ -9,17 +9,17 @@ use {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "std", derive(derive_more::Display))]
-pub struct MagnetometerData {
+pub struct MagnetometerMessage {
     pub quality: u16,
 }
 
-impl MagnetometerData {
+impl MagnetometerMessage {
     pub const fn new() -> Self {
         Self { quality: 0 }
     }
 }
 
-impl Default for MagnetometerData {
+impl Default for MagnetometerMessage {
     fn default() -> Self {
         Self::new()
     }
@@ -113,7 +113,7 @@ mod tests {
 
     #[test]
     fn normal_types() {
-        is_full::<MagnetometerData>();
+        is_full::<MagnetometerMessage>();
         is_full::<MagnetometerConfig>();
         #[cfg(feature = "serde")]
         is_config::<MagnetometerConfig>();

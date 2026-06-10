@@ -10,5 +10,5 @@ mod gps_solution_data;
 pub use config::{GpsConfig, GpsRescueConfig};
 
 pub use geodetic::{Geodetic, GeographicCoordinate};
-pub use gps_data::{GpsData, GpsDataItem, GpsDataPosition, GpsPosition, GpsYawHeadingData};
+pub use gps_data::{GpsData, GpsDataPosition, GpsMessage, GpsPosition, GpsYawHeadingMessage};
 pub use gps_solution_data::{GpsSolutionData, GpsSolutionDataAbridged};

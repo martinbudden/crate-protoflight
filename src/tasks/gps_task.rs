@@ -5,7 +5,7 @@ use log::info;
 use crate::{
     gps::{Geodetic, GeographicCoordinate, GpsSolutionData},
     gps::{
-        GpsDataItem, {GpsData, GpsPosition, GpsYawHeadingData},
+        GpsMessage, {GpsData, GpsPosition, GpsYawHeadingMessage},
     },
 };
 
@@ -14,50 +14,38 @@ use embassy_sync::{
     {blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal},
 };
 
-const MAX_GPS_DATA_SUBSCRIBER_COUNT: usize = 8;
-const GPS_DATA_PUBLISHER_COUNT: usize = 1;
-const GPS_DATA_CAPACITY: usize = 4;
+const MAX_GPS_SUBSCRIBER_COUNT: usize = 4;
+const GPS_PUBLISHER_COUNT: usize = 1;
+const GPS_CAPACITY: usize = 4;
 
 /// `PubSubChannel` for handling `GpsData` updates.
-static GPS_DATA_PUB_SUB_CHANNEL: PubSubChannel<
+static GPS_PUB_SUB_CHANNEL: PubSubChannel<
     CriticalSectionRawMutex,
-    GpsDataItem,
-    GPS_DATA_CAPACITY,
-    MAX_GPS_DATA_SUBSCRIBER_COUNT,
-    GPS_DATA_PUBLISHER_COUNT,
+    GpsMessage,
+    GPS_CAPACITY,
+    MAX_GPS_SUBSCRIBER_COUNT,
+    GPS_PUBLISHER_COUNT,
 > = PubSubChannel::new();
 
-pub type GpsDataPublisher<'a> = Publisher<
-    'a,
-    CriticalSectionRawMutex,
-    GpsDataItem,
-    GPS_DATA_CAPACITY,
-    MAX_GPS_DATA_SUBSCRIBER_COUNT,
-    GPS_DATA_PUBLISHER_COUNT,
->;
+pub type GpsPublisher<'a> =
+    Publisher<'a, CriticalSectionRawMutex, GpsMessage, GPS_CAPACITY, MAX_GPS_SUBSCRIBER_COUNT, GPS_PUBLISHER_COUNT>;
 
-pub fn gps_data_publisher<'a>() -> GpsDataPublisher<'a> {
-    GPS_DATA_PUB_SUB_CHANNEL.publisher().expect("sensor_data_publisher failed")
+pub fn gps_publisher<'a>() -> GpsPublisher<'a> {
+    GPS_PUB_SUB_CHANNEL.publisher().expect("gps_publisher failed")
 }
 
-pub type GpsDataSubscriber<'a> = Subscriber<
-    'a,
-    CriticalSectionRawMutex,
-    GpsDataItem,
-    GPS_DATA_CAPACITY,
-    MAX_GPS_DATA_SUBSCRIBER_COUNT,
-    GPS_DATA_PUBLISHER_COUNT,
->;
+pub type GpsSubscriber<'a> =
+    Subscriber<'a, CriticalSectionRawMutex, GpsMessage, GPS_CAPACITY, MAX_GPS_SUBSCRIBER_COUNT, GPS_PUBLISHER_COUNT>;
 
-pub fn gps_data_subscriber<'a>() -> GpsDataSubscriber<'a> {
-    GPS_DATA_PUB_SUB_CHANNEL.subscriber().expect("sensor_data_subscriber failed")
+pub fn gps_subscriber<'a>() -> GpsSubscriber<'a> {
+    GPS_PUB_SUB_CHANNEL.subscriber().expect("gps_subscriber failed")
 }
 
-pub static GPS_YAW_HEADING_SIGNAL: Signal<CriticalSectionRawMutex, GpsYawHeadingData> = Signal::new();
+pub static GPS_YAW_HEADING_SIGNAL: Signal<CriticalSectionRawMutex, GpsYawHeadingMessage> = Signal::new();
 
 /// Context for GPS task.
 pub struct GpsContext<'a> {
-    pub gps_data_publisher: GpsDataPublisher<'a>,
+    pub gps_publisher: GpsPublisher<'a>,
     pub home: Geodetic,
 }
 
@@ -77,22 +65,22 @@ pub async fn gps_task(ctx: &'static mut GpsContext<'static>) {
         let gps_solution = GpsSolutionData::default();
 
         // Publish the raw gps data for use by (eg) the OSD.
-        ctx.gps_data_publisher.publish_immediate(GpsDataItem::Gps(gps_data));
-        ctx.gps_data_publisher.publish_immediate(GpsDataItem::GpsSolution(gps_solution));
+        ctx.gps_publisher.publish_immediate(GpsMessage::Gps(gps_data));
+        ctx.gps_publisher.publish_immediate(GpsMessage::GpsSolution(gps_solution));
 
         // Convert the gps_data position to a GpsPosition item (ie position in meters from home) for use by the autopilot.
         let geographic_coordinate = GeographicCoordinate::from(gps_data.position);
         let gps_position = GpsPosition { position: ctx.home.distance_from_home_meters(geographic_coordinate) };
-        ctx.gps_data_publisher.publish_immediate(GpsDataItem::GpsPosition(gps_position));
+        ctx.gps_publisher.publish_immediate(GpsMessage::GpsPosition(gps_position));
 
         // Only trust GPS heading if moving faster than 1.5 m/s (150 cmps, approx 3 knots)
         if gps_data.ground_speed_cmps > 150 {
-            let gps_yaw_heading_data = GpsYawHeadingData {
+            let gps_yaw_heading_message = GpsYawHeadingMessage {
                 yaw_heading_radians: (f32::from(gps_data.heading_deci_degrees) * 0.1).to_radians(),
                 delta_t: 0.1,
             };
             // signal the yaw heading so the gyro_pid task can use it to correct yaw drift in the sensor fusion filter.
-            GPS_YAW_HEADING_SIGNAL.signal(gps_yaw_heading_data);
+            GPS_YAW_HEADING_SIGNAL.signal(gps_yaw_heading_message);
         }
 
         if loop_count.is_multiple_of(10) {

@@ -6,23 +6,25 @@ use embassy_sync::{
 };
 use log::info;
 use radio_controllers::RcModesArray;
-use simple_bitset::BitSet64;
 use vqm::Vector3df32;
 
-use crate::tasks::gyro_pid_task::{GyroPidReceiver, SetpointReceiver};
+use crate::tasks::{
+    flight_control_task::FlightControlReceiver,
+    gyro_pid_task::{GyroPidReceiver, SetpointReceiver},
+};
 
 use crate::autopilot::pilot::Autopilot;
 
 use crate::flight::FlightControlMessage;
 
 #[cfg(feature = "barometer")]
-use crate::tasks::barometer_task::BarometerDataSubscriber;
+use crate::tasks::barometer_task::BarometerSubscriber;
 
 #[cfg(feature = "gps")]
-use crate::{gps::GpsDataItem, tasks::gps_task::GpsDataSubscriber};
+use crate::{gps::GpsMessage, tasks::gps_task::GpsSubscriber};
 
 #[cfg(feature = "rangefinder")]
-use crate::tasks::rangefinder_task::RangefinderDataSubscriber;
+use crate::tasks::rangefinder_task::RangefinderSubscriber;
 
 const AUTOPILOT_WATCH_COUNT: usize = 1;
 static AUTOPILOT_WATCH: Watch<CriticalSectionRawMutex, FlightControlMessage, AUTOPILOT_WATCH_COUNT> = Watch::new();
@@ -42,14 +44,15 @@ pub struct AutopilotContext<'a> {
     pub gyro_pid_receiver: GyroPidReceiver,
     #[allow(unused)]
     pub setpoint_receiver: SetpointReceiver,
+    pub flight_control_receiver: FlightControlReceiver,
     pub autopilot_sender: AutopilotSender,
     pub autopilot: Autopilot,
     #[cfg(feature = "barometer")]
-    pub barometer_data_subscriber: BarometerDataSubscriber<'a>,
+    pub barometer_subscriber: BarometerSubscriber<'a>,
     #[cfg(feature = "gps")]
-    pub gps_data_subscriber: GpsDataSubscriber<'a>,
+    pub gps_subscriber: GpsSubscriber<'a>,
     #[cfg(feature = "rangefinder")]
-    pub rangefinder_data_subscriber: RangefinderDataSubscriber<'a>,
+    pub rangefinder_subscriber: RangefinderSubscriber<'a>,
 }
 
 /// Autopilot Placeholder.
@@ -59,8 +62,8 @@ pub async fn autopilot_task(ctx: &'static mut AutopilotContext<'static>) {
     let delta_t = 0.001;
     let mut loop_count: u32 = 0;
 
-    // TODO: get rc_modes from the flight_control task.
-    let rc_modes = BitSet64::new();
+    let mut altitude_hold = false;
+    let mut position_hold = false;
 
     info!("AUTOPILOT:task started");
     loop {
@@ -75,7 +78,13 @@ pub async fn autopilot_task(ctx: &'static mut AutopilotContext<'static>) {
                 let Vector3df32 { x: estimated_vertical_speed, y: estimated_altitude, z: _estimated_bias } =
                     ctx.autopilot.altitude_kalman_filter.predict(vertical_acceleration, delta_t);
 
-                if rc_modes.test(RcModesArray::ALTITUDE_HOLD) {
+                // Check if the rc_modes have changed.
+                if let Some(flight_control_message) = ctx.flight_control_receiver.try_changed() {
+                    let rc_modes = flight_control_message.rc_modes;
+                    altitude_hold = rc_modes.test(RcModesArray::ALTITUDE_HOLD);
+                    position_hold = rc_modes.test(RcModesArray::POSITION_HOLD) | rc_modes.test(RcModesArray::GPS_RESCUE) | rc_modes.test(RcModesArray::AUTOPILOT);
+                }
+                if altitude_hold {
                     let throttle_stick = ctx.autopilot.altitude_controller.update(
                         estimated_altitude,
                         estimated_vertical_speed,
@@ -94,33 +103,36 @@ pub async fn autopilot_task(ctx: &'static mut AutopilotContext<'static>) {
         // If there is a message, it is removed and processed immediately.
         // Lagged (missed) messages are ignored.
         #[cfg(feature = "barometer")]
-        if let Some(wait_result) = ctx.barometer_data_subscriber.try_next_message()
-            && let embassy_sync::pubsub::WaitResult::Message(barometer_data) = wait_result
+        if let Some(wait_result) = ctx.barometer_subscriber.try_next_message()
+            && let embassy_sync::pubsub::WaitResult::Message(barometer_message) = wait_result
         {
-            ctx.autopilot.altitude_kalman_filter.correct_altitude_using_barometer(barometer_data.altitude_m);
+            ctx.autopilot.altitude_kalman_filter.correct_altitude_using_barometer(barometer_message.altitude_m);
             #[cfg(feature = "gps")]
-            ctx.autopilot.position_kalman_filter.correct_altitude_using_barometer(barometer_data.altitude_m);
+            ctx.autopilot.position_kalman_filter.correct_altitude_using_barometer(barometer_message.altitude_m);
         }
 
         #[cfg(feature = "rangefinder")]
-        if let Some(wait_result) = ctx.rangefinder_data_subscriber.try_next_message()
-            && let embassy_sync::pubsub::WaitResult::Message(rangefinder_data) = wait_result
+        if let Some(wait_result) = ctx.rangefinder_subscriber.try_next_message()
+            && let embassy_sync::pubsub::WaitResult::Message(rangefinder_message) = wait_result
         {
             let rangefinder_base_altitude_m = 0.0_f32;
-            let altitude = rangefinder_base_altitude_m + rangefinder_data.distance_m;
+            let altitude = rangefinder_base_altitude_m + rangefinder_message.distance_m;
             ctx.autopilot.altitude_kalman_filter.correct_altitude_using_rangefinder(altitude);
             #[cfg(feature = "gps")]
             ctx.autopilot.position_kalman_filter.correct_altitude_using_rangefinder(altitude);
         }
 
         #[cfg(feature = "gps")]
-        if let Some(wait_result) = ctx.gps_data_subscriber.try_next_message()
+        if let Some(wait_result) = ctx.gps_subscriber.try_next_message()
             && let embassy_sync::pubsub::WaitResult::Message(event) = wait_result
         {
             // TODO: choose position or altitude kalman filter based on settings
-            if let GpsDataItem::GpsPosition(gps_position) = event {
-                ctx.autopilot.altitude_kalman_filter.correct_altitude_using_gps(gps_position.position.z);
-                ctx.autopilot.position_kalman_filter.correct_position_using_gps(gps_position.position);
+            if let GpsMessage::GpsPosition(gps_position) = event {
+                if altitude_hold {
+                    ctx.autopilot.altitude_kalman_filter.correct_altitude_using_gps(gps_position.position.z);
+                } else if position_hold {
+                    ctx.autopilot.position_kalman_filter.correct_position_using_gps(gps_position.position);
+                }
             } else {
                 // Message type of interest to other subscribers, but not to me so intentionally do nothing,
                 // this consumes the message and removes it from the queue.

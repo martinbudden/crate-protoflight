@@ -11,13 +11,13 @@ use crate::tasks::{
 };
 
 #[cfg(feature = "barometer")]
-use crate::tasks::barometer_task::BarometerDataSubscriber;
+use crate::tasks::barometer_task::BarometerSubscriber;
 
 #[cfg(feature = "battery")]
-use crate::{sensors::BatteryData, tasks::battery_task::BatteryDataSubscriber};
+use crate::{sensors::BatteryMessage, tasks::battery_task::BatterySubscriber};
 
 #[cfg(feature = "gps")]
-use crate::tasks::gps_task::GpsDataSubscriber;
+use crate::tasks::gps_task::GpsSubscriber;
 
 /// Context for OSD task.
 #[allow(unused)]
@@ -25,11 +25,11 @@ pub struct OsdContext<'a> {
     pub gyro_pid_receiver: GyroPidReceiver,
     pub setpoint_receiver: SetpointReceiver,
     #[cfg(feature = "barometer")]
-    pub barometer_data_subscriber: BarometerDataSubscriber<'a>,
+    pub barometer_subscriber: BarometerSubscriber<'a>,
     #[cfg(feature = "battery")]
-    pub battery_data_subscriber: BatteryDataSubscriber<'a>,
+    pub battery_subscriber: BatterySubscriber<'a>,
     #[cfg(feature = "gps")]
-    pub gps_data_subscriber: GpsDataSubscriber<'a>,
+    pub gps_subscriber: GpsSubscriber<'a>,
     pub osd: Osd,
 }
 
@@ -99,7 +99,7 @@ pub async fn osd_task(ctx: &'static mut OsdContext<'static>, display_mutex: &'st
             };
             let arming_flags = ArmingFlags::new();
             #[cfg(feature = "battery")]
-            let battery_data = BatteryData::new();
+            let battery_message = BatteryMessage::new();
 
             // 3. Construct your context directly borrowing the inner guard
             let mut draw_context = OsdDrawContext {
@@ -107,7 +107,7 @@ pub async fn osd_task(ctx: &'static mut OsdContext<'static>, display_mutex: &'st
                 orientation,
                 arming_flags,
                 #[cfg(feature = "battery")]
-                battery_data,
+                battery_message,
             };
 
             #[allow(clippy::cast_possible_truncation)]

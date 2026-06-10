@@ -46,7 +46,7 @@ use blackbox_logger::BlackboxConfig;
 /// A `CriticalSectionRawMutex` is used since we need to be safe across multiple executors and interrupts.
 pub static GLOBAL_CONFIG: Mutex<CriticalSectionRawMutex, GlobalConfig> = Mutex::new(GlobalConfig::new());
 
-const MAX_CONFIG_SUBSCRIBER_COUNT: usize = 10;
+const MAX_CONFIG_SUBSCRIBER_COUNT: usize = 8;
 const CONFIG_PUBLISHER_COUNT: usize = 2;
 const CONFIG_CAPACITY: usize = 8;
 

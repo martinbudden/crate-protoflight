@@ -4,52 +4,52 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::pubsub::{PubSubChannel, Publisher, Subscriber};
 use log::info;
 
-use crate::sensors::BatteryData;
+use crate::sensors::BatteryMessage;
 
-const MAX_BATTERY_DATA_SUBSCRIBER_COUNT: usize = 4;
-const BATTERY_DATA_PUBLISHER_COUNT: usize = 1;
-const BATTERY_DATA_CAPACITY: usize = 1; // only keep the last item
+const MAX_BATTERY_SUBSCRIBER_COUNT: usize = 4;
+const BATTERY_PUBLISHER_COUNT: usize = 1;
+const BATTERY_CAPACITY: usize = 1; // only keep the last item
 
-/// `PubSubChannel` for handling `SensorData` updates.
-static BATTERY_DATA_PUB_SUB_CHANNEL: PubSubChannel<
+/// `PubSubChannel` for handling `battery` updates.
+static BATTERY_PUB_SUB_CHANNEL: PubSubChannel<
     CriticalSectionRawMutex,
-    BatteryData,
-    BATTERY_DATA_CAPACITY,
-    MAX_BATTERY_DATA_SUBSCRIBER_COUNT,
-    BATTERY_DATA_PUBLISHER_COUNT,
+    BatteryMessage,
+    BATTERY_CAPACITY,
+    MAX_BATTERY_SUBSCRIBER_COUNT,
+    BATTERY_PUBLISHER_COUNT,
 > = PubSubChannel::new();
 
-type BatteryDataPublisher<'a> = Publisher<
+type BatteryPublisher<'a> = Publisher<
     'a,
     CriticalSectionRawMutex,
-    BatteryData,
-    BATTERY_DATA_CAPACITY,
-    MAX_BATTERY_DATA_SUBSCRIBER_COUNT,
-    BATTERY_DATA_PUBLISHER_COUNT,
+    BatteryMessage,
+    BATTERY_CAPACITY,
+    MAX_BATTERY_SUBSCRIBER_COUNT,
+    BATTERY_PUBLISHER_COUNT,
 >;
 
-pub fn battery_data_publisher<'a>() -> BatteryDataPublisher<'a> {
-    BATTERY_DATA_PUB_SUB_CHANNEL.publisher().expect("battery_data_publisher failed")
+pub fn battery_publisher<'a>() -> BatteryPublisher<'a> {
+    BATTERY_PUB_SUB_CHANNEL.publisher().expect("battery_publisher failed")
 }
 
 #[allow(unused)]
-pub type BatteryDataSubscriber<'a> = Subscriber<
+pub type BatterySubscriber<'a> = Subscriber<
     'a,
     CriticalSectionRawMutex,
-    BatteryData,
-    BATTERY_DATA_CAPACITY,
-    MAX_BATTERY_DATA_SUBSCRIBER_COUNT,
-    BATTERY_DATA_PUBLISHER_COUNT,
+    BatteryMessage,
+    BATTERY_CAPACITY,
+    MAX_BATTERY_SUBSCRIBER_COUNT,
+    BATTERY_PUBLISHER_COUNT,
 >;
 
 #[allow(unused)]
-pub fn battery_data_subscriber<'a>() -> BatteryDataSubscriber<'a> {
-    BATTERY_DATA_PUB_SUB_CHANNEL.subscriber().expect("battery_data_subscriber failed")
+pub fn battery_subscriber<'a>() -> BatterySubscriber<'a> {
+    BATTERY_PUB_SUB_CHANNEL.subscriber().expect("battery_subscriber failed")
 }
 
 /// Context for Battery task.
 pub struct BatteryContext<'a> {
-    pub battery_data_publisher: BatteryDataPublisher<'a>,
+    pub battery_publisher: BatteryPublisher<'a>,
 }
 
 /// Battery Task Placeholder.
@@ -66,8 +66,8 @@ pub async fn battery_task(ctx: &'static mut BatteryContext<'static>) {
         ticker.next().await;
 
         // TODO: get the battery data by reading the battery.
-        let battery_data = BatteryData::default();
-        ctx.battery_data_publisher.publish_immediate(battery_data);
+        let battery_message = BatteryMessage::default();
+        ctx.battery_publisher.publish_immediate(battery_message);
 
         if loop_count.is_multiple_of(10) {
             info!("       BATTERY:  loop {loop_count}");

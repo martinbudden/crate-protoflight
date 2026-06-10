@@ -9,17 +9,17 @@ use {
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "std", derive(derive_more::Display))]
 #[cfg_attr(feature = "std", display("Range{{d:{distance_m}}}"))]
-pub struct RangefinderData {
+pub struct RangefinderMessage {
     pub distance_m: f32,
 }
 
-impl RangefinderData {
+impl RangefinderMessage {
     pub const fn new() -> Self {
         Self { distance_m: 0.0 }
     }
 }
 
-impl Default for RangefinderData {
+impl Default for RangefinderMessage {
     fn default() -> Self {
         Self::new()
     }
@@ -76,7 +76,7 @@ mod tests {
 
     #[test]
     fn normal_types() {
-        is_full::<RangefinderData>();
+        is_full::<RangefinderMessage>();
         is_full::<RangefinderConfig>();
         #[cfg(feature = "serde")]
         is_config::<RangefinderConfig>();

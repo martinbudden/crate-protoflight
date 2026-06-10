@@ -6,7 +6,7 @@ use crate::{
         elements::{OsdElement, OsdElements},
         symbols::OsdSymbols,
     },
-    sensors::{BatteryData, SensorFlags},
+    sensors::{BatteryMessage, SensorFlags},
 };
 use core::convert::TryFrom;
 use strum::EnumCount;
@@ -295,7 +295,7 @@ impl OsdElements {
     pub fn draw_element<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
         match self.active_element.id {
             OsdElementId::Rssi => self.active_element.draw_rssi(),
-            OsdElementId::MainBatteryVoltage => self.active_element.draw_main_battery_usage(&draw_context.battery_data),
+            OsdElementId::MainBatteryVoltage => self.active_element.draw_main_battery_usage(&draw_context.battery_message),
             OsdElementId::ArtificialHorizon => self.active_element.draw_artificial_horizon(),
             OsdElementId::PitchAngle => self.active_element.draw_pitch_angle(self.pitch_angle_degrees),
             OsdElementId::RollAngle => self.active_element.draw_roll_angle(self.roll_angle_degrees),
@@ -316,7 +316,7 @@ impl OsdElement {
     fn draw_rssi(&mut self) -> bool {
         true
     }
-    fn draw_main_battery_usage(&mut self, _battery_data: &BatteryData) -> bool {
+    fn draw_main_battery_usage(&mut self, _battery_data: &BatteryMessage) -> bool {
         const USAGE_STEPS: usize = 11; // Use an odd number so the bar can be centered.
         // TODO: calculate battery bars from the battery data
         let remaining_capacity_bars = 4;

@@ -13,7 +13,7 @@ use crate::{
 };
 
 // Note, we use a `Watch` rather than a `Signal` since the receiver (`gyro_pid_task`) uses `try_changed` to see if the value has changed.
-const FLIGHT_CONTROL_WATCH_COUNT: usize = 1;
+const FLIGHT_CONTROL_WATCH_COUNT: usize = 2;
 static FLIGHT_CONTROL_WATCH: Watch<CriticalSectionRawMutex, FlightControlMessage, FLIGHT_CONTROL_WATCH_COUNT> =
     Watch::new();
 
@@ -25,7 +25,7 @@ pub fn flight_control_sender() -> FlightControlSender {
 pub type FlightControlReceiver =
     Receiver<'static, CriticalSectionRawMutex, FlightControlMessage, FLIGHT_CONTROL_WATCH_COUNT>;
 pub fn flight_control_receiver() -> FlightControlReceiver {
-    FLIGHT_CONTROL_WATCH.receiver().expect("flight control receiver failed")
+    FLIGHT_CONTROL_WATCH.receiver().expect("flight_control_receiver failed")
 }
 
 #[cfg(feature = "autopilot")]
@@ -35,7 +35,9 @@ use crate::tasks::autopilot_task::AutopilotReceiver;
 pub struct FlightControlContext<'a> {
     pub flight_control_sender: FlightControlSender,
     pub config_subscriber: ConfigSubscriber<'a>,
+    /// To publish in-flight adjustments.
     pub config_publisher: ConfigPublisher<'a>,
+    /// To publish in-flight adjustments.
     pub fast_config_publisher: FastConfigPublisher<'a>,
     #[cfg(feature = "autopilot")]
     pub autopilot_receiver: AutopilotReceiver,

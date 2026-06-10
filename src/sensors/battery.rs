@@ -229,13 +229,13 @@ impl Default for CurrentMeterReading {
     }
 }
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct BatteryData {
+pub struct BatteryMessage {
     voltage: VoltageMeterReading,
     current: CurrentMeterReading,
     state: BatteryState,
 }
 
-impl BatteryData {
+impl BatteryMessage {
     pub fn new() -> Self {
         Self {
             voltage: VoltageMeterReading::new(),
@@ -245,7 +245,7 @@ impl BatteryData {
     }
 }
 
-impl Default for BatteryData {
+impl Default for BatteryMessage {
     fn default() -> Self {
         Self::new()
     }
@@ -266,7 +266,7 @@ mod tests {
         is_full::<BatteryConfig>();
         is_full::<BatteryProfile>();
         is_full::<BatteryProfiles>();
-        is_full::<BatteryData>();
+        is_full::<BatteryMessage>();
         #[cfg(feature = "serde")]
         is_config::<BatteryConfig>();
         #[cfg(feature = "serde")]

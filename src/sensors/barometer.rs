@@ -9,19 +9,19 @@ use {
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "std", derive(derive_more::Display))]
 #[cfg_attr(feature = "std", display("Baro{{a:{altitude_m}, p:{pressure_pascals}, t:{temperature_celsius}}}"))]
-pub struct BarometerData {
+pub struct BarometerMessage {
     pub altitude_m: f32,
     pub pressure_pascals: f32,
     pub temperature_celsius: f32,
 }
 
-impl BarometerData {
+impl BarometerMessage {
     pub const fn new() -> Self {
         Self { altitude_m: 0.0, pressure_pascals: 0.0, temperature_celsius: 0.0 }
     }
 }
 
-impl Default for BarometerData {
+impl Default for BarometerMessage {
     fn default() -> Self {
         Self::new()
     }
@@ -75,7 +75,7 @@ mod tests {
 
     #[test]
     fn normal_types() {
-        is_full::<BarometerData>();
+        is_full::<BarometerMessage>();
         is_full::<BarometerConfig>();
         #[cfg(feature = "serde")]
         is_config::<BarometerConfig>();

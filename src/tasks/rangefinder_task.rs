@@ -4,50 +4,50 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::pubsub::{PubSubChannel, Publisher, Subscriber};
 use log::info;
 
-use crate::sensors::RangefinderData;
+use crate::sensors::RangefinderMessage;
 
-const MAX_RANGEFINDER_DATA_SUBSCRIBER_COUNT: usize = 10;
-const RANGEFINDER_DATA_PUBLISHER_COUNT: usize = 1;
-const RANGEFINDER_DATA_CAPACITY: usize = 1; // only keep the last item
+const MAX_RANGEFINDER_SUBSCRIBER_COUNT: usize = 4;
+const RANGEFINDER_PUBLISHER_COUNT: usize = 1;
+const RANGEFINDER_CAPACITY: usize = 1; // only keep the last item
 
-/// `PubSubChannel` for handling `SensorData` updates.
-static RANGEFINDER_DATA_PUB_SUB_CHANNEL: PubSubChannel<
+/// `PubSubChannel` for handling `Rangefinder` updates.
+static RANGEFINDER_PUB_SUB_CHANNEL: PubSubChannel<
     CriticalSectionRawMutex,
-    RangefinderData,
-    RANGEFINDER_DATA_CAPACITY,
-    MAX_RANGEFINDER_DATA_SUBSCRIBER_COUNT,
-    RANGEFINDER_DATA_PUBLISHER_COUNT,
+    RangefinderMessage,
+    RANGEFINDER_CAPACITY,
+    MAX_RANGEFINDER_SUBSCRIBER_COUNT,
+    RANGEFINDER_PUBLISHER_COUNT,
 > = PubSubChannel::new();
 
-type RangefinderDataPublisher<'a> = Publisher<
+type RangefinderPublisher<'a> = Publisher<
     'a,
     CriticalSectionRawMutex,
-    RangefinderData,
-    RANGEFINDER_DATA_CAPACITY,
-    MAX_RANGEFINDER_DATA_SUBSCRIBER_COUNT,
-    RANGEFINDER_DATA_PUBLISHER_COUNT,
+    RangefinderMessage,
+    RANGEFINDER_CAPACITY,
+    MAX_RANGEFINDER_SUBSCRIBER_COUNT,
+    RANGEFINDER_PUBLISHER_COUNT,
 >;
 
-pub fn rangefinder_data_publisher<'a>() -> RangefinderDataPublisher<'a> {
-    RANGEFINDER_DATA_PUB_SUB_CHANNEL.publisher().expect("rangefinder_data_publisher failed")
+pub fn rangefinder_publisher<'a>() -> RangefinderPublisher<'a> {
+    RANGEFINDER_PUB_SUB_CHANNEL.publisher().expect("rangefinder_publisher failed")
 }
 
-pub type RangefinderDataSubscriber<'a> = Subscriber<
+pub type RangefinderSubscriber<'a> = Subscriber<
     'a,
     CriticalSectionRawMutex,
-    RangefinderData,
-    RANGEFINDER_DATA_CAPACITY,
-    MAX_RANGEFINDER_DATA_SUBSCRIBER_COUNT,
-    RANGEFINDER_DATA_PUBLISHER_COUNT,
+    RangefinderMessage,
+    RANGEFINDER_CAPACITY,
+    MAX_RANGEFINDER_SUBSCRIBER_COUNT,
+    RANGEFINDER_PUBLISHER_COUNT,
 >;
 
-pub fn rangefinder_data_subscriber<'a>() -> RangefinderDataSubscriber<'a> {
-    RANGEFINDER_DATA_PUB_SUB_CHANNEL.subscriber().expect("rangefinder_data_subscriber failed")
+pub fn rangefinder_subscriber<'a>() -> RangefinderSubscriber<'a> {
+    RANGEFINDER_PUB_SUB_CHANNEL.subscriber().expect("rangefinder_subscriber failed")
 }
 
 /// Context for Rangefinder task.
 pub struct RangefinderContext<'a> {
-    pub rangefinder_data_publisher: RangefinderDataPublisher<'a>,
+    pub rangefinder_publisher: RangefinderPublisher<'a>,
 }
 
 /// Rangefinder Task Placeholder.
@@ -60,10 +60,10 @@ pub async fn rangefinder_task(ctx: &'static mut RangefinderContext<'static>) {
     loop {
         // Wait for the next tick.
         ticker.next().await;
-        let rangefinder_data = RangefinderData::default();
+        let rangefinder_message = RangefinderMessage::default();
         // Publish a message, but if the queue is full, just kick out the oldest message.
         // This may cause some subscribers to miss a message
-        ctx.rangefinder_data_publisher.publish_immediate(rangefinder_data);
+        ctx.rangefinder_publisher.publish_immediate(rangefinder_message);
 
         if loop_count.is_multiple_of(10) {
             info!("   RANGE:    loop {loop_count}");

@@ -107,18 +107,18 @@ impl Default for GpsData {
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "std", derive(derive_more::Display))]
 #[cfg_attr(feature = "std", display("Gps{{yaw_rate: {yaw_heading_radians}}}"))]
-pub struct GpsYawHeadingData {
+pub struct GpsYawHeadingMessage {
     pub yaw_heading_radians: f32,
     pub delta_t: f32,
 }
 
-impl GpsYawHeadingData {
+impl GpsYawHeadingMessage {
     pub const fn new() -> Self {
         Self { yaw_heading_radians: 0.0, delta_t: 0.1 }
     }
 }
 
-impl Default for GpsYawHeadingData {
+impl Default for GpsYawHeadingMessage {
     fn default() -> Self {
         Self::new()
     }
@@ -126,7 +126,7 @@ impl Default for GpsYawHeadingData {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[non_exhaustive]
-pub enum GpsDataItem {
+pub enum GpsMessage {
     Gps(GpsData),
     GpsPosition(GpsPosition),
     GpsSolution(GpsSolutionData),
@@ -138,12 +138,14 @@ mod tests {
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+    fn is_full_no_default<T: Sized + Send + Sync + Unpin + Copy + Clone + PartialEq>() {}
 
     #[test]
     fn normal_types() {
-        is_full::<GpsData>();
-        is_full::<GpsData>();
+        is_full::<GpsPosition>();
         is_full::<GpsDataPosition>();
-        is_full::<GpsYawHeadingData>();
+        is_full::<GpsData>();
+        is_full::<GpsYawHeadingMessage>();
+        is_full_no_default::<GpsMessage>();
     }
 }

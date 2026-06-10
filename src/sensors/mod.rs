@@ -10,12 +10,12 @@ mod sensor_flags;
 pub use sensor_flags::SensorFlags;
 
 #[cfg(feature = "barometer")]
-pub use barometer::{BarometerConfig, BarometerData};
+pub use barometer::{BarometerConfig, BarometerMessage};
 #[cfg(feature = "battery")]
-pub use battery::{BatteryConfig, BatteryData, BatteryProfiles, CurrentMeterReading, VoltageMeterReading};
+pub use battery::{BatteryConfig, BatteryMessage, BatteryProfiles, CurrentMeterReading, VoltageMeterReading};
 #[cfg(feature = "magnetometer")]
 pub use magnetometer::MagnetometerConfig;
 #[cfg(feature = "optical_flow")]
 pub use optical_flow::OpticalFlowConfig;
 #[cfg(feature = "rangefinder")]
-pub use rangefinder::{RangefinderConfig, RangefinderData};
+pub use rangefinder::{RangefinderConfig, RangefinderMessage};

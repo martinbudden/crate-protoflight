@@ -11,16 +11,16 @@ use crate::{
 };
 
 #[cfg(feature = "barometer")]
-use crate::tasks::barometer_task::BarometerDataSubscriber;
+use crate::tasks::barometer_task::BarometerSubscriber;
 
 #[cfg(feature = "battery")]
-use crate::tasks::battery_task::BatteryDataSubscriber;
+use crate::tasks::battery_task::BatterySubscriber;
 
 #[cfg(feature = "gps")]
-use crate::{gps::GpsDataItem, tasks::gps_task::GpsDataSubscriber};
+use crate::{gps::GpsMessage, tasks::gps_task::GpsSubscriber};
 
 #[cfg(feature = "rangefinder")]
-use crate::tasks::rangefinder_task::RangefinderDataSubscriber;
+use crate::tasks::rangefinder_task::RangefinderSubscriber;
 
 /// Context for MSP task.
 ///
@@ -30,13 +30,13 @@ pub struct MspContext<'a> {
     pub fast_config_publisher: FastConfigPublisher<'a>,
     pub config_publisher: ConfigPublisher<'a>,
     #[cfg(feature = "barometer")]
-    pub barometer_data_subscriber: BarometerDataSubscriber<'a>,
+    pub barometer_subscriber: BarometerSubscriber<'a>,
     #[cfg(feature = "battery")]
-    pub battery_data_subscriber: BatteryDataSubscriber<'a>,
+    pub battery_subscriber: BatterySubscriber<'a>,
     #[cfg(feature = "gps")]
-    pub gps_data_subscriber: GpsDataSubscriber<'a>,
+    pub gps_subscriber: GpsSubscriber<'a>,
     #[cfg(feature = "rangefinder")]
-    pub rangefinder_data_subscriber: RangefinderDataSubscriber<'a>,
+    pub rangefinder_subscriber: RangefinderSubscriber<'a>,
     pub msp: Msp,
     pub read_buf: [u8; MSP_READ_BUF_SIZE],
     pub write_buf: [u8; MSP_WRITE_BUF_SIZE],
@@ -72,7 +72,7 @@ pub async fn msp_task(ctx: &'static mut MspContext<'static>) {
 
         #[cfg(feature = "barometer")]
         #[allow(clippy::cast_possible_truncation)]
-        if let Some(wait_result) = ctx.barometer_data_subscriber.try_next_message()
+        if let Some(wait_result) = ctx.barometer_subscriber.try_next_message()
             && let embassy_sync::pubsub::WaitResult::Message(barometer_data) = wait_result
         {
             msp_sensor_data.barometer_altitude_cm = ((barometer_data.altitude_m * 100.0) as i32).cast_unsigned();
@@ -80,16 +80,16 @@ pub async fn msp_task(ctx: &'static mut MspContext<'static>) {
 
         #[cfg(feature = "rangefinder")]
         #[allow(clippy::cast_possible_truncation)]
-        if let Some(wait_result) = ctx.rangefinder_data_subscriber.try_next_message()
-            && let embassy_sync::pubsub::WaitResult::Message(rangefinder_data) = wait_result
+        if let Some(wait_result) = ctx.rangefinder_subscriber.try_next_message()
+            && let embassy_sync::pubsub::WaitResult::Message(rangefinder_message) = wait_result
         {
-            msp_sensor_data.rangefinder_altitude_cm = ((rangefinder_data.distance_m * 100.0) as i32).cast_unsigned();
+            msp_sensor_data.rangefinder_altitude_cm = ((rangefinder_message.distance_m * 100.0) as i32).cast_unsigned();
         }
 
         #[cfg(feature = "gps")]
-        if let Some(wait_result) = ctx.gps_data_subscriber.try_next_message()
+        if let Some(wait_result) = ctx.gps_subscriber.try_next_message()
             && let embassy_sync::pubsub::WaitResult::Message(event) = wait_result
-            && let GpsDataItem::GpsSolution(gps_solution_data) = event
+            && let GpsMessage::GpsSolution(gps_solution_data) = event
         {
             msp_sensor_data.gps_sol.llh = gps_solution_data.llh;
             msp_sensor_data.gps_sol.satellite_count = gps_solution_data.satellite_count;

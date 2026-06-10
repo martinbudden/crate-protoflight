@@ -9,17 +9,17 @@ use {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "std", derive(derive_more::Display))]
-pub struct OpticalFlowData {
+pub struct OpticalFlowMessage {
     pub quality: u16,
 }
 
-impl OpticalFlowData {
+impl OpticalFlowMessage {
     pub const fn new() -> Self {
         Self { quality: 0 }
     }
 }
 
-impl Default for OpticalFlowData {
+impl Default for OpticalFlowMessage {
     fn default() -> Self {
         Self::new()
     }
@@ -63,7 +63,7 @@ mod tests {
 
     #[test]
     fn normal_types() {
-        is_full::<OpticalFlowData>();
+        is_full::<OpticalFlowMessage>();
         is_full::<OpticalFlowConfig>();
         #[cfg(feature = "serde")]
         is_config::<OpticalFlowConfig>();
