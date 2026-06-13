@@ -153,6 +153,8 @@
         "Quaternionu",
         "RACEBAND",
         "Reefwing",
+        "rprint",
+        "rprintln",
         "rsnr",
         "rssi",
         "rustc",

@@ -8,7 +8,7 @@ mod display_port_msp;
 pub use display_port::Display;
 #[allow(unused)]
 pub use display_port::{
-    DisplayClear, DisplayPort, DisplayPortBackground, DisplayPortDeviceType, DisplayPortLayer, DisplayPortSeverity,
+    DisplayPort, DisplayPortBackground, DisplayPortDeviceType, DisplayPortLayer, DisplayPortSeverity,DisplayPortLayerBuffer,
 };
 
 #[allow(unused)]

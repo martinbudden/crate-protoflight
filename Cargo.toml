@@ -37,7 +37,8 @@ default = ["std", "libm",
     "osd",
     #"rangefinder",
     "rpm_filters",
-    "serde"
+    "rtt-debug",
+    "serde",
 ]
 #default = ["rp2350", "libm", "blackbox", "max7456", "osd", "rpm_filters", "barometer", "gps", "msp", "autopilot", "rangefinder"]
 #default = ["rp2350", "libm", "max7456", "osd"]
@@ -60,6 +61,7 @@ osd = []
 osd_hd = []
 rangefinder = []
 rpm_filters = []
+rtt-debug = ["dep:rtt-target"]
 vtx = []
 
 # Core backend features declared explicitly
@@ -131,10 +133,12 @@ paste = { version = "1.0.15", default-features = false }
 tinyrand = { version = "0.5.0" }
 log = { version = "0.4.32", default-features = false }
 env_logger = { version ="0.11.10", default-features = false }
+rtt-target = { version = "0.6.2", optional = true }
 
 
 [dev-dependencies]
 approx = { version = "0.5.1", default-features = false }
+
 
 # see https://doc.rust-lang.org/cargo/reference/profiles.html
 [profile.dev]

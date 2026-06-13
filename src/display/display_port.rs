@@ -1,4 +1,7 @@
 #![allow(unused)]
+#[cfg(feature = "rtt-debug")]
+use rtt_target::{UpChannel, rprint, rprintln};
+
 #[derive(Clone, Copy, Default, Debug, PartialEq)]
 pub enum DisplayPortDeviceType {
     #[default]
@@ -38,19 +41,96 @@ pub enum DisplayPortSeverity {
     Critical,
 }
 
-#[derive(Clone, Copy, Default, Debug, PartialEq)]
-pub enum DisplayClear {
-    // Display drivers that can perform screen clearing in the background, e.g. via DMA, should do so.
-    // use `displayCheckReady` function to check if the screen clear has been completed.
-    #[default]
-    None,
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct DisplayPortLayerBuffer {
+    pub(crate) buffer: [u8; DisplayPort::VIDEO_BUFFER_PAL_CHARACTER_COUNT],
+}
 
-    // * when set, the display driver should block until the screen clear has completed, use in synchronous cases
-    //   only, e.g. where the screen is cleared and the display is immediately drawn to.
-    // * when NOT set, return immediately and do not block unless screen is a simple operation or cannot
-    //   be performed in the background.  As with any long delay, waiting can cause task starvation which
-    //   can result in RX loss.
-    Wait,
+impl DisplayPortLayerBuffer {
+    pub const ROW_COUNT: usize = DisplayPort::VIDEO_LINES_PAL as usize;
+    pub const COLUMN_COUNT: usize = DisplayPort::VIDEO_COLUMNS_SD as usize;
+
+    pub const fn new() -> Self {
+        Self { buffer: [0u8; Self::ROW_COUNT * Self::COLUMN_COUNT] }
+    }
+}
+
+impl Default for DisplayPortLayerBuffer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl DisplayPortLayerBuffer {
+    /// Safe 2D coordinate lookup that translates (x, y) to a 1D array reference.
+    pub fn get_mut(&mut self, x: u8, y: u8, stride: u8) -> Option<&mut u8> {
+        let index = (y as usize * stride as usize) + x as usize;
+        self.buffer.get_mut(index)
+    }
+    /// Clear screen and home cursor for rtt.
+    #[cfg(feature = "rtt-debug")]
+    pub fn rtt_init() {
+        rprint!("\x1b[2J\x1b[H");
+    }
+
+    /// Dump screen for rtt.
+    #[cfg(feature = "rtt-debug")]
+    pub fn rtt_dump(&self, overwrite: bool) {
+        if overwrite {
+            // Move cursor up 16 lines for overwrite
+            rprint!("\x1b[16A");
+        }
+        // Render the screen row by row
+        for row in 0..Self::ROW_COUNT {
+            let start = row * Self::COLUMN_COUNT;
+            let end = start + Self::COLUMN_COUNT;
+            let line_bytes = &self.buffer[start..end];
+
+            // Convert slice safely to string or fallback to characters
+            if let Ok(line_str) = core::str::from_utf8(line_bytes) {
+                rprintln!("{}", line_str);
+            } else {
+                for &byte in line_bytes {
+                    rprint!("{}", byte as char);
+                }
+                rprintln!();
+            }
+        }
+    }
+
+    #[cfg(feature = "rtt-debug")]
+    pub fn rtt_dump_fast(&self, channel: &mut UpChannel, overwrite: bool) {
+/*
+    NOTE: to use this we need to set up channels at startup, eg:
+    let channels = rtt_target::rtt_init! {
+        up: {
+            0: {
+                size: 2048,
+                mode: NoBlockSkip,
+                name: "Terminal"
+            }
+        }
+    };
+    
+    let mut rtt_display_channel = channels.up.0;
+*/
+        if overwrite {
+            // Move cursor up 16 lines for overwrite
+            _ = channel.write(b"\x1b[16A");
+        }
+        // Render the screen row by row
+        for row in 0..Self::ROW_COUNT {
+            let start = row * Self::COLUMN_COUNT;
+            let end = start + Self::COLUMN_COUNT;
+            let line_bytes = &self.buffer[start..end];
+
+            // Write the raw display data chunk directly to RAM
+            _ = channel.write(line_bytes);
+
+            // Append terminal line ending
+            _ = channel.write(b"\n");
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -150,7 +230,7 @@ pub trait Display {
         self.display_port().column_count()
     }
 
-    fn clear_screen(&mut self, display_clear: DisplayClear);
+    async fn clear_screen(&mut self);
     async fn draw_screen(&mut self) -> Result<bool, &'static str>;
 
     fn redraw(&self);
@@ -160,11 +240,11 @@ pub trait Display {
     fn write_char(&mut self, x: u8, y: u8, c: u8, attr: u8) -> usize;
     fn layer_supported(&self, layer: DisplayPortLayer) -> bool;
     fn layer_select(&mut self, layer: DisplayPortLayer);
-    fn layer_copy(&mut self, _src: DisplayPortLayer, _dest: DisplayPortLayer);
-    fn begin_transaction(&self, _options: u8);
-    fn commit_transaction(&self);
+    fn layer_copy(&mut self, src: DisplayPortLayer, dst: DisplayPortLayer);
+    fn begin_transaction(&mut self, option: u8);
+    fn commit_transaction(&mut self);
     fn is_transfer_in_progress(&self) -> bool;
-    fn check_ready(&self, _val: bool) -> bool;
+    fn check_ready(&self, val: bool) -> bool;
 }
 
 #[cfg(test)]

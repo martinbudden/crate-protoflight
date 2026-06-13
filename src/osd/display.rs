@@ -4,7 +4,7 @@ use radio_controllers::{RcModes, RcModesArray};
 use vqm::Quaternionf32;
 
 use crate::{
-    display::{Display, DisplayClear, DisplayPort, DisplayPortDeviceType, DisplayPortLayer},
+    display::{Display, DisplayPort, DisplayPortDeviceType, DisplayPortLayer},
     flight::ArmingFlags,
     osd::{OsdConfig, elements::OsdElements},
     sensors::BatteryMessage,
@@ -202,7 +202,7 @@ impl Osd {
                 self.state = OsdState::ProcessStats1;
             }
             OsdState::ProcessStats1 => {
-                // transaction begins here since refreshStats draws to the screen
+                // transaction begins here since RefreshStats draws to the screen
                 draw_ctx.display_port.begin_transaction(DisplayPort::DISPLAY_TRANSACTION_OPTION_RESET_DRAWING);
                 self.state = if self.process_stats1(time_microseconds) {
                     OsdState::RefreshStats
@@ -237,7 +237,7 @@ impl Osd {
                 let rc_modes = RcModes::new();
                 if rc_modes.is_mode_active(RcModesArray::OSD) {
                     // Hide OSD when OSD SW mode is active
-                    draw_ctx.display_port.clear_screen(DisplayClear::None);
+                    draw_ctx.display_port.clear_screen().await;
                     self.state = OsdState::Commit;
                     return;
                 }
@@ -248,7 +248,7 @@ impl Osd {
                 } else {
                     // Background layer not supported, just clear the foreground in preparation
                     // for drawing the elements including their backgrounds.
-                    draw_ctx.display_port.clear_screen(DisplayClear::None);
+                    draw_ctx.display_port.clear_screen().await;
                 }
                 self.sync_blink(time_microseconds);
                 // update the orientation, so it is only needed to be done once for all elements that require it
@@ -331,7 +331,7 @@ impl Osd {
                 }
             }
             OsdState::Idle => {
-                //_state = STATE_CHECK;
+                self.state = OsdState::Check;
             }
         }
     }

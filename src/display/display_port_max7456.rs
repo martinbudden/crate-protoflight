@@ -2,40 +2,16 @@
 
 use embedded_hal_async::spi::SpiBus;
 
-use crate::display::{Display, DisplayClear, DisplayPort, DisplayPortDeviceType, DisplayPortLayer};
+use crate::display::{Display, DisplayPort, DisplayPortDeviceType, DisplayPortLayer, DisplayPortLayerBuffer};
 use core::ops::Deref;
 
 const SPI_BUFFER_SIZE: usize = 512;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-struct DisplayLayer {
-    buffer: [u8; DisplayPort::VIDEO_BUFFER_PAL_CHARACTER_COUNT],
-}
-
-impl DisplayLayer {
-    pub const fn new() -> Self {
-        Self { buffer: [0u8; DisplayPort::VIDEO_BUFFER_PAL_CHARACTER_COUNT] }
-    }
-}
-
-impl Default for DisplayLayer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-impl DisplayLayer {
-    /// Safe 2D coordinate lookup that translates (x, y) to a 1D array reference.
-    pub fn get_mut(&mut self, x: u8, y: u8, stride: u8) -> Option<&mut u8> {
-        let index = (y as usize * stride as usize) + x as usize;
-        self.buffer.get_mut(index)
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DisplayPortMax7456<SPI> {
     pub display_port: DisplayPort,
     shadow_buffer: [u8; DisplayPort::VIDEO_BUFFER_PAL_CHARACTER_COUNT],
-    display_layers: [DisplayLayer; DisplayPort::LAYER_COUNT],
+    display_layers: [DisplayPortLayerBuffer; DisplayPort::LAYER_COUNT],
     buffer: [u8; 32],
     spi_buffer: [u8; SPI_BUFFER_SIZE], // DMA buffer
 
@@ -71,7 +47,7 @@ impl<SPI: SpiBus> DisplayPortMax7456<SPI> {
         Self {
             display_port: DisplayPort::new(DisplayPortDeviceType::Max7456),
             shadow_buffer: [0u8; DisplayPort::VIDEO_BUFFER_PAL_CHARACTER_COUNT],
-            display_layers: [DisplayLayer::new(); DisplayPort::LAYER_COUNT],
+            display_layers: [DisplayPortLayerBuffer::new(); DisplayPort::LAYER_COUNT],
             buffer: [0u8; 32],
             spi_buffer: [0u8; SPI_BUFFER_SIZE],
             font_is_loading: false,
@@ -178,8 +154,8 @@ impl<SPI: SpiBus> DisplayPortMax7456<SPI> {
             dst_layer.buffer.copy_from_slice(&src_layer.buffer);
         } else {
             let (dst, src) = self.display_layers.split_at_mut(src_idx);
-            let dst_layer = &mut dst[dst_idx];
             let src_layer = &src[0];
+            let dst_layer = &mut dst[dst_idx];
             dst_layer.buffer.copy_from_slice(&src_layer.buffer);
         }
     }
@@ -320,7 +296,7 @@ impl<SPI: SpiBus> Display for DisplayPortMax7456<SPI> {
         &self.display_port
     }
 
-    fn clear_screen(&mut self, _display_clear: DisplayClear) {
+    async fn clear_screen(&mut self) {
         Self::clear_layer(self, self.active_layer());
     }
 
@@ -350,12 +326,18 @@ impl<SPI: SpiBus> Display for DisplayPortMax7456<SPI> {
     fn layer_select(&mut self, layer: DisplayPortLayer) {
         self.display_port.set_active_layer(layer);
     }
-    fn layer_copy(&mut self, src: DisplayPortLayer, dest: DisplayPortLayer) {
-        Self::layer_copy(self, src, dest);
+    fn layer_copy(&mut self, src: DisplayPortLayer, dst: DisplayPortLayer) {
+        Self::layer_copy(self, src, dst);
     }
 
-    fn begin_transaction(&self, _options: u8) {}
-    fn commit_transaction(&self) {}
+    fn begin_transaction(&mut self, option: u8) {
+        if option == DisplayPort::DISPLAY_TRANSACTION_OPTION_RESET_DRAWING {
+            Self::clear_layer(self, DisplayPortLayer::Background);
+            Self::clear_layer(self, DisplayPortLayer::Foreground);
+        }
+
+    }
+    fn commit_transaction(&mut self) {}
     fn is_transfer_in_progress(&self) -> bool {
         false
     }

@@ -1,7 +1,7 @@
 #![cfg(feature = "osd")]
 #![allow(unused)]
 use crate::{
-    display::{Display, DisplayClear, DisplayPortLayer, DisplayPortSeverity},
+    display::{Display, DisplayPortLayer, DisplayPortSeverity},
     osd::{OsdElementsConfig, display::OsdDrawContext, elements_draw::OsdElementId},
 };
 
@@ -474,10 +474,11 @@ impl OsdElements {
         self.active_element.rendered
     }
 
+    // TODO: we need to clear the screen (async) before calling this.
     pub fn draw_active_elements_background<D: Display>(&mut self, draw_context: &mut OsdDrawContext<D>) {
         if self.background_layer_supported {
             draw_context.display_port.layer_select(DisplayPortLayer::Background);
-            draw_context.display_port.clear_screen(DisplayClear::Wait);
+            //draw_context.display_port.clear_screen();
             for element_id in self.active_elements {
                 while !self.draw_element_background_by_id(element_id, draw_context) {}
             }

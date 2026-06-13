@@ -1,6 +1,6 @@
 use core::ops::Deref;
 
-use crate::display::{Display, DisplayClear, DisplayPort, DisplayPortDeviceType, DisplayPortLayer};
+use crate::display::{Display, DisplayPort, DisplayPortDeviceType, DisplayPortLayer};
 
 struct Commands {}
 
@@ -92,7 +92,7 @@ impl Display for DisplayPortMsp {
         &self.display_port
     }
 
-    fn clear_screen(&mut self, _display_clear: DisplayClear) {
+    async fn clear_screen(&mut self) {
         _ = self.output_byte(Commands::CLEAR_SCREEN);
     }
 
@@ -123,8 +123,8 @@ impl Display for DisplayPortMsp {
     }
     fn layer_copy(&mut self, _src: DisplayPortLayer, _dst: DisplayPortLayer) {}
 
-    fn begin_transaction(&self, _options: u8) {}
-    fn commit_transaction(&self) {}
+    fn begin_transaction(&mut self, _option: u8) {}
+    fn commit_transaction(&mut self) {}
     fn is_transfer_in_progress(&self) -> bool {
         false
     }
