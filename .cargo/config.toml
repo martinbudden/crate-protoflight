@@ -8,3 +8,7 @@ rustflags = [
     "-C", "link-args=-Tlink.x -Tdefmt.x", 
     "-C", "no-vectorize-loops"
 ]
+
+[alias]
+# Run using: 'cargo test-host'
+test-host = "test --no-default-features --features std,libm,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug,serde --target x86_64-unknown-linux-gnu"
