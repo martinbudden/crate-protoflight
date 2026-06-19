@@ -222,7 +222,7 @@ pub async fn init(spawner: Spawner) {
     #[allow(unused)]
     #[cfg(not(feature = "max7456"))]
     let display_ref = {
-        let raw_display = DisplayPortMock::new();
+        let raw_display = DisplayPortMock::default();
         DISPLAY_PORT_MUTEX_CELL.init(Mutex::new(raw_display))
     };
     /*     // Allocate a static block of memory for our shared display mutex.
@@ -385,7 +385,8 @@ pub async fn init(spawner: Spawner) {
     let gps_ctx = GPS_CTX.init(GpsContext { gps_publisher: gps_publisher(), home: Geodetic::new() });
 
     #[cfg(feature = "optical_flow")]
-    let optical_flow_ctx = OPTICAL_FLOW_CTX.init(OpticalFlowContext { optical_flow_publisher: optical_flow_publisher() });
+    let optical_flow_ctx =
+        OPTICAL_FLOW_CTX.init(OpticalFlowContext { optical_flow_publisher: optical_flow_publisher() });
 
     #[cfg(feature = "osd")]
     let osd_ctx = OSD_CTX.init(OsdContext {

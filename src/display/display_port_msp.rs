@@ -92,16 +92,10 @@ impl Display for DisplayPortMsp {
         &self.display_port
     }
 
-    async fn clear_screen(&mut self) {
-        _ = self.output_byte(Commands::CLEAR_SCREEN);
+    fn display_port_mut(&mut self) -> &mut DisplayPort {
+        &mut self.display_port
     }
 
-    async fn draw_screen(&mut self) -> Result<bool, &'static str> {
-        _ = self.output_byte(Commands::DRAW_SCREEN);
-        Ok(false)
-    }
-
-    fn redraw(&self) {}
     #[allow(clippy::cast_possible_truncation)]
     fn heartbeat(&mut self) -> i32 {
         self.output_byte(Commands::HEARTBEAT).cast_signed() as i32
@@ -115,20 +109,37 @@ impl Display for DisplayPortMsp {
     fn write_string(&mut self, x: u8, y: u8, text: &[u8], attr: u8) -> usize {
         Self::write_string(self, x, y, text, attr)
     }
+
     fn layer_supported(&self, _layer: DisplayPortLayer) -> bool {
         true
     }
+
     fn layer_select(&mut self, layer: DisplayPortLayer) {
         self.display_port.set_active_layer(layer);
     }
+
     fn layer_copy(&mut self, _src: DisplayPortLayer, _dst: DisplayPortLayer) {}
 
     fn begin_transaction(&mut self, _option: u8) {}
+
     fn commit_transaction(&mut self) {}
+
     fn is_transfer_in_progress(&self) -> bool {
         false
     }
+
     fn check_ready(&self, _val: bool) -> bool {
         true
     }
+
+    async fn clear_screen(&mut self) {
+        _ = self.output_byte(Commands::CLEAR_SCREEN);
+    }
+
+    async fn draw_screen(&mut self) -> Result<bool, &'static str> {
+        _ = self.output_byte(Commands::DRAW_SCREEN);
+        Ok(false)
+    }
+
+    fn redraw(&self) {}
 }

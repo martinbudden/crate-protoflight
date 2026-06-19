@@ -16,6 +16,6 @@ pub use battery::{BatteryConfig, BatteryMessage, BatteryProfiles, CurrentMeterRe
 #[cfg(feature = "magnetometer")]
 pub use magnetometer::MagnetometerConfig;
 #[cfg(feature = "optical_flow")]
-pub use optical_flow::{OpticalFlowConfig,OpticalFlowMessage};
+pub use optical_flow::{OpticalFlowConfig, OpticalFlowMessage};
 #[cfg(feature = "rangefinder")]
 pub use rangefinder::{RangefinderConfig, RangefinderMessage};

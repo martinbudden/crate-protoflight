@@ -24,7 +24,7 @@ use crate::tasks::barometer_task::BarometerSubscriber;
 use crate::{gps::GpsMessage, tasks::gps_task::GpsSubscriber};
 
 #[cfg(feature = "optical_flow")]
-use crate::{tasks::optical_flow_task::OpticalFlowSubscriber};
+use crate::tasks::optical_flow_task::OpticalFlowSubscriber;
 
 #[cfg(feature = "rangefinder")]
 use crate::tasks::rangefinder_task::RangefinderSubscriber;
@@ -88,7 +88,9 @@ pub async fn autopilot_task(ctx: &'static mut AutopilotContext<'static>) {
                 if let Some(flight_control_message) = ctx.flight_control_receiver.try_changed() {
                     let rc_modes = flight_control_message.rc_modes;
                     altitude_hold = rc_modes.test(RcModesArray::ALTITUDE_HOLD);
-                    position_hold = rc_modes.test(RcModesArray::POSITION_HOLD) | rc_modes.test(RcModesArray::GPS_RESCUE) | rc_modes.test(RcModesArray::AUTOPILOT);
+                    position_hold = rc_modes.test(RcModesArray::POSITION_HOLD)
+                        | rc_modes.test(RcModesArray::GPS_RESCUE)
+                        | rc_modes.test(RcModesArray::AUTOPILOT);
                 }
                 if altitude_hold {
                     let throttle_stick = ctx.autopilot.altitude_controller.update(

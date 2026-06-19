@@ -2,7 +2,7 @@
 #[cfg(feature = "rtt-debug")]
 use rtt_target::{UpChannel, rprint, rprintln};
 
-#[derive(Clone, Copy, Default, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum DisplayPortDeviceType {
     #[default]
     None,
@@ -100,20 +100,20 @@ impl DisplayPortLayerBuffer {
 
     #[cfg(feature = "rtt-debug")]
     pub fn rtt_dump_fast(&self, channel: &mut UpChannel, overwrite: bool) {
-/*
-    NOTE: to use this we need to set up channels at startup, eg:
-    let channels = rtt_target::rtt_init! {
-        up: {
-            0: {
-                size: 2048,
-                mode: NoBlockSkip,
-                name: "Terminal"
-            }
-        }
-    };
-    
-    let mut rtt_display_channel = channels.up.0;
-*/
+        /*
+            NOTE: to use this we need to set up channels at startup, eg:
+            let channels = rtt_target::rtt_init! {
+                up: {
+                    0: {
+                        size: 2048,
+                        mode: NoBlockSkip,
+                        name: "Terminal"
+                    }
+                }
+            };
+
+            let mut rtt_display_channel = channels.up.0;
+        */
         if overwrite {
             // Move cursor up 16 lines for overwrite
             _ = channel.write(b"\x1b[16A");
@@ -214,6 +214,8 @@ impl DisplayPort {
 pub trait Display {
     fn display_port(&self) -> &DisplayPort;
 
+    fn display_port_mut(&mut self) -> &mut DisplayPort;
+
     fn device_type(&self) -> DisplayPortDeviceType {
         self.display_port().device_type()
     }
@@ -230,21 +232,23 @@ pub trait Display {
         self.display_port().column_count()
     }
 
-    async fn clear_screen(&mut self);
-    async fn draw_screen(&mut self) -> Result<bool, &'static str>;
-
-    fn redraw(&self);
     fn heartbeat(&mut self) -> i32;
 
     fn write_string(&mut self, x: u8, y: u8, text: &[u8], attr: u8) -> usize;
     fn write_char(&mut self, x: u8, y: u8, c: u8, attr: u8) -> usize;
+
     fn layer_supported(&self, layer: DisplayPortLayer) -> bool;
     fn layer_select(&mut self, layer: DisplayPortLayer);
     fn layer_copy(&mut self, src: DisplayPortLayer, dst: DisplayPortLayer);
+
     fn begin_transaction(&mut self, option: u8);
     fn commit_transaction(&mut self);
     fn is_transfer_in_progress(&self) -> bool;
     fn check_ready(&self, val: bool) -> bool;
+
+    async fn clear_screen(&mut self);
+    async fn draw_screen(&mut self) -> Result<bool, &'static str>;
+    fn redraw(&self);
 }
 
 #[cfg(test)]

@@ -295,7 +295,9 @@ impl OsdElements {
     pub fn draw_element<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
         match self.active_element.id {
             OsdElementId::Rssi => self.active_element.draw_rssi(),
-            OsdElementId::MainBatteryVoltage => self.active_element.draw_main_battery_usage(&draw_context.battery_message),
+            OsdElementId::MainBatteryVoltage => {
+                self.active_element.draw_main_battery_usage(&draw_context.battery_message)
+            }
             OsdElementId::ArtificialHorizon => self.active_element.draw_artificial_horizon(),
             OsdElementId::PitchAngle => self.active_element.draw_pitch_angle(self.pitch_angle_degrees),
             OsdElementId::RollAngle => self.active_element.draw_roll_angle(self.roll_angle_degrees),

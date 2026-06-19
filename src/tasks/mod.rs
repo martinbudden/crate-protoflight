@@ -13,6 +13,6 @@ pub mod init;
 mod motor_mixer_task;
 mod msp_task;
 mod non_volatile_storage;
-mod osd_task;
 mod optical_flow_task;
+mod osd_task;
 mod rangefinder_task;
