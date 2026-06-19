@@ -229,7 +229,7 @@ impl Msp {
         MspResult::Ack
     }
     async fn set_feature_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {
-        // 1. Check if enough data is even present before locking anything
+        // Check if enough data is even present before locking anything
         if src.bytes_remaining() < 4 {
             return MspResult::Error;
         }
@@ -887,9 +887,9 @@ impl Msp {
     }
 
     async fn rc(_dst: &mut StreamBufWriter<'_>) -> MspResult {
-        {
-            let _ = GLOBAL_CONFIG.lock().await;
-        }
+        // Dummy await statement to satisfy the compiler and yield control
+        // Will be removed once function fully implemented.
+        embassy_time::Timer::after_ticks(0).await;
         MspResult::Ack
     }
 

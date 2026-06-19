@@ -261,7 +261,6 @@ pub async fn init(spawner: Spawner) {
 
     env_logger::init();
 
-    #[allow(unused_mut)]
     let mut config = GLOBAL_CONFIG.lock().await;
 
     // load configs from non-volatile storage.
@@ -271,6 +270,7 @@ pub async fn init(spawner: Spawner) {
     // ****
     // Initialize the task contexts.
     // ****
+
     let gyro_pid_ctx = GYRO_PID_CTX.init(GyroPidContext {
         flight_control_receiver: flight_control_receiver(),
         gyro_pid_sender: gyro_pid_sender(),

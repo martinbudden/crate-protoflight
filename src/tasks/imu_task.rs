@@ -2,7 +2,7 @@ use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal}
 use log::info;
 use tinyrand::{RandRange, StdRand};
 
-use imu_sensors::{ImuCommon, ImuMock, MockImuBus};
+use imu_sensors::{ImuAccScale, ImuCommon, ImuGyroScale, ImuMock, MockImuBus};
 use vqm::{Vector3df32, Vector3di32};
 
 #[cfg(feature = "rp2350")]
@@ -52,7 +52,10 @@ pub async fn imu_task(ctx: &'static mut ImuContext) {
     // Base signal levels
     let mut x_base: i32 = 0;
 
-    let _ = ctx.imu.init(8000, ImuCommon::GYRO_FULL_SCALE_MAX, ImuCommon::ACC_FULL_SCALE_MAX).await;
+    let _ = ctx
+        .imu
+        .init(8000, ImuCommon::GYRO_FULL_SCALE_MAX, ImuGyroScale::Rps, ImuCommon::ACC_FULL_SCALE_MAX, ImuAccScale::G)
+        .await;
     info!("      IMU: task started");
     loop {
         // Wait for the next 50Hz tick.
@@ -68,7 +71,7 @@ pub async fn imu_task(ctx: &'static mut ImuContext) {
             z: rand.next_range(0..11_u32).cast_signed() - 5,
         };
         let gyro_dps_rnd = Vector3df32::from(gyro_raw);
-        ctx.imu.set_gyro_dps(gyro_dps_rnd).await;
+        ctx.imu.set_gyro(gyro_dps_rnd).await;
 
         // ctx.drdy.wait_for_rising_edge().await; // Synchronized to IMU
         // let data = read_imu_dma(&mut ctx.spi).await;

@@ -129,14 +129,18 @@ impl RcAdjustments {
         config_publisher: &ConfigPublisher<'_>,
         fast_config_publisher: &FastConfigPublisher<'_>,
     ) {
-        let mut global_config = GLOBAL_CONFIG.lock().await; // for now
+        // Dummy await statement to satisfy the compiler and yield control
+        // Will be removed once function fully implemented.
+        embassy_time::Timer::after_ticks(0).await;
     }
     async fn process_continuos_adjustments(
         &mut self,
         config_publisher: &ConfigPublisher<'_>,
         fast_config_publisher: &FastConfigPublisher<'_>,
     ) {
-        let mut global_config = GLOBAL_CONFIG.lock().await; // for now
+        // Dummy await statement to satisfy the compiler and yield control
+        // Will be removed once function fully implemented.
+        embassy_time::Timer::after_ticks(0).await;
     }
     fn apply_absolute_rate_adjustment(adjustment: RcAdjustment, rate: u8, rates: &mut RatesConfig) {
         #[allow(clippy::match_same_arms)]

@@ -82,7 +82,7 @@ pub async fn osd_task(ctx: &'static mut OsdContext<'static>) {
 */
 
 #[embassy_executor::task]
-pub async fn osd_task(ctx: &'static mut OsdContext<'static>, display_mutex: &'static DisplayPortMutex) {
+pub async fn osd_task(ctx: &'static mut OsdContext<'static>, display_port_mutex: &'static DisplayPortMutex) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(50));
     let mut loop_count: u32 = 0;
 
@@ -91,13 +91,12 @@ pub async fn osd_task(ctx: &'static mut OsdContext<'static>, display_mutex: &'st
         // Wait for the next 50Hz tick.
         ticker.next().await;
 
-        // 1. Check your configuration or user setting
-        let osd_enabled = true; //check_if_osd_active();
+        // check_if_osd_active();
+        let osd_enabled = true;
 
         if osd_enabled {
-            // 2. Lock the display dynamically.
-            // While this guard lives, cms_task cannot touch the display port.
-            let mut display_guard = display_mutex.lock().await;
+            // Lock the display port, while this guard lives other tasks cannot use the display port.
+            let mut display_port_guard = display_port_mutex.lock().await;
 
             // Get the latest messages without consuming the notifications.
             let orientation = if let Some(gyro_pid_message) = ctx.gyro_pid_receiver.try_get() {
@@ -105,13 +104,15 @@ pub async fn osd_task(ctx: &'static mut OsdContext<'static>, display_mutex: &'st
             } else {
                 Quaternionf32::default()
             };
+
+            // TODO: replace these placeholder values with real values
             let arming_flags = ArmingFlags::new();
             #[cfg(feature = "battery")]
             let battery_message = BatteryMessage::new();
 
-            // 3. Construct your context directly borrowing the inner guard
+            // Construct the draw context borrowing the display port.
             let mut draw_context = OsdDrawContext {
-                display_port: &mut *display_guard, // Deref to get &mut Driver
+                display_port: &mut *display_port_guard,
                 orientation,
                 arming_flags,
                 #[cfg(feature = "battery")]
@@ -122,12 +123,13 @@ pub async fn osd_task(ctx: &'static mut OsdContext<'static>, display_mutex: &'st
             let time_microseconds = embassy_time::Instant::now().as_micros() as u32;
             ctx.osd.update_display(&mut draw_context, time_microseconds).await;
 
-            if loop_count.is_multiple_of(10) {
-                info!("           OSD:      loop {loop_count}");
-            }
-            loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
-            // display_guard is automatically dropped at the end of this block,
-            // releasing the Mutex lock for cms_task.
+            // display_port_guard is automatically dropped at the end of this block,
+            // releasing the Mutex lock for other tasks.
         }
+
+        if loop_count.is_multiple_of(10) {
+            info!("           OSD:      loop {loop_count}");
+        }
+        loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }
 }
