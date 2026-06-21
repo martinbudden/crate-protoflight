@@ -1,16 +1,19 @@
-use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
-use embassy_sync::mutex::Mutex;
-use embassy_sync::pubsub::{PubSubChannel, Publisher, Subscriber};
+use embassy_sync::{
+    blocking_mutex::raw::CriticalSectionRawMutex,
+    mutex::Mutex,
+    pubsub::{PubSubChannel, Publisher, Subscriber},
+};
 
 use motor_mixers::{MixerConfig, MotorConfig, MotorDeviceConfig};
 use radio_controllers::{FailsafeConfig, RatesConfig, RcControlsConfig, RcModes, RxConfig};
 
-use crate::autopilot::{AutopilotConfig, PositionHoldConfig};
-use crate::config::SystemConfig;
-use crate::config::{ImuConfig, profiles::SchemaVersion};
-use crate::flight::{
-    AntiGravityConfig, ArmingConfig, CrashFlipConfig, CrashRecoveryConfig, DMaxConfig, FeatureFlags,
-    FlightControllerFiltersConfig, GyroConfig, ImuFilterBankConfig, PidConfig, TpaConfig, YawSpinRecoveryConfig,
+use crate::{
+    autopilot::{AutopilotConfig, PositionHoldConfig},
+    config::{ImuConfig, SystemConfig, profiles::SchemaVersion},
+    flight::{
+        AntiGravityConfig, ArmingConfig, CrashFlipConfig, CrashRecoveryConfig, DMaxConfig, FeatureFlags,
+        FlightControllerFiltersConfig, GyroConfig, ImuFilterBankConfig, PidConfig, TpaConfig, YawSpinRecoveryConfig,
+    },
 };
 
 use crate::sensors::SensorFlags;
@@ -20,6 +23,9 @@ use crate::sensors::BarometerConfig;
 
 #[cfg(feature = "battery")]
 use crate::sensors::{BatteryConfig, BatteryProfiles};
+
+#[cfg(feature = "blackbox")]
+use blackbox_logger::BlackboxConfig;
 
 #[cfg(feature = "gps")]
 use crate::gps::{GpsConfig, GpsRescueConfig};
@@ -38,9 +44,6 @@ use crate::sensors::RangefinderConfig;
 
 #[cfg(feature = "vtx")]
 use crate::vtx::{Vtx, VtxConfig};
-
-#[cfg(feature = "blackbox")]
-use blackbox_logger::BlackboxConfig;
 
 /// The global configuration is a global static protected by a mutex, since it is used by several tasks.
 /// A `CriticalSectionRawMutex` is used since we need to be safe across multiple executors and interrupts.
@@ -69,6 +72,7 @@ pub type ConfigPublisher<'a> = Publisher<
 >;
 
 #[allow(unused)]
+#[allow(clippy::expect_used)]
 pub fn config_publisher<'a>() -> ConfigPublisher<'a> {
     CONFIG_PUB_SUB_CHANNEL.publisher().expect("config_publisher failed")
 }
@@ -82,6 +86,7 @@ pub type ConfigSubscriber<'a> = Subscriber<
     CONFIG_PUBLISHER_COUNT,
 >;
 
+#[allow(clippy::expect_used)]
 pub fn config_subscriber<'a>() -> ConfigSubscriber<'a> {
     CONFIG_PUB_SUB_CHANNEL.subscriber().expect("config_subscriber failed")
 }
@@ -110,6 +115,7 @@ pub type FastConfigPublisher<'a> = Publisher<
 >;
 
 #[allow(unused)]
+#[allow(clippy::expect_used)]
 pub fn fast_config_publisher<'a>() -> FastConfigPublisher<'a> {
     FAST_CONFIG_PUB_SUB_CHANNEL.publisher().expect("fast_config_publisher failed")
 }
@@ -123,6 +129,7 @@ pub type FastConfigSubscriber<'a> = Subscriber<
     FAST_CONFIG_PUBLISHER_COUNT,
 >;
 
+#[allow(clippy::expect_used)]
 pub fn fast_config_subscriber<'a>() -> FastConfigSubscriber<'a> {
     FAST_CONFIG_PUB_SUB_CHANNEL.subscriber().expect("fast_config_subscriber failed")
 }
@@ -215,10 +222,11 @@ define_configs!(
         (RcControls, rc_controls, RcControlsConfig),
         (Arming, arming, ArmingConfig),
         (Features, features, FeatureFlags),
-        (Autopilot, autopilot, AutopilotConfig),
-        (PositionHold, position_hold, PositionHoldConfig),
         (Imu, imu, ImuConfig),
         (Sensors, sensors, SensorFlags),
+
+        (Autopilot, autopilot, AutopilotConfig),
+        (PositionHold, position_hold, PositionHoldConfig),
 
         #[cfg(feature = "barometer")]
         (Barometer, barometer, BarometerConfig),

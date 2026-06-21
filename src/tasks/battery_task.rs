@@ -1,8 +1,9 @@
 #![cfg(feature = "battery")]
 
-use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
-use embassy_sync::pubsub::{PubSubChannel, Publisher, Subscriber};
-use log::info;
+use embassy_sync::{
+    blocking_mutex::raw::CriticalSectionRawMutex,
+    pubsub::{PubSubChannel, Publisher, Subscriber},
+};
 
 use crate::sensors::BatteryMessage;
 
@@ -28,6 +29,7 @@ type BatteryPublisher<'a> = Publisher<
     BATTERY_PUBLISHER_COUNT,
 >;
 
+#[allow(clippy::expect_used)]
 pub fn battery_publisher<'a>() -> BatteryPublisher<'a> {
     BATTERY_PUB_SUB_CHANNEL.publisher().expect("battery_publisher failed")
 }
@@ -42,6 +44,7 @@ pub type BatterySubscriber<'a> = Subscriber<
     BATTERY_PUBLISHER_COUNT,
 >;
 
+#[allow(clippy::expect_used)]
 #[allow(unused)]
 pub fn battery_subscriber<'a>() -> BatterySubscriber<'a> {
     BATTERY_PUB_SUB_CHANNEL.subscriber().expect("battery_subscriber failed")
@@ -60,7 +63,7 @@ pub async fn battery_task(ctx: &'static mut BatteryContext<'static>) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(50));
     let mut loop_count: u32 = 0;
 
-    info!("  BATTERY: task started");
+    log::info!("  BATTERY: task started");
     loop {
         // Wait for the next 50Hz tick.
         ticker.next().await;
@@ -70,7 +73,7 @@ pub async fn battery_task(ctx: &'static mut BatteryContext<'static>) {
         ctx.battery_publisher.publish_immediate(battery_message);
 
         if loop_count.is_multiple_of(10) {
-            info!("       BATTERY:  loop {loop_count}");
+            log::info!("       BATTERY:  loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }

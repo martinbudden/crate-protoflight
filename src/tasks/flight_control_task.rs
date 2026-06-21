@@ -5,8 +5,6 @@ use embassy_sync::{
 
 use radio_controllers::{Rates, RcModes, RxFrame};
 
-use log::info;
-
 use crate::{
     config::{ConfigItem, ConfigPublisher, ConfigSubscriber, FastConfigPublisher},
     flight::{FlightControlMessage, RcAdjustments},
@@ -24,6 +22,8 @@ pub fn flight_control_sender() -> FlightControlSender {
 
 pub type FlightControlReceiver =
     Receiver<'static, CriticalSectionRawMutex, FlightControlMessage, FLIGHT_CONTROL_WATCH_COUNT>;
+
+#[allow(clippy::expect_used)]
 pub fn flight_control_receiver() -> FlightControlReceiver {
     FLIGHT_CONTROL_WATCH.receiver().expect("flight_control_receiver failed")
 }
@@ -59,7 +59,7 @@ pub async fn flight_control_task(ctx: &'static mut FlightControlContext<'static>
     // 50Hz = 20ms interval
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_millis(20));
 
-    info!("   FLIGHT: task started");
+    log::info!("   FLIGHT: task started");
 
     loop {
         // TODO: rx_frame should be obtained on an interrupt form the radio receiver (UART).
@@ -96,7 +96,7 @@ pub async fn flight_control_task(ctx: &'static mut FlightControlContext<'static>
         ctx.flight_control_sender.send(flight_control_message);
 
         if loop_count.is_multiple_of(5) {
-            info!("FLIGHT:   loop {loop_count}");
+            log::info!("FLIGHT:   loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }

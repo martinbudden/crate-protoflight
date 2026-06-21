@@ -1,8 +1,9 @@
 #![cfg(feature = "barometer")]
 
-use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
-use embassy_sync::pubsub::{PubSubChannel, Publisher, Subscriber};
-use log::info;
+use embassy_sync::{
+    blocking_mutex::raw::CriticalSectionRawMutex,
+    pubsub::{PubSubChannel, Publisher, Subscriber},
+};
 
 use crate::sensors::BarometerMessage;
 
@@ -28,6 +29,7 @@ type BarometerPublisher<'a> = Publisher<
     BAROMETER_PUBLISHER_COUNT,
 >;
 
+#[allow(clippy::expect_used)]
 pub fn barometer_publisher<'a>() -> BarometerPublisher<'a> {
     BAROMETER_PUB_SUB_CHANNEL.publisher().expect("barometer_publisher failed")
 }
@@ -41,6 +43,7 @@ pub type BarometerSubscriber<'a> = Subscriber<
     BAROMETER_PUBLISHER_COUNT,
 >;
 
+#[allow(clippy::expect_used)]
 pub fn barometer_subscriber<'a>() -> BarometerSubscriber<'a> {
     BAROMETER_PUB_SUB_CHANNEL.subscriber().expect("barometer_subscriber failed")
 }
@@ -56,7 +59,7 @@ pub async fn barometer_task(ctx: &'static mut BarometerContext<'static>) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(40));
     let mut loop_count: u32 = 0;
 
-    info!("BAROMETER: task started");
+    log::info!("BAROMETER: task started");
     loop {
         // Wait for the next tick.
         ticker.next().await;
@@ -66,7 +69,7 @@ pub async fn barometer_task(ctx: &'static mut BarometerContext<'static>) {
         ctx.barometer_publisher.publish_immediate(barometer_message);
 
         if loop_count.is_multiple_of(10) {
-            info!("     BAROMETER:loop {loop_count}");
+            log::info!("     BAROMETER:loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }

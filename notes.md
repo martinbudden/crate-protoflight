@@ -15,7 +15,7 @@ RUST_LOG=debug RUST_BACKTRACE=1 cargo run
 To decode the blackbox log use:
 
 ```sh
-../../blackbox-tools/obj/blackbox_decode --debug blackbox_log.bb
+../../blackbox-tools/obj/blackbox_decode --debug blackbox_log.bbl
 ```
 
 To check with a given target use:

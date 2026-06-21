@@ -2,7 +2,6 @@
 #![allow(unused)]
 
 //use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, pubsub::PubSubChannel};
-use log::info;
 use stream_buf::{StreamBufReader, StreamBufWriter};
 
 use crate::{
@@ -69,7 +68,7 @@ pub async fn msp_task(ctx: &'static mut MspContext<'static>) {
     // value to pass to Msp::process_write_command
     let mut msp_sensor_data = MspSensorData::new();
 
-    info!("      MSP: task started");
+    log::info!("      MSP: task started");
     loop {
         // Wait for msp packet
         // let msp_packet = msp.receive().await;
@@ -112,7 +111,7 @@ pub async fn msp_task(ctx: &'static mut MspContext<'static>) {
             Msp::process_read_command(cmd_msp, &mut src, &ctx.config_publisher, &ctx.fast_config_publisher).await;
 
         if loop_count.is_multiple_of(10) {
-            info!("           MSP:      loop {loop_count}");
+            log::info!("           MSP:      loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }

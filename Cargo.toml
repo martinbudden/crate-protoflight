@@ -72,7 +72,8 @@ serde = ["dep:serde", "blackbox-logger/serde", "imu-sensors/serde", "motor-mixer
 #sequential-storage = ["dep:sequential-storage"]
 
 # Target platforms
-std = ["critical-section/std", "derive_more/std", "embassy-time/std", "embassy-executor/platform-std", "imu-sensors/std", "log/std", "num-traits/std", "signal-filters/std", "vqm/std"]
+std = ["critical-section/std", "blackbox-logger/std", "derive_more/std", "embassy-time/std", "embassy-executor/platform-std", "imu-sensors/std", "log/std", "num-traits/std", "signal-filters/std", "vqm/std"]
+rp2040  = ["dep:embassy-rp", "embassy-rp/rp2040"]
 rp2350 = ["dep:embassy-rp", "embassy-rp/rp235xa"]
 
 
@@ -102,36 +103,38 @@ embedded-storage-async = { version = "0.4.1", default-features = false }
 embedded-storage-file = { version = "0.2.0", default-features = false }
 
 
-simple-bitset = "0.1.1"
-stream-buf = "0.1.0"
-vqm = { version = "0.1.12" }
-#vqm = { git = "https://github.com/martinbudden/crate-vector-quaternion-matrix" }
+simple-bitset = "0.1.2"
+#simple-bitset = { git = "https://github.com/martinbudden/crate-simple-bitset" }
+stream-buf = "0.1.1"
+#stream-buf = { git = "https://github.com/martinbudden/crate-stream-buf" }
+#vqm = { version = "0.1.12" }
+vqm = { git = "https://github.com/martinbudden/crate-vector-quaternion-matrix" }
 #vqm = { path = "../vqm" }
-signal-filters = "0.1.8"
-#signal-filters = { git = "https://github.com/martinbudden/crate-signal-filters" }
+#signal-filters = "0.1.8"
+signal-filters = { git = "https://github.com/martinbudden/crate-signal-filters" }
 #signal-filters = { path = "../signal-filters" }
 pidsk-controller = "0.1.6"
 #pidsk-controller = { path = "../pidsk-controller" }
-sensor-fusion = "0.1.7"
-#sensor-fusion = { git = "https://github.com/martinbudden/crate-sensor-fusion" }
+#sensor-fusion = "0.1.7"
+sensor-fusion = { git = "https://github.com/martinbudden/crate-sensor-fusion" }
 #sensor-fusion = { path = "../sensor-fusion" }
 #motor-mixers = { version = "0.1.4" }
 motor-mixers = { git = "https://github.com/martinbudden/crate-motor-mixers" }
 #motor-mixers = { path = "../motor-mixers" }
-#radio-controllers = { version = "0.1.5", features = ["serde"] }
+#radio-controllers = { version = "0.1.5" }
 radio-controllers = { git = "https://github.com/martinbudden/crate-radio-controllers" }
 #radio-controllers = { path = "../radio-controllers" }
 #blackbox-logger = { version = "0.1.7" }
-blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger", features = ["mock_sd_card"] }
-#blackbox-logger = { path = "../blackbox-logger", features = ["mock_sd_card"]  }
-imu-sensors = { version = "0.1.2" }
-#imu-sensors = { git = "https://github.com/martinbudden/crate-imu-sensors" }
+blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger", features = ["mock_sd_card","std"] }
+#blackbox-logger = { path = "../blackbox-logger", features = ["mock_sd_card", "std"] }
+#imu-sensors = { version = "0.1.2" }
+imu-sensors = { git = "https://github.com/martinbudden/crate-imu-sensors" }
 #imu-sensors = { path = "../imu-sensors" }
 
 paste = { version = "1.0.15", default-features = false }
 
 tinyrand = { version = "0.5.0" }
-log = { version = "0.4.32", default-features = false }
+log = { version = "0.4.33", default-features = false }
 env_logger = { version ="0.11.10", default-features = false }
 rtt-target = { version = "0.6.2", optional = true }
 

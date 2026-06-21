@@ -2,7 +2,6 @@ use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex,
     watch::{Receiver, Sender, Watch},
 };
-use log::info;
 
 use blackbox_logger::{GyroPidMessage, SetpointMessage};
 use motor_mixers::MotorMixerMessage;
@@ -49,7 +48,9 @@ pub fn gyro_pid_sender() -> GyroPidMessageSender {
 
 #[allow(unused)]
 pub type GyroPidReceiver = Receiver<'static, CriticalSectionRawMutex, GyroPidMessage, GYRO_PID_WATCH_COUNT>;
+
 #[allow(unused)]
+#[allow(clippy::expect_used)]
 pub fn gyro_pid_receiver() -> GyroPidReceiver {
     GYRO_PID_WATCH.receiver().expect("gyro_pid receiver failed")
 }
@@ -63,7 +64,9 @@ pub fn setpoint_sender() -> SetpointMessageSender {
 }
 
 pub type SetpointReceiver = Receiver<'static, CriticalSectionRawMutex, SetpointMessage, SETPOINT_WATCH_COUNT>;
+
 #[allow(unused)]
+#[allow(clippy::expect_used)]
 pub fn setpoint_receiver() -> SetpointReceiver {
     SETPOINT_WATCH.receiver().expect("setpoint receiver failed")
 }
@@ -83,7 +86,7 @@ pub struct GyroPidContext<'a> {
 /// The GYRO/PID task.
 #[embassy_executor::task]
 pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext<'static>) {
-    info!(" GYRO_PID: task started");
+    log::info!(" GYRO_PID: task started");
     let mut time_us: u32 = 0;
     let mut loop_count: u32 = 0;
     let mut gyro_pid_send_count: u32 = 0;
@@ -185,7 +188,7 @@ pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext<'static>) {
         time_us = time_us.wrapping_add(125); // use wrapping_add to handle when time rolls over at max u32.
 
         if loop_count.is_multiple_of(100) {
-            info!("      GYRO_PID: loop {loop_count}");
+            log::info!("      GYRO_PID: loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }

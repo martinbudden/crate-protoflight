@@ -425,7 +425,7 @@ impl Msp {
         dst.write_u8(rc_controls.deadband);
         dst.write_u8(rc_controls.yaw_deadband);
         dst.write_u8(position_hold.deadband);
-        dst.write_u16(0); // TODO: deadband3d throttle
+        dst.write_u16(50); // TODO: deadband3d throttle from flight3D config
         MspResult::Ack
     }
     async fn set_rc_controls_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {

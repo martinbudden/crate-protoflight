@@ -1,8 +1,9 @@
 #![cfg(feature = "rangefinder")]
 
-use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
-use embassy_sync::pubsub::{PubSubChannel, Publisher, Subscriber};
-use log::info;
+use embassy_sync::{
+    blocking_mutex::raw::CriticalSectionRawMutex,
+    pubsub::{PubSubChannel, Publisher, Subscriber},
+};
 
 use crate::sensors::RangefinderMessage;
 
@@ -56,7 +57,7 @@ pub async fn rangefinder_task(ctx: &'static mut RangefinderContext<'static>) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(40));
     let mut loop_count: u32 = 0;
 
-    info!("RANGEFINDER: task started");
+    log::info!("RANGEFINDER: task started");
     loop {
         // Wait for the next tick.
         ticker.next().await;
@@ -66,7 +67,7 @@ pub async fn rangefinder_task(ctx: &'static mut RangefinderContext<'static>) {
         ctx.rangefinder_publisher.publish_immediate(rangefinder_message);
 
         if loop_count.is_multiple_of(10) {
-            info!("   RANGE:    loop {loop_count}");
+            log::info!("   RANGE:    loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }

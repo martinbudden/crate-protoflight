@@ -1,5 +1,4 @@
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal};
-use log::info;
 use tinyrand::{RandRange, StdRand};
 
 use imu_sensors::{ImuAccScale, ImuCommon, ImuGyroScale, ImuMock, MockImuBus};
@@ -56,7 +55,7 @@ pub async fn imu_task(ctx: &'static mut ImuContext) {
         .imu
         .init(8000, ImuCommon::GYRO_FULL_SCALE_MAX, ImuGyroScale::Rps, ImuCommon::ACC_FULL_SCALE_MAX, ImuAccScale::G)
         .await;
-    info!("      IMU: task started");
+    log::info!("      IMU: task started");
     loop {
         // Wait for the next 50Hz tick.
         ticker.next().await;
@@ -86,7 +85,7 @@ pub async fn imu_task(ctx: &'static mut ImuContext) {
         IMU_SIGNAL.signal(imu_data);
 
         if loop_count.is_multiple_of(100) {
-            info!("           IMU:      loop {loop_count}");
+            log::info!("           IMU:      loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
 

@@ -434,6 +434,7 @@ pub enum MspError {
     BufferTooSmall,
 }
 
+#[allow(clippy::expect_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

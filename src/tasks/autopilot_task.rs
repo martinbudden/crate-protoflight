@@ -4,7 +4,6 @@ use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex,
     watch::{Receiver, Sender, Watch},
 };
-use log::info;
 use radio_controllers::RcModesArray;
 use vqm::Vector3df32;
 
@@ -38,6 +37,8 @@ pub fn autopilot_sender() -> AutopilotSender {
 }
 
 pub type AutopilotReceiver = Receiver<'static, CriticalSectionRawMutex, FlightControlMessage, AUTOPILOT_WATCH_COUNT>;
+
+#[allow(clippy::expect_used)]
 pub fn autopilot_receiver() -> AutopilotReceiver {
     AUTOPILOT_WATCH.receiver().expect("autopilot_receiver failed")
 }
@@ -71,7 +72,7 @@ pub async fn autopilot_task(ctx: &'static mut AutopilotContext<'static>) {
     let mut altitude_hold = false;
     let mut position_hold = false;
 
-    info!("AUTOPILOT:task started");
+    log::info!("AUTOPILOT:task started");
     loop {
         ticker.next().await;
 
@@ -148,7 +149,7 @@ pub async fn autopilot_task(ctx: &'static mut AutopilotContext<'static>) {
         }
 
         if loop_count.is_multiple_of(200) {
-            info!("     AUTOPILOT:loop {loop_count}");
+            log::info!("     AUTOPILOT:loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }

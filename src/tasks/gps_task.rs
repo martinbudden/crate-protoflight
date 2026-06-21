@@ -1,17 +1,15 @@
 #![cfg(feature = "gps")]
 
-use log::info;
+use embassy_sync::{
+    pubsub::{PubSubChannel, Publisher, Subscriber},
+    {blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal},
+};
 
 use crate::{
     gps::{Geodetic, GeographicCoordinate, GpsSolutionData},
     gps::{
         GpsMessage, {GpsData, GpsPosition, GpsYawHeadingMessage},
     },
-};
-
-use embassy_sync::{
-    pubsub::{PubSubChannel, Publisher, Subscriber},
-    {blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal},
 };
 
 const MAX_GPS_SUBSCRIBER_COUNT: usize = 4;
@@ -30,6 +28,7 @@ static GPS_PUB_SUB_CHANNEL: PubSubChannel<
 pub type GpsPublisher<'a> =
     Publisher<'a, CriticalSectionRawMutex, GpsMessage, GPS_CAPACITY, MAX_GPS_SUBSCRIBER_COUNT, GPS_PUBLISHER_COUNT>;
 
+#[allow(clippy::expect_used)]
 pub fn gps_publisher<'a>() -> GpsPublisher<'a> {
     GPS_PUB_SUB_CHANNEL.publisher().expect("gps_publisher failed")
 }
@@ -37,6 +36,7 @@ pub fn gps_publisher<'a>() -> GpsPublisher<'a> {
 pub type GpsSubscriber<'a> =
     Subscriber<'a, CriticalSectionRawMutex, GpsMessage, GPS_CAPACITY, MAX_GPS_SUBSCRIBER_COUNT, GPS_PUBLISHER_COUNT>;
 
+#[allow(clippy::expect_used)]
 pub fn gps_subscriber<'a>() -> GpsSubscriber<'a> {
     GPS_PUB_SUB_CHANNEL.subscriber().expect("gps_subscriber failed")
 }
@@ -55,7 +55,7 @@ pub async fn gps_task(ctx: &'static mut GpsContext<'static>) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(10));
     let mut loop_count: u32 = 0;
 
-    info!("GPS: task started");
+    log::info!("GPS: task started");
     loop {
         // Wait for the next tick.
         ticker.next().await;
@@ -84,7 +84,7 @@ pub async fn gps_task(ctx: &'static mut GpsContext<'static>) {
         }
 
         if loop_count.is_multiple_of(10) {
-            info!("      GPS:loop {loop_count}");
+            log::info!("      GPS:loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }

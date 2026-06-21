@@ -1,18 +1,20 @@
 #![cfg(feature = "osd")]
 
-use log::info;
 use vqm::Quaternionf32;
 
 use crate::flight::ArmingFlags;
 use crate::osd::{Osd, OsdDrawContext};
-#[cfg(feature = "optical_flow")]
-use crate::tasks::optical_flow_task::OpticalFlowSubscriber;
-#[cfg(feature = "rangefinder")]
-use crate::tasks::rangefinder_task::RangefinderSubscriber;
+
 use crate::tasks::{
     gyro_pid_task::{GyroPidReceiver, SetpointReceiver},
     init::DisplayPortMutex,
 };
+
+#[cfg(feature = "optical_flow")]
+use crate::tasks::optical_flow_task::OpticalFlowSubscriber;
+
+#[cfg(feature = "rangefinder")]
+use crate::tasks::rangefinder_task::RangefinderSubscriber;
 
 #[cfg(feature = "barometer")]
 use crate::tasks::barometer_task::BarometerSubscriber;
@@ -50,7 +52,7 @@ pub async fn osd_task(ctx: &'static mut OsdContext<'static>) {
     let mut loop_count: u32 = 0;
 
     //println!("OSD: Started at 50Hz.");
-    info!("      OSD: task started");
+    log::info!("      OSD: task started");
     loop {
         // Wait for the next 50Hz tick.
         ticker.next().await;
@@ -74,7 +76,7 @@ pub async fn osd_task(ctx: &'static mut OsdContext<'static>) {
         ctx.osd.update_display(&mut draw_context, time_microseconds);
 
         if loop_count.is_multiple_of(10) {
-            info!("      OSD:      loop {loop_count}");
+            log::info!("      OSD:      loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }
@@ -86,7 +88,7 @@ pub async fn osd_task(ctx: &'static mut OsdContext<'static>, display_port_mutex:
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(50));
     let mut loop_count: u32 = 0;
 
-    info!("      OSD: task started");
+    log::info!("      OSD: task started");
     loop {
         // Wait for the next 50Hz tick.
         ticker.next().await;
@@ -128,7 +130,7 @@ pub async fn osd_task(ctx: &'static mut OsdContext<'static>, display_port_mutex:
         }
 
         if loop_count.is_multiple_of(10) {
-            info!("           OSD:      loop {loop_count}");
+            log::info!("           OSD:      loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }

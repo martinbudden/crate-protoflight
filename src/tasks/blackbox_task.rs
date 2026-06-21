@@ -3,7 +3,6 @@
 use blackbox_logger::{
     Blackbox, Event, SetpointMessage, SliceWriter, StateMachine, drivers::SdStorage, sd_card::MockSdCard,
 };
-use log::info;
 
 use crate::tasks::gyro_pid_task::{GyroPidReceiver, SetpointReceiver};
 
@@ -32,7 +31,7 @@ impl BlackboxContext {
 /// Blackbox task placeholder.
 #[embassy_executor::task]
 pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
-    info!(" BLACKBOX: task started");
+    log::info!(" BLACKBOX: task started");
     let mut time_us: u32 = 0;
     let mut loop_count: u32 = 0;
 
@@ -45,7 +44,7 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
             ctx.blackbox.update(&mut slice_writer, time_us)
         };
         _ = ctx.sd_card.write_all(&ctx.buffer[..len]).await;
-        info!("BLACKBOX: loop {loop_count}");
+        log::info!("BLACKBOX: loop {loop_count}");
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
         if ctx.blackbox.state() == StateMachine::Running {
             break;
@@ -73,11 +72,11 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
                 ctx.blackbox.logger.log_e_frame(&mut slice_writer, Event::LogEnd)
             };
             _ = ctx.sd_card.write_all(&ctx.buffer[..len]).await;
-            info!("**** BLACKBOX: END OF LOG");
+            log::info!("**** BLACKBOX: END OF LOG");
         }
         _ = ctx.sd_card.write_all(&ctx.buffer[..len]).await;
         if loop_count.is_multiple_of(10) {
-            info!("      BLACKBOX: loop {loop_count}");
+            log::info!("      BLACKBOX: loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
         index += 1;
@@ -89,9 +88,9 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
         let gyro_pid_msg = ctx.gyro_pid_receiver.changed().await;
         ctx.blackbox.load_telemetry(time_us, gyro_pid_msg, setpoint_msg);
 
-        info!("BLACKBOX: Received time_us {}", gyro_pid_msg.time_us);
+        log::info!("BLACKBOX: Received time_us {}", gyro_pid_msg.time_us);
         let len = 0;
-        info!(
+        log::info!(
             "BLACKBOX: Encoded frame in {} bytes. (x: {}, y: {}, z: {}),(x: {}, y: {}, z: {})",
             len,
             gyro_pid_msg.gyro_rps.x,

@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)]
 use crate::config::{
     GLOBAL_CONFIG, config_publisher, config_subscriber, fast_config_publisher, fast_config_subscriber,
 };
@@ -5,10 +6,11 @@ use crate::config::{
 use crate::flight::{FlightControlMessage, FlightController, ImuFilterBank, RcAdjustments};
 
 #[allow(unused)]
-use crate::tasks::gyro_pid_task::{gyro_pid_receiver, setpoint_receiver};
 use crate::tasks::{
     flight_control_task::{FlightControlContext, flight_control_receiver, flight_control_sender, flight_control_task},
-    gyro_pid_task::{GyroPidContext, gyro_pid_sender, gyro_pid_task, setpoint_sender},
+    gyro_pid_task::{
+        GyroPidContext, gyro_pid_receiver, gyro_pid_sender, gyro_pid_task, setpoint_receiver, setpoint_sender,
+    },
     imu_task::{ImuContext, imu_task},
     motor_mixer_task::{MotorMixerContext, motor_mixer_task},
 };
@@ -16,10 +18,7 @@ use crate::tasks::{
 #[cfg(feature = "autopilot")]
 use crate::{
     autopilot::pilot::Autopilot,
-    tasks::{
-        autopilot_task::{AutopilotContext, autopilot_task},
-        autopilot_task::{autopilot_receiver, autopilot_sender},
-    },
+    tasks::autopilot_task::{AutopilotContext, autopilot_receiver, autopilot_sender, autopilot_task},
 };
 
 #[cfg(feature = "barometer")]
