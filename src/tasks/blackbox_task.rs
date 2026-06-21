@@ -1,7 +1,7 @@
 #![cfg(feature = "blackbox")]
 
 use blackbox_logger::{
-    Blackbox, Event, SetpointMessage, SliceWriter, StateMachine, drivers::SdStorage, sd_card::MockSdCard,
+    Blackbox, Event, SetpointMessage, SliceEncoder, StateMachine, drivers::SdStorage, sd_card::MockSdCard,
 };
 
 use crate::tasks::gyro_pid_task::{GyroPidReceiver, SetpointReceiver};
@@ -14,13 +14,13 @@ pub struct BlackboxContext {
     pub sd_card: MockSdCard,
     pub buffer: [u8; 1024],
     pub pos: usize,
-    //pub slice_writer: SliceWriter<'static>,
+    //pub slice_writer: SliceEncoder<'static>,
 }
 
 impl BlackboxContext {
     // We take the buffer as a mutable reference to the array
-    pub fn slice_writer(buffer: &mut [u8; 1024], pos: usize) -> SliceWriter<'_> {
-        SliceWriter {
+    pub fn slice_writer(buffer: &mut [u8; 1024], pos: usize) -> SliceEncoder<'_> {
+        SliceEncoder {
             // Rust automatically coerces &mut [u8; 1024] to &mut [u8]
             buffer,
             pos,
@@ -41,7 +41,7 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
     loop {
         let len = {
             let mut slice_writer = BlackboxContext::slice_writer(&mut ctx.buffer, ctx.pos);
-            ctx.blackbox.update(&mut slice_writer, time_us)
+            ctx.blackbox.update(&mut slice_writer, time_us, true)
         };
         _ = ctx.sd_card.write_all(&ctx.buffer[..len]).await;
         log::info!("BLACKBOX: loop {loop_count}");
@@ -63,13 +63,14 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
         ctx.blackbox.load_telemetry(time_us, gyro_pid_msg, ctx.setpoint_message);
         let len = {
             let mut slice_writer = BlackboxContext::slice_writer(&mut ctx.buffer, ctx.pos);
-            ctx.blackbox.update(&mut slice_writer, time_us)
+            ctx.blackbox.update(&mut slice_writer, time_us, true)
         };
         if index == 512 {
             // write End of log
             let len = {
                 let mut slice_writer = BlackboxContext::slice_writer(&mut ctx.buffer, ctx.pos);
-                ctx.blackbox.logger.log_e_frame(&mut slice_writer, Event::LogEnd)
+                ctx.blackbox.logger.log_e_frame(&mut slice_writer, Event::LogEnd);
+                slice_writer.pos
             };
             _ = ctx.sd_card.write_all(&ctx.buffer[..len]).await;
             log::info!("**** BLACKBOX: END OF LOG");

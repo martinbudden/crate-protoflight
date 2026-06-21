@@ -400,7 +400,7 @@ impl MspStream {
                 #[allow(clippy::cast_possible_truncation)]
                 let size_v2 = payload.len() as u16;
 
-                let push_v2ov1 =
+                let push_v2_over_v1 =
                     |b: u8, dst: &mut [u8], off: &mut usize, c: &mut u8, x: &mut u8| -> Result<(), MspError> {
                         push(b, dst, off)?;
                         *c = crc8_dvb_s2(*c, b);
@@ -408,14 +408,14 @@ impl MspStream {
                         Ok(())
                     };
 
-                push_v2ov1(flags, dst, &mut offset, &mut crc, &mut xor)?;
-                push_v2ov1((cmd & 0xFF) as u8, dst, &mut offset, &mut crc, &mut xor)?;
-                push_v2ov1((cmd >> 8) as u8, dst, &mut offset, &mut crc, &mut xor)?;
-                push_v2ov1((size_v2 & 0xFF) as u8, dst, &mut offset, &mut crc, &mut xor)?;
-                push_v2ov1((size_v2 >> 8) as u8, dst, &mut offset, &mut crc, &mut xor)?;
+                push_v2_over_v1(flags, dst, &mut offset, &mut crc, &mut xor)?;
+                push_v2_over_v1((cmd & 0xFF) as u8, dst, &mut offset, &mut crc, &mut xor)?;
+                push_v2_over_v1((cmd >> 8) as u8, dst, &mut offset, &mut crc, &mut xor)?;
+                push_v2_over_v1((size_v2 & 0xFF) as u8, dst, &mut offset, &mut crc, &mut xor)?;
+                push_v2_over_v1((size_v2 >> 8) as u8, dst, &mut offset, &mut crc, &mut xor)?;
 
                 for &byte in payload {
-                    push_v2ov1(byte, dst, &mut offset, &mut crc, &mut xor)?;
+                    push_v2_over_v1(byte, dst, &mut offset, &mut crc, &mut xor)?;
                 }
 
                 push(crc, dst, &mut offset)?;
