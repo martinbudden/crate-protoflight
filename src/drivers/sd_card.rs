@@ -1,4 +1,4 @@
-#![cfg(feature = "mock_sd_card")]
+#![cfg(all(feature = "blackbox", feature = "mock_sd_card"))]
 
 use embassy_futures::yield_now;
 use std::{fs::File, io::Write};

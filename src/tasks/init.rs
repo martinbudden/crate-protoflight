@@ -263,6 +263,7 @@ pub async fn init(spawner: Spawner) {
 
     env_logger::init();
 
+    #[allow(unused_mut)]
     let mut config = GLOBAL_CONFIG.lock().await;
 
     // load configs from non-volatile storage.
@@ -325,8 +326,7 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "blackbox")]
     let blackbox_ctx = {
         //nvs::load_blackbox_config(&mut config.blackbox, &mut flash_driver, config_flash_range.clone());
-        use crate::{flight::FeatureFlags, tasks::gyro_pid_task::gyro_pid_receiver};
-        use blackbox_logger::SetpointMessage;
+        use crate::{flight::FeatureFlags, sensors::SetpointMessage, tasks::gyro_pid_task::gyro_pid_receiver};
         config.blackbox.fields_disabled_mask = FieldSelect::PID_STERM_ROLL
         | FieldSelect::PID_STERM_PITCH
         | FieldSelect::PID_STERM_YAW

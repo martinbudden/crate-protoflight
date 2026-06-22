@@ -76,6 +76,7 @@
         "EEPROM",
         "EGNOS",
         "ELRS",
+        "erpm",
         "ESPNOW",
         "Espressif",
         "FATSHARK",

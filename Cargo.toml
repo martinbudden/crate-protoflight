@@ -30,6 +30,7 @@ default = ["std", "libm",
     "barometer",
     "battery",
     "blackbox",
+    "dshot_telemetry",
     "gps",
     #"magnetometer",
     "mock_sd_card",
@@ -47,13 +48,15 @@ default = ["std", "libm",
 #default = ["rp2350", "blackbox", "libm", "osd"]
 
 autopilot = []
-barometer = []
+barometer = ["blackbox-logger/barometer"]
 battery = []
 blackbox = []
 cms = []
 dashboard = []
-gps = []
-magnetometer = []
+dshot_telemetry = ["blackbox-logger/dshot_telemetry"]
+eight_motors = ["blackbox-logger/eight_motors"]
+gps = ["blackbox-logger/gps"]
+magnetometer = ["blackbox-logger/magnetometer"]
 max7456 = []
 mock_sd_card = []
 multicore = []
@@ -61,15 +64,16 @@ msp = []
 optical_flow = []
 osd = []
 osd_hd = []
-rangefinder = []
+rangefinder = ["blackbox-logger/rangefinder"]
 rpm_filters = []
-rtt-debug = ["dep:rtt-target"]
+servos = ["blackbox-logger/servos"]
 vtx = []
 
 # Core backend features declared explicitly
-libm = ["dep:libm", "num-traits/libm", "vqm/libm", "signal-filters/libm", "radio-controllers/libm"]
+libm = ["dep:libm", "num-traits/libm", "vqm/libm", "signal-filters/libm", "radio-controllers/libm", "blackbox-logger/libm"]
 no_align = ["vqm/no_align", "signal-filters/no_align"]
 simd = ["vqm/simd", "signal-filters/simd"]
+rtt-debug = ["dep:rtt-target"]
 serde = ["dep:serde", "blackbox-logger/serde", "imu-sensors/serde", "motor-mixers/serde", "radio-controllers/serde", "simple-bitset/serde", "vqm/serde" ]
 #sequential-storage = ["dep:sequential-storage"]
 
@@ -126,9 +130,9 @@ motor-mixers = { git = "https://github.com/martinbudden/crate-motor-mixers" }
 #radio-controllers = { version = "0.1.5" }
 radio-controllers = { git = "https://github.com/martinbudden/crate-radio-controllers" }
 #radio-controllers = { path = "../radio-controllers" }
-#blackbox-logger = { version = "0.1.7" }
-blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger" }
-#blackbox-logger = { path = "../blackbox-logger" }
+#blackbox-logger = { version = "0.1.7", default-features = false, optional = true }
+blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger", default-features = false, optional = true }
+#blackbox-logger = { path = "../blackbox-logger", default-features = false, optional = true }
 #imu-sensors = { version = "0.1.2" }
 imu-sensors = { git = "https://github.com/martinbudden/crate-imu-sensors" }
 #imu-sensors = { path = "../imu-sensors" }

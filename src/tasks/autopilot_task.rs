@@ -69,7 +69,9 @@ pub async fn autopilot_task(ctx: &'static mut AutopilotContext<'static>) {
     let delta_t = 0.001;
     let mut loop_count: u32 = 0;
 
+    #[allow(unused)]
     let mut altitude_hold = false;
+    #[cfg(feature = "gps")]
     let mut position_hold = false;
 
     log::info!("AUTOPILOT:task started");
@@ -89,9 +91,12 @@ pub async fn autopilot_task(ctx: &'static mut AutopilotContext<'static>) {
                 if let Some(flight_control_message) = ctx.flight_control_receiver.try_changed() {
                     let rc_modes = flight_control_message.rc_modes;
                     altitude_hold = rc_modes.test(RcModesArray::ALTITUDE_HOLD);
-                    position_hold = rc_modes.test(RcModesArray::POSITION_HOLD)
-                        | rc_modes.test(RcModesArray::GPS_RESCUE)
-                        | rc_modes.test(RcModesArray::AUTOPILOT);
+                    #[cfg(feature = "gps")]
+                    {
+                        position_hold = rc_modes.test(RcModesArray::POSITION_HOLD)
+                            | rc_modes.test(RcModesArray::GPS_RESCUE)
+                            | rc_modes.test(RcModesArray::AUTOPILOT);
+                    }
                 }
                 if altitude_hold {
                     let throttle_stick = ctx.autopilot.altitude_controller.update(

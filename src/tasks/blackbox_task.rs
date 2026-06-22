@@ -1,9 +1,15 @@
 #![cfg(feature = "blackbox")]
 
-use blackbox_logger::{Blackbox, Event, LoggerState, SetpointMessage, SliceEncoder};
+use blackbox_logger::{Blackbox, BlackboxEvent, BlackboxMainData, BlackboxSlowData, LoggerState, SliceEncoder};
+
+/*#[cfg(feature = "gps")]
+use crate::gps::GpsMessage;
+#[cfg(feature = "gps")]
+use blackbox_logger::{BlackboxGpsData,BlackboxGpsPosition};*/
 
 use crate::{
     drivers::sd_card::{MockSdCard, SdStorage},
+    sensors::{GyroPidMessage, SetpointMessage},
     tasks::gyro_pid_task::{GyroPidReceiver, SetpointReceiver},
 };
 
@@ -61,7 +67,13 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
         if let Some(setpoint_msg) = ctx.setpoint_receiver.try_get() {
             ctx.setpoint_message = setpoint_msg;
         }
-        ctx.blackbox.load_telemetry(time_us, gyro_pid_msg, ctx.setpoint_message);
+        let main_data = main_data_from(time_us, gyro_pid_msg, ctx.setpoint_message);
+        ctx.blackbox.set_main_data(time_us, main_data);
+        let slow_data = slow_data_from(ctx.setpoint_message);
+        ctx.blackbox.set_slow_data(slow_data);
+        //#[cfg(feature = "gps")]
+        //ctx.blackbox.set_gps_data(gps_data_from(ctx.gps_message));
+
         let len = {
             let mut slice_writer = BlackboxContext::slice_writer(&mut ctx.buffer, ctx.pos);
             ctx.blackbox.update(&mut slice_writer, time_us, true)
@@ -70,7 +82,7 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
             // write End of log
             let len = {
                 let mut slice_writer = BlackboxContext::slice_writer(&mut ctx.buffer, ctx.pos);
-                ctx.blackbox.logger.log_e_frame(&mut slice_writer, Event::LogEnd);
+                ctx.blackbox.logger.log_e_frame(&mut slice_writer, BlackboxEvent::LogEnd);
                 slice_writer.pos
             };
             _ = ctx.sd_card.write_all(&ctx.buffer[..len]).await;
@@ -109,4 +121,85 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
         // 3. Increment fake time (e.g., 1000us per sample for 1kHz)
         time_us = time_us.wrapping_add(1000); // use wrapping_add to handle when time rolls over at max u32.
     }*/
+}
+
+pub fn main_data_from(
+    _current_time_us: u32,
+    gyro_pid_msg: GyroPidMessage,
+    setpoint_msg: SetpointMessage,
+) -> BlackboxMainData {
+    const TO_I16: f32 = 32_757.0;
+    let motor_commands = gyro_pid_msg.motor_commands * 2.0;
+    BlackboxMainData {
+        time_us: gyro_pid_msg.time_us,
+        baro_altitude: 0,
+        range_raw: 0,
+        amperage: 0,
+        battery_voltage: 0,
+        rssi: 0,
+        // todo, add scaling to below
+        #[allow(clippy::cast_possible_truncation)]
+        pid_p: gyro_pid_msg.pid_errors_p.map(|x| x as i32),
+        #[allow(clippy::cast_possible_truncation)]
+        pid_i: gyro_pid_msg.pid_errors_i.map(|x| x as i32),
+        #[allow(clippy::cast_possible_truncation)]
+        pid_d: [gyro_pid_msg.pid_errors_d[0] as i32, gyro_pid_msg.pid_errors_d[1] as i32, 0],
+        pid_s: [0i32; BlackboxMainData::RPY_AXIS_COUNT],
+        pid_k: [0i32; BlackboxMainData::RPY_AXIS_COUNT],
+
+        rc_commands: [1500, 1500, 1500, 1100],
+
+        // TODO: need to scale these
+        #[allow(clippy::cast_possible_truncation)]
+        setpoints: [motor_commands.x as i16, motor_commands.y as i16, motor_commands.z as i16, motor_commands.t as i16],
+        gyro: (gyro_pid_msg.gyro_rps.to_degrees()).into(),
+        gyro_unfiltered: (gyro_pid_msg.gyro_rps_unfiltered.to_degrees()).into(),
+        acc: (gyro_pid_msg.acc * 4096.0).into(),
+        #[cfg(feature = "magnetometer")]
+        mag: [0i16; BlackboxMainData::XYZ_AXIS_COUNT],
+
+        #[allow(clippy::cast_possible_truncation)]
+        orientation: if gyro_pid_msg.orientation.w > 0.0 {
+            [
+                (gyro_pid_msg.orientation.x * TO_I16) as i16,
+                (gyro_pid_msg.orientation.y * TO_I16) as i16,
+                (gyro_pid_msg.orientation.z * TO_I16) as i16,
+            ]
+        } else {
+            [
+                (-gyro_pid_msg.orientation.x * TO_I16) as i16,
+                (-gyro_pid_msg.orientation.y * TO_I16) as i16,
+                (-gyro_pid_msg.orientation.z * TO_I16) as i16,
+            ]
+        },
+        #[cfg(feature = "eight_motors")]
+        motor: [1100, 1100, 1100, 1100, 1100, 1100, 1100, 1100],
+        #[cfg(not(feature = "eight_motors"))]
+        motor: [1100, 1100, 1100, 1100],
+        #[cfg(feature = "dshot_telemetry")]
+        erpm: [0u16; BlackboxMainData::MAX_SUPPORTED_MOTOR_COUNT],
+
+        debug: [
+            gyro_pid_msg.debug[0],
+            gyro_pid_msg.debug[1],
+            gyro_pid_msg.debug[2],
+            gyro_pid_msg.debug[3],
+            gyro_pid_msg.debug[4],
+            gyro_pid_msg.debug[5],
+            setpoint_msg.debug[0],
+            setpoint_msg.debug[1],
+        ],
+        #[cfg(feature = "servos")]
+        servos: [0i16; MainData::MAX_SUPPORTED_SERVO_COUNT],
+    }
+}
+
+pub fn slow_data_from(setpoint: SetpointMessage) -> BlackboxSlowData {
+    BlackboxSlowData {
+        flight_mode_flags: setpoint.flight_mode_flags,
+        state_flags: setpoint.state_flags,
+        failsafe_phase: setpoint.failsafe_phase,
+        rx_signal_received: setpoint.rx_signal_received,
+        rx_flight_channel_is_valid: setpoint.rx_flight_channel_is_valid,
+    }
 }

@@ -3,13 +3,13 @@ use embassy_sync::{
     watch::{Receiver, Sender, Watch},
 };
 
-use blackbox_logger::{GyroPidMessage, SetpointMessage};
 use motor_mixers::MotorMixerMessage;
 use sensor_fusion::{MadgwickFilterf32, SensorFusion};
 
 use crate::{
     config::{FastConfigItem, FastConfigSubscriber},
     flight::{FilterAccGyro, FlightControlMessage, FlightController, ImuFilterBank, VehicleControl},
+    sensors::{GyroPidMessage, SetpointMessage},
     tasks::{flight_control_task::FlightControlReceiver, imu_task::IMU_SIGNAL, motor_mixer_task::MOTOR_MIXER_SIGNAL},
 };
 
