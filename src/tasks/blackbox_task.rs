@@ -1,10 +1,11 @@
 #![cfg(feature = "blackbox")]
 
-use blackbox_logger::{
-    Blackbox, Event, SetpointMessage, SliceEncoder, StateMachine, drivers::SdStorage, sd_card::MockSdCard,
-};
+use blackbox_logger::{Blackbox, Event, LoggerState, SetpointMessage, SliceEncoder};
 
-use crate::tasks::gyro_pid_task::{GyroPidReceiver, SetpointReceiver};
+use crate::{
+    drivers::sd_card::{MockSdCard, SdStorage},
+    tasks::gyro_pid_task::{GyroPidReceiver, SetpointReceiver},
+};
 
 pub struct BlackboxContext {
     pub gyro_pid_receiver: GyroPidReceiver,
@@ -35,7 +36,7 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
     let mut time_us: u32 = 0;
     let mut loop_count: u32 = 0;
 
-    ctx.blackbox.set_state(StateMachine::LogFileHeader);
+    ctx.blackbox.set_state(LoggerState::LogFileHeader);
 
     // write the Blackbox header.
     loop {
@@ -44,9 +45,9 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
             ctx.blackbox.update(&mut slice_writer, time_us, true)
         };
         _ = ctx.sd_card.write_all(&ctx.buffer[..len]).await;
-        log::info!("BLACKBOX: loop {loop_count}");
+        log::info!("BLACKBOX: loop {loop_count},{len}");
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
-        if ctx.blackbox.state() == StateMachine::Running {
+        if ctx.blackbox.state() == LoggerState::Running {
             break;
         }
     }
@@ -77,7 +78,7 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
         }
         _ = ctx.sd_card.write_all(&ctx.buffer[..len]).await;
         if loop_count.is_multiple_of(10) {
-            log::info!("      BLACKBOX: loop {loop_count}");
+            log::info!("      BLACKBOX: loop {loop_count},{len}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
         index += 1;

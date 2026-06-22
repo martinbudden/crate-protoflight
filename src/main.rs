@@ -1,5 +1,5 @@
 #![doc = include_str!("../README.md")]
-#![no_std]
+#![cfg_attr(all(not(test), not(feature = "std")), no_std)]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
@@ -11,6 +11,7 @@
 mod autopilot;
 mod config;
 mod display;
+mod drivers;
 mod flight;
 #[cfg(feature = "gps")]
 mod gps;

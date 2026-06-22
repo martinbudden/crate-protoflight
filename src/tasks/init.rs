@@ -29,8 +29,11 @@ use crate::tasks::battery_task::{BatteryContext, battery_publisher, battery_subs
 
 #[cfg(feature = "blackbox")]
 use {
-    crate::tasks::blackbox_task::{BlackboxContext, blackbox_task},
-    blackbox_logger::{Blackbox, FieldSelect, drivers::sd_card::MockSdCard},
+    crate::{
+        drivers::sd_card::MockSdCard,
+        tasks::blackbox_task::{BlackboxContext, blackbox_task},
+    },
+    blackbox_logger::{Blackbox, FieldSelect},
 };
 
 #[cfg(feature = "gps")]

@@ -32,6 +32,7 @@ default = ["std", "libm",
     "blackbox",
     "gps",
     #"magnetometer",
+    "mock_sd_card",
     "msp",
     #"optical_flow",
     "osd",
@@ -54,6 +55,7 @@ dashboard = []
 gps = []
 magnetometer = []
 max7456 = []
+mock_sd_card = []
 multicore = []
 msp = []
 optical_flow = []
@@ -125,8 +127,8 @@ motor-mixers = { git = "https://github.com/martinbudden/crate-motor-mixers" }
 radio-controllers = { git = "https://github.com/martinbudden/crate-radio-controllers" }
 #radio-controllers = { path = "../radio-controllers" }
 #blackbox-logger = { version = "0.1.7" }
-blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger", features = ["mock_sd_card","std"] }
-#blackbox-logger = { path = "../blackbox-logger", features = ["mock_sd_card", "std"] }
+blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger" }
+#blackbox-logger = { path = "../blackbox-logger" }
 #imu-sensors = { version = "0.1.2" }
 imu-sensors = { git = "https://github.com/martinbudden/crate-imu-sensors" }
 #imu-sensors = { path = "../imu-sensors" }
