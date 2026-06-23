@@ -2,10 +2,8 @@
 
 use blackbox_logger::{Blackbox, BlackboxEvent, BlackboxMainData, BlackboxSlowData, LoggerState, SliceEncoder};
 
-/*#[cfg(feature = "gps")]
-use crate::gps::GpsMessage;
 #[cfg(feature = "gps")]
-use blackbox_logger::{BlackboxGpsData,BlackboxGpsPosition};*/
+use blackbox_logger::{BlackboxGpsData, BlackboxGpsPosition};
 
 use crate::{
     drivers::sd_card::{MockSdCard, SdStorage},
@@ -13,10 +11,18 @@ use crate::{
     tasks::gyro_pid_task::{GyroPidReceiver, SetpointReceiver},
 };
 
-pub struct BlackboxContext {
+#[cfg(feature = "gps")]
+use crate::{
+    gps::{GpsMessage, GpsSolutionData},
+    tasks::gps_task::GpsSubscriber,
+};
+
+pub struct BlackboxContext<'a> {
     pub gyro_pid_receiver: GyroPidReceiver,
     pub setpoint_receiver: SetpointReceiver,
     pub setpoint_message: SetpointMessage,
+    #[cfg(feature = "gps")]
+    pub gps_subscriber: GpsSubscriber<'a>,
     pub blackbox: Blackbox,
     pub sd_card: MockSdCard,
     pub buffer: [u8; 1024],
@@ -24,7 +30,7 @@ pub struct BlackboxContext {
     //pub slice_writer: SliceEncoder<'static>,
 }
 
-impl BlackboxContext {
+impl BlackboxContext<'_> {
     // We take the buffer as a mutable reference to the array
     pub fn slice_writer(buffer: &mut [u8; 1024], pos: usize) -> SliceEncoder<'_> {
         SliceEncoder {
@@ -37,7 +43,7 @@ impl BlackboxContext {
 
 /// Blackbox task placeholder.
 #[embassy_executor::task]
-pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
+pub async fn blackbox_task(ctx: &'static mut BlackboxContext<'static>) {
     log::info!(" BLACKBOX: task started");
     let mut time_us: u32 = 0;
     let mut loop_count: u32 = 0;
@@ -71,8 +77,15 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
         ctx.blackbox.set_main_data(time_us, main_data);
         let slow_data = slow_data_from(ctx.setpoint_message);
         ctx.blackbox.set_slow_data(slow_data);
-        //#[cfg(feature = "gps")]
-        //ctx.blackbox.set_gps_data(gps_data_from(ctx.gps_message));
+
+        #[cfg(feature = "gps")]
+        if let Some(wait_result) = ctx.gps_subscriber.try_next_message()
+            && let embassy_sync::pubsub::WaitResult::Message(event) = wait_result
+            && let GpsMessage::GpsSolution(gps_solution_data) = event
+        {
+            let gps_data = gps_data_from(gps_solution_data);
+            ctx.blackbox.set_gps_data(gps_data);
+        }
 
         let len = {
             let mut slice_writer = BlackboxContext::slice_writer(&mut ctx.buffer, ctx.pos);
@@ -123,6 +136,7 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
     }*/
 }
 
+#[inline]
 pub fn main_data_from(
     _current_time_us: u32,
     gyro_pid_msg: GyroPidMessage,
@@ -194,6 +208,7 @@ pub fn main_data_from(
     }
 }
 
+#[inline]
 pub fn slow_data_from(setpoint: SetpointMessage) -> BlackboxSlowData {
     BlackboxSlowData {
         flight_mode_flags: setpoint.flight_mode_flags,
@@ -201,5 +216,26 @@ pub fn slow_data_from(setpoint: SetpointMessage) -> BlackboxSlowData {
         failsafe_phase: setpoint.failsafe_phase,
         rx_signal_received: setpoint.rx_signal_received,
         rx_flight_channel_is_valid: setpoint.rx_flight_channel_is_valid,
+    }
+}
+
+#[cfg(feature = "gps")]
+#[inline]
+pub fn gps_data_from(gps: GpsSolutionData) -> BlackboxGpsData {
+    BlackboxGpsData {
+        time_of_week_ms: gps.time,
+        interval_ms: 0,
+        position: BlackboxGpsPosition {
+            longitude_degrees_1e7: gps.llh.longitude_degrees_x1e7,
+            latitude_degrees_1e7: gps.llh.latitude_degrees_x1e7,
+            altitude_cm: gps.llh.altitude_cm,
+        },
+        velocity_north_cmps: gps.velocity_ned.north,
+        velocity_east_cmps: gps.velocity_ned.east,
+        velocity_down_cmps: gps.velocity_ned.down,
+        speed3d_cmps: gps.speed3d_cmps.cast_signed(),
+        ground_speed_cmps: gps.ground_speed_cmps.cast_signed(),
+        ground_course_deci_degrees: gps.ground_course_degrees_x10.cast_signed(),
+        satellite_count: gps.satellite_count,
     }
 }

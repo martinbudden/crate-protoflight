@@ -350,6 +350,8 @@ pub async fn init(spawner: Spawner) {
             gyro_pid_receiver: gyro_pid_receiver(),
             setpoint_receiver: setpoint_receiver(),
             setpoint_message: SetpointMessage::new(),
+            #[cfg(feature = "gps")]
+            gps_subscriber: gps_subscriber(),
             blackbox,
             buffer: [0u8; 1024],
             pos: 0,
