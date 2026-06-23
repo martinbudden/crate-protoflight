@@ -76,7 +76,7 @@ pub struct GpsSolutionData {
     pub llh: GpsDataPosition,
     pub dop: GpsDilution,
     pub accuracy: GpsAccuracy,
-    pub velocity_ned: GpsVelocityNedCmps,
+    pub velocity_ned_cmps: GpsVelocityNedCmps,
     // speed in cm/s
     pub speed3d_cmps: u16,
     // speed in cm/s
@@ -97,7 +97,7 @@ impl GpsSolutionData {
             llh: GpsDataPosition::new(),
             dop: GpsDilution::new(),
             accuracy: GpsAccuracy::new(),
-            velocity_ned: GpsVelocityNedCmps::new(),
+            velocity_ned_cmps: GpsVelocityNedCmps::new(),
             speed3d_cmps: 0,
             ground_speed_cmps: 0,
             ground_course_degrees_x10: 0,

@@ -62,7 +62,7 @@ pub async fn gps_task(ctx: &'static mut GpsContext<'static>) {
 
         // TODO: this should get the data from the actual GPS sensor.
         let gps_data = GpsData::default();
-        let gps_solution = GpsSolutionData::default();
+        let gps_solution = GpsSolutionData { satellite_count: 4, ..Default::default() };
 
         // Publish the raw gps data for use by (eg) the OSD.
         ctx.gps_publisher.publish_immediate(GpsMessage::Gps(gps_data));

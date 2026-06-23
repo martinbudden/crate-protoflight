@@ -326,7 +326,7 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "blackbox")]
     let blackbox_ctx = {
         //nvs::load_blackbox_config(&mut config.blackbox, &mut flash_driver, config_flash_range.clone());
-        use crate::{flight::FeatureFlags, sensors::SetpointMessage, tasks::gyro_pid_task::gyro_pid_receiver};
+        use crate::{sensors::SetpointMessage, tasks::gyro_pid_task::gyro_pid_receiver};
         config.blackbox.fields_disabled_mask = FieldSelect::PID_STERM_ROLL
         | FieldSelect::PID_STERM_PITCH
         | FieldSelect::PID_STERM_YAW
@@ -343,8 +343,7 @@ pub async fn init(spawner: Spawner) {
         | FieldSelect::ATTITUDE
         | FieldSelect::MAGNETOMETER;
 
-        let features = FeatureFlags::INFLIGHT_ACC_CAL | FeatureFlags::RX_SERIAL | FeatureFlags::RSSI_ADC;
-        let mut blackbox = Blackbox::new(config.blackbox, features);
+        let mut blackbox = Blackbox::new(config.blackbox);
         blackbox.init();
         BLACKBOX_CTX.init(BlackboxContext {
             gyro_pid_receiver: gyro_pid_receiver(),

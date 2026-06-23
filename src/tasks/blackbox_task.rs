@@ -48,20 +48,16 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext<'static>) {
     let mut time_us: u32 = 0;
     let mut loop_count: u32 = 0;
 
-    ctx.blackbox.set_state(LoggerState::LogFileHeader);
-
-    // write the Blackbox header.
-    loop {
+    // write the Blackbox log file header.
+    ctx.blackbox.set_state(LoggerState::WriteFileHeader);
+    while ctx.blackbox.state() != LoggerState::HeaderWritten {
         let len = {
             let mut slice_writer = BlackboxContext::slice_writer(&mut ctx.buffer, ctx.pos);
             ctx.blackbox.update(&mut slice_writer, time_us, true)
         };
         _ = ctx.sd_card.write_all(&ctx.buffer[..len]).await;
-        log::info!("BLACKBOX: loop {loop_count},{len}");
+        log::info!("BLACKBOX:  hdr {loop_count},{len}");
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
-        if ctx.blackbox.state() == LoggerState::Running {
-            break;
-        }
     }
 
     loop_count = 0;
@@ -72,11 +68,11 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext<'static>) {
         // non-blocking
         if let Some(setpoint_msg) = ctx.setpoint_receiver.try_get() {
             ctx.setpoint_message = setpoint_msg;
+            let slow_data = slow_data_from(ctx.setpoint_message);
+            ctx.blackbox.set_slow_data(slow_data);
         }
         let main_data = main_data_from(time_us, gyro_pid_msg, ctx.setpoint_message);
         ctx.blackbox.set_main_data(time_us, main_data);
-        let slow_data = slow_data_from(ctx.setpoint_message);
-        ctx.blackbox.set_slow_data(slow_data);
 
         #[cfg(feature = "gps")]
         if let Some(wait_result) = ctx.gps_subscriber.try_next_message()
@@ -230,12 +226,12 @@ pub fn gps_data_from(gps: GpsSolutionData) -> BlackboxGpsData {
             latitude_degrees_1e7: gps.llh.latitude_degrees_x1e7,
             altitude_cm: gps.llh.altitude_cm,
         },
-        velocity_north_cmps: gps.velocity_ned.north,
-        velocity_east_cmps: gps.velocity_ned.east,
-        velocity_down_cmps: gps.velocity_ned.down,
+        velocity_north_cmps: gps.velocity_ned_cmps.north,
+        velocity_east_cmps: gps.velocity_ned_cmps.east,
+        velocity_down_cmps: gps.velocity_ned_cmps.down,
         speed3d_cmps: gps.speed3d_cmps.cast_signed(),
         ground_speed_cmps: gps.ground_speed_cmps.cast_signed(),
-        ground_course_deci_degrees: gps.ground_course_degrees_x10.cast_signed(),
+        ground_course_degrees_x10: gps.ground_course_degrees_x10.cast_signed(),
         satellite_count: gps.satellite_count,
     }
 }
