@@ -1,18 +1,28 @@
-#![allow(clippy::expect_used)]
-use crate::config::{
-    GLOBAL_CONFIG, config_publisher, config_subscriber, fast_config_publisher, fast_config_subscriber,
-};
+use embassy_executor::Spawner;
+#[cfg(feature = "multicore")]
+use embassy_rp::multicore::{Stack, spawn_core1};
+use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 
-use crate::flight::{FlightControlMessage, FlightController, ImuFilterBank, RcAdjustments};
+use static_cell::StaticCell;
 
-#[allow(unused)]
-use crate::tasks::{
-    flight_control_task::{FlightControlContext, flight_control_receiver, flight_control_sender, flight_control_task},
-    gyro_pid_task::{
-        GyroPidContext, gyro_pid_receiver, gyro_pid_sender, gyro_pid_task, setpoint_receiver, setpoint_sender,
+use imu_sensors::{ImuAxesOrder, ImuMock, MockImuBus};
+use motor_mixers::{MotorMixerCommon, MotorMixerQuadXPwm};
+use radio_controllers::{Rates, RcModes};
+use sensor_fusion::MadgwickFilterf32;
+
+use crate::{
+    config::{GLOBAL_CONFIG, config_publisher, config_subscriber, fast_config_publisher, fast_config_subscriber},
+    flight::{FlightControlMessage, FlightController, ImuFilterBank, RcAdjustments},
+    tasks::{
+        flight_control_task::{
+            FlightControlContext, flight_control_receiver, flight_control_sender, flight_control_task,
+        },
+        gyro_pid_task::{
+            GyroPidContext, gyro_pid_receiver, gyro_pid_sender, gyro_pid_task, setpoint_receiver, setpoint_sender,
+        },
+        imu_task::{ImuContext, imu_task},
+        motor_mixer_task::{MotorMixerContext, motor_mixer_task},
     },
-    imu_task::{ImuContext, imu_task},
-    motor_mixer_task::{MotorMixerContext, motor_mixer_task},
 };
 
 #[cfg(feature = "autopilot")]
@@ -64,16 +74,11 @@ use crate::tasks::rangefinder_task::{
     RangefinderContext, rangefinder_publisher, rangefinder_subscriber, rangefinder_task,
 };
 
-#[cfg(feature = "serde")]
-use crate::tasks::non_volatile_storage as nvs;
-
 #[cfg(feature = "max7456")]
 use {crate::display::DisplayPortMax7456, embedded_hal_async::spi::SpiBus};
 
 #[cfg(not(feature = "max7456"))]
 use crate::display::DisplayPortMock;
-
-use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 
 // --- 1. RASPBERRY PI RP2350 ARCHITECTURE CONFIGURATION ---
 #[cfg(all(feature = "max7456", feature = "rp2350"))]
@@ -86,77 +91,12 @@ pub type SharedDisplay = Mutex<CriticalSectionRawMutex, DisplayPortMax7456<&'sta
 #[cfg(not(feature = "max7456"))]
 pub type DisplayPortMutex = Mutex<CriticalSectionRawMutex, DisplayPortMock>;
 
-use imu_sensors::{ImuAxesOrder, ImuMock, MockImuBus};
-use motor_mixers::{MotorMixerCommon, MotorMixerQuadXPwm};
-use radio_controllers::{Rates, RcModes};
-use sensor_fusion::MadgwickFilterf32;
-
-#[cfg(feature = "serde")]
-use {
-    embedded_storage_async::nor_flash::NorFlash,
-    sequential_storage::{
-        cache::NoCache,
-        map::{MapConfig, MapStorage},
-    },
-};
-
-use static_cell::StaticCell;
-
-use embassy_executor::Spawner;
-#[cfg(feature = "multicore")]
-use embassy_rp::multicore::{Stack, spawn_core1};
-
 // Core 1 needs its own stack space in RAM
 #[cfg(feature = "multicore")]
 static mut CORE1_STACK: Stack<4096> = Stack::new();
 
-// --- 1. PC (Host) Build Configuration ---
-// If building on your PC (x86_64, Mac, etc.)
-// FIX: Replace `_` with `impl embedded_storage_async::nor_flash::NorFlash`
-#[cfg(feature = "serde")]
-#[cfg(not(target_arch = "arm"))] // If building on your PC (x86_64, Mac, etc.)
-#[allow(unused)]
-fn init_flash_driver() -> impl embedded_storage_async::nor_flash::NorFlash {
-    use embedded_storage_file::{NorMemoryAsync, NorMemoryInFile};
-
-    let path = "pc_mock_flash.nor";
-    let capacity_bytes = 1024 * 1024; // Allocate a 1MB virtual flash file
-
-    // 1. Instantiate the synchronous inner file backend with layout properties:
-    //    <READ_SIZE, WRITE_SIZE, ERASE_SIZE>
-    let inner_sync_nor = NorMemoryInFile::<256, 256, 4096>::new(path, capacity_bytes)
-        .expect("Failed to create synchronous mock flash file");
-
-    // 2. FIX: Wrap it using the single-parameter asynchronous wrapper.
-    //    We remove the <256, 256, 4096> from NorMemoryAsync to satisfy the 1-generic rule.
-    NorMemoryAsync::new(inner_sync_nor)
-}
-
-// --- 2. RP2350 (Embedded) Build Configuration ---
-#[cfg(target_arch = "arm")] // If building for your physical RP2350 chip
-fn init_flash_driver(
-    p: embassy_rp::OptionalPeripherals,
-) -> embassy_rp::flash::Flash<'static, embassy_rp::peripherals::FLASH, embassy_rp::flash::Async, { 4 * 1024 * 1024 }> {
-    use embassy_rp::flash::Flash;
-    const FLASH_SIZE_BYTES: usize = 4 * 1024 * 1024;
-
-    Flash::new(p.FLASH, p.DMA_CH0, FLASH_SIZE_BYTES)
-}
-
-#[cfg(feature = "serde")]
-pub async fn _load_system_configs_task<F>(flash: &mut F, flash_range: core::ops::Range<u32>)
-where
-    F: NorFlash,
-{
-    // Initialize the modern storage driver handle matching your u16 Key setup
-    let mut storage = MapStorage::new(flash, MapConfig::new(flash_range), NoCache::new());
-
-    let mut config = GLOBAL_CONFIG.lock().await;
-    // Execute the loaders sequentially via your clean `lds` namespace shortcut
-    nvs::load_imu_filter_bank_config(&mut config.imu_filter_bank, &mut storage).await;
-}
-
 /// Create all the contexts for the tasks, and then spawn the tasks.
+#[allow(clippy::expect_used)]
 #[allow(clippy::too_many_lines)]
 pub async fn init(spawner: Spawner) {
     // ****
@@ -265,10 +205,6 @@ pub async fn init(spawner: Spawner) {
 
     #[allow(unused_mut)]
     let mut config = GLOBAL_CONFIG.lock().await;
-
-    // load configs from non-volatile storage.
-    //nvs::load_imu_filter_bank_config(&mut config.imu_filter_bank, &mut flash_driver, config_flash_range.clone());
-    //nvs::load_imu_filter_bank_config(&mut config.imu_filter_bank, &mut storage).await;
 
     // ****
     // Initialize the task contexts.

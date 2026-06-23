@@ -1,22 +1,24 @@
 #![cfg(feature = "serde")]
 #![allow(unused)]
 
+use embedded_storage_async::nor_flash::{ErrorType, NorFlash};
+use sequential_storage::{
+    cache::NoCache,
+    map::{MapConfig, MapStorage, PostcardValue},
+};
+
 use blackbox_logger::BlackboxConfig;
 use radio_controllers::RatesConfig;
 extern crate paste;
 
 use crate::config::GLOBAL_CONFIG;
 use crate::flight::ImuFilterBankConfig;
+use crate::tasks::non_volatile_storage as nvs;
+
 #[cfg(feature = "osd")]
 use crate::osd::OsdConfig;
 #[cfg(feature = "battery")]
 use crate::sensors::BatteryConfig;
-
-use embedded_storage_async::nor_flash::{ErrorType, NorFlash};
-use sequential_storage::{
-    cache::NoCache,
-    map::{MapConfig, MapStorage, PostcardValue},
-};
 
 const PID_PROFILE_INDEX_KEY: u16 = 0x0001;
 const RATE_PROFILE_INDEX_KEY: u16 = 0x0002;
@@ -293,3 +295,50 @@ pub async fn load_blackbox_config<F>(
         *config = loaded_data;
     }*/
 }*/
+
+// --- 1. PC (Host) Build Configuration ---
+// If building on your PC (x86_64, Mac, etc.)
+// FIX: Replace `_` with `impl embedded_storage_async::nor_flash::NorFlash`
+#[cfg(feature = "serde")]
+#[cfg(not(target_arch = "arm"))] // If building on your PC (x86_64, Mac, etc.)
+fn init_flash_driver() -> impl embedded_storage_async::nor_flash::NorFlash {
+    use embedded_storage_file::{NorMemoryAsync, NorMemoryInFile};
+
+    let path = "pc_mock_flash.nor";
+    let capacity_bytes = 1024 * 1024; // Allocate a 1MB virtual flash file
+
+    // 1. Instantiate the synchronous inner file backend with layout properties:
+    //    <READ_SIZE, WRITE_SIZE, ERASE_SIZE>
+    #[allow(clippy::expect_used)]
+    let inner_sync_nor = NorMemoryInFile::<256, 256, 4096>::new(path, capacity_bytes)
+        .expect("Failed to create synchronous mock flash file");
+
+    // 2. FIX: Wrap it using the single-parameter asynchronous wrapper.
+    //    We remove the <256, 256, 4096> from NorMemoryAsync to satisfy the 1-generic rule.
+    NorMemoryAsync::new(inner_sync_nor)
+}
+
+// --- 2. RP2350 (Embedded) Build Configuration ---
+#[cfg(target_arch = "arm")] // If building for your physical RP2350 chip
+fn init_flash_driver(
+    p: embassy_rp::OptionalPeripherals,
+) -> embassy_rp::flash::Flash<'static, embassy_rp::peripherals::FLASH, embassy_rp::flash::Async, { 4 * 1024 * 1024 }> {
+    use embassy_rp::flash::Flash;
+    const FLASH_SIZE_BYTES: usize = 4 * 1024 * 1024;
+
+    Flash::new(p.FLASH, p.DMA_CH0, FLASH_SIZE_BYTES)
+}
+
+#[cfg(feature = "serde")]
+pub async fn _load_system_configs_task<F>(flash: &mut F, flash_range: core::ops::Range<u32>)
+where
+    F: NorFlash,
+{
+    // Initialize the modern storage driver handle matching your u16 Key setup
+    let mut storage = MapStorage::new(flash, MapConfig::new(flash_range), NoCache::new());
+
+    let mut config = GLOBAL_CONFIG.lock().await;
+    // Execute the loaders sequentially via your clean `lds` namespace shortcut
+    nvs::load_imu_filter_bank_config(&mut config.imu_filter_bank, &mut storage).await;
+}
+
