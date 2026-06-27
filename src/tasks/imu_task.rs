@@ -2,7 +2,7 @@ use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal}
 use tinyrand::{RandRange, StdRand};
 
 use imu_sensors::{ImuAccScale, ImuCommon, ImuGyroScale, ImuMock, MockImuBus};
-use vqm::{Vector3df32, Vector3di32};
+use vqm::Vector3df32;
 
 #[cfg(feature = "rp2350")]
 use embassy_rp::{
@@ -64,12 +64,12 @@ pub async fn imu_task(ctx: &'static mut ImuContext) {
         let acc_rnd = Vector3df32 { x: 1.0, y: 0.5, z: 0.25 };
         ctx.imu.set_acc(acc_rnd).await;
         x_base += rand.next_range(0..5_u32).cast_signed() - 2;
-        let gyro_raw = Vector3di32 {
-            x: x_base + rand.next_range(0..5_u32).cast_signed() - 2,
-            y: rand.next_range(0..11_u32).cast_signed() - 5,
-            z: rand.next_range(0..11_u32).cast_signed() - 5,
-        };
-        let gyro_dps_rnd = Vector3df32::from(gyro_raw);
+
+        let gyro_x = x_base + rand.next_range(0..5_u32).cast_signed() - 2;
+        let gyro_y = rand.next_range(0..11_u32).cast_signed() - 5;
+        let gyro_z = rand.next_range(0..11_u32).cast_signed() - 5;
+        #[allow(clippy::cast_precision_loss)]
+        let gyro_dps_rnd = Vector3df32 { x: gyro_x as f32, y: gyro_y as f32, z: gyro_z as f32 };
         ctx.imu.set_gyro(gyro_dps_rnd).await;
 
         // ctx.drdy.wait_for_rising_edge().await; // Synchronized to IMU

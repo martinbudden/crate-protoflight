@@ -1,11 +1,11 @@
 #[derive(Clone, Copy, Default, Debug, PartialEq)]
-#[allow(unused)]
 pub enum MspVersion {
     #[default]
     V1,
     V2overV1,
     V2,
 }
+
 #[derive(Clone, Copy, Default, Debug, PartialEq)]
 pub enum MspPacketType {
     #[default]
@@ -31,8 +31,6 @@ pub enum MspPendingSystemRequest {
     Cli,
     BootloaderFlash,
 }
-
-
 
 #[derive(Clone, Copy, Default, Debug, PartialEq)]
 pub struct MspStreamHeaderV2 {
@@ -131,7 +129,6 @@ pub fn crc8_dvb_s2(mut crc: u8, byte: u8) -> u8 {
 }
 
 #[derive(Clone, Copy, Default, Debug, PartialEq)]
-#[allow(unused)]
 pub enum MspPacketState {
     #[default]
     Idle,
@@ -173,9 +170,9 @@ pub enum MspPacketState {
     CommandReceived,
 }
 
-#[allow(unused)]
 impl MspStream {
     #[allow(clippy::too_many_lines)]
+    #[allow(unused)]
     pub fn process_received_packet_data(&mut self, c: u8) {
         // We take the state out to mutate it, then put it back.
         // This is a common Rust idiom for state machines.
@@ -312,6 +309,7 @@ impl MspStream {
         }
     }
 
+    #[allow(unused)]
     pub fn serialize_packet(
         version: MspVersion,
         packet_type: MspPacketType,
@@ -428,9 +426,9 @@ impl MspStream {
     }
 }
 
-#[derive(Debug)]
-#[allow(unused)]
+#[derive(Clone, Copy, Default, Debug, PartialEq)]
 pub enum MspError {
+    #[default]
     BufferTooSmall,
 }
 
@@ -438,6 +436,18 @@ pub enum MspError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
+    fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+
+    #[test]
+    fn normal_types() {
+        is_full::<MspVersion>();
+        is_full::<MspPacketType>();
+        is_full::<MspStream>();
+        is_full::<MspPacketState>();
+        is_full::<MspError>();
+    }
 
     #[test]
     fn test_msp_v1_parsing() {

@@ -95,7 +95,7 @@ checksum = "b4388bee8683e3d04af747c73422af53102d2bd24d9eadb6cbc100baef4b43f8"
 [[package]]
 name = "blackbox-logger"
 version = "0.1.7"
-source = "git+https://github.com/martinbudden/crate-blackbox-logger#1f6956ca0df29a0e6336234484475bc2af102a17"
+source = "git+https://github.com/martinbudden/crate-blackbox-logger#c076434ec338c28ea13eee26c7e3b32a8b34571e"
 dependencies = [
  "embassy-futures",
  "postcard",
@@ -224,9 +224,9 @@ dependencies = [
 
 [[package]]
 name = "crc-any"
-version = "2.5.0"
+version = "2.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a62ec9ff5f7965e4d7280bd5482acd20aadb50d632cf6c1d74493856b011fa73"
+checksum = "46db9f663dfb869b80fcf59e32d7a80fc6c464a4f6328f3f06a00f5e36d05f8c"
 dependencies = [
  "debug-helper",
 ]
@@ -290,9 +290,9 @@ dependencies = [
 
 [[package]]
 name = "debug-helper"
-version = "0.3.13"
+version = "0.3.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f578e8e2c440e7297e008bb5486a3a8a194775224bbc23729b0dbdfaeebf162e"
+checksum = "80a4af69c60438a1a82af89d362f4729fd38db7b73f305a237636fad31ceb2bf"
 
 [[package]]
 name = "derive_more"
@@ -622,18 +622,19 @@ dependencies = [
 
 [[package]]
 name = "env_filter"
-version = "1.0.1"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32e90c2accc4b07a8456ea0debdc2e7587bdd890680d71173a15d4ae604f6eef"
+checksum = "900d271a03799a1ee8d1ca9b19893b48ca674a9284fefcfb85f05e74ed314217"
 dependencies = [
  "log",
+ "regex",
 ]
 
 [[package]]
 name = "env_logger"
-version = "0.11.10"
+version = "0.11.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0621c04f2196ac3f488dd583365b9c09be011a4ab8b9f37248ffcc8f6198b56a"
+checksum = "de671bd27a75a797dc9ae289ba1e77276e75e2026408aab65185384e2d5cd3f6"
 dependencies = [
  "env_filter",
  "log",
@@ -786,7 +787,7 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 [[package]]
 name = "imu-sensors"
 version = "0.1.2"
-source = "git+https://github.com/martinbudden/crate-imu-sensors#ccef76497dcc0ad64b9b0063ace8a7cf7dda2cce"
+source = "git+https://github.com/martinbudden/crate-imu-sensors#ad6276322fa9051a63b47db120c74cb5cb742ebc"
 dependencies = [
  "cfg-if",
  "embassy-sync",
@@ -942,7 +943,7 @@ dependencies = [
 [[package]]
 name = "motor-mixers"
 version = "0.1.4"
-source = "git+https://github.com/martinbudden/crate-motor-mixers#c3182f0729e2e9a8908c4224533d4b949b50210d"
+source = "git+https://github.com/martinbudden/crate-motor-mixers#71e4559f80b5c2671548a52163bdfdcd4e87ed3a"
 dependencies = [
  "cfg-if",
  "embassy-executor",
@@ -1251,7 +1252,7 @@ dependencies = [
 [[package]]
 name = "radio-controllers"
 version = "0.1.5"
-source = "git+https://github.com/martinbudden/crate-radio-controllers#f0f2a8b73cc7a576aea409367a59168bc62b71ca"
+source = "git+https://github.com/martinbudden/crate-radio-controllers#e1401d606f566b8a62951e333da9c50c7337ea26"
 dependencies = [
  "embedded-hal 1.0.0",
  "embedded-hal-nb",
@@ -1501,7 +1502,7 @@ checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 [[package]]
 name = "signal-filters"
 version = "0.1.8"
-source = "git+https://github.com/martinbudden/crate-signal-filters#aa70dba0fdcd0aad9dbe9fb09595c673273208dd"
+source = "git+https://github.com/martinbudden/crate-signal-filters#32b762e76a0328743198e28690b9c0894cb98cf9"
 dependencies = [
  "libm",
  "num-traits",
@@ -1817,7 +1818,7 @@ dependencies = [
 [[package]]
 name = "vqm"
 version = "0.1.12"
-source = "git+https://github.com/martinbudden/crate-vector-quaternion-matrix#80d928dd6439fe91623b2877ec1653e268f9d30c"
+source = "git+https://github.com/martinbudden/crate-vector-quaternion-matrix#dbe98e1f26a4176d898bc8bbcc0e13155ba745c2"
 dependencies = [
  "cfg-if",
  "derive_more",

@@ -341,4 +341,3 @@ where
     // Execute the loaders sequentially via your clean `lds` namespace shortcut
     nvs::load_imu_filter_bank_config(&mut config.imu_filter_bank, &mut storage).await;
 }
-

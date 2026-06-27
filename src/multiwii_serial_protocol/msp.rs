@@ -2,21 +2,29 @@ use radio_controllers::{Rates, RatesConfig, RcModes, RcModesArray};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use stream_buf::{StreamBufReader, StreamBufWriter};
-use vqm::{Quaternion, Vector3di16};
+use vqm::Quaternion;
 
 use crate::config::{ConfigItem, ConfigPublisher, FastConfigItem, FastConfigPublisher, GLOBAL_CONFIG};
 #[cfg(feature = "gps")]
 use crate::gps::GpsSolutionDataAbridged;
 
-// return positive for ACK, negative on error, zero for no reply
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum MspResult {
     Ack = 1,
     Error = -1,
-    #[allow(unused)]
+    #[default]
     NoReply = 0,
     /// Don't know how to process command, so try next handler.
     CmdUnknown = -2,
 }
+
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Vector3di16 {
+    pub x: i16,
+    pub y: i16,
+    pub z: i16,
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct MspSensorData {
     #[cfg(feature = "barometer")]
@@ -1262,5 +1270,20 @@ impl Msp {
             publisher.publish(ConfigItem::Autopilot(autopilot_config)).await;
         }
         MspResult::Ack
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
+    fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+
+    #[test]
+    fn normal_types() {
+        is_full::<MspResult>();
+        is_full::<Vector3di16>();
+        is_full::<MspSensorData>();
     }
 }
