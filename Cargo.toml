@@ -109,30 +109,31 @@ embedded-storage-async = { version = "0.4.1", default-features = false }
 embedded-storage-file = { version = "0.2.0", default-features = false }
 
 
-simple-bitset = "0.1.2"
+simple-bitset = "0.1.4"
 #simple-bitset = { git = "https://github.com/martinbudden/crate-simple-bitset" }
-stream-buf = "0.1.1"
+stream-buf = "0.1.2"
 #stream-buf = { git = "https://github.com/martinbudden/crate-stream-buf" }
-#vqm = { version = "0.1.12" }
-vqm = { git = "https://github.com/martinbudden/crate-vector-quaternion-matrix" }
+vqm = { version = "0.1.13" }
+#vqm = { git = "https://github.com/martinbudden/crate-vector-quaternion-matrix" }
 #vqm = { path = "../vqm" }
-#signal-filters = "0.1.8"
-signal-filters = { git = "https://github.com/martinbudden/crate-signal-filters" }
+signal-filters = "0.1.9"
+#signal-filters = { git = "https://github.com/martinbudden/crate-signal-filters" }
 #signal-filters = { path = "../signal-filters" }
-pidsk-controller = "0.1.6"
+pidsk-controller = "0.1.7"
 #pidsk-controller = { path = "../pidsk-controller" }
-#sensor-fusion = "0.1.7"
-sensor-fusion = { git = "https://github.com/martinbudden/crate-sensor-fusion" }
+sensor-fusion = "0.1.8"
+#sensor-fusion = { git = "https://github.com/martinbudden/crate-sensor-fusion" }
 #sensor-fusion = { path = "../sensor-fusion" }
+blackbox-logger = { version = "0.1.8", default-features = false, optional = true }
+#blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger", default-features = false, optional = true }
+#blackbox-logger = { path = "../blackbox-logger", default-features = false, optional = true }
+
 #motor-mixers = { version = "0.1.4" }
 motor-mixers = { git = "https://github.com/martinbudden/crate-motor-mixers" }
 #motor-mixers = { path = "../motor-mixers" }
 #radio-controllers = { version = "0.1.5" }
 radio-controllers = { git = "https://github.com/martinbudden/crate-radio-controllers" }
 #radio-controllers = { path = "../radio-controllers" }
-#blackbox-logger = { version = "0.1.7", default-features = false, optional = true }
-blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger", default-features = false, optional = true }
-#blackbox-logger = { path = "../blackbox-logger", default-features = false, optional = true }
 #imu-sensors = { version = "0.1.2" }
 imu-sensors = { git = "https://github.com/martinbudden/crate-imu-sensors" }
 #imu-sensors = { path = "../imu-sensors" }
@@ -186,3 +187,4 @@ rpath = false
 [profile.release-lto]
 inherits = "release"
 lto = true
+codegen-units = 1    # Allows deeper optimizations across the entire binary

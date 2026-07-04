@@ -22,9 +22,9 @@ dependencies = [
 
 [[package]]
 name = "arrayvec"
-version = "0.7.7"
+version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f02882884d3e1bc524fb12c79f107f6ad0e1cfd498c536ffb494301740995dfe"
+checksum = "d3fb67a6e08acf24fdeccbac2cb6ac4305825bd1f117462e0e6f2f193345ad56"
 
 [[package]]
 name = "ascii-canvas"
@@ -94,8 +94,9 @@ checksum = "b4388bee8683e3d04af747c73422af53102d2bd24d9eadb6cbc100baef4b43f8"
 
 [[package]]
 name = "blackbox-logger"
-version = "0.1.7"
-source = "git+https://github.com/martinbudden/crate-blackbox-logger#c076434ec338c28ea13eee26c7e3b32a8b34571e"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1fa19e6db526b77c80e8bb82f1cd3004ccb597b8439dc3498073603849e05aa4"
 dependencies = [
  "embassy-futures",
  "postcard",
@@ -787,7 +788,7 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 [[package]]
 name = "imu-sensors"
 version = "0.1.2"
-source = "git+https://github.com/martinbudden/crate-imu-sensors#ad6276322fa9051a63b47db120c74cb5cb742ebc"
+source = "git+https://github.com/martinbudden/crate-imu-sensors#606447c5a51347914c3f9f6993251f6dae595e47"
 dependencies = [
  "cfg-if",
  "embassy-sync",
@@ -943,7 +944,7 @@ dependencies = [
 [[package]]
 name = "motor-mixers"
 version = "0.1.4"
-source = "git+https://github.com/martinbudden/crate-motor-mixers#71e4559f80b5c2671548a52163bdfdcd4e87ed3a"
+source = "git+https://github.com/martinbudden/crate-motor-mixers#4edb2e29e8ab75d7ade6d13e45a502f27d4db4cc"
 dependencies = [
  "cfg-if",
  "embassy-executor",
@@ -1083,9 +1084,9 @@ checksum = "5be167a7af36ee22fe3115051bc51f6e6c7054c9348e28deb4f49bd6f705a315"
 
 [[package]]
 name = "pidsk-controller"
-version = "0.1.6"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2742ae4b999fb692e833ec6388b53249befdd59c75171411d9ce32efb5012e92"
+checksum = "9ddc49e4f6b626809672acc2df869a331e5e985955a87c620134e671a238160f"
 dependencies = [
  "num-traits",
  "rustc_version 0.4.1",
@@ -1252,7 +1253,7 @@ dependencies = [
 [[package]]
 name = "radio-controllers"
 version = "0.1.5"
-source = "git+https://github.com/martinbudden/crate-radio-controllers#e1401d606f566b8a62951e333da9c50c7337ea26"
+source = "git+https://github.com/martinbudden/crate-radio-controllers#d54c799677a39b0c86c25487ddd7d7d8b5784994"
 dependencies = [
  "embedded-hal 1.0.0",
  "embedded-hal-nb",
@@ -1418,8 +1419,9 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "sensor-fusion"
-version = "0.1.7"
-source = "git+https://github.com/martinbudden/crate-sensor-fusion#bfb3adbe4248f7b27bbdec14ffc813b096f9f777"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fd1fc9ec44e1044fa17f76fb40db4795d29062c1f7d2ff4e85505aa89629f50b"
 dependencies = [
  "libm",
  "num-traits",
@@ -1501,8 +1503,9 @@ checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 
 [[package]]
 name = "signal-filters"
-version = "0.1.8"
-source = "git+https://github.com/martinbudden/crate-signal-filters#32b762e76a0328743198e28690b9c0894cb98cf9"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f21a1f295eb397366c936a9e9d0081b080706c753325d923097cae3723b255ec"
 dependencies = [
  "libm",
  "num-traits",
@@ -1512,9 +1515,9 @@ dependencies = [
 
 [[package]]
 name = "simple-bitset"
-version = "0.1.2"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d01de744a845a8ada95df2637c376585112dc26290924ce83c272bcc643230c"
+checksum = "ecc41f26e44c9b38045a5efc0962ffded9583fc14d4eaead0a1974649dfc7b43"
 dependencies = [
  "postcard",
  "rustc_version 0.4.1",
@@ -1578,9 +1581,9 @@ dependencies = [
 
 [[package]]
 name = "stream-buf"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c70c403566800fc6a153ceae742e327bcb00d20d4ab1a00d9e981d1556672d07"
+checksum = "0a6a704c05d86ba1590be73a3f1840363cca5f06e29c18fa6fec0a244f7bc2cc"
 
 [[package]]
 name = "string_cache"
@@ -1817,8 +1820,9 @@ dependencies = [
 
 [[package]]
 name = "vqm"
-version = "0.1.12"
-source = "git+https://github.com/martinbudden/crate-vector-quaternion-matrix#dbe98e1f26a4176d898bc8bbcc0e13155ba745c2"
+version = "0.1.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93a8d667c20d96671b751da3c306d2eee3ecab6b67ee8f659ba7b50b7bf262d8"
 dependencies = [
  "cfg-if",
  "derive_more",
