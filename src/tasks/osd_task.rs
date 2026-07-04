@@ -88,6 +88,9 @@ pub async fn osd_task(ctx: &'static mut OsdContext<'static>, display_port_mutex:
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(50));
     let mut loop_count: u32 = 0;
 
+    let mut battery_message = BatteryMessage::new();
+    let mut orientation = Quaternionf32::default();
+
     log::info!("      OSD: task started");
     loop {
         // Wait for the next 50Hz tick.
@@ -100,17 +103,20 @@ pub async fn osd_task(ctx: &'static mut OsdContext<'static>, display_port_mutex:
             // Lock the display port, while this guard lives other tasks cannot use the display port.
             let mut display_port_guard = display_port_mutex.lock().await;
 
-            // Get the latest messages without consuming the notifications.
-            let orientation = if let Some(gyro_pid_message) = ctx.gyro_pid_receiver.try_get() {
-                gyro_pid_message.orientation
-            } else {
-                Quaternionf32::default()
-            };
-
             // TODO: replace these placeholder values with real values
             let arming_flags = ArmingFlags::new();
+
+            // Get the latest messages without consuming the notifications.
+            if let Some(gyro_pid_message) = ctx.gyro_pid_receiver.try_get() {
+                orientation = gyro_pid_message.orientation;
+            }
+
             #[cfg(feature = "battery")]
-            let battery_message = BatteryMessage::new();
+            if let Some(wait_result) = ctx.battery_subscriber.try_next_message()
+                && let embassy_sync::pubsub::WaitResult::Message(battery_data) = wait_result
+            {
+                battery_message = battery_data;
+            }
 
             // Construct the draw context borrowing the display port.
             let mut draw_context = OsdDrawContext {
