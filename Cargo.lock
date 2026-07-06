@@ -95,8 +95,7 @@ checksum = "b4388bee8683e3d04af747c73422af53102d2bd24d9eadb6cbc100baef4b43f8"
 [[package]]
 name = "blackbox-logger"
 version = "0.1.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fa19e6db526b77c80e8bb82f1cd3004ccb597b8439dc3498073603849e05aa4"
+source = "git+https://github.com/martinbudden/crate-blackbox-logger#8666e2d3ca93e2cfdef415229a617db01626b3f4"
 dependencies = [
  "embassy-futures",
  "postcard",
@@ -130,9 +129,9 @@ checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "cc"
-version = "1.2.65"
+version = "1.2.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e228eec9be7c17ccb640b59b36a5cd805ea2a564a4c5e162c2f659fea30d3b96"
+checksum = "f5d6cac793997bd970000024b2934968efe83b382de4fdcf4fcb46b6ee4ad996"
 dependencies = [
  "find-msvc-tools",
  "shlex",
@@ -367,6 +366,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d0d3b15c9d7dc4fec1d8cb77112472fb008b3b28c51ad23838d83587a6d2f1e"
 dependencies = [
  "cordyceps",
+ "cortex-m",
  "critical-section",
  "document-features",
  "embassy-executor-macros",
@@ -429,6 +429,8 @@ dependencies = [
  "critical-section",
  "document-features",
  "embassy-embedded-hal",
+ "embassy-executor",
+ "embassy-executor-macros",
  "embassy-futures",
  "embassy-hal-internal 0.5.0",
  "embassy-sync",
@@ -788,7 +790,7 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 [[package]]
 name = "imu-sensors"
 version = "0.1.2"
-source = "git+https://github.com/martinbudden/crate-imu-sensors#606447c5a51347914c3f9f6993251f6dae595e47"
+source = "git+https://github.com/martinbudden/crate-imu-sensors#425aa9752fda3b38673217b8f30d1362575e38c3"
 dependencies = [
  "cfg-if",
  "embassy-sync",
@@ -1207,6 +1209,7 @@ version = "0.1.1"
 dependencies = [
  "approx",
  "blackbox-logger",
+ "cortex-m-rt",
  "critical-section",
  "derive_more",
  "embassy-executor",
@@ -1217,6 +1220,7 @@ dependencies = [
  "embedded-hal-async",
  "embedded-storage-async",
  "embedded-storage-file",
+ "env_filter",
  "env_logger",
  "imu-sensors",
  "libm",
@@ -1329,6 +1333,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8af65855c40b2c35079514c5489abffc0429347fef25d8467ff98ad84b4322d3"
 dependencies = [
  "cortex-m",
+ "cortex-m-rt",
 ]
 
 [[package]]
@@ -1879,18 +1884,18 @@ dependencies = [
 
 [[package]]
 name = "zerocopy"
-version = "0.8.52"
+version = "0.8.53"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce1022995ff5ff5d841ad7d994facc23098cd40152f2c1d11cd607c6f530653f"
+checksum = "75726053136156d419e285b9b7eddaaea9e3fea6ce32eed44a89901f0bd98de1"
 dependencies = [
  "zerocopy-derive",
 ]
 
 [[package]]
 name = "zerocopy-derive"
-version = "0.8.52"
+version = "0.8.53"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ae7f38b72ec2a254e2b87ef277cf2cd4fb97cbebf944faa6f33354da0867930"
+checksum = "4714fd92cf900833d49538023a9b3915155210801d1c1169eba513b2addefd71"
 dependencies = [
  "proc-macro2",
  "quote",

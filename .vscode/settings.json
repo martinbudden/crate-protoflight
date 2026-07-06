@@ -77,8 +77,10 @@
         "EGNOS",
         "ELRS",
         "erpm",
+        "espidf",
         "ESPNOW",
         "Espressif",
+        "espup",
         "FATSHARK",
         "feedforward",
         "Filterf",
@@ -110,6 +112,7 @@
         "Kalman",
         "katex",
         "keccak",
+        "Kinetis",
         "Kouhei",
         "kterm",
         "lalrpop",
@@ -215,6 +218,7 @@
         "wasmparser",
         "winapi",
         "wincon",
+        "xtensa",
         "zerocopy",
         "zmij"
     ]

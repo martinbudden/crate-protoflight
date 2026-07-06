@@ -7,6 +7,15 @@ use sequential_storage::{
     map::{MapConfig, MapStorage, PostcardValue},
 };
 
+#[cfg(feature = "rp2350")]
+use embassy_rp::{
+    Peri,
+    flash::{Blocking, Flash},
+    peripherals::FLASH,
+};
+#[cfg(feature = "rp2350")]
+const FLASH_SIZE_BYTES: usize = 4 * 1024 * 1024;
+
 use blackbox_logger::BlackboxConfig;
 use radio_controllers::RatesConfig;
 extern crate paste;
@@ -175,7 +184,7 @@ pub async fn load_imu_filter_bank_config<F>(config: &mut ImuFilterBankConfig, st
 where
     F: NorFlash,
 {
-    let mut buffer = [0u8; 128];
+    let mut buffer = [0u8; 256];
 
     // Directly execute the item lookup method on your driver storage object
     if let Ok(Some(loaded_data)) = storage.fetch_item(&mut buffer, &IMU_FILTERS_CONFIG_KEY).await {
@@ -190,7 +199,7 @@ pub async fn save_imu_filter_bank_config<F>(
 where
     F: NorFlash,
 {
-    let mut buffer = [0u8; 128]; // Serialization workspace
+    let mut buffer = [0u8; 256]; // Serialization workspace
 
     // Appends the updated struct to flash under the unique key
     storage.store_item(&mut buffer, &IMU_FILTERS_CONFIG_KEY, config).await
@@ -202,9 +211,9 @@ pub async fn delete_imu_filter_bank_config<F>(
 where
     F: NorFlash,
 {
-    let mut buffer = [0u8; 64];
+    let mut buffer = [0u8; 256];
 
-    // Appends `None` to flash. This acts as a deletion marker instantly
+    // Appends `None` to flash. This acts as a deletion marker.
     let delete_marker: Option<ImuFilterBankConfig> = None;
     storage.store_item(&mut buffer, &IMU_FILTERS_CONFIG_KEY, &delete_marker).await
 }
@@ -215,12 +224,12 @@ where
 
 #[cfg(feature = "battery")]
 pub async fn load_battery_config<F>(
-    config: &mut BatteryConfig, // Keeps your plain struct signature
+    config: &mut BatteryConfig,
     storage: &mut MapStorage<u16, F, NoCache>,
 ) where
     F: NorFlash,
 {
-    let mut buffer = [0u8; 64];
+    let mut buffer = [0u8; 256];
 
     // Fetch as an Option, but unwrap it back into your default struct
     if let Ok(Some(Some(loaded_data))) =
@@ -241,9 +250,9 @@ pub async fn save_battery_config<F>(
 where
     F: NorFlash,
 {
-    let mut buffer = [0u8; 64];
+    let mut buffer = [0u8; 256];
     if *config == BatteryConfig::default() {
-        // Appends `None` to flash. This acts as a deletion marker instantly
+        // Appends `None` to flash. This acts as a deletion marker.
         let delete_marker: Option<BatteryConfig> = None;
         storage.store_item(&mut buffer, &BATTERY_CONFIG_KEY, &delete_marker).await
     } else {
@@ -262,9 +271,9 @@ pub async fn delete_battery_config<F>(
 where
     F: NorFlash,
 {
-    let mut buffer = [0u8; 64];
+    let mut buffer = [0u8; 256];
 
-    // Appends `None` to flash. This acts as a deletion marker instantly
+    // Appends `None` to flash. This acts as a deletion marker.
     let delete_marker: Option<BatteryConfig> = None;
     // Note store_item writes a new item even if
     storage.store_item(&mut buffer, &BATTERY_CONFIG_KEY, &delete_marker).await
@@ -299,9 +308,8 @@ pub async fn load_blackbox_config<F>(
 // --- 1. PC (Host) Build Configuration ---
 // If building on your PC (x86_64, Mac, etc.)
 // FIX: Replace `_` with `impl embedded_storage_async::nor_flash::NorFlash`
-#[cfg(feature = "serde")]
-#[cfg(not(target_arch = "arm"))] // If building on your PC (x86_64, Mac, etc.)
-fn init_flash_driver() -> impl embedded_storage_async::nor_flash::NorFlash {
+#[cfg(feature = "std")]
+pub fn init_flash_driver() -> impl embedded_storage_async::nor_flash::NorFlash {
     use embedded_storage_file::{NorMemoryAsync, NorMemoryInFile};
 
     let path = "pc_mock_flash.nor";
@@ -318,26 +326,47 @@ fn init_flash_driver() -> impl embedded_storage_async::nor_flash::NorFlash {
     NorMemoryAsync::new(inner_sync_nor)
 }
 
-// --- 2. RP2350 (Embedded) Build Configuration ---
-#[cfg(target_arch = "arm")] // If building for your physical RP2350 chip
-fn init_flash_driver(
-    p: embassy_rp::OptionalPeripherals,
-) -> embassy_rp::flash::Flash<'static, embassy_rp::peripherals::FLASH, embassy_rp::flash::Async, { 4 * 1024 * 1024 }> {
-    use embassy_rp::flash::Flash;
-    const FLASH_SIZE_BYTES: usize = 4 * 1024 * 1024;
-
-    Flash::new(p.FLASH, p.DMA_CH0, FLASH_SIZE_BYTES)
+#[cfg(not(feature = "std"))]
+pub fn init_flash_driver<'d>(
+    // Pass the Peri structural instance bound to the FLASH singleton type
+    flash_pin: Peri<'d, FLASH>,
+) -> Flash<'d, FLASH, Blocking, FLASH_SIZE_BYTES> {
+    Flash::<_, Blocking, FLASH_SIZE_BYTES>::new_blocking(flash_pin)
 }
 
-#[cfg(feature = "serde")]
-pub async fn _load_system_configs_task<F>(flash: &mut F, flash_range: core::ops::Range<u32>)
+/*pub async fn load_global_configs<F>(flash: &mut F, flash_range: core::ops::Range<u32>)
 where
     F: NorFlash,
 {
     // Initialize the modern storage driver handle matching your u16 Key setup
-    let mut storage = MapStorage::new(flash, MapConfig::new(flash_range), NoCache::new());
+    //let mut storage = MapStorage::new(flash, MapConfig::new(flash_range), NoCache::new());
 
     let mut config = GLOBAL_CONFIG.lock().await;
-    // Execute the loaders sequentially via your clean `lds` namespace shortcut
+    //nvs::load_imu_filter_bank_config(&mut config.imu_filter_bank, &mut storage).await;
+}*/
+
+#[cfg(feature = "std")]
+pub async fn load_global_configs() {
+     // Full 1MB simulated range for PC tests
+    /*let flash_range = 0..1024 * 1024;
+    // Initialize our conditional target driver
+    let mut flash_driver = init_flash_driver();
+    let mut storage = MapStorage::new(flash_driver, MapConfig::new(flash_range), NoCache::new());*/
+
+    let mut config = GLOBAL_CONFIG.lock().await;
+    //nvs::load_imu_filter_bank_config(&mut config.imu_filter_bank, &mut storage).await;
+    //nvs::load_rates_config(&mut config.rates, &mut flash_driver, config_flash_range.clone());
+}
+
+// Standard Raspberry Pi Pico 2 boards have 4MB of onboard QSPI flash memory.
+#[cfg(feature = "rp2350")]
+pub async fn load_global_configs() {
+    let flash_range = (4096 - 128) * 1024 .. 4096 * 1024; // Tail end 128KB for chip
+    let mut flash_driver = {
+        let p = embassy_rp::init(Default::default());
+        init_flash_driver(p)
+    };
+    let mut storage = MapStorage::new(flash, MapConfig::new(flash_range), NoCache::new());
+    let mut config = GLOBAL_CONFIG.lock().await;
     nvs::load_imu_filter_bank_config(&mut config.imu_filter_bank, &mut storage).await;
 }

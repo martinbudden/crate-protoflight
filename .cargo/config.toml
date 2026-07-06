@@ -2,13 +2,67 @@
 # Automatically compile for the RP2350 core when running generic 'cargo build'
 #target = "thumbv8m.main-none-eabihf"
 
+
+# -----------------------------------------------------------------------------
+# Configuration for Cortex-M33 (Modern Armv8-M with FPU)
+# Devices like: Nordic nRF5340, STM32U5, LPC55S69
+# -----------------------------------------------------------------------------
 [target.thumbv8m.main-none-eabihf]
-# Required flags for compilation and linking embedded binaries
 rustflags = [
+    "-C", "target-cpu=cortex-m33",
     "-C", "link-args=-Tlink.x -Tdefmt.x", 
-    "-C", "no-vectorize-loops"
+    "-C", "no-vectorize-loops",
+    "-C", "llvm-args=--inline-threshold=250",
+]
+
+# -----------------------------------------------------------------------------
+# Configuration for Cortex-M4F / Cortex-M7F (Single-Precision FPUs)
+# Devices like: STM32F4, STM32F7 (SP variants), NXP Kinetis K64
+# -----------------------------------------------------------------------------
+[target.thumbv7em-none-eabihf]
+rustflags = [
+    "-C", "target-cpu=cortex-m4",
+    "-C", "inline-threshold=250",
+]
+
+# Note for ESP32:
+# cargo install espup
+# espup install
+# is required
+
+# -----------------------------------------------------------------------------
+# Target Configuration for ESP32-S3 (Bare-Metal / no_std)
+# -----------------------------------------------------------------------------
+[target.xtensa-esp32s3-none-elf]
+rustflags = [
+  "-C", "inline-threshold=250",
+  # The S3 processor doesn't use ARM target-cpu names; it uses Xtensa scheduling.
+  # The target architecture handles this automatically.
+]
+
+# -----------------------------------------------------------------------------
+# Target Configuration for ESP32-S3 (With ESP-IDF Framework)
+# -----------------------------------------------------------------------------
+[target.xtensa-esp32s3-espidf]
+rustflags = [
+  "-C", "inline-threshold=250",
 ]
 
 [alias]
 # Run using: 'cargo test-host'
 test-host = "test --no-default-features --features std,libm,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug,serde --target x86_64-unknown-linux-gnu"
+
+# Shortcut to build specifically for the Double-Precision Cortex-M7
+# Devices like: STM32H7, NXP i.MX RT1060
+build-m7 = [
+    "build", 
+    "--target", "thumbv7em-none-eabihf", 
+    "--config", "target.thumbv7em-none-eabihf.rustflags=['-C', 'target-cpu=cortex-m7', '-C', 'inline-threshold=300']"
+]
+
+# Shortcut to run or flash specifically on the Cortex-M7
+run-m7 = [
+    "run", 
+    "--target", "thumbv7em-none-eabihf", 
+    "--config", "target.thumbv7em-none-eabihf.rustflags=['-C', 'target-cpu=cortex-m7', '-C', 'inline-threshold=300']"
+]

@@ -23,3 +23,15 @@ To check with a given target use:
 ```sh
 cargo check --target thumbv8m.main-none-eabihf
 ```
+
+To check for flash usage:
+
+```sh
+cargo bloat --release --target thumbv7em-none-eabihf -n 20
+```
+
+rp2350 build
+
+```sh
+cargo build --target thumbv8m.main-none-eabihf --features rp2350
+```

@@ -25,6 +25,9 @@ use crate::{
     },
 };
 
+#[cfg(feature = "serde")]
+use crate::tasks::non_volatile_storage::load_global_configs;
+
 #[cfg(feature = "autopilot")]
 use crate::{
     autopilot::pilot::Autopilot,
@@ -126,9 +129,15 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "rangefinder")]
     static RANGEFINDER_CTX: StaticCell<RangefinderContext> = StaticCell::new();
 
-    #[cfg(feature = "rp2350")]
+    #[cfg(all(feature = "max7456", feature = "rp2350"))]
     static SPI_BUS_CELL: StaticCell<ConcreteSpiType> = StaticCell::new();
+
     static DISPLAY_PORT_MUTEX_CELL: StaticCell<DisplayPortMutex> = StaticCell::new();
+
+    // Initialize env_logger for logging to stdout on desktop platforms.
+    // This connects the logger to the terminal and polls the environment variables.
+    #[cfg(feature = "std")]
+    env_logger::init();
 
     // Take ownership of the raw RP2350 hardware peripherals block
     #[cfg(feature = "rp2350")]
@@ -160,6 +169,7 @@ pub async fn init(spawner: Spawner) {
 
         DISPLAY_PORT_MUTEX_CELL.init(Mutex::new(raw_display))
     };
+
     // --- INITIALIZE MOCK STUB (HOST PROFILE ENVIRONMENT) ---
     #[allow(unused)]
     #[cfg(not(feature = "max7456"))]
@@ -182,26 +192,8 @@ pub async fn init(spawner: Spawner) {
         let display_ref = SHARED_DISPLAY.init(Mutex::new(raw_display));
     */
 
-    /*#[cfg(not(target_arch = "arm"))]
-    let config_flash_range = 0..1024 * 1024; // Full 1MB simulated range for PC tests
-
-    // Standard Raspberry Pi Pico 2 boards have 4MB of onboard QSPI flash memory.
-    #[cfg(target_arch = "arm")]
-    let config_flash_range = (4096 - 128) * 1024 .. 4096 * 1024; // Tail end 128KB for chip
-
-    // Initialize our conditional target driver
-    #[cfg(not(target_arch = "arm"))]
-    let mut flash_driver = init_flash_driver();
-
-    #[cfg(target_arch = "arm")]
-    let mut flash_driver = {
-        let p = embassy_rp::init(Default::default());
-        init_flash_driver(p)
-    };
-
-    load_system_configs_task(&mut flash_driver, config_flash_range).await;*/
-
-    env_logger::init();
+    #[cfg(feature = "serde")]
+    load_global_configs().await;
 
     #[allow(unused_mut)]
     let mut config = GLOBAL_CONFIG.lock().await;
@@ -210,6 +202,7 @@ pub async fn init(spawner: Spawner) {
     // Initialize the task contexts.
     // ****
 
+    // Initialize the modern storage driver handle matching your u16 Key setup
     let gyro_pid_ctx = GYRO_PID_CTX.init(GyroPidContext {
         flight_control_receiver: flight_control_receiver(),
         gyro_pid_sender: gyro_pid_sender(),
@@ -227,7 +220,6 @@ pub async fn init(spawner: Spawner) {
         motor_mixer: MotorMixerQuadXPwm::new(MotorMixerCommon::with_config(config.mixer, config.motor)),
     });
 
-    //nvs::load_rates_config(&mut config.rates, &mut flash_driver, config_flash_range.clone());
     let flight_control_ctx = FLIGHT_CONTROL_CTX.init(FlightControlContext {
         flight_control_sender: flight_control_sender(),
         config_subscriber: config_subscriber(),

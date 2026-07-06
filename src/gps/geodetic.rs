@@ -1,5 +1,5 @@
 #![allow(unused)]
-use vqm::Vector3df32;
+use vqm::{Vector3df32,TrigonometricMethods};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "std", derive(derive_more::Display))]
@@ -28,6 +28,7 @@ pub struct Geodetic {
     k_latitude: f32,
     k_longitude: f32,
 }
+
 impl Geodetic {
     pub const fn new() -> Self {
         Self { home: GeographicCoordinate::new(0.0, 0.0, 0.0), k_latitude: 0.0, k_longitude: 0.0 }

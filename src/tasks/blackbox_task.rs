@@ -1,20 +1,19 @@
 #![cfg(feature = "blackbox")]
 
-use blackbox_logger::{Blackbox, BlackboxEvent, BlackboxMainData, BlackboxSlowData, LoggerState, SliceEncoder};
-
-#[cfg(feature = "gps")]
-use blackbox_logger::{BlackboxGpsData, BlackboxGpsPosition};
-
 use crate::{
     drivers::sd_card::{MockSdCard, SdStorage},
     sensors::{GyroPidMessage, SetpointMessage},
     tasks::gyro_pid_task::{GyroPidReceiver, SetpointReceiver},
 };
+use blackbox_logger::{Blackbox, BlackboxEvent, BlackboxMainData, BlackboxSlowData, LoggerState, SliceEncoder};
 
 #[cfg(feature = "gps")]
-use crate::{
-    gps::{GpsMessage, GpsSolutionData},
-    tasks::gps_task::GpsSubscriber,
+use {
+    crate::{
+        gps::{GpsMessage, GpsSolutionData},
+        tasks::gps_task::GpsSubscriber,
+    },
+    blackbox_logger::{BlackboxGpsData, BlackboxGpsPosition},
 };
 
 pub struct BlackboxContext<'a> {

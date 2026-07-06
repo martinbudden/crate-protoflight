@@ -1,14 +1,14 @@
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal};
 use tinyrand::{RandRange, StdRand};
 
-use imu_sensors::{ImuAccScale, ImuCommon, ImuGyroScale, ImuMock, MockImuBus};
+use imu_sensors::{AccFullScale, AccUnits, GyroUnits, GyroFullScale, ImuMock, MockImuBus};
 use vqm::Vector3df32;
 
-#[cfg(feature = "rp2350")]
+/*#[cfg(feature = "rp2350")]
 use embassy_rp::{
     gpio::{Input, Pull},
     interrupt::{self, InterruptExt, Priority},
-};
+};*/
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ImuData {
@@ -53,7 +53,7 @@ pub async fn imu_task(ctx: &'static mut ImuContext) {
 
     let _ = ctx
         .imu
-        .init(8000, ImuCommon::GYRO_FULL_SCALE_MAX, ImuGyroScale::Rps, ImuCommon::ACC_FULL_SCALE_MAX, ImuAccScale::G)
+        .init(8000, GyroFullScale::Max, GyroUnits::Rps, AccFullScale::Max, AccUnits::G)
         .await;
     log::info!("      IMU: task started");
     loop {
