@@ -1,5 +1,5 @@
 #![allow(unused)]
-use vqm::{Vector3df32,TrigonometricMethods};
+use vqm::{TrigonometricMethods, Vector3df32};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "std", derive(derive_more::Display))]

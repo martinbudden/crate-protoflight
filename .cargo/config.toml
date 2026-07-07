@@ -10,9 +10,10 @@
 [target.thumbv8m.main-none-eabihf]
 rustflags = [
     "-C", "target-cpu=cortex-m33",
-    "-C", "link-args=-Tlink.x -Tdefmt.x", 
     "-C", "no-vectorize-loops",
     "-C", "llvm-args=--inline-threshold=250",
+    "-C", "link-arg=-Tlink.x",
+    "-C", "link-arg=-Tdefmt.x",
 ]
 
 # -----------------------------------------------------------------------------

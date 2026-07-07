@@ -223,10 +223,8 @@ where
 // ==========================================
 
 #[cfg(feature = "battery")]
-pub async fn load_battery_config<F>(
-    config: &mut BatteryConfig,
-    storage: &mut MapStorage<u16, F, NoCache>,
-) where
+pub async fn load_battery_config<F>(config: &mut BatteryConfig, storage: &mut MapStorage<u16, F, NoCache>)
+where
     F: NorFlash,
 {
     let mut buffer = [0u8; 256];
@@ -347,7 +345,7 @@ where
 
 #[cfg(feature = "std")]
 pub async fn load_global_configs() {
-     // Full 1MB simulated range for PC tests
+    // Full 1MB simulated range for PC tests
     /*let flash_range = 0..1024 * 1024;
     // Initialize our conditional target driver
     let mut flash_driver = init_flash_driver();
@@ -361,7 +359,7 @@ pub async fn load_global_configs() {
 // Standard Raspberry Pi Pico 2 boards have 4MB of onboard QSPI flash memory.
 #[cfg(feature = "rp2350")]
 pub async fn load_global_configs() {
-    let flash_range = (4096 - 128) * 1024 .. 4096 * 1024; // Tail end 128KB for chip
+    let flash_range = (4096 - 128) * 1024..4096 * 1024; // Tail end 128KB for chip
     let mut flash_driver = {
         let p = embassy_rp::init(Default::default());
         init_flash_driver(p)

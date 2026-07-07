@@ -141,7 +141,7 @@ pub async fn init(spawner: Spawner) {
 
     // Take ownership of the raw RP2350 hardware peripherals block
     #[cfg(feature = "rp2350")]
-    let p = embassy_rp::init(Default::default());
+    let _p = embassy_rp::init(Default::default());
     // --- INITIALIZE HARDWARE PERIPHERALS (RP2350 SPECIFIC) ---
     #[cfg(all(feature = "max7456", feature = "rp2350"))]
     let display_ref = {
@@ -153,6 +153,7 @@ pub async fn init(spawner: Spawner) {
         let spi_irq = interrupt::take!(SPI0);
 
         // Create the asynchronous SPI instance wrapping hardware SPI0 and DMA Channel 0
+        let p = _p;
         let raw_spi = Spi::new(
             p.SPI0,    // Hardware Peripheral Identifier
             p.PIN_18,  // CLK Pin

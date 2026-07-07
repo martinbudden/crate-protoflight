@@ -95,7 +95,7 @@ checksum = "b4388bee8683e3d04af747c73422af53102d2bd24d9eadb6cbc100baef4b43f8"
 [[package]]
 name = "blackbox-logger"
 version = "0.1.8"
-source = "git+https://github.com/martinbudden/crate-blackbox-logger#8666e2d3ca93e2cfdef415229a617db01626b3f4"
+source = "git+https://github.com/martinbudden/crate-blackbox-logger#614eb27626d459ab77597735a8716e06e121fdd4"
 dependencies = [
  "embassy-futures",
  "postcard",
@@ -1376,9 +1376,9 @@ dependencies = [
 
 [[package]]
 name = "rustversion"
-version = "1.0.22"
+version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
+checksum = "cf54715a573b99ac80df0bc206da022bcd442c974952c7b9720069370852e21f"
 
 [[package]]
 name = "same-file"

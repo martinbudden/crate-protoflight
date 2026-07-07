@@ -27,7 +27,7 @@ rustc_version = "0.4.1"
 #default = ["std", "libm"]
 #default = ["rp2350", "libm"]
 default = ["libm",
-    "std", "blackbox",
+    "std", "blackbox", "serde",
     #"rp2350",
     "autopilot",
     "barometer",
@@ -42,7 +42,6 @@ default = ["libm",
     #"rangefinder",
     "rpm_filters",
     "rtt-debug",
-    "serde",
 ]
 #default = ["rp2350", "libm", "blackbox", "max7456", "osd", "rpm_filters", "barometer", "gps", "msp", "autopilot", "rangefinder"]
 #default = ["rp2350", "libm", "max7456", "osd"]
@@ -52,7 +51,7 @@ default = ["libm",
 autopilot = []
 barometer = ["blackbox-logger/barometer"]
 battery = []
-blackbox = []
+blackbox = ["dep:blackbox-logger"]
 cms = []
 dashboard = []
 dshot_telemetry = ["blackbox-logger/dshot_telemetry"]
@@ -84,7 +83,6 @@ simd = ["vqm/simd", "signal-filters/simd"]
 # Target platforms
 std = [
     "critical-section/std",
-    "blackbox-logger/std",
     "derive_more/std",
     "embassy-time/std",
     "embassy-executor/platform-std",
@@ -133,7 +131,6 @@ sequential-storage = { version = "7.2.0", default-features = false, features = [
 embedded-storage-async = { version = "0.4.1", default-features = false }
 # In-memory storage simulator
 embedded-storage-file = { version = "0.2.0", default-features = false, optional = true }
-
 
 simple-bitset = "0.1.4"
 #simple-bitset = { git = "https://github.com/martinbudden/crate-simple-bitset" }

@@ -1,6 +1,6 @@
 #![allow(unused)]
 use core::f32::consts::{FRAC_1_SQRT_2, FRAC_PI_2};
-use vqm::{Vector2df32,TrigonometricMethods};
+use vqm::{TrigonometricMethods, Vector2df32};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PathFollower {
