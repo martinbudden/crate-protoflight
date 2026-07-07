@@ -2,10 +2,15 @@
 #![allow(unused)]
 
 use embedded_storage_async::nor_flash::{ErrorType, NorFlash};
+#[cfg(feature = "std")]
+use embedded_storage_file::{NorMemoryAsync, NorMemoryInFile};
 use sequential_storage::{
     cache::NoCache,
     map::{MapConfig, MapStorage, PostcardValue},
 };
+
+#[cfg(feature = "rp2350")]
+use embassy_embedded_hal::adapter::BlockingAsync;
 
 #[cfg(feature = "rp2350")]
 use embassy_rp::{
@@ -13,6 +18,7 @@ use embassy_rp::{
     flash::{Blocking, Flash},
     peripherals::FLASH,
 };
+
 #[cfg(feature = "rp2350")]
 const FLASH_SIZE_BYTES: usize = 4 * 1024 * 1024;
 
@@ -303,24 +309,16 @@ pub async fn load_blackbox_config<F>(
     }*/
 }*/
 
-// --- 1. PC (Host) Build Configuration ---
-// If building on your PC (x86_64, Mac, etc.)
-// FIX: Replace `_` with `impl embedded_storage_async::nor_flash::NorFlash`
+// PC (Host) Build Configuration --- If building on your PC (x86_64, Mac, etc.)
 #[cfg(feature = "std")]
 pub fn init_flash_driver() -> impl embedded_storage_async::nor_flash::NorFlash {
-    use embedded_storage_file::{NorMemoryAsync, NorMemoryInFile};
-
     let path = "pc_mock_flash.nor";
-    let capacity_bytes = 1024 * 1024; // Allocate a 1MB virtual flash file
+    let capacity_bytes = 1024 * 1024; // 1MB 
 
-    // 1. Instantiate the synchronous inner file backend with layout properties:
-    //    <READ_SIZE, WRITE_SIZE, ERASE_SIZE>
     #[allow(clippy::expect_used)]
-    let inner_sync_nor = NorMemoryInFile::<256, 256, 4096>::new(path, capacity_bytes)
-        .expect("Failed to create synchronous mock flash file");
+    let inner_sync_nor =
+        NorMemoryInFile::<4, 4, 4096>::new(path, capacity_bytes).expect("Failed to create synchronous mock flash file");
 
-    // 2. FIX: Wrap it using the single-parameter asynchronous wrapper.
-    //    We remove the <256, 256, 4096> from NorMemoryAsync to satisfy the 1-generic rule.
     NorMemoryAsync::new(inner_sync_nor)
 }
 
@@ -332,39 +330,46 @@ pub fn init_flash_driver<'d>(
     Flash::<_, Blocking, FLASH_SIZE_BYTES>::new_blocking(flash_pin)
 }
 
-/*pub async fn load_global_configs<F>(flash: &mut F, flash_range: core::ops::Range<u32>)
-where
-    F: NorFlash,
-{
-    // Initialize the modern storage driver handle matching your u16 Key setup
-    //let mut storage = MapStorage::new(flash, MapConfig::new(flash_range), NoCache::new());
-
-    let mut config = GLOBAL_CONFIG.lock().await;
-    //nvs::load_imu_filter_bank_config(&mut config.imu_filter_bank, &mut storage).await;
-}*/
-
 #[cfg(feature = "std")]
-pub async fn load_global_configs() {
-    // Full 1MB simulated range for PC tests
-    /*let flash_range = 0..1024 * 1024;
-    // Initialize our conditional target driver
-    let mut flash_driver = init_flash_driver();
-    let mut storage = MapStorage::new(flash_driver, MapConfig::new(flash_range), NoCache::new());*/
-
-    let mut config = GLOBAL_CONFIG.lock().await;
-    //nvs::load_imu_filter_bank_config(&mut config.imu_filter_bank, &mut storage).await;
-    //nvs::load_rates_config(&mut config.rates, &mut flash_driver, config_flash_range.clone());
+fn map_storage() -> MapStorage<u16, impl embedded_storage_async::nor_flash::NorFlash, NoCache> {
+    let flash_driver = init_flash_driver();
+    MapStorage::new(flash_driver, const { MapConfig::new(0..1024 * 1024) }, NoCache::new())
 }
 
 // Standard Raspberry Pi Pico 2 boards have 4MB of onboard QSPI flash memory.
 #[cfg(feature = "rp2350")]
-pub async fn load_global_configs() {
+/*fn map_storage() -> MapStorage<u16, Flash<'static, FLASH, Blocking, FLASH_SIZE_BYTES>, NoCache> {
     let flash_range = (4096 - 128) * 1024..4096 * 1024; // Tail end 128KB for chip
     let mut flash_driver = {
-        let p = embassy_rp::init(Default::default());
-        init_flash_driver(p)
+        let peripherals = embassy_rp::init(Default::default());
+        init_flash_driver(peripherals.FLASH)
     };
-    let mut storage = MapStorage::new(flash, MapConfig::new(flash_range), NoCache::new());
+    MapStorage::new(flash_driver, MapConfig::new(flash_range), NoCache::new())
+}*/
+
+// 1. Notice the Driver Type argument changed from `Flash<..., Blocking, ...>`
+//    to `BlockingAsync<Flash<..., Blocking, ...>>`
+fn map_storage() -> MapStorage<u16, BlockingAsync<Flash<'static, FLASH, Blocking, FLASH_SIZE_BYTES>>, NoCache> {
+    // Initialize Embassy peripherals.
+    let peripherals = embassy_rp::init(Default::default());
+
+    // Instantiate your Blocking driver variant.
+    let flash_driver = init_flash_driver(peripherals.FLASH);
+
+    // Wrap the blocking driver so it satisfies the async NorFlash trait boundaries.
+    let async_wrapped_driver = BlockingAsync::new(flash_driver);
+
+    // Tail end 128KB layout calculation bounds
+    let flash_range = (4096 - 128) * 1024..4096 * 1024;
+
+    // Construct storage cleanly via compile-time verification.
+    MapStorage::new(async_wrapped_driver, const { MapConfig::new((4096 - 128) * 1024..4096 * 1024) }, NoCache::new())
+}
+
+pub async fn load_global_configs() {
+    let mut storage = map_storage();
     let mut config = GLOBAL_CONFIG.lock().await;
+
     nvs::load_imu_filter_bank_config(&mut config.imu_filter_bank, &mut storage).await;
+    nvs::load_rates_config(&mut config.rates, &mut storage).await;
 }

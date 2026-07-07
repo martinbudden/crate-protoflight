@@ -27,7 +27,7 @@ rustc_version = "0.4.1"
 #default = ["std", "libm"]
 #default = ["rp2350", "libm"]
 default = ["libm",
-    "std", "blackbox", "serde",
+    "std", "blackbox",
     #"rp2350",
     "autopilot",
     "barometer",
@@ -42,6 +42,7 @@ default = ["libm",
     #"rangefinder",
     "rpm_filters",
     "rtt-debug",
+    "serde",
 ]
 #default = ["rp2350", "libm", "blackbox", "max7456", "osd", "rpm_filters", "barometer", "gps", "msp", "autopilot", "rangefinder"]
 #default = ["rp2350", "libm", "max7456", "osd"]
@@ -97,13 +98,13 @@ std = [
     "dep:env_filter"
 ]
 rp2350 = [
+    "dep:cortex-m-rt",
     "dep:embassy-rp", 
     "embassy-rp/rp235xa", 
     "embassy-rp/rt",                        # <-- FIX 1: Resolves the missing PEND_IRQ_TOKEN import error
-    "embassy-rp/executor-thread",       # <-- Let the HAL define the hardware executor
-    "embassy-rp/executor-interrupt",     # <-- Add if you require high-priority interrupt task pools
+    "embassy-rp/executor-thread",           # <-- Let the HAL define the hardware executor
+    "embassy-rp/executor-interrupt",        # <-- Add if you require high-priority interrupt task pools
     "embassy-executor/platform-cortex-m",   # <-- Explicitly satisfies the executor's platform check
-    "dep:cortex-m-rt",
 ]
 
 [dependencies]
@@ -114,6 +115,7 @@ embassy-futures = { version = "0.1.2", default-features = false }
 embassy-time = { version = "0.5.1", default-features = false }
 embassy-sync = { version = "0.8.0", default-features = false }
 embedded-hal-async = { version = "1.0.0", default-features = false }
+embassy-embedded-hal = "0.6.0"
 static_cell = "2.1.1"
 critical-section = { version = "1.2.0" }
 # Hardware-specific Embassy HAL

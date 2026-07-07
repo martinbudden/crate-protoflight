@@ -1212,6 +1212,7 @@ dependencies = [
  "cortex-m-rt",
  "critical-section",
  "derive_more",
+ "embassy-embedded-hal",
  "embassy-executor",
  "embassy-futures",
  "embassy-rp",
