@@ -6,10 +6,10 @@ use embassy_rp::multicore::{Stack, spawn_core1};
 
 use cyw43_pio::PioSpi;
 use embassy_rp::{
-    Peri, bind_interrupts, dma,
-    gpio::{Level, Output},
-    peripherals::FLASH,
-    peripherals::{DMA_CH0, DMA_CH1, DMA_CH2, DMA_CH3, DMA_CH4, PIO0, SPI0, SPI1},
+    Peri, bind_interrupts, dma, gpio,
+    gpio::{Input, Level, Output, Pull},
+    peripherals,
+    peripherals::{DMA_CH0, DMA_CH1, DMA_CH2, DMA_CH3, DMA_CH4, FLASH, PIO0, SPI0, SPI1},
     pio,
     pio::InterruptHandler as PioInterruptHandler,
     spi::{Async, Config as SpiConfig, Spi},
@@ -36,6 +36,7 @@ use embedded_hal_bus::spi::ExclusiveDevice;
 // --- Device 1: Hardware SPI0 (Gyroscope) ---
 // Tied to SPI0 running asynchronously via the DMA system
 pub type GyroSpiDevice = ExclusiveDevice<Spi<'static, SPI0, Async>, Output<'static>, Delay>;
+pub type GyroInterruptPin = Input<'static>;
 
 // --- Device 2: Hardware SPI1 (Blackbox SD Card) ---
 // Tied to SPI1 running asynchronously via the DMA system
@@ -62,12 +63,17 @@ pub type SharedDisplay = Mutex<CriticalSectionRawMutex, DisplayPortMax7456<&'sta
 
 pub fn init_rp() -> (
     Result<GyroSpiDevice, core::convert::Infallible>,
+    GyroInterruptPin,
     Result<BlackboxSpiDevice, BlackboxInitError>,
     Result<AuxiliaryPioSpiDevice, AuxiliaryPioInitError>,
     Peri<'static, FLASH>,
 ) {
     // Take ownership of the raw RP2350 hardware peripherals block
     let peripherals = embassy_rp::init(Default::default());
+    let pin_17 = peripherals.PIN_17; // Gyro CS
+    // Physical pin assigned to capture the gyroscope's INT1 signal wire
+    let pin_20 = peripherals.PIN_20;
+    let pin_13 = peripherals.PIN_13; // Blackbox CS
 
     let gyro_spi: Result<
         ExclusiveDevice<
@@ -80,7 +86,7 @@ pub fn init_rp() -> (
         let mut spi_config = SpiConfig::default();
         spi_config.frequency = 10_000_000;
 
-        // Notice: Irqs is completely omitted from the parameters here.
+        // TODO: put irq on pin 20
         let spi_bus = Spi::new(
             peripherals.SPI0,
             peripherals.PIN_18,  // CLK defined internally
@@ -91,9 +97,12 @@ pub fn init_rp() -> (
             Irqs,
             spi_config,
         );
-        let cs_pin = Output::new(unsafe { core::ptr::read(&peripherals.PIN_17) }, Level::High);
+        let cs_pin = Output::new(pin_17, Level::High);
         ExclusiveDevice::new(spi_bus, cs_pin, embassy_time::Delay)
     };
+    // --- Initialize the Async Input Driver ---
+    // FIX: Input::new creates an async-capable listener instance safely [INDEX 2.3.1]
+    let gyro_interrupt = Input::new(pin_20, embassy_rp::gpio::Pull::Up);
 
     #[cfg(feature = "blackbox")]
     let blackbox_spi = {
@@ -116,7 +125,7 @@ pub fn init_rp() -> (
             Irqs,
             spi_config,
         );
-        let cs_pin = Output::new(unsafe { core::ptr::read(&peripherals.PIN_13) }, Level::High);
+        let cs_pin = Output::new(pin_13, Level::High);
         // Map the infallible output into an Ok Result variant matching the outer structure
         ExclusiveDevice::new(spi_bus, cs_pin, embassy_time::Delay).map_err(|_| unreachable!())
     };
@@ -157,7 +166,7 @@ pub fn init_rp() -> (
     };*/
     let aux_pio_spi = Err(AuxiliaryPioInitError::FeatureDisabled);
 
-    (gyro_spi, blackbox_spi, aux_pio_spi, peripherals.FLASH)
+    (gyro_spi, gyro_interrupt, blackbox_spi, aux_pio_spi, peripherals.FLASH)
 }
 
 /*{

@@ -139,7 +139,7 @@ pub async fn init(spawner: Spawner) {
     env_logger::init();
 
     #[cfg(feature = "rp2350")]
-    let (_gyro_res, _blackbox_res, _aux_pio_res, flash) = init_rp::init_rp();
+    let (_gyro_res, _gyro_interrupt, _blackbox_res, _aux_pio_res, flash) = init_rp::init_rp();
 
     // --- INITIALIZE MOCK STUB (HOST PROFILE ENVIRONMENT) ---
     #[allow(unused)]
@@ -245,9 +245,9 @@ pub async fn init(spawner: Spawner) {
     let sd_writer_ctx = {
         if let Ok(_blackbox_spi) = _blackbox_res {
             // TODO: pass blackbox_spi to the SD_WRITER_CTX
-            SD_WRITER_CTX.init(SdWriterContext { buffer: [0u8; 1024], pos: 0, _phantom: core::marker::PhantomData }) 
+            SD_WRITER_CTX.init(SdWriterContext { buffer: [0u8; 1024], pos: 0, _phantom: core::marker::PhantomData })
         } else {
-            SD_WRITER_CTX.init(SdWriterContext { buffer: [0u8; 1024], pos: 0, _phantom: core::marker::PhantomData }) 
+            SD_WRITER_CTX.init(SdWriterContext { buffer: [0u8; 1024], pos: 0, _phantom: core::marker::PhantomData })
         }
     };
 
