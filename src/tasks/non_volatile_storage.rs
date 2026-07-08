@@ -167,24 +167,6 @@ generate_config_handlers!(Osd, OSD_CONFIG_KEY, 128);
 generate_config_handlers!(Blackbox, BLACKBOX_CONFIG_KEY, 128);
 generate_config_handlers!(Rates, RATES_KEY, 128);
 
-pub async fn save_all_system_configs<F>(flash: &mut F, flash_range: core::ops::Range<u32>)
-where
-    F: NorFlash,
-{
-    // 1. Establish the driver handle matching your u16 Key setup
-    let mut storage = MapStorage::new(flash, MapConfig::new(flash_range), NoCache::new());
-
-    // 2. Obtain an immutable lock on the configuration data structures
-    let config = GLOBAL_CONFIG.lock().await;
-
-    // 3. Save values via your clean `lds` namespace shortcut
-    _ = save_imu_filter_bank_config(&config.imu_filter_bank, &mut storage).await;
-    //let _ = save_rates_config(&config.rates, &mut storage).await;
-    //let _ = save_blackbox_config(&config.blackbox, &mut storage).await;
-
-    //println!("[NVS]: All modified configurations saved successfully!");
-}
-
 // Update the functions to receive `&mut MapStorage` directly
 pub async fn load_imu_filter_bank_config<F>(config: &mut ImuFilterBankConfig, storage: &mut MapStorage<u16, F, NoCache>)
 where
@@ -373,3 +355,12 @@ pub async fn load_global_configs() {
     nvs::load_imu_filter_bank_config(&mut config.imu_filter_bank, &mut storage).await;
     nvs::load_rates_config(&mut config.rates, &mut storage).await;
 }
+
+pub async fn save_global_configs()
+{
+    let mut storage = map_storage();
+    let config = GLOBAL_CONFIG.lock().await;
+
+    nvs::save_imu_filter_bank_config(&config.imu_filter_bank, &mut storage).await;
+}
+
