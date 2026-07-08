@@ -8,9 +8,12 @@ use cyw43_pio::PioSpi;
 use embassy_rp::{
     Peri, bind_interrupts, dma, gpio,
     gpio::{Input, Level, Output, Pull},
+    i2c,
+    i2c::{Async as I2cAsync, I2c},
     peripherals,
     peripherals::{
-        DMA_CH0, DMA_CH1, DMA_CH2, DMA_CH3, DMA_CH4, DMA_CH5, DMA_CH6, DMA_CH7, FLASH, PIO0, SPI0, SPI1, UART0, UART1,
+        DMA_CH0, DMA_CH1, DMA_CH2, DMA_CH3, DMA_CH4, DMA_CH5, DMA_CH6, DMA_CH7, FLASH, PIO0, SPI0,
+        SPI1, UART0, UART1, I2C0
     },
     pio,
     pio::InterruptHandler as PioInterruptHandler,
@@ -37,6 +40,7 @@ bind_interrupts!(pub struct Irqs {
     PIO0_IRQ_0 => pio::InterruptHandler<PIO0>;
     UART0_IRQ => uart::InterruptHandler<UART0>;
     UART1_IRQ => uart::InterruptHandler<UART1>;
+    I2C0_IRQ => i2c::InterruptHandler<I2C0>; 
 });
 
 //use embedded_hal_async::spi::SpiDevice;
@@ -66,6 +70,8 @@ pub enum AuxiliaryPioInitError {
 
 pub type PrimaryUartDevice = Uart<'static, UartAsync>;
 pub type SecondaryUartDevice = Uart<'static, UartAsync>;
+pub type PrimaryI2cDevice = I2c<'static, I2C0, I2cAsync>;
+
 // --- 1. RASPBERRY PI RP2350 ARCHITECTURE CONFIGURATION ---
 #[cfg(feature = "max7456")]
 pub type ConcreteSpi = embassy_rp::spi::Spi<'static, embassy_rp::peripherals::SPI0, embassy_rp::spi::Async>;
@@ -80,6 +86,7 @@ pub fn init_rp() -> (
     Result<AuxiliaryPioSpiDevice, AuxiliaryPioInitError>,
     PrimaryUartDevice,
     SecondaryUartDevice,
+    PrimaryI2cDevice,
     Peri<'static, FLASH>,
 ) {
     // Take ownership of the raw RP2350 hardware peripherals block
@@ -116,6 +123,11 @@ pub fn init_rp() -> (
     let uart1_rx = peripherals.PIN_5;
     let uart1_tx_dma = peripherals.DMA_CH6;
     let uart1_rx_dma = peripherals.DMA_CH7;
+
+    // I2C0
+    let i2c0 = peripherals.I2C0;
+    let i2c0_scl = peripherals.PIN_9;
+    let i2c0_sda = peripherals.PIN_8;
 
     let gyro_spi: Result<
         ExclusiveDevice<
@@ -201,7 +213,14 @@ pub fn init_rp() -> (
         Uart::new(uart1, uart1_tx, uart1_rx, Irqs, uart1_tx_dma, uart1_rx_dma, uart_config)
     };
 
-    (gyro_spi, gyro_interrupt, blackbox_spi, aux_pio_spi, primary_uart, secondary_uart, peripherals.FLASH)
+    // --- Device 5: Hardware I2C0 (Sensor Subsystem) ---
+    let primary_i2c = {
+        let mut i2c_config = embassy_rp::i2c::Config::default();
+        i2c_config.frequency = 400_000; // Standard Fast-Mode I2C frequency (400 kHz)
+        I2c::new_async(i2c0, i2c0_scl, i2c0_sda, Irqs, i2c_config)
+    };
+
+    (gyro_spi, gyro_interrupt, blackbox_spi, aux_pio_spi, primary_uart, secondary_uart, primary_i2c, peripherals.FLASH)
 }
 
 /*{

@@ -139,7 +139,7 @@ pub async fn init(spawner: Spawner) {
     env_logger::init();
 
     #[cfg(feature = "rp2350")]
-    let (_gyro_res, _gyro_interrupt, _blackbox_res, _aux_pio_res, _uart0, _uart1, flash) = init_rp::init_rp();
+    let (_gyro_res, _gyro_interrupt, _blackbox_res, _aux_pio_res, _uart0, _uart1, _i2c0, flash) = init_rp::init_rp();
 
     // --- INITIALIZE MOCK STUB (HOST PROFILE ENVIRONMENT) ---
     #[allow(unused)]
