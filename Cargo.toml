@@ -35,6 +35,7 @@ default = ["libm",
     "dshot_telemetry",
     "gps",
     #"magnetometer",
+    #"max7456",
     "mock_sd_card",
     "msp",
     #"optical_flow",
@@ -89,7 +90,7 @@ std = [
     "embassy-executor/platform-std",
     "imu-sensors/std",
     "num-traits/std",
-    "signal-filters/std", 
+    "signal-filters/std",
     "vqm/std",
     "log/std",
     "dep:embedded-storage-file",
@@ -99,8 +100,9 @@ std = [
 ]
 rp2350 = [
     "dep:cortex-m-rt",
-    "dep:embassy-rp", 
-    "embassy-rp/rp235xa", 
+    "dep:embassy-rp",
+    "dep:async-embedded-sdmmc",
+    "embassy-rp/rp235xa",
     "embassy-rp/rt",                        # <-- FIX 1: Resolves the missing PEND_IRQ_TOKEN import error
     "embassy-rp/executor-thread",           # <-- Let the HAL define the hardware executor
     "embassy-rp/executor-interrupt",        # <-- Add if you require high-priority interrupt task pools
@@ -121,6 +123,7 @@ critical-section = { version = "1.2.0" }
 # Hardware-specific Embassy HAL
 embassy-rp = { version = "0.10.0", default-features = false, features = ["time-driver", "critical-section-impl"], optional = true }
 cortex-m-rt = { version = "0.7.5", optional = true }
+embedded-hal-bus = { version = "0.3.0", features = ["async"] }
 
 strum = { version = "0.28.0", default-features = false, features = ["derive"] }
 derive_more = { version = "2.1.1", default-features = false, features = ["display"] }
@@ -133,6 +136,7 @@ sequential-storage = { version = "7.2.0", default-features = false, features = [
 embedded-storage-async = { version = "0.4.1", default-features = false }
 # In-memory storage simulator
 embedded-storage-file = { version = "0.2.0", default-features = false, optional = true }
+async-embedded-sdmmc = { version = "0.3.1", features = ["async", "embedded-hal-async"], optional = true }
 
 simple-bitset = "0.1.4"
 #simple-bitset = { git = "https://github.com/martinbudden/crate-simple-bitset" }

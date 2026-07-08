@@ -181,6 +181,7 @@
         "scopeguard",
         "SDCARD",
         "SDLC",
+        "sdmmc",
         "serde",
         "setpoints",
         "Sflight",

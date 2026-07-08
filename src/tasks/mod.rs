@@ -16,3 +16,4 @@ mod non_volatile_storage;
 mod optical_flow_task;
 mod osd_task;
 mod rangefinder_task;
+mod sd_writer_task;

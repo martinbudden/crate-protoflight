@@ -1,7 +1,29 @@
 use embassy_executor::Spawner;
-#[cfg(feature = "multicore")]
-use embassy_rp::multicore::{Stack, spawn_core1};
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
+
+#[cfg(all(feature = "rp2350", feature = "multicore"))]
+use embassy_rp::multicore::{Stack, spawn_core1};
+#[cfg(feature = "rp2350")]
+use embassy_rp::{
+    bind_interrupts, dma,
+    gpio::{Level, Output},
+    peripherals::{DMA_CH0, DMA_CH1, DMA_CH2, DMA_CH3},
+    spi::{Config as SpiConfig, Spi},
+};
+
+// Binds the global hardware DMA vectors.
+// This creates the type validation struct "Irqs" required by Spi::new.
+#[cfg(feature = "rp2350")]
+bind_interrupts!(pub struct Irqs {
+    DMA_IRQ_0 => dma::InterruptHandler<DMA_CH0>,
+                 dma::InterruptHandler<DMA_CH1>,
+                 dma::InterruptHandler<DMA_CH2>,
+                 dma::InterruptHandler<DMA_CH3>;
+});
+//#[cfg(feature = "rp2350")]
+//use embedded_hal_async::spi::SpiDevice;
+#[cfg(feature = "rp2350")]
+use embedded_hal_bus::spi::ExclusiveDevice;
 
 use static_cell::StaticCell;
 
@@ -40,6 +62,8 @@ use crate::tasks::barometer_task::{BarometerContext, barometer_publisher, barome
 #[cfg(feature = "battery")]
 use crate::tasks::battery_task::{BatteryContext, battery_publisher, battery_subscriber, battery_task};
 
+#[cfg(all(feature = "rp2350", feature = "blackbox"))]
+use crate::tasks::sd_writer_task::{SdWriterContext, sd_writer_task};
 #[cfg(feature = "blackbox")]
 use {
     crate::{
@@ -118,6 +142,8 @@ pub async fn init(spawner: Spawner) {
     static BATTERY_CTX: StaticCell<BatteryContext> = StaticCell::new();
     #[cfg(feature = "blackbox")]
     static BLACKBOX_CTX: StaticCell<BlackboxContext> = StaticCell::new();
+    #[cfg(all(feature = "blackbox", feature = "rp2350"))]
+    static SD_WRITER_CTX: StaticCell<SdWriterContext> = StaticCell::new();
     #[cfg(feature = "gps")]
     static GPS_CTX: StaticCell<GpsContext> = StaticCell::new();
     #[cfg(feature = "msp")]
@@ -141,34 +167,73 @@ pub async fn init(spawner: Spawner) {
 
     // Take ownership of the raw RP2350 hardware peripherals block
     #[cfg(feature = "rp2350")]
-    let _p = embassy_rp::init(Default::default());
+    let peripherals = embassy_rp::init(Default::default());
+
+    #[cfg(feature = "rp2350")]
+    let _gyro_spi = {
+        let mut spi_config = SpiConfig::default();
+        spi_config.frequency = 10_000_000;
+
+        // Notice: Irqs is completely omitted from the parameters here.
+        let spi_bus = Spi::new(
+            peripherals.SPI0,
+            peripherals.PIN_18,  // CLK defined internally
+            peripherals.PIN_19,  // MOSI defined internally
+            peripherals.PIN_16,  // MISO defined internally
+            peripherals.DMA_CH0, // TX DMA
+            peripherals.DMA_CH1, // RX DMA
+            Irqs,
+            spi_config,
+        );
+        let cs_pin = Output::new(unsafe { core::ptr::read(&peripherals.PIN_17) }, Level::High);
+        ExclusiveDevice::new(spi_bus, cs_pin, embassy_time::Delay)
+    };
+    #[cfg(feature = "rp2350")]
+    let _blackbox_spi = {
+        let mut spi_config = SpiConfig::default();
+        spi_config.frequency = 400_000;
+
+        // Notice: Irqs is completely omitted from the parameters here.
+        let spi_bus = Spi::new(
+            peripherals.SPI1,
+            peripherals.PIN_10,  // CLK defined internally
+            peripherals.PIN_11,  // MOSI defined internally
+            peripherals.PIN_12,  // MISO defined internally
+            peripherals.DMA_CH2, // TX DMA
+            peripherals.DMA_CH3, // RX DMA
+            Irqs,
+            spi_config,
+        );
+        let cs_pin = Output::new(unsafe { core::ptr::read(&peripherals.PIN_17) }, Level::High);
+        ExclusiveDevice::new(spi_bus, cs_pin, embassy_time::Delay)
+    };
+
     // --- INITIALIZE HARDWARE PERIPHERALS (RP2350 SPECIFIC) ---
     #[cfg(all(feature = "max7456", feature = "rp2350"))]
     let display_ref = {
-        use embassy_rp::spi::{Config, Spi};
-
         // Define SPI hardware transmission speed limits (e.g. 10MHz for MAX7456)
         let mut spi_config = Config::default();
         spi_config.frequency = 10_000_000;
         let spi_irq = interrupt::take!(SPI0);
 
         // Create the asynchronous SPI instance wrapping hardware SPI0 and DMA Channel 0
-        let p = _p;
-        let raw_spi = Spi::new(
-            p.SPI0,    // Hardware Peripheral Identifier
-            p.PIN_18,  // CLK Pin
-            p.PIN_19,  // TX (MOSI) Pin
-            p.PIN_16,  // RX (MISO) Pin
-            p.DMA_CH0, // TX DMA Channel assignment
-            p.DMA_CH1, // RX DMA Channel assignment
-            spi_irq, spi_config,
+        let p = _peripherals;
+        let spi = Spi::new(
+            peripherals.SPI0,    // Hardware Peripheral Identifier
+            peripherals.PIN_18,  // CLK Pin
+            peripherals.PIN_19,  // TX (MOSI) Pin
+            peripherals.PIN_16,  // RX (MISO) Pin
+            peripherals.DMA_CH0, // TX DMA Channel assignment
+            peripherals.DMA_CH1, // RX DMA Channel assignment
+            spi_irq,
+            spi_config,
         );
 
         // Leak to a safe static reference for the tasks
-        let static_spi = SPI_DEVICE_CELL.init(raw_spi);
-        let raw_display = DisplayPortMax7456::new(static_spi);
+        let static_spi = SPI_DEVICE_CELL.init(spi);
+        let display = DisplayPortMax7456::new(static_spi);
 
-        DISPLAY_PORT_MUTEX_CELL.init(Mutex::new(raw_display))
+        DISPLAY_PORT_MUTEX_CELL.init(Mutex::new(display))
     };
 
     // --- INITIALIZE MOCK STUB (HOST PROFILE ENVIRONMENT) ---
@@ -193,7 +258,9 @@ pub async fn init(spawner: Spawner) {
         let display_ref = SHARED_DISPLAY.init(Mutex::new(raw_display));
     */
 
-    #[cfg(feature = "serde")]
+    #[cfg(all(feature = "serde", feature = "rp2350"))]
+    load_global_configs(peripherals.FLASH).await;
+    #[cfg(all(feature = "serde", feature = "std"))]
     load_global_configs().await;
 
     #[allow(unused_mut)]
@@ -286,6 +353,9 @@ pub async fn init(spawner: Spawner) {
             sd_card: MockSdCard::new("blackbox_log.bbl"),
         })
     };
+    #[cfg(all(feature = "blackbox", feature = "rp2350"))]
+    let sd_writer_ctx =
+        { SD_WRITER_CTX.init(SdWriterContext { buffer: [0u8; 1024], pos: 0, _phantom: core::marker::PhantomData }) };
 
     #[cfg(feature = "autopilot")]
     let autopilot_ctx: &mut AutopilotContext<'static> = AUTOPILOT_CTX.init(AutopilotContext {
@@ -371,6 +441,8 @@ pub async fn init(spawner: Spawner) {
     spawner.spawn(battery_task(battery_ctx).expect("Failed to create BATTERY task"));
     #[cfg(feature = "blackbox")]
     spawner.spawn(blackbox_task(blackbox_ctx).expect("Failed to create BLACKBOX task"));
+    #[cfg(all(feature = "blackbox", feature = "rp2350"))]
+    spawner.spawn(sd_writer_task(sd_writer_ctx).expect("Failed to create SD_WRITER task"));
     #[cfg(feature = "gps")]
     spawner.spawn(gps_task(gps_ctx).expect("Failed to create GPS task"));
     #[cfg(feature = "msp")]

@@ -304,39 +304,32 @@ pub fn init_flash_driver() -> impl embedded_storage_async::nor_flash::NorFlash {
     NorMemoryAsync::new(inner_sync_nor)
 }
 
-#[cfg(not(feature = "std"))]
-pub fn init_flash_driver<'d>(
-    // Pass the Peri structural instance bound to the FLASH singleton type
-    flash_pin: Peri<'d, FLASH>,
-) -> Flash<'d, FLASH, Blocking, FLASH_SIZE_BYTES> {
-    Flash::<_, Blocking, FLASH_SIZE_BYTES>::new_blocking(flash_pin)
+#[cfg(feature = "std")]
+pub async fn load_global_configs() {
+    // Initialize Embassy peripherals.
+    let flash_driver = init_flash_driver();
+    let mut storage = MapStorage::new(flash_driver, const { MapConfig::new(0..1024 * 1024) }, NoCache::new());
+    let mut config = GLOBAL_CONFIG.lock().await;
+
+    nvs::load_imu_filter_bank_config(&mut config.imu_filter_bank, &mut storage).await;
+    nvs::load_rates_config(&mut config.rates, &mut storage).await;
 }
 
-#[cfg(feature = "std")]
-fn map_storage() -> MapStorage<u16, impl embedded_storage_async::nor_flash::NorFlash, NoCache> {
-    let flash_driver = init_flash_driver();
-    MapStorage::new(flash_driver, const { MapConfig::new(0..1024 * 1024) }, NoCache::new())
+#[cfg(not(feature = "std"))]
+pub fn init_flash_driver<'a>(
+    // Pass the Peri structural instance bound to the FLASH singleton type
+    flash_pin: Peri<'a, FLASH>,
+) -> Flash<'a, FLASH, Blocking, FLASH_SIZE_BYTES> {
+    Flash::<_, Blocking, FLASH_SIZE_BYTES>::new_blocking(flash_pin)
 }
 
 // Standard Raspberry Pi Pico 2 boards have 4MB of onboard QSPI flash memory.
 #[cfg(feature = "rp2350")]
-/*fn map_storage() -> MapStorage<u16, Flash<'static, FLASH, Blocking, FLASH_SIZE_BYTES>, NoCache> {
-    let flash_range = (4096 - 128) * 1024..4096 * 1024; // Tail end 128KB for chip
-    let mut flash_driver = {
-        let peripherals = embassy_rp::init(Default::default());
-        init_flash_driver(peripherals.FLASH)
-    };
-    MapStorage::new(flash_driver, MapConfig::new(flash_range), NoCache::new())
-}*/
-
-// 1. Notice the Driver Type argument changed from `Flash<..., Blocking, ...>`
-//    to `BlockingAsync<Flash<..., Blocking, ...>>`
-fn map_storage() -> MapStorage<u16, BlockingAsync<Flash<'static, FLASH, Blocking, FLASH_SIZE_BYTES>>, NoCache> {
-    // Initialize Embassy peripherals.
-    let peripherals = embassy_rp::init(Default::default());
-
+fn map_storage(
+    flash: Peri<'static, FLASH>,
+) -> MapStorage<u16, BlockingAsync<Flash<'static, FLASH, Blocking, FLASH_SIZE_BYTES>>, NoCache> {
     // Instantiate your Blocking driver variant.
-    let flash_driver = init_flash_driver(peripherals.FLASH);
+    let flash_driver = init_flash_driver(flash);
 
     // Wrap the blocking driver so it satisfies the async NorFlash trait boundaries.
     let async_wrapped_driver = BlockingAsync::new(flash_driver);
@@ -348,19 +341,20 @@ fn map_storage() -> MapStorage<u16, BlockingAsync<Flash<'static, FLASH, Blocking
     MapStorage::new(async_wrapped_driver, const { MapConfig::new((4096 - 128) * 1024..4096 * 1024) }, NoCache::new())
 }
 
-pub async fn load_global_configs() {
-    let mut storage = map_storage();
+#[cfg(feature = "rp2350")]
+pub async fn load_global_configs(flash: Peri<'static, FLASH>) {
+    // Initialize Embassy peripherals.
+    let mut storage = map_storage(flash);
     let mut config = GLOBAL_CONFIG.lock().await;
 
     nvs::load_imu_filter_bank_config(&mut config.imu_filter_bank, &mut storage).await;
     nvs::load_rates_config(&mut config.rates, &mut storage).await;
 }
 
-pub async fn save_global_configs()
-{
-    let mut storage = map_storage();
+#[cfg(feature = "rp2350")]
+pub async fn save_global_configs(flash: Peri<'static, FLASH>) {
+    let mut storage = map_storage(flash);
     let config = GLOBAL_CONFIG.lock().await;
 
     nvs::save_imu_filter_bank_config(&config.imu_filter_bank, &mut storage).await;
 }
-
