@@ -27,16 +27,16 @@ rustc_version = "0.4.1"
 #default = ["std", "libm"]
 #default = ["rp2350", "libm"]
 default = ["libm",
-    "std", "blackbox",
-    #"rp2350", "blackbox",
+    "std", 
+    #"rp2350",
     "autopilot",
     "barometer",
     "battery",
+    "blackbox",
     "dshot_telemetry",
     "gps",
     #"magnetometer",
     #"max7456",
-    "mock_sd_card",
     "msp",
     #"optical_flow",
     "osd",
@@ -61,7 +61,6 @@ eight_motors = ["blackbox-logger/eight_motors"]
 gps = ["blackbox-logger/gps"]
 magnetometer = ["blackbox-logger/magnetometer"]
 max7456 = []
-mock_sd_card = []
 multicore = []
 msp = []
 optical_flow = []
@@ -102,6 +101,7 @@ rp2350 = [
     "dep:cortex-m-rt",
     "dep:embassy-rp",
     "dep:async-embedded-sdmmc",
+    "dep:cyw43-pio",
     "embassy-rp/rp235xa",
     "embassy-rp/rt",                        # <-- FIX 1: Resolves the missing PEND_IRQ_TOKEN import error
     "embassy-rp/executor-thread",           # <-- Let the HAL define the hardware executor
@@ -174,6 +174,7 @@ log = { version = "0.4.33", default-features = false }
 env_logger = { version ="0.11.10", default-features = false, optional = true}
 env_filter = { version = "2.0.0", default-features = false, optional = true }
 rtt-target = { version = "0.6.2", optional = true }
+cyw43-pio = { version = "0.10.0", optional = true }
 
 
 [dev-dependencies]

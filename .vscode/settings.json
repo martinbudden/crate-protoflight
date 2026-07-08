@@ -1,5 +1,6 @@
 {
     "cSpell.words": [
+        "ACMD",
         "acro",
         "AHRS",
         "airmode",
@@ -55,11 +56,13 @@
         "dataflash",
         "deadband",
         "deadbands",
+        "deasync",
         "debuginfo",
         "deci",
         "deciseconds",
         "defmt",
         "deque",
+        "displaydoc",
         "displayport",
         "DLPF",
         "DMAH",

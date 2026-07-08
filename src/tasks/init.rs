@@ -1,30 +1,6 @@
 use embassy_executor::Spawner;
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 
-#[cfg(all(feature = "rp2350", feature = "multicore"))]
-use embassy_rp::multicore::{Stack, spawn_core1};
-#[cfg(feature = "rp2350")]
-use embassy_rp::{
-    bind_interrupts, dma,
-    gpio::{Level, Output},
-    peripherals::{DMA_CH0, DMA_CH1, DMA_CH2, DMA_CH3},
-    spi::{Config as SpiConfig, Spi},
-};
-
-// Binds the global hardware DMA vectors.
-// This creates the type validation struct "Irqs" required by Spi::new.
-#[cfg(feature = "rp2350")]
-bind_interrupts!(pub struct Irqs {
-    DMA_IRQ_0 => dma::InterruptHandler<DMA_CH0>,
-                 dma::InterruptHandler<DMA_CH1>,
-                 dma::InterruptHandler<DMA_CH2>,
-                 dma::InterruptHandler<DMA_CH3>;
-});
-//#[cfg(feature = "rp2350")]
-//use embedded_hal_async::spi::SpiDevice;
-#[cfg(feature = "rp2350")]
-use embedded_hal_bus::spi::ExclusiveDevice;
-
 use static_cell::StaticCell;
 
 use imu_sensors::{ImuAxesOrder, ImuMock, MockImuBus};
@@ -46,6 +22,9 @@ use crate::{
         motor_mixer_task::{MotorMixerContext, motor_mixer_task},
     },
 };
+
+#[cfg(feature = "rp2350")]
+use crate::tasks::init_rp;
 
 #[cfg(feature = "serde")]
 use crate::tasks::non_volatile_storage::load_global_configs;
@@ -108,13 +87,6 @@ use {crate::display::DisplayPortMax7456, embedded_hal_async::spi::SpiBus};
 #[cfg(not(feature = "max7456"))]
 use crate::display::DisplayPortMock;
 
-// --- 1. RASPBERRY PI RP2350 ARCHITECTURE CONFIGURATION ---
-#[cfg(all(feature = "max7456", feature = "rp2350"))]
-pub type ConcreteSpi = embassy_rp::spi::Spi<'static, embassy_rp::peripherals::SPI0, embassy_rp::spi::Async>;
-
-#[cfg(all(feature = "max7456", feature = "rp2350"))]
-pub type SharedDisplay = Mutex<CriticalSectionRawMutex, DisplayPortMax7456<&'static mut ConcreteSpi>>;
-
 // --- 2. HOST ARCHITECTURE TESTING / MOCK CONFIGURATION ---
 #[cfg(not(feature = "max7456"))]
 pub type DisplayPortMutex = Mutex<CriticalSectionRawMutex, DisplayPortMock>;
@@ -166,103 +138,15 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "std")]
     env_logger::init();
 
-    // Take ownership of the raw RP2350 hardware peripherals block
     #[cfg(feature = "rp2350")]
-    let peripherals = embassy_rp::init(Default::default());
-
-    #[cfg(feature = "rp2350")]
-    let _gyro_spi = {
-        let mut spi_config = SpiConfig::default();
-        spi_config.frequency = 10_000_000;
-
-        // Notice: Irqs is completely omitted from the parameters here.
-        let spi_bus = Spi::new(
-            peripherals.SPI0,
-            peripherals.PIN_18,  // CLK defined internally
-            peripherals.PIN_19,  // MOSI defined internally
-            peripherals.PIN_16,  // MISO defined internally
-            peripherals.DMA_CH0, // TX DMA
-            peripherals.DMA_CH1, // RX DMA
-            Irqs,
-            spi_config,
-        );
-        let cs_pin = Output::new(unsafe { core::ptr::read(&peripherals.PIN_17) }, Level::High);
-        // Use .unwrap() to peel away the infallible Result layer
-        ExclusiveDevice::new(spi_bus, cs_pin, embassy_time::Delay).unwrap()
-    };
-    #[cfg(feature = "rp2350")]
-    let _blackbox_spi = {
-        let mut spi_config = SpiConfig::default();
-        spi_config.frequency = 400_000;
-
-        // Notice: Irqs is completely omitted from the parameters here.
-        let spi_bus = Spi::new(
-            peripherals.SPI1,
-            peripherals.PIN_10,  // CLK defined internally
-            peripherals.PIN_11,  // MOSI defined internally
-            peripherals.PIN_12,  // MISO defined internally
-            peripherals.DMA_CH2, // TX DMA
-            peripherals.DMA_CH3, // RX DMA
-            Irqs,
-            spi_config,
-        );
-        let cs_pin = Output::new(unsafe { core::ptr::read(&peripherals.PIN_13) }, Level::High);
-        // Use .unwrap() to peel away the infallible Result layer
-        ExclusiveDevice::new(spi_bus, cs_pin, embassy_time::Delay).unwrap()
-    };
-
-    // --- INITIALIZE HARDWARE PERIPHERALS (RP2350 SPECIFIC) ---
-    #[cfg(all(feature = "max7456", feature = "rp2350"))]
-    let display_ref = {
-        // Define SPI hardware transmission speed limits (e.g. 10MHz for MAX7456)
-        let mut spi_config = Config::default();
-        spi_config.frequency = 10_000_000;
-        let spi_irq = interrupt::take!(SPI0);
-
-        // Create the asynchronous SPI instance wrapping hardware SPI0 and DMA Channel 0
-        let p = _peripherals;
-        let spi = Spi::new(
-            peripherals.SPI0,    // Hardware Peripheral Identifier
-            peripherals.PIN_18,  // CLK Pin
-            peripherals.PIN_19,  // TX (MOSI) Pin
-            peripherals.PIN_16,  // RX (MISO) Pin
-            peripherals.DMA_CH0, // TX DMA Channel assignment
-            peripherals.DMA_CH1, // RX DMA Channel assignment
-            spi_irq,
-            spi_config,
-        );
-
-        // Leak to a safe static reference for the tasks
-        let static_spi = SPI_DEVICE_CELL.init(spi);
-        let display = DisplayPortMax7456::new(static_spi);
-
-        DISPLAY_PORT_MUTEX_CELL.init(Mutex::new(display))
-    };
+    let (_gyro_res, _blackbox_res, _aux_pio_res, flash) = init_rp::init_rp();
 
     // --- INITIALIZE MOCK STUB (HOST PROFILE ENVIRONMENT) ---
     #[allow(unused)]
     #[cfg(not(feature = "max7456"))]
-    let display_ref = {
-        let raw_display = DisplayPortMock::default();
-        DISPLAY_PORT_MUTEX_CELL.init(Mutex::new(raw_display))
-    };
-    /*     // Allocate a static block of memory for our shared display mutex.
-      // 1. Initialize your hardware SPI bus normally
-
-        // 2. Turn it into a &'static mut dyn SpiBus
-        let spi_static_ref = SPI_BUS_CELL.init(raw_spi);
-
-        // 3. Construct your driver and shared mutex container
-        #[cfg(feature = "max7456")]
-        let raw_display = DisplayPortMax7456::new(spi_static_ref);
-        #[cfg(not(feature = "max7456"))]
-        let raw_display = DisplayPortMock::new();
-
-        let display_ref = SHARED_DISPLAY.init(Mutex::new(raw_display));
-    */
-
+    let display_ref = { DISPLAY_PORT_MUTEX_CELL.init(Mutex::new(DisplayPortMock::default())) };
     #[cfg(all(feature = "serde", feature = "rp2350"))]
-    load_global_configs(peripherals.FLASH).await;
+    load_global_configs(flash).await;
     #[cfg(all(feature = "serde", feature = "std"))]
     load_global_configs().await;
 
@@ -358,8 +242,14 @@ pub async fn init(spawner: Spawner) {
         })
     };
     #[cfg(all(feature = "blackbox", feature = "rp2350"))]
-    let sd_writer_ctx =
-        { SD_WRITER_CTX.init(SdWriterContext { buffer: [0u8; 1024], pos: 0, _phantom: core::marker::PhantomData }) };
+    let sd_writer_ctx = {
+        if let Ok(_blackbox_spi) = _blackbox_res {
+            // TODO: pass blackbox_spi to the SD_WRITER_CTX
+            SD_WRITER_CTX.init(SdWriterContext { buffer: [0u8; 1024], pos: 0, _phantom: core::marker::PhantomData }) 
+        } else {
+            SD_WRITER_CTX.init(SdWriterContext { buffer: [0u8; 1024], pos: 0, _phantom: core::marker::PhantomData }) 
+        }
+    };
 
     #[cfg(feature = "autopilot")]
     let autopilot_ctx: &mut AutopilotContext<'static> = AUTOPILOT_CTX.init(AutopilotContext {
@@ -443,6 +333,7 @@ pub async fn init(spawner: Spawner) {
     spawner.spawn(barometer_task(barometer_ctx).expect("Failed to create BAROMETER task"));
     #[cfg(feature = "battery")]
     spawner.spawn(battery_task(battery_ctx).expect("Failed to create BATTERY task"));
+
     #[cfg(feature = "blackbox")]
     spawner.spawn(blackbox_task(blackbox_ctx).expect("Failed to create BLACKBOX task"));
     #[cfg(all(feature = "blackbox", feature = "rp2350"))]

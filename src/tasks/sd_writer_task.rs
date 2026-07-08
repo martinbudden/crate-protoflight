@@ -10,9 +10,9 @@ pub struct SdWriterContext<'a> {
     pub _phantom: core::marker::PhantomData<&'a ()>,
 }
 
-/// Scans the root directory asynchronously using async-embedded-sdmmc traits.
+/*/// Scans the root directory asynchronously using async-embedded-sdmmc traits.
 /// Detects the highest active index matching "LOG_*.BIN" and outputs the next number.
-/*pub async fn find_next_log_index<D, T>(
+pub async fn find_next_log_index<D, T>(
     volume_mgr: &mut VolumeManager<D, T>,
     root_dir: &Directory
 ) -> u16
