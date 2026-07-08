@@ -1,7 +1,10 @@
 #![cfg(feature = "blackbox")]
+#![allow(unused)]
+
+#[cfg(feature = "std")]
+use crate::drivers::sd_card::{MockSdCard, SdStorage};
 
 use crate::{
-    drivers::sd_card::{MockSdCard, SdStorage},
     sensors::{GyroPidMessage, SetpointMessage},
     tasks::gyro_pid_task::{GyroPidReceiver, SetpointReceiver},
 };
@@ -23,6 +26,7 @@ pub struct BlackboxContext<'a> {
     #[cfg(feature = "gps")]
     pub gps_subscriber: GpsSubscriber<'a>,
     pub blackbox: Blackbox,
+    #[cfg(all(feature = "blackbox", feature = "std"))]
     pub sd_card: MockSdCard,
     pub buffer: [u8; 1024],
     pub pos: usize,
@@ -54,7 +58,10 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext<'static>) {
             let mut slice_writer = BlackboxContext::slice_writer(&mut ctx.buffer, ctx.pos);
             ctx.blackbox.update(&mut slice_writer, time_us, true)
         };
-        _ = ctx.sd_card.write_all(&ctx.buffer[..len]).await;
+        #[cfg(all(feature = "blackbox", feature = "std"))]
+        {
+            _ = ctx.sd_card.write_all(&ctx.buffer[..len]).await;
+        }
         log::info!("BLACKBOX:  hdr {loop_count},{len}");
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }
@@ -86,6 +93,7 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext<'static>) {
             let mut slice_writer = BlackboxContext::slice_writer(&mut ctx.buffer, ctx.pos);
             ctx.blackbox.update(&mut slice_writer, time_us, true)
         };
+        #[cfg(all(feature = "blackbox", feature = "std"))]
         if index == 512 {
             // write End of log
             let len = {
@@ -96,7 +104,10 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext<'static>) {
             _ = ctx.sd_card.write_all(&ctx.buffer[..len]).await;
             log::info!("**** BLACKBOX: END OF LOG");
         }
-        _ = ctx.sd_card.write_all(&ctx.buffer[..len]).await;
+        #[cfg(all(feature = "blackbox", feature = "std"))]
+        {
+            _ = ctx.sd_card.write_all(&ctx.buffer[..len]).await;
+        }
         if loop_count.is_multiple_of(10) {
             log::info!("      BLACKBOX: loop {loop_count},{len}");
         }

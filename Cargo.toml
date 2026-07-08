@@ -28,7 +28,7 @@ rustc_version = "0.4.1"
 #default = ["rp2350", "libm"]
 default = ["libm",
     "std", "blackbox",
-    #"rp2350",
+    #"rp2350", "blackbox",
     "autopilot",
     "barometer",
     "battery",

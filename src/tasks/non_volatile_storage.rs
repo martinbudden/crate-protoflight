@@ -2,12 +2,13 @@
 #![allow(unused)]
 
 use embedded_storage_async::nor_flash::{ErrorType, NorFlash};
-#[cfg(feature = "std")]
-use embedded_storage_file::{NorMemoryAsync, NorMemoryInFile};
 use sequential_storage::{
     cache::NoCache,
     map::{MapConfig, MapStorage, PostcardValue},
 };
+
+#[cfg(feature = "std")]
+use embedded_storage_file::{NorMemoryAsync, NorMemoryInFile};
 
 #[cfg(feature = "rp2350")]
 use embassy_embedded_hal::adapter::BlockingAsync;

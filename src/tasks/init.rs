@@ -62,14 +62,15 @@ use crate::tasks::barometer_task::{BarometerContext, barometer_publisher, barome
 #[cfg(feature = "battery")]
 use crate::tasks::battery_task::{BatteryContext, battery_publisher, battery_subscriber, battery_task};
 
-#[cfg(all(feature = "rp2350", feature = "blackbox"))]
+#[cfg(all(feature = "blackbox", feature = "rp2350"))]
 use crate::tasks::sd_writer_task::{SdWriterContext, sd_writer_task};
+
+#[cfg(all(feature = "blackbox", feature = "std"))]
+use crate::drivers::sd_card::MockSdCard;
+
 #[cfg(feature = "blackbox")]
 use {
-    crate::{
-        drivers::sd_card::MockSdCard,
-        tasks::blackbox_task::{BlackboxContext, blackbox_task},
-    },
+    crate::tasks::blackbox_task::{BlackboxContext, blackbox_task},
     blackbox_logger::{Blackbox, FieldSelect},
 };
 
@@ -186,7 +187,8 @@ pub async fn init(spawner: Spawner) {
             spi_config,
         );
         let cs_pin = Output::new(unsafe { core::ptr::read(&peripherals.PIN_17) }, Level::High);
-        ExclusiveDevice::new(spi_bus, cs_pin, embassy_time::Delay)
+        // Use .unwrap() to peel away the infallible Result layer
+        ExclusiveDevice::new(spi_bus, cs_pin, embassy_time::Delay).unwrap()
     };
     #[cfg(feature = "rp2350")]
     let _blackbox_spi = {
@@ -204,8 +206,9 @@ pub async fn init(spawner: Spawner) {
             Irqs,
             spi_config,
         );
-        let cs_pin = Output::new(unsafe { core::ptr::read(&peripherals.PIN_17) }, Level::High);
-        ExclusiveDevice::new(spi_bus, cs_pin, embassy_time::Delay)
+        let cs_pin = Output::new(unsafe { core::ptr::read(&peripherals.PIN_13) }, Level::High);
+        // Use .unwrap() to peel away the infallible Result layer
+        ExclusiveDevice::new(spi_bus, cs_pin, embassy_time::Delay).unwrap()
     };
 
     // --- INITIALIZE HARDWARE PERIPHERALS (RP2350 SPECIFIC) ---
@@ -350,6 +353,7 @@ pub async fn init(spawner: Spawner) {
             blackbox,
             buffer: [0u8; 1024],
             pos: 0,
+            #[cfg(all(feature = "blackbox", feature = "std"))]
             sd_card: MockSdCard::new("blackbox_log.bbl"),
         })
     };
