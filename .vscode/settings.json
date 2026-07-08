@@ -19,6 +19,7 @@
         "Backchannel",
         "BARO",
         "Baseflight",
+        "baudrate",
         "bbdecode",
         "Betaflight",
         "bindgen",

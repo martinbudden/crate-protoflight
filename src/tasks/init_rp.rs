@@ -9,10 +9,14 @@ use embassy_rp::{
     Peri, bind_interrupts, dma, gpio,
     gpio::{Input, Level, Output, Pull},
     peripherals,
-    peripherals::{DMA_CH0, DMA_CH1, DMA_CH2, DMA_CH3, DMA_CH4, FLASH, PIO0, SPI0, SPI1},
+    peripherals::{
+        DMA_CH0, DMA_CH1, DMA_CH2, DMA_CH3, DMA_CH4, DMA_CH5, DMA_CH6, DMA_CH7, FLASH, PIO0, SPI0, SPI1, UART0, UART1,
+    },
     pio,
     pio::InterruptHandler as PioInterruptHandler,
-    spi::{Async, Config as SpiConfig, Spi},
+    spi::{Async as SpiAsync, Config as SpiConfig, Spi},
+    uart,
+    uart::{Async as UartAsync, Uart},
 };
 use embassy_time::Delay; // Pulled from your cyw43-pio dependency
 
@@ -23,10 +27,16 @@ bind_interrupts!(pub struct Irqs {
     DMA_IRQ_0 => dma::InterruptHandler<DMA_CH0>,
                  dma::InterruptHandler<DMA_CH1>,
                  dma::InterruptHandler<DMA_CH2>,
-                 dma::InterruptHandler<DMA_CH3>;
+                 dma::InterruptHandler<DMA_CH3>,
+                 dma::InterruptHandler<DMA_CH4>,
+                 dma::InterruptHandler<DMA_CH5>,
+                 dma::InterruptHandler<DMA_CH6>,
+                 dma::InterruptHandler<DMA_CH7>;
 
     // Used by your 3rd PIO-backed SPI device
     PIO0_IRQ_0 => pio::InterruptHandler<PIO0>;
+    UART0_IRQ => uart::InterruptHandler<UART0>;
+    UART1_IRQ => uart::InterruptHandler<UART1>;
 });
 
 //use embedded_hal_async::spi::SpiDevice;
@@ -35,12 +45,12 @@ use embedded_hal_bus::spi::ExclusiveDevice;
 
 // --- Device 1: Hardware SPI0 (Gyroscope) ---
 // Tied to SPI0 running asynchronously via the DMA system
-pub type GyroSpiDevice = ExclusiveDevice<Spi<'static, SPI0, Async>, Output<'static>, Delay>;
+pub type GyroSpiDevice = ExclusiveDevice<Spi<'static, SPI0, SpiAsync>, Output<'static>, Delay>;
 pub type GyroInterruptPin = Input<'static>;
 
 // --- Device 2: Hardware SPI1 (Blackbox SD Card) ---
 // Tied to SPI1 running asynchronously via the DMA system
-pub type BlackboxSpiDevice = ExclusiveDevice<Spi<'static, SPI1, Async>, Output<'static>, Delay>;
+pub type BlackboxSpiDevice = ExclusiveDevice<Spi<'static, SPI1, SpiAsync>, Output<'static>, Delay>;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BlackboxInitError {
     FeatureDisabled,
@@ -54,6 +64,8 @@ pub enum AuxiliaryPioInitError {
     FeatureDisabled,
 }
 
+pub type PrimaryUartDevice = Uart<'static, UartAsync>;
+pub type SecondaryUartDevice = Uart<'static, UartAsync>;
 // --- 1. RASPBERRY PI RP2350 ARCHITECTURE CONFIGURATION ---
 #[cfg(feature = "max7456")]
 pub type ConcreteSpi = embassy_rp::spi::Spi<'static, embassy_rp::peripherals::SPI0, embassy_rp::spi::Async>;
@@ -66,14 +78,44 @@ pub fn init_rp() -> (
     GyroInterruptPin,
     Result<BlackboxSpiDevice, BlackboxInitError>,
     Result<AuxiliaryPioSpiDevice, AuxiliaryPioInitError>,
+    PrimaryUartDevice,
+    SecondaryUartDevice,
     Peri<'static, FLASH>,
 ) {
     // Take ownership of the raw RP2350 hardware peripherals block
     let peripherals = embassy_rp::init(Default::default());
-    let pin_17 = peripherals.PIN_17; // Gyro CS
+
+    // SPI0
+    let spi0_cs = peripherals.PIN_17;
+    let spi0_clk = peripherals.PIN_18;
+    let spi0_mosi = peripherals.PIN_19;
+    let spi0_miso = peripherals.PIN_16;
+    let spi0_tx_dma = peripherals.DMA_CH0;
+    let spi0_rx_dma = peripherals.DMA_CH1;
     // Physical pin assigned to capture the gyroscope's INT1 signal wire
     let pin_20 = peripherals.PIN_20;
-    let pin_13 = peripherals.PIN_13; // Blackbox CS
+
+    // SPI1
+    let spi1_cs = peripherals.PIN_13;
+    let spi1_clk = peripherals.PIN_10;
+    let spi1_mosi = peripherals.PIN_11;
+    let spi1_miso = peripherals.PIN_12;
+    let spi1_tx_dma = peripherals.DMA_CH2;
+    let spi1_rx_dma = peripherals.DMA_CH3;
+
+    // UART0
+    let uart0 = peripherals.UART0;
+    let uart0_tx = peripherals.PIN_0;
+    let uart0_rx = peripherals.PIN_1;
+    let uart0_tx_dma = peripherals.DMA_CH4;
+    let uart0_rx_dma = peripherals.DMA_CH5;
+
+    // UART1
+    let uart1 = peripherals.UART1;
+    let uart1_tx = peripherals.PIN_4;
+    let uart1_rx = peripherals.PIN_5;
+    let uart1_tx_dma = peripherals.DMA_CH6;
+    let uart1_rx_dma = peripherals.DMA_CH7;
 
     let gyro_spi: Result<
         ExclusiveDevice<
@@ -85,23 +127,11 @@ pub fn init_rp() -> (
     > = {
         let mut spi_config = SpiConfig::default();
         spi_config.frequency = 10_000_000;
-
-        // TODO: put irq on pin 20
-        let spi_bus = Spi::new(
-            peripherals.SPI0,
-            peripherals.PIN_18,  // CLK defined internally
-            peripherals.PIN_19,  // MOSI defined internally
-            peripherals.PIN_16,  // MISO defined internally
-            peripherals.DMA_CH0, // TX DMA
-            peripherals.DMA_CH1, // RX DMA
-            Irqs,
-            spi_config,
-        );
-        let cs_pin = Output::new(pin_17, Level::High);
+        let spi_bus =
+            Spi::new(peripherals.SPI0, spi0_clk, spi0_mosi, spi0_miso, spi0_tx_dma, spi0_rx_dma, Irqs, spi_config);
+        let cs_pin = Output::new(spi0_cs, Level::High);
         ExclusiveDevice::new(spi_bus, cs_pin, embassy_time::Delay)
     };
-    // --- Initialize the Async Input Driver ---
-    // FIX: Input::new creates an async-capable listener instance safely [INDEX 2.3.1]
     let gyro_interrupt = Input::new(pin_20, embassy_rp::gpio::Pull::Up);
 
     #[cfg(feature = "blackbox")]
@@ -114,18 +144,9 @@ pub fn init_rp() -> (
         spi_config.frequency = 400_000;
         // TODO: increase SPI frequency to 20_000_000 after initialization.
 
-        // Notice: Irqs is completely omitted from the parameters here.
-        let spi_bus = Spi::new(
-            peripherals.SPI1,
-            peripherals.PIN_10,  // CLK defined internally
-            peripherals.PIN_11,  // MOSI defined internally
-            peripherals.PIN_12,  // MISO defined internally
-            peripherals.DMA_CH2, // TX DMA
-            peripherals.DMA_CH3, // RX DMA
-            Irqs,
-            spi_config,
-        );
-        let cs_pin = Output::new(pin_13, Level::High);
+        let spi_bus =
+            Spi::new(peripherals.SPI1, spi1_clk, spi1_mosi, spi1_miso, spi1_tx_dma, spi1_rx_dma, Irqs, spi_config);
+        let cs_pin = Output::new(spi1_cs, Level::High);
         // Map the infallible output into an Ok Result variant matching the outer structure
         ExclusiveDevice::new(spi_bus, cs_pin, embassy_time::Delay).map_err(|_| unreachable!())
     };
@@ -166,7 +187,21 @@ pub fn init_rp() -> (
     };*/
     let aux_pio_spi = Err(AuxiliaryPioInitError::FeatureDisabled);
 
-    (gyro_spi, gyro_interrupt, blackbox_spi, aux_pio_spi, peripherals.FLASH)
+    // --- Device 3: Hardware UART0 (Primary Telemetry Subsystem) ---
+    let primary_uart = {
+        let mut uart_config = embassy_rp::uart::Config::default();
+        uart_config.baudrate = 115_200; // Standard telemetry link velocity [INDEX]
+        Uart::new(uart0, uart0_tx, uart0_rx, Irqs, uart0_tx_dma, uart0_rx_dma, uart_config)
+    };
+
+    // --- Device 4: Hardware UART1 (Secondary Telemetry Subsystem) ---
+    let secondary_uart = {
+        let mut uart_config = embassy_rp::uart::Config::default();
+        uart_config.baudrate = 115_200;
+        Uart::new(uart1, uart1_tx, uart1_rx, Irqs, uart1_tx_dma, uart1_rx_dma, uart_config)
+    };
+
+    (gyro_spi, gyro_interrupt, blackbox_spi, aux_pio_spi, primary_uart, secondary_uart, peripherals.FLASH)
 }
 
 /*{
