@@ -33,7 +33,6 @@ pub struct BlackboxContext<'a> {
     #[cfg(feature = "std")]
     pub sd_card: MockSdCard,
     pub buffer: [u8; BUFFER_CAPACITY],
-    pub pos: usize,
     pub overflow_counter: u32,
     //pub slice_writer: SliceEncoder<'static>,
 }
