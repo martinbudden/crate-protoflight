@@ -237,6 +237,7 @@ pub async fn init(spawner: Spawner) {
             blackbox,
             buffer: [0u8; 1024],
             pos: 0,
+            overflow_counter: 0,
             #[cfg(all(feature = "blackbox", feature = "std"))]
             sd_card: MockSdCard::new("blackbox_log.bbl"),
         })

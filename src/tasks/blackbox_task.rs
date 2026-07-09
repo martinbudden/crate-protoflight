@@ -1,19 +1,16 @@
 #![cfg(feature = "blackbox")]
 #![allow(unused)]
 
-use embassy_sync::{
-    blocking_mutex::raw::CriticalSectionRawMutex,
-    channel::Channel,
-};
-
-#[cfg(feature = "std")]
-use crate::drivers::sd_card::{MockSdCard, SdStorage};
+use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel};
 
 use crate::{
     sensors::{GyroPidMessage, SetpointMessage},
     tasks::gyro_pid_task::{GyroPidReceiver, SetpointReceiver},
 };
 use blackbox_logger::{Blackbox, BlackboxEvent, BlackboxMainData, BlackboxSlowData, LoggerState, SliceEncoder};
+
+#[cfg(feature = "std")]
+use crate::drivers::sd_card::{MockSdCard, SdStorage};
 
 #[cfg(feature = "gps")]
 use {
@@ -24,6 +21,8 @@ use {
     blackbox_logger::{BlackboxGpsData, BlackboxGpsPosition},
 };
 
+const BUFFER_CAPACITY: usize = 1024;
+
 pub struct BlackboxContext<'a> {
     pub gyro_pid_receiver: GyroPidReceiver,
     pub setpoint_receiver: SetpointReceiver,
@@ -31,31 +30,74 @@ pub struct BlackboxContext<'a> {
     #[cfg(feature = "gps")]
     pub gps_subscriber: GpsSubscriber<'a>,
     pub blackbox: Blackbox,
-    #[cfg(all(feature = "blackbox", feature = "std"))]
+    #[cfg(feature = "std")]
     pub sd_card: MockSdCard,
-    pub buffer: [u8; 1024],
+    pub buffer: [u8; BUFFER_CAPACITY],
     pub pos: usize,
+    pub overflow_counter: u32,
     //pub slice_writer: SliceEncoder<'static>,
 }
 
-impl BlackboxContext<'_> {
-    // We take the buffer as a mutable reference to the array
-    pub fn slice_writer(buffer: &mut [u8; 1024], pos: usize) -> SliceEncoder<'_> {
-        SliceEncoder {
-            // Rust automatically coerces &mut [u8; 1024] to &mut [u8]
-            buffer,
-            pos,
+/// A fixed-size message container used to pass blackbox chunks between tasks.
+/// Set the internal buffer capacity to a size larger than your maximum possible `len` frame.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BlackboxWriteBlock {
+    pub data: [u8; Self::CAPACITY], // Adjust size to match your largest expected serialized packet length
+    pub len: usize,
+}
+
+impl Default for BlackboxWriteBlock {
+    fn default() -> Self {
+        Self::new(0)
+    }
+}
+
+impl BlackboxWriteBlock {
+    pub const CAPACITY: usize = 64;
+
+    #[inline]
+    pub const fn new(len: usize) -> Self {
+        Self { data: [0u8; Self::CAPACITY], len }
+    }
+    #[inline]
+    pub fn from_chunk(slice: &[u8]) -> Self {
+        // Enforce the size boundary strictly using compile-time constants
+        let copy_len = core::cmp::min(slice.len(), Self::CAPACITY);
+        let mut block = Self { data: [0u8; Self::CAPACITY], len: copy_len };
+        block.data[..copy_len].copy_from_slice(&slice[..copy_len]);
+        block
+    }
+}
+
+pub static BLACKBOX_WRITE_QUEUE: Channel<CriticalSectionRawMutex, BlackboxWriteBlock, 128> = Channel::new();
+
+/// Unified blackbox chunk dispatcher.
+/// Automatically redirects data streams based on feature targets.
+async fn write_serialized_data_to_sd_card(
+    serialized_data: &[u8],
+    overflow_counter: &mut u32,
+    #[cfg(feature = "std")] sd_card: &mut MockSdCard,
+) {
+    #[cfg(feature = "std")]
+    {
+        // On desktop, directly await the full file flash operation
+        _ = sd_card.write_all(serialized_data).await;
+    }
+    #[cfg(not(feature = "std"))]
+    {
+        // Unused parameter silence bound for safety
+        let _ = overflow_counter;
+        // Loop through the slice in chunks matching BlackboxWriteBlock capacity
+        for chunk in serialized_data.chunks(BlackboxWriteBlock::CAPACITY) {
+            let block = BlackboxWriteBlock::from_chunk(chunk);
+            // Non-blocking try_send ensures high-speed loop deadlines are protected
+            if let Err(_overflow) = BLACKBOX_WRITE_QUEUE.try_send(block) {
+                *overflow_counter = overflow_counter.wrapping_add(1);
+                log::error!("BLACKBOX: FIFO queue full! Dropped a log chunk.");
+            }
         }
     }
 }
-/// A fixed-size message container used to pass blackbox chunks between tasks.
-/// Set the internal buffer capacity to a size larger than your maximum possible `len` frame.
-#[derive(Clone, Copy)]
-pub struct BlackboxWriteBlock {
-    pub data: [u8; 128], // Adjust size to match your largest expected serialized packet length
-    pub len: usize,
-}
-pub static BLACKBOX_WRITE_QUEUE: Channel<CriticalSectionRawMutex, BlackboxWriteBlock, 128> = Channel::new();
 
 /// Blackbox task placeholder.
 #[embassy_executor::task]
@@ -67,79 +109,56 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext<'static>) {
     // write the Blackbox log file header.
     ctx.blackbox.set_state(LoggerState::WriteFileHeader);
     while ctx.blackbox.state() != LoggerState::HeaderWritten {
-        let len = {
-            let mut slice_writer = BlackboxContext::slice_writer(&mut ctx.buffer, ctx.pos);
-            ctx.blackbox.update(&mut slice_writer, time_us, true)
-        };
-        #[cfg(all(feature = "blackbox", feature = "std"))]
-        {
-            _ = ctx.sd_card.write_all(&ctx.buffer[..len]).await;
-        }
+        let len = ctx.blackbox.update(&mut SliceEncoder::new(&mut ctx.buffer), time_us, true);
+        write_serialized_data_to_sd_card(
+            &ctx.buffer[..len],
+            &mut ctx.overflow_counter,
+            #[cfg(feature = "std")]
+            &mut ctx.sd_card,
+        )
+        .await;
         log::info!("BLACKBOX:  hdr {loop_count},{len}");
-        loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
+        loop_count = loop_count.wrapping_add(1);
     }
 
     loop_count = 0;
     let mut index = 0;
     loop {
         time_us = time_us.wrapping_add(125);
-        let gyro_pid_msg = ctx.gyro_pid_receiver.changed().await; // blocking
+        // blocking
+        let gyro_pid_msg = ctx.gyro_pid_receiver.changed().await;
         // non-blocking
         if let Some(setpoint_msg) = ctx.setpoint_receiver.try_get() {
+            // if we have a new setpoint message then update ctx.setpoint_message so that the most up to date setpoint_message is used.
             ctx.setpoint_message = setpoint_msg;
-            let slow_data = slow_data_from(ctx.setpoint_message);
-            ctx.blackbox.set_slow_data(slow_data);
+            ctx.blackbox.set_slow_data(slow_data_from(ctx.setpoint_message));
         }
-        let main_data = main_data_from(time_us, gyro_pid_msg, ctx.setpoint_message);
-        ctx.blackbox.set_main_data(time_us, main_data);
+        // set_main_data always uses the most up to date setpoint message.
+        ctx.blackbox.set_main_data(time_us, main_data_from(time_us, gyro_pid_msg, ctx.setpoint_message));
 
         #[cfg(feature = "gps")]
         if let Some(wait_result) = ctx.gps_subscriber.try_next_message()
             && let embassy_sync::pubsub::WaitResult::Message(event) = wait_result
             && let GpsMessage::GpsSolution(gps_solution_data) = event
         {
-            let gps_data = gps_data_from(gps_solution_data);
-            ctx.blackbox.set_gps_data(gps_data);
+            ctx.blackbox.set_gps_data(gps_data_from(gps_solution_data));
         }
 
-        let len = {
-            let mut slice_writer = BlackboxContext::slice_writer(&mut ctx.buffer, ctx.pos);
-            ctx.blackbox.update(&mut slice_writer, time_us, true)
-        };
+        let len = ctx.blackbox.update(&mut SliceEncoder::new(&mut ctx.buffer), time_us, true);
         #[cfg(feature = "std")]
         if index == 512 {
             // write End of log
-            let len = {
-                let mut slice_writer = BlackboxContext::slice_writer(&mut ctx.buffer, ctx.pos);
-                ctx.blackbox.logger.log_e_frame(&mut slice_writer, BlackboxEvent::LogEnd);
-                slice_writer.pos
-            };
+            let len = ctx.blackbox.logger.log_e_frame(&mut SliceEncoder::new(&mut ctx.buffer), BlackboxEvent::LogEnd);
             _ = ctx.sd_card.write_all(&ctx.buffer[..len]).await;
             log::info!("**** BLACKBOX: END OF LOG");
         }
-        #[cfg(feature = "std")]
-        {
-            _ = ctx.sd_card.write_all(&ctx.buffer[..len]).await;
-        }
-        // --- BARE METAL / RP2350 PRODUCTION MODE ---
-        #[cfg(not(feature = "std"))]
-        {
-            // Create a stack-allocated block payload wrapper
-            let mut block = BlackboxWriteBlock { data: [0u8; 128], len };
-
-            // Ensure the data fits into our structural container
-            if len <= block.data.len() {
-                block.data[..len].copy_from_slice(&ctx.buffer[..len]);
-
-                // CRITICAL: Use non-blocking try_send to protect timing deadlines.
-                // If the SD card blocks, the queue acts as a safety buffer.
-                if let Err(_overflow) = BLACKBOX_WRITE_QUEUE.try_send(block) {
-                    // Increment a dropped/overflow telemetry counter flag here if desired.
-                }
-            } else {
-                log::error!("BLACKBOX: Serialized payload size ({}) exceeds message block capacity!", len);
-            }
-        }
+        write_serialized_data_to_sd_card(
+            &ctx.buffer[..len],
+            &mut ctx.overflow_counter,
+            #[cfg(feature = "std")]
+            &mut ctx.sd_card,
+        )
+        .await;
         if loop_count.is_multiple_of(10) {
             log::info!("      BLACKBOX: loop {loop_count},{len}");
         }

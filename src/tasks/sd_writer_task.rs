@@ -1,8 +1,7 @@
 #![cfg(all(feature = "blackbox", feature = "rp2350"))]
 
-use crate::tasks::{init_rp::BlackboxSpiDevice,
-blackbox_task::BLACKBOX_WRITE_QUEUE};
-use embedded_sdmmc::{SdCard, VolumeManager, Mode, VolumeIdx, Directory};
+use crate::tasks::{blackbox_task::BLACKBOX_WRITE_QUEUE, init_rp::BlackboxSpiDevice};
+use embedded_sdmmc::{Directory, Mode, SdCard, VolumeIdx, VolumeManager};
 
 /// Dummy time source required by the embedded-sdmmc library
 pub struct VehicleTimeSource;
@@ -18,18 +17,15 @@ pub struct SdWriterContext {
     /// Concrete async SPI bus instance assigned to the card subsystem
     pub spi_device: BlackboxSpiDevice,
     /// 512-byte block cache matching the target SD physical sector boundaries
-    pub sector_buffer: [u8; 512],
+    pub sector_buffer: [u8; Self::BUFFER_SIZE],
     /// Current pointer offset tracker within the sector cache array
     pub buffer_idx: usize,
 }
 
 impl SdWriterContext {
+    const BUFFER_SIZE: usize = 512;
     pub fn new(spi_device: BlackboxSpiDevice) -> Self {
-        Self {
-            spi_device,
-            sector_buffer: [0u8; 512],
-            buffer_idx: 0,
-        }
+        Self { spi_device, sector_buffer: [0u8; Self::BUFFER_SIZE], buffer_idx: 0 }
     }
 }
 
@@ -38,46 +34,42 @@ impl SdWriterContext {
 pub async fn sd_writer_task(ctx: &'static mut SdWriterContext) {
     log::info!("BLACKBOX SD WRITER: task started");
 
-    // 1. Mount the block driver container
+    // Mount the block driver container
     let sd_card = SdCard::new(&mut ctx.spi_device, embassy_time::Delay);
     let volume_mgr = VolumeManager::new(sd_card, VehicleTimeSource);
-    
-    // 2. Open partition volume directly from the manager
+
+    // Open partition volume directly from the manager
     let volume = volume_mgr.open_volume(VolumeIdx(0)).unwrap();
-    
-    // 3. Open the root directory from the active volume context
+
+    // Open the root directory from the active volume context
     let mut root_dir = volume.open_root_dir().unwrap();
 
-    // 4. Scan directory using the 0.9.0 object syntax layout
+    // Scan directory using the 0.9.0 object syntax layout
     let next_index = find_next_log_index(&mut root_dir);
 
-    // 5. Format filename into standard 8.3 FAT layout entirely within stack memory boundaries
+    // Format filename into standard 8.3 FAT layout entirely within stack memory boundaries
     let mut filename_buf = [0u8; 12];
     let filename_str = format_log_filename(next_index, &mut filename_buf);
-    
-    // 6. Open or create the file directly on the root directory object
-    let log_file = root_dir
-        .open_file_in_dir(filename_str, Mode::ReadWriteCreateOrAppend)
-        .unwrap();
+
+    // Open or create the file directly on the root directory object
+    let log_file = root_dir.open_file_in_dir(filename_str, Mode::ReadWriteCreateOrAppend).unwrap();
 
     loop {
         // Asynchronously wait until blackbox_task sends a new serialized block chunk.
         let block = BLACKBOX_WRITE_QUEUE.receive().await;
         let chunk = &block.data[..block.len];
 
-        // 7. Sector-alignment analysis: If incoming data chunk overflows 512 bytes, 
+        // Sector-alignment analysis: If incoming data chunk overflows BUFFER_SIZE bytes,
         // flush the current working buffer block directly onto physical flash storage first.
-        if ctx.buffer_idx + chunk.len() > 512 {
-            
+        if ctx.buffer_idx + chunk.len() > SdWriterContext::BUFFER_SIZE {
             // Cooperative yield checkpoint: Ensure high-speed control loop runs before SPI lockup
             embassy_time::Timer::after_micros(0).await;
 
-            // FIX: write() is now called directly on the File handle object instance
             let _ = log_file.write(&ctx.sector_buffer[..ctx.buffer_idx]).unwrap();
             ctx.buffer_idx = 0;
         }
 
-        // 8. Extract block chunk contents and copy payload into context workspace memory
+        // Extract block chunk contents and copy payload into context workspace memory
         ctx.sector_buffer[ctx.buffer_idx..ctx.buffer_idx + chunk.len()].copy_from_slice(chunk);
         ctx.buffer_idx += chunk.len();
     }
@@ -85,8 +77,8 @@ pub async fn sd_writer_task(ctx: &'static mut SdWriterContext) {
 
 /// Scans the root directory by inspecting raw filename bytes directly.
 pub fn find_next_log_index<D, T, const DIR: usize, const FILE: usize, const VOL: usize>(
-    root_dir: &mut Directory<'_, D, T, DIR, FILE, VOL>
-) -> u16 
+    root_dir: &mut Directory<'_, D, T, DIR, FILE, VOL>,
+) -> u16
 where
     D: embedded_sdmmc::BlockDevice,
     T: embedded_sdmmc::TimeSource,
@@ -104,8 +96,8 @@ where
                 // 3. Extract the 3 numeric characters from indices 4 to 7 safely
                 if let Ok(num_str) = core::str::from_utf8(&base[4..7]) {
                     if let Ok(idx) = u16::from_str_radix(num_str, 10) {
-                        if idx > highest_idx { 
-                            highest_idx = idx; 
+                        if idx > highest_idx {
+                            highest_idx = idx;
                         }
                     }
                 }

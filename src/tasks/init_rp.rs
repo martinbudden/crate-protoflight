@@ -12,8 +12,8 @@ use embassy_rp::{
     i2c::{Async as I2cAsync, I2c},
     peripherals,
     peripherals::{
-        DMA_CH0, DMA_CH1, DMA_CH2, DMA_CH3, DMA_CH4, DMA_CH5, DMA_CH6, DMA_CH7, FLASH, PIO0, SPI0,
-        SPI1, UART0, UART1, I2C0
+        DMA_CH0, DMA_CH1, DMA_CH2, DMA_CH3, DMA_CH4, DMA_CH5, DMA_CH6, DMA_CH7, FLASH, I2C0, PIO0, SPI0, SPI1, UART0,
+        UART1,
     },
     pio,
     pio::InterruptHandler as PioInterruptHandler,
@@ -40,7 +40,7 @@ bind_interrupts!(pub struct Irqs {
     PIO0_IRQ_0 => pio::InterruptHandler<PIO0>;
     UART0_IRQ => uart::InterruptHandler<UART0>;
     UART1_IRQ => uart::InterruptHandler<UART1>;
-    I2C0_IRQ => i2c::InterruptHandler<I2C0>; 
+    I2C0_IRQ => i2c::InterruptHandler<I2C0>;
 });
 
 //use embedded_hal_async::spi::SpiDevice;

@@ -129,8 +129,8 @@ pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext<'static>) {
 
         // Calculate the motor commands:
         // the flight controller updates its setpoints from the radio control_message
-        // and the updates the PIDs using `gyro_rps` and `orientation`.
-        // Also returns if the setpoints have been updated because of a new radio_control_message.
+        // and then updates the PIDs using `gyro_rps` and `orientation`.
+        // `setpoints_updated` is set if the setpoints have been updated because of a new radio_control_message.
         let (motor_commands, setpoints_updated) =
             ctx.flight_controller.calculate_motor_commands(gyro_rps, orientation, delta_t, ctx.flight_control_message);
 
