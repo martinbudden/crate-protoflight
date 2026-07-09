@@ -41,11 +41,8 @@ use crate::tasks::barometer_task::{BarometerContext, barometer_publisher, barome
 #[cfg(feature = "battery")]
 use crate::tasks::battery_task::{BatteryContext, battery_publisher, battery_subscriber, battery_task};
 
-#[cfg(all(feature = "blackbox", feature = "rp2350"))]
-use crate::tasks::sd_writer_task::{SdWriterContext, sd_writer_task};
-
-#[cfg(all(feature = "blackbox", feature = "std"))]
-use crate::drivers::sd_card::MockSdCard;
+#[cfg(feature = "blackbox")]
+use crate::tasks::blackbox_writer_task::{BlackboxWriterContext, blackbox_writer_task};
 
 #[cfg(feature = "blackbox")]
 use {
@@ -115,8 +112,8 @@ pub async fn init(spawner: Spawner) {
     static BATTERY_CTX: StaticCell<BatteryContext> = StaticCell::new();
     #[cfg(feature = "blackbox")]
     static BLACKBOX_CTX: StaticCell<BlackboxContext> = StaticCell::new();
-    #[cfg(all(feature = "blackbox", feature = "rp2350"))]
-    static SD_WRITER_CTX: StaticCell<SdWriterContext> = StaticCell::new();
+    #[cfg(feature = "blackbox")]
+    static BLACKBOX_WRITER_CTX: StaticCell<BlackboxWriterContext> = StaticCell::new();
     #[cfg(feature = "gps")]
     static GPS_CTX: StaticCell<GpsContext> = StaticCell::new();
     #[cfg(feature = "msp")]
@@ -237,17 +234,17 @@ pub async fn init(spawner: Spawner) {
             blackbox,
             buffer: [0u8; 1024],
             overflow_counter: 0,
-            #[cfg(all(feature = "blackbox", feature = "std"))]
-            sd_card: MockSdCard::new("blackbox_log.bbl"),
         })
     };
     #[cfg(all(feature = "blackbox", feature = "rp2350"))]
-    let sd_writer_ctx = {
+    let blackbox_writer_ctx = {
         //if let Ok(blackbox_spi) = _blackbox_res {
-        //    SD_WRITER_CTX.init(SdWriterContext::new(blackbox_spi))
+        //    BLACKBOX_WRITER_CTX.init(BlackboxWriterContext::new(blackbox_spi))
         //}
-        SD_WRITER_CTX.init(SdWriterContext::new(_blackbox_res.unwrap()))
+        BLACKBOX_WRITER_CTX.init(BlackboxWriterContext::new(_blackbox_res.unwrap()))
     };
+    #[cfg(all(feature = "blackbox", feature = "std"))]
+    let blackbox_writer_ctx = { BLACKBOX_WRITER_CTX.init(BlackboxWriterContext::new()) };
 
     #[cfg(feature = "autopilot")]
     let autopilot_ctx: &mut AutopilotContext<'static> = AUTOPILOT_CTX.init(AutopilotContext {
@@ -334,8 +331,8 @@ pub async fn init(spawner: Spawner) {
 
     #[cfg(feature = "blackbox")]
     spawner.spawn(blackbox_task(blackbox_ctx).expect("Failed to create BLACKBOX task"));
-    #[cfg(all(feature = "blackbox", feature = "rp2350"))]
-    spawner.spawn(sd_writer_task(sd_writer_ctx).expect("Failed to create SD_WRITER task"));
+    #[cfg(feature = "blackbox")]
+    spawner.spawn(blackbox_writer_task(blackbox_writer_ctx).expect("Failed to create BLACKBOX_WRITER task"));
     #[cfg(feature = "gps")]
     spawner.spawn(gps_task(gps_ctx).expect("Failed to create GPS task"));
     #[cfg(feature = "msp")]

@@ -1,10 +1,18 @@
-#![cfg(all(feature = "blackbox", feature = "rp2350"))]
+#![cfg(feature = "blackbox")]
 
-use crate::tasks::{blackbox_task::BLACKBOX_WRITE_QUEUE, init_rp::BlackboxSpiDevice};
+#[cfg(feature = "std")]
+use crate::drivers::sd_card::{MockSdCard, SdStorage};
+use crate::tasks::blackbox_task::BLACKBOX_WRITE_QUEUE;
+#[cfg(feature = "rp2350")]
+use crate::tasks::init_rp::BlackboxSpiDevice;
+#[cfg(not(feature = "std"))]
 use embedded_sdmmc::{Directory, Mode, SdCard, VolumeIdx, VolumeManager};
 
 /// Dummy time source required by the embedded-sdmmc library
+#[cfg(not(feature = "std"))]
 pub struct VehicleTimeSource;
+
+#[cfg(not(feature = "std"))]
 impl embedded_sdmmc::TimeSource for VehicleTimeSource {
     fn get_timestamp(&self) -> embedded_sdmmc::Timestamp {
         // Returns a fixed default time; can be mapped to an RTC later
@@ -13,7 +21,8 @@ impl embedded_sdmmc::TimeSource for VehicleTimeSource {
 }
 
 /// System execution context for the background storage worker pipeline.
-pub struct SdWriterContext {
+#[cfg(not(feature = "std"))]
+pub struct BlackboxWriterContext {
     /// Concrete async SPI bus instance assigned to the card subsystem
     pub spi_device: BlackboxSpiDevice,
     /// 512-byte block cache matching the target SD physical sector boundaries
@@ -21,16 +30,43 @@ pub struct SdWriterContext {
     pub buffer_idx: usize,
 }
 
-impl SdWriterContext {
+#[cfg(not(feature = "std"))]
+impl BlackboxWriterContext {
     const BUFFER_SIZE: usize = 512;
     pub fn new(spi_device: BlackboxSpiDevice) -> Self {
         Self { spi_device, sector_buffer: [0u8; Self::BUFFER_SIZE], buffer_idx: 0 }
     }
 }
 
-/// SD Writer background processing task loop using embedded-sdmmc 0.9.0.
+#[cfg(feature = "std")]
+pub struct BlackboxWriterContext {
+    pub sd_card: MockSdCard,
+}
+
+#[cfg(feature = "std")]
+impl BlackboxWriterContext {
+    pub fn new() -> Self {
+        Self { sd_card: MockSdCard::new("blackbox_log.bbl") }
+    }
+}
+
+#[cfg(feature = "std")]
 #[embassy_executor::task]
-pub async fn sd_writer_task(ctx: &'static mut SdWriterContext) {
+pub async fn blackbox_writer_task(ctx: &'static mut BlackboxWriterContext) {
+    log::info!("BLACKBOX SD WRITER: task started");
+    loop {
+        // Asynchronously wait until blackbox_task sends a new serialized block chunk
+        let block = BLACKBOX_WRITE_QUEUE.receive().await;
+        let chunk = &block.data[..block.len];
+        // On desktop, directly await the full file flash operation
+        _ = ctx.sd_card.write_all(chunk).await;
+    }
+}
+
+/// Blackbox writer background processing task loop using embedded-sdmmc 0.9.0.
+#[cfg(not(feature = "std"))]
+#[embassy_executor::task]
+pub async fn blackbox_writer_task(ctx: &'static mut BlackboxWriterContext) {
     log::info!("BLACKBOX SD WRITER: task started");
 
     // LOW-SPEED BOOT HARDWARE HANDSHAKE ---
@@ -66,7 +102,7 @@ pub async fn sd_writer_task(ctx: &'static mut SdWriterContext) {
         let chunk = &block.data[..block.len];
 
         // Sector-alignment analysis: Flush working cache to disk if it overflows 512 bytes
-        if ctx.buffer_idx + chunk.len() > SdWriterContext::BUFFER_SIZE {
+        if ctx.buffer_idx + chunk.len() > BlackboxWriterContext::BUFFER_SIZE {
             // Cooperative yield checkpoint: Ensure high-speed control loop runs before physical write
             embassy_time::Timer::after_micros(0).await;
 
@@ -81,6 +117,7 @@ pub async fn sd_writer_task(ctx: &'static mut SdWriterContext) {
 }
 
 /// Scans the root directory by inspecting raw filename bytes directly.
+#[cfg(not(feature = "std"))]
 pub fn find_next_log_index<D, T, const DIR: usize, const FILE: usize, const VOL: usize>(
     root_dir: &mut Directory<'_, D, T, DIR, FILE, VOL>,
 ) -> u16
@@ -114,6 +151,7 @@ where
 }
 
 /// Helper function to perform pure ASCII modifications safely inside stack boundaries
+#[cfg(not(feature = "std"))]
 fn format_log_filename(index: u16, buf: &mut [u8; 12]) -> &str {
     buf[0..4].copy_from_slice(b"LOG_");
     buf[7..12].copy_from_slice(b".BIN");

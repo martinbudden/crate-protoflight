@@ -9,9 +9,6 @@ use crate::{
 };
 use blackbox_logger::{Blackbox, BlackboxEvent, BlackboxMainData, BlackboxSlowData, LoggerState, SliceEncoder};
 
-#[cfg(feature = "std")]
-use crate::drivers::sd_card::{MockSdCard, SdStorage};
-
 #[cfg(feature = "gps")]
 use {
     crate::{
@@ -30,8 +27,6 @@ pub struct BlackboxContext<'a> {
     #[cfg(feature = "gps")]
     pub gps_subscriber: GpsSubscriber<'a>,
     pub blackbox: Blackbox,
-    #[cfg(feature = "std")]
-    pub sd_card: MockSdCard,
     pub buffer: [u8; BUFFER_CAPACITY],
     pub overflow_counter: u32,
     //pub slice_writer: SliceEncoder<'static>,
@@ -68,32 +63,19 @@ impl BlackboxWriteBlock {
     }
 }
 
-pub static BLACKBOX_WRITE_QUEUE: Channel<CriticalSectionRawMutex, BlackboxWriteBlock, 128> = Channel::new();
+const BLACKBOX_WRITE_QUEUE_COUNT: usize = 256;
+pub static BLACKBOX_WRITE_QUEUE: Channel<CriticalSectionRawMutex, BlackboxWriteBlock, BLACKBOX_WRITE_QUEUE_COUNT> =
+    Channel::new();
 
-/// Unified blackbox chunk dispatcher.
-/// Automatically redirects data streams based on feature targets.
-async fn write_serialized_data_to_sd_card(
-    serialized_data: &[u8],
-    overflow_counter: &mut u32,
-    #[cfg(feature = "std")] sd_card: &mut MockSdCard,
-) {
-    #[cfg(feature = "std")]
-    {
-        // On desktop, directly await the full file flash operation
-        _ = sd_card.write_all(serialized_data).await;
-    }
-    #[cfg(not(feature = "std"))]
-    {
-        // Unused parameter silence bound for safety
-        let _ = overflow_counter;
-        // Loop through the slice in chunks matching BlackboxWriteBlock capacity
-        for chunk in serialized_data.chunks(BlackboxWriteBlock::CAPACITY) {
-            let block = BlackboxWriteBlock::from_chunk(chunk);
-            // Non-blocking try_send ensures high-speed loop deadlines are protected
-            if let Err(_overflow) = BLACKBOX_WRITE_QUEUE.try_send(block) {
-                *overflow_counter = overflow_counter.wrapping_add(1);
-                log::error!("BLACKBOX: FIFO queue full! Dropped a log chunk.");
-            }
+fn send_data_to_blackbox_writer_task(data: &[u8], overflow_counter: &mut u32) {
+    let _ = overflow_counter;
+    // Loop through the slice in chunks matching BlackboxWriteBlock capacity
+    for chunk in data.chunks(BlackboxWriteBlock::CAPACITY) {
+        let block = BlackboxWriteBlock::from_chunk(chunk);
+        // Non-blocking try_send ensures high-speed loop deadlines are protected
+        if let Err(_overflow) = BLACKBOX_WRITE_QUEUE.try_send(block) {
+            *overflow_counter = overflow_counter.wrapping_add(1);
+            log::error!("BLACKBOX: FIFO queue full! Dropped a log chunk.");
         }
     }
 }
@@ -109,19 +91,12 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext<'static>) {
     ctx.blackbox.set_state(LoggerState::WriteFileHeader);
     while ctx.blackbox.state() != LoggerState::HeaderWritten {
         let len = ctx.blackbox.update(&mut SliceEncoder::new(&mut ctx.buffer), time_us, true);
-        write_serialized_data_to_sd_card(
-            &ctx.buffer[..len],
-            &mut ctx.overflow_counter,
-            #[cfg(feature = "std")]
-            &mut ctx.sd_card,
-        )
-        .await;
+        send_data_to_blackbox_writer_task(&ctx.buffer[..len], &mut ctx.overflow_counter);
         log::info!("BLACKBOX:  hdr {loop_count},{len}");
         loop_count = loop_count.wrapping_add(1);
     }
 
     loop_count = 0;
-    let mut index = 0;
     loop {
         time_us = time_us.wrapping_add(125);
         // blocking
@@ -145,24 +120,17 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext<'static>) {
 
         let len = ctx.blackbox.update(&mut SliceEncoder::new(&mut ctx.buffer), time_us, true);
         #[cfg(feature = "std")]
-        if index == 512 {
+        if loop_count == 512 {
             // write End of log
             let len = ctx.blackbox.logger.log_e_frame(&mut SliceEncoder::new(&mut ctx.buffer), BlackboxEvent::LogEnd);
-            _ = ctx.sd_card.write_all(&ctx.buffer[..len]).await;
+            send_data_to_blackbox_writer_task(&ctx.buffer[..len], &mut ctx.overflow_counter);
             log::info!("**** BLACKBOX: END OF LOG");
         }
-        write_serialized_data_to_sd_card(
-            &ctx.buffer[..len],
-            &mut ctx.overflow_counter,
-            #[cfg(feature = "std")]
-            &mut ctx.sd_card,
-        )
-        .await;
+        send_data_to_blackbox_writer_task(&ctx.buffer[..len], &mut ctx.overflow_counter);
         if loop_count.is_multiple_of(10) {
             log::info!("      BLACKBOX: loop {loop_count},{len}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
-        index += 1;
     }
 
     /*loop {
