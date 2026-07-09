@@ -243,12 +243,10 @@ pub async fn init(spawner: Spawner) {
     };
     #[cfg(all(feature = "blackbox", feature = "rp2350"))]
     let sd_writer_ctx = {
-        if let Ok(_blackbox_spi) = _blackbox_res {
-            // TODO: pass blackbox_spi to the SD_WRITER_CTX
-            SD_WRITER_CTX.init(SdWriterContext { buffer: [0u8; 1024], pos: 0, _phantom: core::marker::PhantomData })
-        } else {
-            SD_WRITER_CTX.init(SdWriterContext { buffer: [0u8; 1024], pos: 0, _phantom: core::marker::PhantomData })
-        }
+        //if let Ok(blackbox_spi) = _blackbox_res {
+        //    SD_WRITER_CTX.init(SdWriterContext::new(blackbox_spi))
+        //}
+        SD_WRITER_CTX.init(SdWriterContext::new(_blackbox_res.unwrap()))
     };
 
     #[cfg(feature = "autopilot")]

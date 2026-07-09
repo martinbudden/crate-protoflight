@@ -1,145 +1,127 @@
 #![cfg(all(feature = "blackbox", feature = "rp2350"))]
-#![allow(unused)]
 
-//use async_embedded_sdmmc::{Mode, SdCard, VolumeIdx, VolumeManager, Directory, BlockDevice, TimeSource};
+use crate::tasks::{init_rp::BlackboxSpiDevice,
+blackbox_task::BLACKBOX_WRITE_QUEUE};
+use embedded_sdmmc::{SdCard, VolumeManager, Mode, VolumeIdx, Directory};
 
-pub struct SdWriterContext<'a> {
-    pub buffer: [u8; 1024],
-    pub pos: usize,
-    //pub slice_writer: SliceEncoder<'static>,
-    pub _phantom: core::marker::PhantomData<&'a ()>,
+/// Dummy time source required by the embedded-sdmmc library
+pub struct VehicleTimeSource;
+impl embedded_sdmmc::TimeSource for VehicleTimeSource {
+    fn get_timestamp(&self) -> embedded_sdmmc::Timestamp {
+        // Returns a fixed default time; can be mapped to an RTC later
+        embedded_sdmmc::Timestamp::from_fat(0, 0)
+    }
 }
 
-/*/// Scans the root directory asynchronously using async-embedded-sdmmc traits.
-/// Detects the highest active index matching "LOG_*.BIN" and outputs the next number.
-pub async fn find_next_log_index<D, T>(
-    volume_mgr: &mut VolumeManager<D, T>,
-    root_dir: &Directory
-) -> u16
+/// System execution context for the background storage worker pipeline.
+pub struct SdWriterContext {
+    /// Concrete async SPI bus instance assigned to the card subsystem
+    pub spi_device: BlackboxSpiDevice,
+    /// 512-byte block cache matching the target SD physical sector boundaries
+    pub sector_buffer: [u8; 512],
+    /// Current pointer offset tracker within the sector cache array
+    pub buffer_idx: usize,
+}
+
+impl SdWriterContext {
+    pub fn new(spi_device: BlackboxSpiDevice) -> Self {
+        Self {
+            spi_device,
+            sector_buffer: [0u8; 512],
+            buffer_idx: 0,
+        }
+    }
+}
+
+/// SD Writer background processing task loop using embedded-sdmmc 0.9.0.
+#[embassy_executor::task]
+pub async fn sd_writer_task(ctx: &'static mut SdWriterContext) {
+    log::info!("BLACKBOX SD WRITER: task started");
+
+    // 1. Mount the block driver container
+    let sd_card = SdCard::new(&mut ctx.spi_device, embassy_time::Delay);
+    let volume_mgr = VolumeManager::new(sd_card, VehicleTimeSource);
+    
+    // 2. Open partition volume directly from the manager
+    let volume = volume_mgr.open_volume(VolumeIdx(0)).unwrap();
+    
+    // 3. Open the root directory from the active volume context
+    let mut root_dir = volume.open_root_dir().unwrap();
+
+    // 4. Scan directory using the 0.9.0 object syntax layout
+    let next_index = find_next_log_index(&mut root_dir);
+
+    // 5. Format filename into standard 8.3 FAT layout entirely within stack memory boundaries
+    let mut filename_buf = [0u8; 12];
+    let filename_str = format_log_filename(next_index, &mut filename_buf);
+    
+    // 6. Open or create the file directly on the root directory object
+    let log_file = root_dir
+        .open_file_in_dir(filename_str, Mode::ReadWriteCreateOrAppend)
+        .unwrap();
+
+    loop {
+        // Asynchronously wait until blackbox_task sends a new serialized block chunk.
+        let block = BLACKBOX_WRITE_QUEUE.receive().await;
+        let chunk = &block.data[..block.len];
+
+        // 7. Sector-alignment analysis: If incoming data chunk overflows 512 bytes, 
+        // flush the current working buffer block directly onto physical flash storage first.
+        if ctx.buffer_idx + chunk.len() > 512 {
+            
+            // Cooperative yield checkpoint: Ensure high-speed control loop runs before SPI lockup
+            embassy_time::Timer::after_micros(0).await;
+
+            // FIX: write() is now called directly on the File handle object instance
+            let _ = log_file.write(&ctx.sector_buffer[..ctx.buffer_idx]).unwrap();
+            ctx.buffer_idx = 0;
+        }
+
+        // 8. Extract block chunk contents and copy payload into context workspace memory
+        ctx.sector_buffer[ctx.buffer_idx..ctx.buffer_idx + chunk.len()].copy_from_slice(chunk);
+        ctx.buffer_idx += chunk.len();
+    }
+}
+
+/// Scans the root directory by inspecting raw filename bytes directly.
+pub fn find_next_log_index<D, T, const DIR: usize, const FILE: usize, const VOL: usize>(
+    root_dir: &mut Directory<'_, D, T, DIR, FILE, VOL>
+) -> u16 
 where
-    D: BlockDevice,
-    T: TimeSource
+    D: embedded_sdmmc::BlockDevice,
+    T: embedded_sdmmc::TimeSource,
 {
     let mut highest_idx = 0;
 
-    // FIX: iterate_dir is now an async operation.
-    // The closure processes each directory entry matching standard 8.3 FAT criteria.
-    let _ = volume_mgr.iterate_dir(root_dir, |entry| {
-        // Safe stack-allocated string presentation layer from the library
-        let name = entry.name.to_string();
+    let _ = root_dir.iterate_dir(|entry| {
+        let base = entry.name.base_name(); // Returns &[u8; 8]
+        let ext = entry.name.extension(); // Returns &[u8; 3]
 
-        // Target names exactly following our naming blueprint: "LOG_NNN.BIN"
-        if name.starts_with("LOG_") && name.ends_with(".BIN") {
-            // Extract the dynamic slice offset bounds
-            if let Some(num_str) = name.get(4..7) {
-                if let Ok(idx) = parse_u16_from_str(num_str) {
-                    if idx > highest_idx {
-                        highest_idx = idx;
+        // 1. Verify the extension matches "BIN"
+        if ext == b"BIN" {
+            // 2. Verify the base starts with "LOG_"
+            if &base[0..4] == b"LOG_" {
+                // 3. Extract the 3 numeric characters from indices 4 to 7 safely
+                if let Ok(num_str) = core::str::from_utf8(&base[4..7]) {
+                    if let Ok(idx) = u16::from_str_radix(num_str, 10) {
+                        if idx > highest_idx { 
+                            highest_idx = idx; 
+                        }
                     }
                 }
             }
         }
-    }).await; // Crucial async yield checkpoint
+    });
 
-    // Increment index safely, wrapping if it hits the maximum 3-digit constraint (999)
-    if highest_idx >= 999 {
-        0
-    } else {
-        highest_idx + 1
-    }
-}*/
-
-/// Lightweight numeric string parser operating entirely without core allocation assets
-fn parse_u16_from_str(s: &str) -> Result<u16, ()> {
-    let mut res = 0u16;
-    for c in s.chars() {
-        if c.is_ascii_digit() {
-            res = res * 10 + (c as u16 - '0' as u16);
-        } else {
-            return Err(());
-        }
-    }
-    Ok(res)
+    if highest_idx >= 999 { 0 } else { highest_idx + 1 }
 }
-/// Formats a number into a fixed layout buffer: "LOG_000.BIN"
+
+/// Helper function to perform pure ASCII modifications safely inside stack boundaries
 fn format_log_filename(index: u16, buf: &mut [u8; 12]) -> &str {
-    // Fill buffer with template framework
     buf[0..4].copy_from_slice(b"LOG_");
     buf[7..12].copy_from_slice(b".BIN");
-
-    // Extract digits manually into ASCII representations
-    let hundreds = ((index / 100) % 10) as u8 + b'0';
-    let tens = ((index / 10) % 10) as u8 + b'0';
-    let ones = (index % 10) as u8 + b'0';
-
-    buf[4] = hundreds;
-    buf[5] = tens;
-    buf[6] = ones;
-
-    // Safe conversion back to basic string reference
+    buf[4] = ((index / 100) % 10) as u8 + b'0';
+    buf[5] = ((index / 10) % 10) as u8 + b'0';
+    buf[6] = (index % 10) as u8 + b'0';
     core::str::from_utf8(buf).unwrap_or("LOG_000.BIN")
 }
-
-// Dummy timestamp provider required by the library interface
-/*struct DummyTimeSource;
-impl async_embedded_sdmmc::TimeSource for DummyTimeSource {
-    fn get_timestamp(&self) -> async_embedded_sdmmc::Timestamp {
-        async_embedded_sdmmc::Timestamp::from_fat(0, 0)
-    }
-}*/
-/// SD Writer task placeholder.
-#[allow(unused)]
-#[embassy_executor::task]
-pub async fn sd_writer_task(ctx: &'static mut SdWriterContext<'static>) {
-    log::info!("SD_WRITER: task started");
-    // TODO: remove ticker once we have a proper async SD card driver that can be awaited on.
-    let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(50));
-    let mut time_us: u32 = 0;
-    let mut loop_count: u32 = 0;
-
-    loop_count = 0;
-    loop {
-        // Wait for the next 50Hz tick.
-        ticker.next().await;
-        time_us = time_us.wrapping_add(125);
-        if loop_count.is_multiple_of(10) {
-            log::info!("     SD_WRITER: loop {loop_count}");
-        }
-        loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
-    }
-}
-
-/*#[embassy_executor::task]
-pub async fn sd_writer_task(mut spi_device: AnySpiDevice<'static>) {
-    // The type-erased AnySpiDevice matches the traits expected by async-embedded-sdmmc
-    let sd_card = SdCard::new(spi_device, embassy_time::Delay);
-    let mut volume_mgr = VolumeManager::new(sd_card, DummyTimeSource);
-
-    let mut volume = volume_mgr.open_volume(VolumeIdx(0)).await.unwrap();
-    let mut root_dir = volume.open_root_dir().await.unwrap();
-
-    let mut log_file = root_dir
-        .open_file_in_dir("blackbox.bin", Mode::ReadWriteCreateOrAppend)
-        .await
-        .unwrap();
-
-    let mut sector_buffer = [0u8; 512];
-    let mut buffer_idx = 0;
-
-    /*loop {
-        // Asynchronously pull telemetry frames from the high-speed channel
-        let frame = LOG_QUEUE.receive().await;
-        let mut serialize_buf = [0u8; 64];
-
-        if let Ok(serialized) = postcard::to_slice(&frame, &mut serialize_buf) {
-            // Sector-alignment check to guarantee reliable 1kHz performance
-            if buffer_idx + serialized.len() > 512 {
-                let _ = log_file.write(&sector_buffer[..buffer_idx]).await;
-                buffer_idx = 0;
-            }
-            sector_buffer[buffer_idx..buffer_idx + serialized.len()].copy_from_slice(serialized);
-            buffer_idx += serialized.len();
-        }
-    }*/
-}
-*/

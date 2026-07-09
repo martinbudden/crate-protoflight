@@ -1,6 +1,11 @@
 #![cfg(feature = "blackbox")]
 #![allow(unused)]
 
+use embassy_sync::{
+    blocking_mutex::raw::CriticalSectionRawMutex,
+    channel::Channel,
+};
+
 #[cfg(feature = "std")]
 use crate::drivers::sd_card::{MockSdCard, SdStorage};
 
@@ -43,6 +48,14 @@ impl BlackboxContext<'_> {
         }
     }
 }
+/// A fixed-size message container used to pass blackbox chunks between tasks.
+/// Set the internal buffer capacity to a size larger than your maximum possible `len` frame.
+#[derive(Clone, Copy)]
+pub struct BlackboxWriteBlock {
+    pub data: [u8; 128], // Adjust size to match your largest expected serialized packet length
+    pub len: usize,
+}
+pub static BLACKBOX_WRITE_QUEUE: Channel<CriticalSectionRawMutex, BlackboxWriteBlock, 128> = Channel::new();
 
 /// Blackbox task placeholder.
 #[embassy_executor::task]
@@ -93,7 +106,7 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext<'static>) {
             let mut slice_writer = BlackboxContext::slice_writer(&mut ctx.buffer, ctx.pos);
             ctx.blackbox.update(&mut slice_writer, time_us, true)
         };
-        #[cfg(all(feature = "blackbox", feature = "std"))]
+        #[cfg(feature = "std")]
         if index == 512 {
             // write End of log
             let len = {
@@ -104,9 +117,28 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext<'static>) {
             _ = ctx.sd_card.write_all(&ctx.buffer[..len]).await;
             log::info!("**** BLACKBOX: END OF LOG");
         }
-        #[cfg(all(feature = "blackbox", feature = "std"))]
+        #[cfg(feature = "std")]
         {
             _ = ctx.sd_card.write_all(&ctx.buffer[..len]).await;
+        }
+        // --- BARE METAL / RP2350 PRODUCTION MODE ---
+        #[cfg(not(feature = "std"))]
+        {
+            // Create a stack-allocated block payload wrapper
+            let mut block = BlackboxWriteBlock { data: [0u8; 128], len };
+
+            // Ensure the data fits into our structural container
+            if len <= block.data.len() {
+                block.data[..len].copy_from_slice(&ctx.buffer[..len]);
+
+                // CRITICAL: Use non-blocking try_send to protect timing deadlines.
+                // If the SD card blocks, the queue acts as a safety buffer.
+                if let Err(_overflow) = BLACKBOX_WRITE_QUEUE.try_send(block) {
+                    // Increment a dropped/overflow telemetry counter flag here if desired.
+                }
+            } else {
+                log::error!("BLACKBOX: Serialized payload size ({}) exceeds message block capacity!", len);
+            }
         }
         if loop_count.is_multiple_of(10) {
             log::info!("      BLACKBOX: loop {loop_count},{len}");

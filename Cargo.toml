@@ -100,10 +100,9 @@ std = [
 rp2350 = [
     "dep:cortex-m-rt",
     "dep:embassy-rp",
-    "dep:async-embedded-sdmmc",
     "dep:cyw43-pio",
     "embassy-rp/rp235xa",
-    "embassy-rp/rt",                        # <-- FIX 1: Resolves the missing PEND_IRQ_TOKEN import error
+    "embassy-rp/rt",
     "embassy-rp/executor-thread",           # <-- Let the HAL define the hardware executor
     "embassy-rp/executor-interrupt",        # <-- Add if you require high-priority interrupt task pools
     "embassy-executor/platform-cortex-m",   # <-- Explicitly satisfies the executor's platform check
@@ -136,7 +135,7 @@ sequential-storage = { version = "7.2.0", default-features = false, features = [
 embedded-storage-async = { version = "0.4.1", default-features = false }
 # In-memory storage simulator
 embedded-storage-file = { version = "0.2.0", default-features = false, optional = true }
-async-embedded-sdmmc = { version = "0.3.1", features = ["async", "embedded-hal-async"], optional = true }
+embedded-sdmmc = { version = "0.9.0", default-features = false, features = ["log"] }
 
 simple-bitset = "0.1.4"
 #simple-bitset = { git = "https://github.com/martinbudden/crate-simple-bitset" }
