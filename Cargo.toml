@@ -153,8 +153,8 @@ sensor-fusion = "0.1.8"
 #sensor-fusion = { git = "https://github.com/martinbudden/crate-sensor-fusion" }
 #sensor-fusion = { path = "../sensor-fusion" }
 #blackbox-logger = { version = "0.1.8", default-features = false, optional = true }
-blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger", default-features = false, optional = true }
-#blackbox-logger = { path = "../blackbox-logger", default-features = false, optional = true }
+#blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger", default-features = false, optional = true }
+blackbox-logger = { path = "../blackbox-logger", default-features = false, optional = true }
 
 #motor-mixers = { version = "0.1.4" }
 motor-mixers = { git = "https://github.com/martinbudden/crate-motor-mixers" }

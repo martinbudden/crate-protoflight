@@ -1,4 +1,4 @@
-use radio_controllers::{Rates, RatesConfig, RcModes, RcModesArray};
+use radio_controllers::{Rates, RatesConfig, RcModes, RcMode};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use stream_buf::{StreamBufReader, StreamBufWriter};
@@ -258,7 +258,7 @@ impl Msp {
             global_config.rc_modes
         };
         for mac in rc_modes.macs {
-            let Some(rc_mode) = RcModesArray::find_rc_mode_by_id(mac.mode_id) else { return MspResult::CmdUnknown };
+            let Some(rc_mode) = RcMode::find_rc_mode_by_id(mac.mode_id) else { return MspResult::CmdUnknown };
             dst.write_u8(rc_mode.permanent_id);
             dst.write_u8(mac.aux_channel_index);
             dst.write_u8(mac.range.start);
@@ -272,8 +272,8 @@ impl Msp {
             global_config.rc_modes
         };
         for mac in rc_modes.macs {
-            let Some(rc_mode) = RcModesArray::find_rc_mode_by_id(mac.mode_id) else { return MspResult::CmdUnknown };
-            let Some(linked_mode) = RcModesArray::find_rc_mode_by_id(mac.mode_id) else { return MspResult::CmdUnknown };
+            let Some(rc_mode) = RcMode::find_rc_mode_by_id(mac.mode_id) else { return MspResult::CmdUnknown };
+            let Some(linked_mode) = RcMode::find_rc_mode_by_id(mac.mode_id) else { return MspResult::CmdUnknown };
             dst.write_u8(rc_mode.permanent_id);
             dst.write_u8(mac.mode_logic);
             dst.write_u8(linked_mode.permanent_id);
@@ -292,7 +292,7 @@ impl Msp {
             return MspResult::Error;
         }
         let rc_mode_id = src.read_u8();
-        let Some(rc_mode) = RcModesArray::find_rc_mode_by_id(rc_mode_id) else { return MspResult::CmdUnknown };
+        let Some(rc_mode) = RcMode::find_rc_mode_by_id(rc_mode_id) else { return MspResult::CmdUnknown };
 
         let mut mac = rc_modes.mac(mac_index);
         mac.mode_id = rc_mode.id;
@@ -303,7 +303,7 @@ impl Msp {
         if src.bytes_remaining() >= 2 {
             mac.mode_logic = src.read_u8();
             let linked_to_index = src.read_u8();
-            let link = RcModesArray::find_rc_mode_by_permanent_id(linked_to_index);
+            let link = RcMode::find_rc_mode_by_permanent_id(linked_to_index);
             if let Some(rc_mode) = link {
                 mac.linked_to = rc_mode.id;
             }

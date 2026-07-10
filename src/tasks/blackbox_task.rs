@@ -80,17 +80,18 @@ fn send_data_to_blackbox_writer_task(data: &[u8], overflow_counter: &mut u32) {
     }
 }
 
-/// Blackbox task placeholder.
+/// Blackbox task.
 #[embassy_executor::task]
 pub async fn blackbox_task(ctx: &'static mut BlackboxContext<'static>) {
     log::info!(" BLACKBOX: task started");
-    let mut time_us: u32 = 0;
     let mut loop_count: u32 = 0;
 
-    // write the Blackbox log file header.
+    // Write the Blackbox log file header by using blackbox.update to step through the blackbox state machine
+    // until the state is LoggerState::HeaderWritten.
     ctx.blackbox.set_state(LoggerState::WriteFileHeader);
     while ctx.blackbox.state() != LoggerState::HeaderWritten {
-        let len = ctx.blackbox.update(&mut SliceEncoder::new(&mut ctx.buffer), time_us, true);
+        let time_us = 0;
+        let len = ctx.blackbox.update(&mut SliceEncoder::new(&mut ctx.buffer), time_us);
         send_data_to_blackbox_writer_task(&ctx.buffer[..len], &mut ctx.overflow_counter);
         log::info!("BLACKBOX:  hdr {loop_count},{len}");
         loop_count = loop_count.wrapping_add(1);
@@ -98,9 +99,9 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext<'static>) {
 
     loop_count = 0;
     loop {
-        time_us = time_us.wrapping_add(125);
         // blocking
         let gyro_pid_msg = ctx.gyro_pid_receiver.changed().await;
+        let time_us = gyro_pid_msg.time_us;
         // non-blocking
         if let Some(setpoint_msg) = ctx.setpoint_receiver.try_get() {
             // if we have a new setpoint message then update ctx.setpoint_message so that the most up to date setpoint_message is used.
@@ -108,7 +109,7 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext<'static>) {
             ctx.blackbox.set_slow_data(slow_data_from(ctx.setpoint_message));
         }
         // set_main_data always uses the most up to date setpoint message.
-        ctx.blackbox.set_main_data(time_us, main_data_from(time_us, gyro_pid_msg, ctx.setpoint_message));
+        ctx.blackbox.set_main_data(main_data_from(gyro_pid_msg, ctx.setpoint_message));
 
         #[cfg(feature = "gps")]
         if let Some(wait_result) = ctx.gps_subscriber.try_next_message()
@@ -118,14 +119,14 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext<'static>) {
             ctx.blackbox.set_gps_data(gps_data_from(gps_solution_data));
         }
 
-        let len = ctx.blackbox.update(&mut SliceEncoder::new(&mut ctx.buffer), time_us, true);
-        #[cfg(feature = "std")]
+        let len = ctx.blackbox.update(&mut SliceEncoder::new(&mut ctx.buffer), time_us);
+        /*#[cfg(feature = "std")]
         if loop_count == 512 {
             // write End of log
             let len = ctx.blackbox.logger.log_e_frame(&mut SliceEncoder::new(&mut ctx.buffer), BlackboxEvent::LogEnd);
             send_data_to_blackbox_writer_task(&ctx.buffer[..len], &mut ctx.overflow_counter);
             log::info!("**** BLACKBOX: END OF LOG");
-        }
+        }*/
         send_data_to_blackbox_writer_task(&ctx.buffer[..len], &mut ctx.overflow_counter);
         if loop_count.is_multiple_of(10) {
             log::info!("      BLACKBOX: loop {loop_count},{len}");
@@ -162,7 +163,6 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext<'static>) {
 
 #[inline]
 pub fn main_data_from(
-    _current_time_us: u32,
     gyro_pid_msg: GyroPidMessage,
     setpoint_msg: SetpointMessage,
 ) -> BlackboxMainData {
@@ -236,7 +236,7 @@ pub fn main_data_from(
 pub fn slow_data_from(setpoint: SetpointMessage) -> BlackboxSlowData {
     BlackboxSlowData {
         flight_mode_flags: setpoint.flight_mode_flags,
-        state_flags: setpoint.state_flags,
+        gps_state_flags: setpoint.gps_state_flags,
         failsafe_phase: setpoint.failsafe_phase,
         rx_signal_received: setpoint.rx_signal_received,
         rx_flight_channel_is_valid: setpoint.rx_flight_channel_is_valid,

@@ -1,6 +1,6 @@
 //#![allow(unused)]
 
-use radio_controllers::{RcModes, RcModesArray};
+use radio_controllers::{RcModes, RcMode};
 use vqm::Quaternionf32;
 
 use crate::{
@@ -234,8 +234,8 @@ impl Osd {
                 self.state = OsdState::UpdateCanvas;
             }
             OsdState::UpdateCanvas => {
-                let rc_modes = RcModes::new();
-                if rc_modes.is_mode_active(RcModesArray::OSD) {
+                let rc_modes = RcModes::new(); // TODO: use actual RC Modes, not this placeholder.
+                if rc_modes.is_mode_active(RcMode::OSD) {
                     // Hide OSD when OSD SW mode is active
                     draw_ctx.display_port.clear_screen().await;
                     self.state = OsdState::Commit;

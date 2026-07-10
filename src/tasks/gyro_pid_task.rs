@@ -150,7 +150,8 @@ pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext<'static>) {
             if setpoints_updated {
                 // Only send a setpoint_message when the setpoints have actually been updated
                 // TODO: put the new setpoints in the setpoints message
-                let setpoint_message = SetpointMessage::new();
+                let mut setpoint_message = SetpointMessage::new();
+                setpoint_message.time_us = time_us;
                 ctx.setpoint_sender.send(setpoint_message);
             }
         }

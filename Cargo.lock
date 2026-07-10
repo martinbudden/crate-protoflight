@@ -113,7 +113,6 @@ checksum = "b4388bee8683e3d04af747c73422af53102d2bd24d9eadb6cbc100baef4b43f8"
 [[package]]
 name = "blackbox-logger"
 version = "0.1.8"
-source = "git+https://github.com/martinbudden/crate-blackbox-logger#550c175ac43bf9312ec3f1d1cade738ad9b54bc6"
 dependencies = [
  "embassy-futures",
  "postcard",
@@ -1420,7 +1419,7 @@ dependencies = [
 [[package]]
 name = "radio-controllers"
 version = "0.1.5"
-source = "git+https://github.com/martinbudden/crate-radio-controllers#d54c799677a39b0c86c25487ddd7d7d8b5784994"
+source = "git+https://github.com/martinbudden/crate-radio-controllers#35b6a2df62b5d56ab4d6bbd635c8d9c28f62aebd"
 dependencies = [
  "embedded-hal 1.0.0",
  "embedded-hal-nb",
@@ -1456,9 +1455,9 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.12.4"
+version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1292b7759ae1cb9ec195452d1390a074f0cd8541ab7a5a8c31cd6db45d4a6ba"
+checksum = "2a0e75113e14dc5acb068cd0786884f214f1312650a3d36d269f5c4f3cdee8a2"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -1468,9 +1467,9 @@ dependencies = [
 
 [[package]]
 name = "regex-automata"
-version = "0.4.14"
+version = "0.4.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e1dd4122fc1595e8162618945476892eefca7b88c52820e74af6262213cae8f"
+checksum = "1f388202e4b80542a0921078cc23b6333bcf1409c1e3f86404cae4766a6131db"
 dependencies = [
  "aho-corasick",
  "memchr",

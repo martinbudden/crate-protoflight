@@ -3,7 +3,7 @@ use embassy_sync::{
     watch::{Receiver, Sender, Watch},
 };
 
-use radio_controllers::{Rates, RcModes, RxFrame};
+use radio_controllers::{Rates, RcMode, RcModes, RxFrame};
 
 use crate::{
     config::{ConfigItem, ConfigPublisher, ConfigSubscriber, FastConfigPublisher},
@@ -87,8 +87,18 @@ pub async fn flight_control_task(ctx: &'static mut FlightControlContext<'static>
         #[cfg(feature = "autopilot")]
         if let Some(autopilot_message) = ctx.autopilot_receiver.try_changed() {
             // TODO: if there is a message from the autopilot, then act on it.
-            if ctx.rc_modes.is_mode_active(radio_controllers::RcModesArray::ALTITUDE_HOLD) {
+            if ctx.rc_modes.is_mode_active(RcMode::ALTITUDE_HOLD) {
                 flight_control_message.throttle_stick = autopilot_message.throttle_stick;
+            } else if ctx.rc_modes.is_mode_active(RcMode::POSITION_HOLD)
+                || ctx.rc_modes.is_mode_active(RcMode::GPS_RESCUE)
+                || ctx.rc_modes.is_mode_active(RcMode::AUTOPILOT)
+            {
+                flight_control_message.throttle_stick = autopilot_message.throttle_stick;
+                flight_control_message.roll_stick_dps = autopilot_message.roll_stick_dps;
+                flight_control_message.pitch_stick_dps = autopilot_message.pitch_stick_dps;
+                flight_control_message.yaw_stick_dps = autopilot_message.yaw_stick_dps;
+                flight_control_message.roll_stick_degrees = autopilot_message.roll_stick_degrees;
+                flight_control_message.pitch_stick_degrees = autopilot_message.pitch_stick_degrees;
             }
         }
 

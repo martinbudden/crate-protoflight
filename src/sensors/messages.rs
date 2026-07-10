@@ -78,10 +78,9 @@ pub struct SetpointMessage {
     #[cfg(feature = "servos")]
     pub servos: [i16; Self::MAX_SUPPORTED_SERVO_COUNT],
     pub debug: [i16; Self::SETPOINT_DEBUG_COUNT],
-
     pub time_us: u32,
     pub flight_mode_flags: u32,
-    pub state_flags: u8,
+    pub gps_state_flags: u8,
     pub failsafe_phase: u8,
     pub rx_signal_received: bool,
     pub rx_flight_channel_is_valid: bool,
@@ -118,7 +117,7 @@ impl SetpointMessage {
             debug: [0i16; Self::SETPOINT_DEBUG_COUNT],
             time_us: 0,
             flight_mode_flags: 0,
-            state_flags: 0,
+            gps_state_flags: 0,
             failsafe_phase: 0,
             rx_signal_received: false,
             rx_flight_channel_is_valid: false,

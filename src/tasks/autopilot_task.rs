@@ -4,7 +4,7 @@ use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex,
     watch::{Receiver, Sender, Watch},
 };
-use radio_controllers::RcModesArray;
+use radio_controllers::RcMode;
 use vqm::Vector3df32;
 
 use crate::tasks::{
@@ -90,12 +90,12 @@ pub async fn autopilot_task(ctx: &'static mut AutopilotContext<'static>) {
                 // Check if the rc_modes have changed.
                 if let Some(flight_control_message) = ctx.flight_control_receiver.try_changed() {
                     let rc_modes = flight_control_message.rc_modes;
-                    altitude_hold = rc_modes.test(RcModesArray::ALTITUDE_HOLD);
+                    altitude_hold = rc_modes.test(RcMode::ALTITUDE_HOLD);
                     #[cfg(feature = "gps")]
                     {
-                        position_hold = rc_modes.test(RcModesArray::POSITION_HOLD)
-                            | rc_modes.test(RcModesArray::GPS_RESCUE)
-                            | rc_modes.test(RcModesArray::AUTOPILOT);
+                        position_hold = rc_modes.test(RcMode::POSITION_HOLD)
+                            | rc_modes.test(RcMode::GPS_RESCUE)
+                            | rc_modes.test(RcMode::AUTOPILOT);
                     }
                 }
                 if altitude_hold {
