@@ -7,11 +7,11 @@ use embassy_sync::{
 use radio_controllers::RcMode;
 use vqm::Vector3df32;
 
-use crate::tasks::{gyro_pid_task::GyroPidReceiver, rx_task::FlightControlReceiver};
+use crate::tasks::{gyro_pid_task::GyroPidReceiver, rx_task::RxReceiver};
 
 use crate::autopilot::pilot::Autopilot;
 
-use crate::flight::FlightControlMessage;
+use crate::flight::RxMessage;
 
 #[cfg(feature = "barometer")]
 use crate::tasks::barometer_task::BarometerSubscriber;
@@ -26,14 +26,14 @@ use crate::tasks::optical_flow_task::OpticalFlowSubscriber;
 use crate::tasks::rangefinder_task::RangefinderSubscriber;
 
 const AUTOPILOT_WATCH_COUNT: usize = 1;
-static AUTOPILOT_WATCH: Watch<CriticalSectionRawMutex, FlightControlMessage, AUTOPILOT_WATCH_COUNT> = Watch::new();
+static AUTOPILOT_WATCH: Watch<CriticalSectionRawMutex, RxMessage, AUTOPILOT_WATCH_COUNT> = Watch::new();
 
-type AutopilotSender = Sender<'static, CriticalSectionRawMutex, FlightControlMessage, AUTOPILOT_WATCH_COUNT>;
+type AutopilotSender = Sender<'static, CriticalSectionRawMutex, RxMessage, AUTOPILOT_WATCH_COUNT>;
 pub fn autopilot_sender() -> AutopilotSender {
     AUTOPILOT_WATCH.sender()
 }
 
-pub type AutopilotReceiver = Receiver<'static, CriticalSectionRawMutex, FlightControlMessage, AUTOPILOT_WATCH_COUNT>;
+pub type AutopilotReceiver = Receiver<'static, CriticalSectionRawMutex, RxMessage, AUTOPILOT_WATCH_COUNT>;
 
 #[allow(clippy::expect_used)]
 pub fn autopilot_receiver() -> AutopilotReceiver {
@@ -43,7 +43,7 @@ pub fn autopilot_receiver() -> AutopilotReceiver {
 /// Context for Autopilot task.
 pub struct AutopilotContext<'a> {
     pub gyro_pid_receiver: GyroPidReceiver,
-    pub flight_control_receiver: FlightControlReceiver,
+    pub rx_receiver: RxReceiver,
     pub autopilot_sender: AutopilotSender,
     pub autopilot: Autopilot,
     #[cfg(feature = "barometer")]
@@ -83,8 +83,8 @@ pub async fn autopilot_task(ctx: &'static mut AutopilotContext<'static>) {
                     ctx.autopilot.altitude_kalman_filter.predict(vertical_acceleration, delta_t);
 
                 // Check if the rc_modes have changed.
-                if let Some(flight_control_message) = ctx.flight_control_receiver.try_changed() {
-                    let rc_modes = flight_control_message.rc_modes;
+                if let Some(rx_message) = ctx.rx_receiver.try_changed() {
+                    let rc_modes = rx_message.rc_modes;
                     altitude_hold = rc_modes.test(RcMode::ALTITUDE_HOLD);
                     #[cfg(feature = "gps")]
                     {
@@ -102,8 +102,8 @@ pub async fn autopilot_task(ctx: &'static mut AutopilotContext<'static>) {
                     );
 
                     // Send the flight control message. This will be picked by the radio task.
-                    let flight_control_message = FlightControlMessage { throttle_stick, ..Default::default() };
-                    ctx.autopilot_sender.send(flight_control_message);
+                    let rx_message = RxMessage { throttle_stick, ..Default::default() };
+                    ctx.autopilot_sender.send(rx_message);
                 }
             }
         }

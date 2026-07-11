@@ -45,10 +45,10 @@ Protoflight uses them in the following way:
 | ---------------------------- | ------ | -------------------- | --------------- | --------------- | ----------------------------- |
 | MOTOR_MIXER_SIGNAL           | Signal | MotorMixerMessage    | 1               | gyro_pid        | motor_mixer                   |
 | GPS_YAW_HEADING_SIGNAL       | Signal | GpsYawHeadingMessage | 1               | gps             | gyro_pid                      |
-| FLIGHT_CONTROL_WATCH         | Watch  | FlightControlMessage | 2               | rx              | gyro_pid, autopilot           |
+| RX_WATCH                     | Watch  | RxMessage            | 2               | rx              | gyro_pid, autopilot           |
 | GYRO_PID_WATCH               | Watch  | GyroPidMessage       | 3               | gyro_pid        | blackbox, osd, autopilot      |
 | SETPOINT_WATCH               | Watch  | SetpointMessage      | 3               | gyro_pid        | blackbox, osd                 |
-| AUTOPILOT_WATCH              | Watch  | FlightControlMessage | 1               | autopilot       | rx                            |
+| AUTOPILOT_WATCH              | Watch  | RxMessage            | 1               | autopilot       | rx                            |
 | FAST_CONFIG_PUB_SUB_CHANNEL  | PubSub | FastConfigItem       | 1               | msp, rx         | gyro_pid                      |
 | CONFIG_PUB_SUB_CHANNEL       | PubSub | ConfigItem           | 8               | msp, rx         | all except gyro_pid           |
 | BAROMETER_PUB_SUB_CHANNEL    | PubSub | BarometerMessage     | 4               | barometer       | autopilot, msp, osd           |

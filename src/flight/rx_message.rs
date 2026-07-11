@@ -5,7 +5,7 @@ use simple_bitset::BitSet64;
 /// Message for communicating a radio control command between tasks.<br><br>
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(C)]
-pub struct FlightControlMessage {
+pub struct RxMessage {
     pub rc_modes: BitSet64,
     pub tick_count: u32,
     pub throttle_stick: f32,
@@ -17,15 +17,15 @@ pub struct FlightControlMessage {
     pub stabilization_mode: u8,
     pub failsafe: u8,
 }
-const _: () = assert!(core::mem::size_of::<FlightControlMessage>() == 40);
+const _: () = assert!(core::mem::size_of::<RxMessage>() == 40);
 
-impl Default for FlightControlMessage {
+impl Default for RxMessage {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl FlightControlMessage {
+impl RxMessage {
     pub const fn new() -> Self {
         Self {
             rc_modes: BitSet64::new(),
@@ -42,15 +42,9 @@ impl FlightControlMessage {
     }
 }
 
-impl FlightControlMessage {
+impl RxMessage {
     /// Create a `RadioControlMessage` from an `RxFrame`, applying rates and including `RcModes`.
-    pub fn new_from(
-        rx_frame: &RxFrame,
-        rates: &Rates,
-        rc_modes: &RcModes,
-        tick_count: u32,
-        failsafe: u8,
-    ) -> FlightControlMessage {
+    pub fn new_from(rx_frame: &RxFrame, rates: &Rates, rc_modes: &RcModes, tick_count: u32, failsafe: u8) -> RxMessage {
         // get the stick values from the rx_frame.
         let sticks = RcSticks::from(*rx_frame);
 
@@ -67,7 +61,7 @@ impl FlightControlMessage {
         // and the stabilization mode (eg STABILIZATION_MODE_RATE) (used by the flight controller).
         let (rc_modes, stabilization_mode) = rc_modes.update_modes();
 
-        FlightControlMessage {
+        RxMessage {
             rc_modes,
             tick_count,
 
@@ -93,10 +87,10 @@ mod tests {
 
     #[test]
     fn normal_types() {
-        is_full::<FlightControlMessage>();
+        is_full::<RxMessage>();
     }
     #[test]
     fn sizeof() {
-        assert_eq!(40, core::mem::size_of::<FlightControlMessage>());
+        assert_eq!(40, core::mem::size_of::<RxMessage>());
     }
 }

@@ -1,5 +1,5 @@
 use crate::flight::{
-    flight_control_message::FlightControlMessage,
+    rx_message::RxMessage,
     vehicle_controller::{VehicleControlInitializing, VehicleController},
     {FlightModeConfig, VehicleControl},
 };
@@ -123,7 +123,7 @@ impl VehicleControl for FlightController {
         gyro_rps: Vector3df32,
         orientation: Quaternionf32,
         delta_t: f32,
-        controls: FlightControlMessage,
+        controls: RxMessage,
     ) -> (Vector4df32, bool) {
         let mut setpoints_updated: bool = false;
         if controls.tick_count > self.controls_tick_count {
@@ -323,7 +323,7 @@ impl FlightController {
         Vector4df32::default()
     }
 
-    pub fn update_setpoints(&mut self, controls: FlightControlMessage) {
+    pub fn update_setpoints(&mut self, controls: RxMessage) {
         //detect_crash_or_spin();
 
         self.set_stabilization_mode(controls.stabilization_mode);

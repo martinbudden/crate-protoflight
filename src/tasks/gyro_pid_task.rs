@@ -8,9 +8,9 @@ use sensor_fusion::{MadgwickFilterf32, SensorFusion};
 
 use crate::{
     config::{FastConfigItem, FastConfigSubscriber},
-    flight::{FilterAccGyro, FlightControlMessage, FlightController, ImuFilterBank, VehicleControl},
+    flight::{FilterAccGyro, FlightController, ImuFilterBank, RxMessage, VehicleControl},
     sensors::{GyroPidMessage, SetpointMessage},
-    tasks::{imu_task::IMU_SIGNAL, motor_mixer_task::MOTOR_MIXER_SIGNAL, rx_task::FlightControlReceiver},
+    tasks::{imu_task::IMU_SIGNAL, motor_mixer_task::MOTOR_MIXER_SIGNAL, rx_task::RxReceiver},
 };
 
 #[cfg(feature = "gps")]
@@ -73,14 +73,14 @@ pub fn setpoint_receiver() -> SetpointReceiver {
 
 /// Context for `gyro_pid_task`.
 pub struct GyroPidContext<'a> {
-    pub flight_control_receiver: FlightControlReceiver,
+    pub rx_receiver: RxReceiver,
     pub gyro_pid_sender: GyroPidSender,
     pub setpoint_sender: SetpointSender,
     pub fast_config_subscriber: FastConfigSubscriber<'a>,
     pub imu_filters: ImuFilterBank,
     pub sensor_fusion: MadgwickFilterf32,
     pub flight_controller: FlightController,
-    pub flight_control_message: FlightControlMessage,
+    pub rx_message: RxMessage,
 }
 
 /// The GYRO/PID task.
@@ -123,8 +123,8 @@ pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext<'static>) {
         // ****
 
         // If there are new control values from the radio, then use them.
-        if let Some(flight_control_message) = ctx.flight_control_receiver.try_changed() {
-            ctx.flight_control_message = flight_control_message;
+        if let Some(rx_message) = ctx.rx_receiver.try_changed() {
+            ctx.rx_message = rx_message;
         }
 
         // Calculate the motor commands:
@@ -132,7 +132,7 @@ pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext<'static>) {
         // and then updates the PIDs using `gyro_rps` and `orientation`.
         // `setpoints_updated` is set if the setpoints have been updated because of a new radio_control_message.
         let (motor_commands, setpoints_updated) =
-            ctx.flight_controller.calculate_motor_commands(gyro_rps, orientation, delta_t, ctx.flight_control_message);
+            ctx.flight_controller.calculate_motor_commands(gyro_rps, orientation, delta_t, ctx.rx_message);
 
         // Convert the motor commands calculated by the flight controller into a motor mixer message and send that message.
         // The signal will be picked up by the motor mixer task.

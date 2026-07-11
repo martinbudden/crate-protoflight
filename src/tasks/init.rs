@@ -10,14 +10,14 @@ use sensor_fusion::MadgwickFilterf32;
 
 use crate::{
     config::{GLOBAL_CONFIG, config_publisher, config_subscriber, fast_config_publisher, fast_config_subscriber},
-    flight::{FlightControlMessage, FlightController, ImuFilterBank, RcAdjustments},
+    flight::{FlightController, ImuFilterBank, RcAdjustments, RxMessage},
     tasks::{
         gyro_pid_task::{
             GyroPidContext, gyro_pid_receiver, gyro_pid_sender, gyro_pid_task, setpoint_receiver, setpoint_sender,
         },
         imu_task::{ImuContext, imu_task},
         motor_mixer_task::{MotorMixerContext, motor_mixer_task},
-        rx_task::{RxContext, flight_control_receiver, flight_control_sender, rx_task},
+        rx_task::{RxContext, rx_receiver, rx_sender, rx_task},
     },
 };
 
@@ -154,14 +154,14 @@ pub async fn init(spawner: Spawner) {
 
     // Initialize the modern storage driver handle matching your u16 Key setup
     let gyro_pid_ctx = GYRO_PID_CTX.init(GyroPidContext {
-        flight_control_receiver: flight_control_receiver(),
+        rx_receiver: rx_receiver(),
         gyro_pid_sender: gyro_pid_sender(),
         setpoint_sender: setpoint_sender(),
         fast_config_subscriber: fast_config_subscriber(),
         imu_filters: ImuFilterBank::with_config(config.imu_filter_bank),
         sensor_fusion: MadgwickFilterf32::new(),
         flight_controller: FlightController::new(),
-        flight_control_message: FlightControlMessage::new(),
+        rx_message: RxMessage::new(),
     });
 
     let imu_ctx = IMU_CTX.init(ImuContext { imu: ImuMock::new(MockImuBus::new(), ImuAxesOrder::XPOS_YPOS_ZPOS) });
@@ -171,7 +171,7 @@ pub async fn init(spawner: Spawner) {
     });
 
     let rx_ctx = RX_CTX.init(RxContext {
-        flight_control_sender: flight_control_sender(),
+        rx_sender: rx_sender(),
         config_subscriber: config_subscriber(),
         config_publisher: config_publisher(),
         fast_config_publisher: fast_config_publisher(),
@@ -247,7 +247,7 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "autopilot")]
     let autopilot_ctx: &mut AutopilotContext<'static> = AUTOPILOT_CTX.init(AutopilotContext {
         gyro_pid_receiver: gyro_pid_receiver(),
-        flight_control_receiver: flight_control_receiver(),
+        rx_receiver: rx_receiver(),
         autopilot_sender: autopilot_sender(),
         autopilot: Autopilot::new(),
         #[cfg(feature = "barometer")]

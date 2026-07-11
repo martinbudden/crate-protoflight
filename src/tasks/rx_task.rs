@@ -7,25 +7,23 @@ use radio_controllers::{Rates, RcMode, RcModes, RxFrame};
 
 use crate::{
     config::{ConfigItem, ConfigPublisher, ConfigSubscriber, FastConfigPublisher},
-    flight::{FlightControlMessage, RcAdjustments},
+    flight::{RcAdjustments, RxMessage},
 };
 
 // Note, we use a `Watch` rather than a `Signal` since the receiver (`gyro_pid_task`) uses `try_changed` to see if the value has changed.
-const FLIGHT_CONTROL_WATCH_COUNT: usize = 2;
-static FLIGHT_CONTROL_WATCH: Watch<CriticalSectionRawMutex, FlightControlMessage, FLIGHT_CONTROL_WATCH_COUNT> =
-    Watch::new();
+const RX_WATCH_COUNT: usize = 2;
+static RX_WATCH: Watch<CriticalSectionRawMutex, RxMessage, RX_WATCH_COUNT> = Watch::new();
 
-type FlightControlSender = Sender<'static, CriticalSectionRawMutex, FlightControlMessage, FLIGHT_CONTROL_WATCH_COUNT>;
-pub fn flight_control_sender() -> FlightControlSender {
-    FLIGHT_CONTROL_WATCH.sender()
+type RxSender = Sender<'static, CriticalSectionRawMutex, RxMessage, RX_WATCH_COUNT>;
+pub fn rx_sender() -> RxSender {
+    RX_WATCH.sender()
 }
 
-pub type FlightControlReceiver =
-    Receiver<'static, CriticalSectionRawMutex, FlightControlMessage, FLIGHT_CONTROL_WATCH_COUNT>;
+pub type RxReceiver = Receiver<'static, CriticalSectionRawMutex, RxMessage, RX_WATCH_COUNT>;
 
 #[allow(clippy::expect_used)]
-pub fn flight_control_receiver() -> FlightControlReceiver {
-    FLIGHT_CONTROL_WATCH.receiver().expect("flight_control_receiver failed")
+pub fn rx_receiver() -> RxReceiver {
+    RX_WATCH.receiver().expect("rx_receiver failed")
 }
 
 #[cfg(feature = "autopilot")]
@@ -33,7 +31,7 @@ use crate::tasks::autopilot_task::AutopilotReceiver;
 
 /// Context for the `flight_control_task`.
 pub struct RxContext<'a> {
-    pub flight_control_sender: FlightControlSender,
+    pub rx_sender: RxSender,
     pub config_subscriber: ConfigSubscriber<'a>,
     /// To publish in-flight adjustments.
     pub config_publisher: ConfigPublisher<'a>,
@@ -81,32 +79,31 @@ pub async fn rx_task(ctx: &'static mut RxContext<'static>) {
         ctx.rc_adjustments.process_adjustments(&ctx.config_publisher, &ctx.fast_config_publisher).await;
 
         #[allow(unused_mut)]
-        let mut flight_control_message =
-            FlightControlMessage::new_from(&rx_frame, &ctx.rates, &ctx.rc_modes, loop_count, failsafe);
+        let mut rx_message = RxMessage::new_from(&rx_frame, &ctx.rates, &ctx.rc_modes, loop_count, failsafe);
 
         #[cfg(feature = "autopilot")]
         if let Some(autopilot_message) = ctx.autopilot_receiver.try_changed() {
             // TODO: if there is a message from the autopilot, then act on it.
             if ctx.rc_modes.is_mode_active(RcMode::ALTITUDE_HOLD) {
-                flight_control_message.throttle_stick = autopilot_message.throttle_stick;
+                rx_message.throttle_stick = autopilot_message.throttle_stick;
             } else if ctx.rc_modes.is_mode_active(RcMode::POSITION_HOLD)
                 || ctx.rc_modes.is_mode_active(RcMode::GPS_RESCUE)
                 || ctx.rc_modes.is_mode_active(RcMode::AUTOPILOT)
             {
-                flight_control_message.throttle_stick = autopilot_message.throttle_stick;
-                flight_control_message.roll_stick_dps = autopilot_message.roll_stick_dps;
-                flight_control_message.pitch_stick_dps = autopilot_message.pitch_stick_dps;
-                flight_control_message.yaw_stick_dps = autopilot_message.yaw_stick_dps;
-                flight_control_message.roll_stick_degrees = autopilot_message.roll_stick_degrees;
-                flight_control_message.pitch_stick_degrees = autopilot_message.pitch_stick_degrees;
+                rx_message.throttle_stick = autopilot_message.throttle_stick;
+                rx_message.roll_stick_dps = autopilot_message.roll_stick_dps;
+                rx_message.pitch_stick_dps = autopilot_message.pitch_stick_dps;
+                rx_message.yaw_stick_dps = autopilot_message.yaw_stick_dps;
+                rx_message.roll_stick_degrees = autopilot_message.roll_stick_degrees;
+                rx_message.pitch_stick_degrees = autopilot_message.pitch_stick_degrees;
             }
         }
 
         // Send the flight control message. This will be picked by the gyro_pid task.
-        ctx.flight_control_sender.send(flight_control_message);
+        ctx.rx_sender.send(rx_message);
 
         if loop_count.is_multiple_of(5) {
-            log::info!("    RX:   loop {loop_count}");
+            log::info!("            RX:       loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }
