@@ -1,6 +1,7 @@
 //#![allow(unused)]
 
-use radio_controllers::{RcModes, RcMode};
+use radio_controllers::RcMode;
+use simple_bitset::BitSet64;
 use vqm::Quaternionf32;
 
 use crate::{
@@ -38,9 +39,11 @@ pub struct OsdDrawContext<'a, D: Display> {
     pub display_port: &'a mut D,
     pub orientation: Quaternionf32,
     pub arming_flags: ArmingFlags,
+    pub active_modes: BitSet64,
     #[cfg(feature = "battery")]
     pub battery_message: BatteryMessage,
 }
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Osd {
     /// The current operational state of the display loop.
@@ -234,8 +237,7 @@ impl Osd {
                 self.state = OsdState::UpdateCanvas;
             }
             OsdState::UpdateCanvas => {
-                let rc_modes = RcModes::new(); // TODO: use actual RC Modes, not this placeholder.
-                if rc_modes.is_mode_active(RcMode::OSD) {
+                if draw_ctx.active_modes.test(RcMode::OSD) {
                     // Hide OSD when OSD SW mode is active
                     draw_ctx.display_port.clear_screen().await;
                     self.state = OsdState::Commit;

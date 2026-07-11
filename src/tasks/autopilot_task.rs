@@ -9,7 +9,7 @@ use vqm::Vector3df32;
 
 use crate::tasks::{
     flight_control_task::FlightControlReceiver,
-    gyro_pid_task::{GyroPidReceiver, SetpointReceiver},
+    gyro_pid_task::GyroPidReceiver,
 };
 
 use crate::autopilot::pilot::Autopilot;
@@ -46,8 +46,6 @@ pub fn autopilot_receiver() -> AutopilotReceiver {
 /// Context for Autopilot task.
 pub struct AutopilotContext<'a> {
     pub gyro_pid_receiver: GyroPidReceiver,
-    #[allow(unused)]
-    pub setpoint_receiver: SetpointReceiver,
     pub flight_control_receiver: FlightControlReceiver,
     pub autopilot_sender: AutopilotSender,
     pub autopilot: Autopilot,

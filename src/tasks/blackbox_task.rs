@@ -235,7 +235,7 @@ pub fn main_data_from(
 #[inline]
 pub fn slow_data_from(setpoint: SetpointMessage) -> BlackboxSlowData {
     BlackboxSlowData {
-        flight_mode_flags: setpoint.flight_mode_flags,
+        flight_mode_flags: setpoint.flight_mode_flags | BlackboxSlowData::FLIGHT_MODE_BLACKBOX_ACTIVE,
         gps_state_flags: setpoint.gps_state_flags,
         failsafe_phase: setpoint.failsafe_phase,
         rx_signal_received: setpoint.rx_signal_received,

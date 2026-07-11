@@ -41,8 +41,8 @@ const GYRO_PID_WATCH_COUNT: usize = 3;
 static GYRO_PID_WATCH: Watch<CriticalSectionRawMutex, GyroPidMessage, GYRO_PID_WATCH_COUNT> = Watch::new();
 
 // Type aliases make the function signatures much easier to read.
-type GyroPidMessageSender = Sender<'static, CriticalSectionRawMutex, GyroPidMessage, GYRO_PID_WATCH_COUNT>;
-pub fn gyro_pid_sender() -> GyroPidMessageSender {
+type GyroPidSender = Sender<'static, CriticalSectionRawMutex, GyroPidMessage, GYRO_PID_WATCH_COUNT>;
+pub fn gyro_pid_sender() -> GyroPidSender {
     GYRO_PID_WATCH.sender()
 }
 
@@ -58,8 +58,8 @@ pub fn gyro_pid_receiver() -> GyroPidReceiver {
 const SETPOINT_WATCH_COUNT: usize = 3;
 static SETPOINT_WATCH: Watch<CriticalSectionRawMutex, SetpointMessage, SETPOINT_WATCH_COUNT> = Watch::new();
 
-type SetpointMessageSender = Sender<'static, CriticalSectionRawMutex, SetpointMessage, SETPOINT_WATCH_COUNT>;
-pub fn setpoint_sender() -> SetpointMessageSender {
+type SetpointSender = Sender<'static, CriticalSectionRawMutex, SetpointMessage, SETPOINT_WATCH_COUNT>;
+pub fn setpoint_sender() -> SetpointSender {
     SETPOINT_WATCH.sender()
 }
 
@@ -74,8 +74,8 @@ pub fn setpoint_receiver() -> SetpointReceiver {
 /// Context for `gyro_pid_task`.
 pub struct GyroPidContext<'a> {
     pub flight_control_receiver: FlightControlReceiver,
-    pub gyro_pid_sender: GyroPidMessageSender,
-    pub setpoint_sender: SetpointMessageSender,
+    pub gyro_pid_sender: GyroPidSender,
+    pub setpoint_sender: SetpointSender,
     pub fast_config_subscriber: FastConfigSubscriber<'a>,
     pub imu_filters: ImuFilterBank,
     pub sensor_fusion: MadgwickFilterf32,

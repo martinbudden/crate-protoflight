@@ -137,7 +137,7 @@ embedded-storage-async = { version = "0.4.1", default-features = false }
 # In-memory storage simulator
 embedded-storage-file = { version = "0.2.0", default-features = false, optional = true }
 
-simple-bitset = "0.1.4"
+simple-bitset = "0.1.5"
 #simple-bitset = { git = "https://github.com/martinbudden/crate-simple-bitset" }
 stream-buf = "0.1.2"
 #stream-buf = { git = "https://github.com/martinbudden/crate-stream-buf" }
@@ -153,8 +153,8 @@ sensor-fusion = "0.1.8"
 #sensor-fusion = { git = "https://github.com/martinbudden/crate-sensor-fusion" }
 #sensor-fusion = { path = "../sensor-fusion" }
 #blackbox-logger = { version = "0.1.8", default-features = false, optional = true }
-#blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger", default-features = false, optional = true }
-blackbox-logger = { path = "../blackbox-logger", default-features = false, optional = true }
+blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger", default-features = false, optional = true }
+#blackbox-logger = { path = "../blackbox-logger", default-features = false, optional = true }
 
 #motor-mixers = { version = "0.1.4" }
 motor-mixers = { git = "https://github.com/martinbudden/crate-motor-mixers" }

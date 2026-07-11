@@ -113,6 +113,7 @@ checksum = "b4388bee8683e3d04af747c73422af53102d2bd24d9eadb6cbc100baef4b43f8"
 [[package]]
 name = "blackbox-logger"
 version = "0.1.8"
+source = "git+https://github.com/martinbudden/crate-blackbox-logger#68c34495a377450e2c6fd45612162a8c38c6761c"
 dependencies = [
  "embassy-futures",
  "postcard",
@@ -1682,9 +1683,9 @@ dependencies = [
 
 [[package]]
 name = "simple-bitset"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ecc41f26e44c9b38045a5efc0962ffded9583fc14d4eaead0a1974649dfc7b43"
+checksum = "24a6c2af8d7ea1cd4ed20233979c41ef4d498be74b691d12d9feac00b25ce283"
 dependencies = [
  "postcard",
  "rustc_version 0.4.1",

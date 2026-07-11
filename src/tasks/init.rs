@@ -249,7 +249,6 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "autopilot")]
     let autopilot_ctx: &mut AutopilotContext<'static> = AUTOPILOT_CTX.init(AutopilotContext {
         gyro_pid_receiver: gyro_pid_receiver(),
-        setpoint_receiver: setpoint_receiver(),
         flight_control_receiver: flight_control_receiver(),
         autopilot_sender: autopilot_sender(),
         autopilot: Autopilot::new(),

@@ -47,7 +47,7 @@ Protoflight uses them in the following way:
 | GPS_YAW_HEADING_SIGNAL       | Signal | GpsYawHeadingMessage | 1               | gps                 | gyro_pid                      |
 | FLIGHT_CONTROL_WATCH         | Watch  | FlightControlMessage | 2               | flight_control      | gyro_pid, autopilot           |
 | GYRO_PID_WATCH               | Watch  | GyroPidMessage       | 3               | gyro_pid            | blackbox, osd, autopilot      |
-| SETPOINT_WATCH               | Watch  | SetpointMessage      | 3               | gyro_pid            | blackbox, osd. autopilot      |
+| SETPOINT_WATCH               | Watch  | SetpointMessage      | 3               | gyro_pid            | blackbox, osd                 |
 | AUTOPILOT_WATCH              | Watch  | FlightControlMessage | 1               | autopilot           | flight_control                |
 | FAST_CONFIG_PUB_SUB_CHANNEL  | PubSub | FastConfigItem       | 1               | msp, flight_control | gyro_pid                      |
 | CONFIG_PUB_SUB_CHANNEL       | PubSub | ConfigItem           | 8               | msp, flight_control | all except gyro_pid           |

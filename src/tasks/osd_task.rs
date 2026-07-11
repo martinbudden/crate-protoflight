@@ -1,5 +1,6 @@
 #![cfg(feature = "osd")]
 
+use simple_bitset::BitSet64;
 use vqm::Quaternionf32;
 
 use crate::flight::ArmingFlags;
@@ -123,6 +124,7 @@ pub async fn osd_task(ctx: &'static mut OsdContext<'static>, display_port_mutex:
                 display_port: &mut *display_port_guard,
                 orientation,
                 arming_flags,
+                active_modes: BitSet64::new(),
                 #[cfg(feature = "battery")]
                 battery_message,
             };
