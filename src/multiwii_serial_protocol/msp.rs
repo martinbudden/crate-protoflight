@@ -5,6 +5,9 @@ use stream_buf::{StreamBufReader, StreamBufWriter};
 use vqm::Quaternion;
 
 use crate::config::{ConfigItem, ConfigPublisher, FastConfigItem, FastConfigPublisher, GLOBAL_CONFIG};
+#[cfg(feature = "debug")]
+use crate::tasks::global_debug::GlobalDebug;
+
 #[cfg(feature = "gps")]
 use crate::gps::GpsSolutionDataAbridged;
 
@@ -632,9 +635,9 @@ impl Msp {
     }
 
     async fn advanced_config(dst: &mut StreamBufWriter<'_>) -> MspResult {
-        let (gyro, motor, motor_device, system) = {
+        let (gyro, motor, motor_device) = {
             let global_config = GLOBAL_CONFIG.lock().await;
-            (global_config.gyro, global_config.motor, global_config.motor_device, global_config.system)
+            (global_config.gyro, global_config.motor, global_config.motor_device)
         };
         dst.write_u8(1); // was gyro_sync_denom - removed in API 1.43
         // dst.write_u8(pid.pid_process_denom); TODO: pid process denom in MSP
@@ -652,8 +655,16 @@ impl Msp {
         dst.write_u16(gyro.gyro_offset_yaw.cast_unsigned());
         dst.write_u8(gyro.check_overflow);
         //Added in MSP API 1.42
-        dst.write_u8(system.debug_mode);
-        dst.write_u8(8); // TODO: DEBUG_COUNT;
+        #[cfg(feature = "debug")]
+        {
+            dst.write_u8(crate::tasks::GLOBAL_DEBUG.mode());
+            dst.write_u8(GlobalDebug::COUNT_U8);
+        }
+        #[cfg(not(feature = "debug"))]
+        {
+            dst.write_u8(0);
+            dst.write_u8(8);
+        }
 
         MspResult::Ack
     }
@@ -666,7 +677,6 @@ impl Msp {
         let mut gyro = global_config.gyro;
         let mut motor = global_config.motor;
         let mut motor_device = global_config.motor_device;
-        let mut system = global_config.system;
 
         _ = src.read_u8(); // was gyro_sync_denom - removed in API 1.43
         _ = src.read_u8(); // pid_process_denom
@@ -683,7 +693,10 @@ impl Msp {
         gyro.gyro_offset_yaw = src.read_u16().cast_signed();
         gyro.check_overflow = src.read_u8();
         if src.bytes_remaining() >= 1 {
-            system.debug_mode = src.read_u8();
+            #[allow(unused)]
+            let debug_mode = src.read_u8();
+            #[cfg(feature = "debug")]
+            crate::tasks::GLOBAL_DEBUG.set_mode_u8(debug_mode);
         }
 
         if gyro != global_config.gyro {
@@ -697,10 +710,6 @@ impl Msp {
         if motor_device != global_config.motor_device {
             global_config.motor_device = motor_device;
             publisher.publish(ConfigItem::MotorDevice(motor_device)).await;
-        }
-        if system != global_config.system {
-            global_config.system = system;
-            publisher.publish(ConfigItem::System(system)).await;
         }
         MspResult::Ack
     }

@@ -145,7 +145,7 @@ pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext<'static>) {
         if gyro_pid_send_count >= gyro_pid_denominator {
             gyro_pid_send_count = 0;
             let gyro_pid_message =
-                GyroPidMessage { acc, gyro_rps, gyro_rps_unfiltered, orientation, time_us, ..Default::default() };
+                GyroPidMessage { orientation, acc, gyro_rps, gyro_rps_unfiltered, time_us, ..Default::default() };
             ctx.gyro_pid_sender.send(gyro_pid_message);
             if setpoints_updated {
                 // Only send a setpoint_message when the setpoints have actually been updated

@@ -18,17 +18,15 @@ PID Errors (3x f32): 12 bytes
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(C)]
 pub struct GyroPidMessage {
-    // Vector3df32 is padded to 16 bytes
+    pub orientation: Quaternionf32,
+    pub motor_commands: Vector4df32,
     pub acc: Vector3df32,
     pub gyro_rps: Vector3df32,
     pub gyro_rps_unfiltered: Vector3df32,
-    pub orientation: Quaternionf32,
-    pub motor_commands: Vector4df32,
     pub pid_errors_p: [f32; Self::RPY_AXIS_COUNT],
     pub pid_errors_i: [f32; Self::RPY_AXIS_COUNT],
     pub pid_errors_d: [f32; Self::RP_AXIS_COUNT],
     pub time_us: u32,
-    pub debug: [i16; Self::DEBUG_COUNT], // only 6 debug fields, to keep structure size down to 128 bytes
 }
 
 //#[cfg(not(any(feature = "servos", feature = "eight_motors")))]
@@ -37,24 +35,21 @@ const _: () = assert!(core::mem::size_of::<GyroPidMessage>() == 128);
 impl GyroPidMessage {
     pub const RPY_AXIS_COUNT: usize = 3;
     pub const RP_AXIS_COUNT: usize = 2;
-    // we use 6 debug fields to keep size of BlackboxTelemetry down to 128 bytes, there are 2 more debug fields in SetpointMessage
-    pub const DEBUG_COUNT: usize = 6;
 }
 
 impl GyroPidMessage {
     #[must_use]
     pub const fn new() -> Self {
         Self {
+            orientation: Quaternionf32::new(0.0, 0.0, 0.0, 0.0),
+            motor_commands: Vector4df32::new(0.0, 0.0, 0.0, 0.0),
             acc: Vector3df32::new(0.0, 0.0, 0.0),
             gyro_rps: Vector3df32::new(0.0, 0.0, 0.0),
             gyro_rps_unfiltered: Vector3df32::new(0.0, 0.0, 0.0),
-            orientation: Quaternionf32::new(0.0, 0.0, 0.0, 0.0),
-            motor_commands: Vector4df32::new(0.0, 0.0, 0.0, 0.0),
             pid_errors_p: [0f32; Self::RPY_AXIS_COUNT],
             pid_errors_i: [0f32; Self::RPY_AXIS_COUNT],
             pid_errors_d: [0f32; Self::RP_AXIS_COUNT],
             time_us: 0,
-            debug: [0i16; Self::DEBUG_COUNT],
         }
     }
 }
@@ -77,7 +72,6 @@ pub struct SetpointMessage {
     pub motor_rpm_d2: [i16; Self::MAX_SUPPORTED_MOTOR_COUNT], // motor rpm divided by 2
     #[cfg(feature = "servos")]
     pub servos: [i16; Self::MAX_SUPPORTED_SERVO_COUNT],
-    pub debug: [i16; Self::SETPOINT_DEBUG_COUNT],
     pub time_us: u32,
     pub flight_mode_flags: u32,
     pub gps_state_flags: u8,
@@ -91,7 +85,6 @@ impl SetpointMessage {
     pub const RC_COMMAND_COUNT: usize = 4;
     pub const SETPOINT_COUNT: usize = 4;
     pub const THROTTLE: usize = 3;
-    pub const SETPOINT_DEBUG_COUNT: usize = 8 - GyroPidMessage::DEBUG_COUNT; // the remaining debug fields
     pub const RPY_AXIS_COUNT: usize = 3;
 
     #[cfg(feature = "eight_motors")]
@@ -114,7 +107,6 @@ impl SetpointMessage {
             motor_rpm_d2: [0i16; Self::MAX_SUPPORTED_MOTOR_COUNT],
             #[cfg(feature = "servos")]
             servos: [0i16; Self::MAX_SUPPORTED_SERVO_COUNT],
-            debug: [0i16; Self::SETPOINT_DEBUG_COUNT],
             time_us: 0,
             flight_mode_flags: 0,
             gps_state_flags: 0,
@@ -147,7 +139,7 @@ mod tests {
     fn sizeof() {
         assert_eq!(128, core::mem::size_of::<GyroPidMessage>());
         #[cfg(all(feature = "dshot_telemetry", not(any(feature = "servos", feature = "eight_motors"))))]
-        assert_eq!(72, core::mem::size_of::<SetpointMessage>());
+        assert_eq!(68, core::mem::size_of::<SetpointMessage>());
     }
     #[test]
     fn gyro_pid_message_new() {

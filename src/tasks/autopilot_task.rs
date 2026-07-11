@@ -104,7 +104,10 @@ pub async fn autopilot_task(ctx: &'static mut AutopilotContext<'static>) {
                     );
 
                     // Send the flight control message. This will be picked by the radio task.
-                    let rx_message = RxMessage { controls:RcControls {throttle_stick, ..Default::default()}, ..Default::default() };
+                    let rx_message = RxMessage {
+                        controls: RcControls { throttle_stick, ..Default::default() },
+                        ..Default::default()
+                    };
                     ctx.autopilot_sender.send(rx_message);
                 }
             }

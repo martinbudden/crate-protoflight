@@ -9,7 +9,6 @@ use {
 pub struct SystemConfig {
     pub pid_profile_index: u8,
     pub active_rate_profile: u8,
-    pub debug_mode: u8,
     pub task_statistics: u8,
     pub rate_profile6_pos_switch: u8,
     pub cpu_overclock: u8,
@@ -32,7 +31,6 @@ impl SystemConfig {
         Self {
             pid_profile_index: 0,
             active_rate_profile: 0,
-            debug_mode: 0,
             task_statistics: 1,
             rate_profile6_pos_switch: 0,
             cpu_overclock: 0,

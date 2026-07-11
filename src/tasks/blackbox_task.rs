@@ -3,6 +3,9 @@
 
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel};
 
+#[cfg(feature = "debug")]
+use crate::tasks::DebugMode;
+
 use crate::{
     sensors::{GyroPidMessage, SetpointMessage},
     tasks::gyro_pid_task::{GyroPidReceiver, SetpointReceiver},
@@ -164,6 +167,13 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext<'static>) {
 #[inline]
 pub fn main_data_from(gyro_pid_msg: GyroPidMessage, setpoint_msg: SetpointMessage) -> BlackboxMainData {
     const TO_I16: f32 = 32_757.0;
+
+    #[cfg(feature = "debug")]
+    crate::tasks::GLOBAL_DEBUG.set(DebugMode::BlackboxOutput, 0, 0);
+
+    debug_set_mode!(DebugMode::BlackboxOutput);
+    debug_set!(DebugMode::BlackboxOutput, 0, 0);
+
     let motor_commands = gyro_pid_msg.motor_commands * 2.0;
     BlackboxMainData {
         time_us: gyro_pid_msg.time_us,
@@ -214,16 +224,11 @@ pub fn main_data_from(gyro_pid_msg: GyroPidMessage, setpoint_msg: SetpointMessag
         #[cfg(feature = "dshot_telemetry")]
         erpm: [0u16; BlackboxMainData::MAX_SUPPORTED_MOTOR_COUNT],
 
-        debug: [
-            gyro_pid_msg.debug[0],
-            gyro_pid_msg.debug[1],
-            gyro_pid_msg.debug[2],
-            gyro_pid_msg.debug[3],
-            gyro_pid_msg.debug[4],
-            gyro_pid_msg.debug[5],
-            setpoint_msg.debug[0],
-            setpoint_msg.debug[1],
-        ],
+        #[cfg(not(feature = "debug"))]
+        debug: [0i16; BlackboxMainData::DEBUG_COUNT],
+        #[cfg(feature = "debug")]
+        debug: crate::tasks::GLOBAL_DEBUG.values(),
+
         #[cfg(feature = "servos")]
         servos: [0i16; MainData::MAX_SUPPORTED_SERVO_COUNT],
     }

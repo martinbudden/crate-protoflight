@@ -33,6 +33,7 @@ default = ["libm",
     "barometer",
     "battery",
     "blackbox",
+    "debug",
     "dshot_telemetry",
     "gps",
     #"magnetometer",
@@ -56,6 +57,7 @@ battery = []
 blackbox = ["dep:blackbox-logger", "dep:embedded-sdmmc"]
 cms = []
 dashboard = []
+debug = []
 dshot_telemetry = ["blackbox-logger/dshot_telemetry"]
 eight_motors = ["blackbox-logger/eight_motors"]
 gps = ["blackbox-logger/gps"]
