@@ -1,4 +1,4 @@
-use radio_controllers::{Rates, RatesConfig, RcModes, RcMode};
+use radio_controllers::{Rates, RatesConfig, RcMode, RcModes};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use stream_buf::{StreamBufReader, StreamBufWriter};

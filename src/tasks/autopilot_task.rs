@@ -7,10 +7,7 @@ use embassy_sync::{
 use radio_controllers::RcMode;
 use vqm::Vector3df32;
 
-use crate::tasks::{
-    flight_control_task::FlightControlReceiver,
-    gyro_pid_task::GyroPidReceiver,
-};
+use crate::tasks::{gyro_pid_task::GyroPidReceiver, rx_task::FlightControlReceiver};
 
 use crate::autopilot::pilot::Autopilot;
 

@@ -162,10 +162,7 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext<'static>) {
 }
 
 #[inline]
-pub fn main_data_from(
-    gyro_pid_msg: GyroPidMessage,
-    setpoint_msg: SetpointMessage,
-) -> BlackboxMainData {
+pub fn main_data_from(gyro_pid_msg: GyroPidMessage, setpoint_msg: SetpointMessage) -> BlackboxMainData {
     const TO_I16: f32 = 32_757.0;
     let motor_commands = gyro_pid_msg.motor_commands * 2.0;
     BlackboxMainData {

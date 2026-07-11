@@ -12,14 +12,12 @@ use crate::{
     config::{GLOBAL_CONFIG, config_publisher, config_subscriber, fast_config_publisher, fast_config_subscriber},
     flight::{FlightControlMessage, FlightController, ImuFilterBank, RcAdjustments},
     tasks::{
-        flight_control_task::{
-            FlightControlContext, flight_control_receiver, flight_control_sender, flight_control_task,
-        },
         gyro_pid_task::{
             GyroPidContext, gyro_pid_receiver, gyro_pid_sender, gyro_pid_task, setpoint_receiver, setpoint_sender,
         },
         imu_task::{ImuContext, imu_task},
         motor_mixer_task::{MotorMixerContext, motor_mixer_task},
+        rx_task::{RxContext, flight_control_receiver, flight_control_sender, rx_task},
     },
 };
 
@@ -101,7 +99,7 @@ pub async fn init(spawner: Spawner) {
     // ****
     static IMU_CTX: StaticCell<ImuContext> = StaticCell::new();
     static GYRO_PID_CTX: StaticCell<GyroPidContext> = StaticCell::new();
-    static FLIGHT_CONTROL_CTX: StaticCell<FlightControlContext> = StaticCell::new();
+    static RX_CTX: StaticCell<RxContext> = StaticCell::new();
     static MOTOR_MIXER_CTX: StaticCell<MotorMixerContext> = StaticCell::new();
 
     #[cfg(feature = "autopilot")]
@@ -172,7 +170,7 @@ pub async fn init(spawner: Spawner) {
         motor_mixer: MotorMixerQuadXPwm::new(MotorMixerCommon::with_config(config.mixer, config.motor)),
     });
 
-    let flight_control_ctx = FLIGHT_CONTROL_CTX.init(FlightControlContext {
+    let rx_ctx = RX_CTX.init(RxContext {
         flight_control_sender: flight_control_sender(),
         config_subscriber: config_subscriber(),
         config_publisher: config_publisher(),
@@ -319,7 +317,7 @@ pub async fn init(spawner: Spawner) {
     spawner.spawn(gyro_pid_task(gyro_pid_ctx).expect("Failed to create GYRO PID task"));
     spawner.spawn(imu_task(imu_ctx).expect("Failed to create IMU task"));
     spawner.spawn(motor_mixer_task(motor_mixer_ctx).expect("Failed to create MOTOR MIXER task")); // No receiver needed, since it uses a SIGNAL
-    spawner.spawn(flight_control_task(flight_control_ctx).expect("Failed to create FLIGHT_CONTROL task"));
+    spawner.spawn(rx_task(rx_ctx).expect("Failed to create RX task"));
 
     #[cfg(feature = "autopilot")]
     spawner.spawn(autopilot_task(autopilot_ctx).expect("Failed to create AUTOPILOT task"));

@@ -32,7 +32,7 @@ pub fn flight_control_receiver() -> FlightControlReceiver {
 use crate::tasks::autopilot_task::AutopilotReceiver;
 
 /// Context for the `flight_control_task`.
-pub struct FlightControlContext<'a> {
+pub struct RxContext<'a> {
     pub flight_control_sender: FlightControlSender,
     pub config_subscriber: ConfigSubscriber<'a>,
     /// To publish in-flight adjustments.
@@ -46,7 +46,7 @@ pub struct FlightControlContext<'a> {
     pub rc_adjustments: RcAdjustments,
 }
 
-/// The flight control task waits (with a timeout) for a packet from the radio and when one arrives it:
+/// The rx task waits (with a timeout) for a packet from the radio and when one arrives it:
 /// 1. Checks for any in-flight adjustments of rates.
 /// 2. Updates the control modes using the AUX channel values.
 /// 3. Creates a `FlightControl` message from the values in the radio packet.
@@ -54,12 +54,12 @@ pub struct FlightControlContext<'a> {
 /// 5. Sends the `FlightControl` message to the `gyro_pid` task.
 /// If the timeout expires, then failsafe handling is invoked.
 #[embassy_executor::task]
-pub async fn flight_control_task(ctx: &'static mut FlightControlContext<'static>) {
+pub async fn rx_task(ctx: &'static mut RxContext<'static>) {
     let mut loop_count: u32 = 0;
     // 50Hz = 20ms interval
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_millis(20));
 
-    log::info!("   FLIGHT: task started");
+    log::info!("       RX: task started");
 
     loop {
         // TODO: rx_frame should be obtained on an interrupt form the radio receiver (UART).
@@ -106,7 +106,7 @@ pub async fn flight_control_task(ctx: &'static mut FlightControlContext<'static>
         ctx.flight_control_sender.send(flight_control_message);
 
         if loop_count.is_multiple_of(5) {
-            log::info!("FLIGHT:   loop {loop_count}");
+            log::info!("    RX:   loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }

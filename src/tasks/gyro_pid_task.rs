@@ -10,7 +10,7 @@ use crate::{
     config::{FastConfigItem, FastConfigSubscriber},
     flight::{FilterAccGyro, FlightControlMessage, FlightController, ImuFilterBank, VehicleControl},
     sensors::{GyroPidMessage, SetpointMessage},
-    tasks::{flight_control_task::FlightControlReceiver, imu_task::IMU_SIGNAL, motor_mixer_task::MOTOR_MIXER_SIGNAL},
+    tasks::{imu_task::IMU_SIGNAL, motor_mixer_task::MOTOR_MIXER_SIGNAL, rx_task::FlightControlReceiver},
 };
 
 #[cfg(feature = "gps")]
