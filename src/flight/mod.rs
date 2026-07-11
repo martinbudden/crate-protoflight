@@ -21,5 +21,5 @@ pub use flight_controller_config::{
 };
 pub use imu_filters::{FilterAccGyro, ImuFilterBank, ImuFilterBankConfig};
 pub use rc_adjustments::RcAdjustments;
-pub use rx_message::RxMessage;
+pub use rx_message::{RcControls, RxMessage};
 pub use vehicle_control::VehicleControl;

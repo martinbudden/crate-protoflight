@@ -5,8 +5,7 @@ use simple_bitset::BitSet64;
 /// Message for communicating a radio control command between tasks.<br><br>
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(C)]
-pub struct RxMessage {
-    pub rc_modes: BitSet64,
+pub struct RcControls {
     pub tick_count: u32,
     pub throttle_stick: f32,
     pub roll_stick_dps: f32,
@@ -16,6 +15,37 @@ pub struct RxMessage {
     pub pitch_stick_degrees: f32,
     pub stabilization_mode: u8,
     pub failsafe: u8,
+}
+const _: () = assert!(core::mem::size_of::<RcControls>() == 32);
+
+impl Default for RcControls {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl RcControls {
+    pub const fn new() -> Self {
+        Self {
+            tick_count: 0,
+            throttle_stick: 0.0,
+            roll_stick_dps: 0.0,
+            pitch_stick_dps: 0.0,
+            yaw_stick_dps: 0.0,
+            roll_stick_degrees: 0.0,
+            pitch_stick_degrees: 0.0,
+            stabilization_mode: 0,
+            failsafe: 0,
+        }
+    }
+}
+
+/// Message for communicating a radio control command between tasks.<br><br>
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[repr(C)]
+pub struct RxMessage {
+    pub rc_modes: BitSet64,
+    pub controls: RcControls,
 }
 const _: () = assert!(core::mem::size_of::<RxMessage>() == 40);
 
@@ -27,18 +57,7 @@ impl Default for RxMessage {
 
 impl RxMessage {
     pub const fn new() -> Self {
-        Self {
-            rc_modes: BitSet64::new(),
-            tick_count: 0,
-            throttle_stick: 0.0,
-            roll_stick_dps: 0.0,
-            pitch_stick_dps: 0.0,
-            yaw_stick_dps: 0.0,
-            roll_stick_degrees: 0.0,
-            pitch_stick_degrees: 0.0,
-            stabilization_mode: 0,
-            failsafe: 0,
-        }
+        Self { rc_modes: BitSet64::new(), controls: RcControls::new() }
     }
 }
 
@@ -63,17 +82,19 @@ impl RxMessage {
 
         RxMessage {
             rc_modes,
-            tick_count,
+            controls: RcControls {
+                tick_count,
 
-            throttle_stick: sticks.throttle,
-            roll_stick_dps,
-            pitch_stick_dps,
-            yaw_stick_dps,
-            roll_stick_degrees,
-            pitch_stick_degrees,
+                throttle_stick: sticks.throttle,
+                roll_stick_dps,
+                pitch_stick_dps,
+                yaw_stick_dps,
+                roll_stick_degrees,
+                pitch_stick_degrees,
 
-            stabilization_mode,
-            failsafe,
+                stabilization_mode,
+                failsafe,
+            },
         }
     }
 }

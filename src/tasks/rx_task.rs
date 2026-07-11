@@ -3,7 +3,9 @@ use embassy_sync::{
     watch::{Receiver, Sender, Watch},
 };
 
-use radio_controllers::{Rates, RcMode, RcModes, RxFrame};
+#[cfg(feature = "autopilot")]
+use radio_controllers::RcMode;
+use radio_controllers::{Rates, RcModes, RxFrame};
 
 use crate::{
     config::{ConfigItem, ConfigPublisher, ConfigSubscriber, FastConfigPublisher},
@@ -85,21 +87,16 @@ pub async fn rx_task(ctx: &'static mut RxContext<'static>) {
         if let Some(autopilot_message) = ctx.autopilot_receiver.try_changed() {
             // TODO: if there is a message from the autopilot, then act on it.
             if ctx.rc_modes.is_mode_active(RcMode::ALTITUDE_HOLD) {
-                rx_message.throttle_stick = autopilot_message.throttle_stick;
+                rx_message.controls.throttle_stick = autopilot_message.controls.throttle_stick;
             } else if ctx.rc_modes.is_mode_active(RcMode::POSITION_HOLD)
                 || ctx.rc_modes.is_mode_active(RcMode::GPS_RESCUE)
                 || ctx.rc_modes.is_mode_active(RcMode::AUTOPILOT)
             {
-                rx_message.throttle_stick = autopilot_message.throttle_stick;
-                rx_message.roll_stick_dps = autopilot_message.roll_stick_dps;
-                rx_message.pitch_stick_dps = autopilot_message.pitch_stick_dps;
-                rx_message.yaw_stick_dps = autopilot_message.yaw_stick_dps;
-                rx_message.roll_stick_degrees = autopilot_message.roll_stick_degrees;
-                rx_message.pitch_stick_degrees = autopilot_message.pitch_stick_degrees;
+                rx_message.controls = autopilot_message.controls;
             }
         }
 
-        // Send the flight control message. This will be picked by the gyro_pid task.
+        // Send the rx message. This will be picked by the gyro_pid task.
         ctx.rx_sender.send(rx_message);
 
         if loop_count.is_multiple_of(5) {

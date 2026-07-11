@@ -10,7 +10,7 @@ use sensor_fusion::MadgwickFilterf32;
 
 use crate::{
     config::{GLOBAL_CONFIG, config_publisher, config_subscriber, fast_config_publisher, fast_config_subscriber},
-    flight::{FlightController, ImuFilterBank, RcAdjustments, RxMessage},
+    flight::{FlightController, ImuFilterBank, RcAdjustments, RcControls},
     tasks::{
         gyro_pid_task::{
             GyroPidContext, gyro_pid_receiver, gyro_pid_sender, gyro_pid_task, setpoint_receiver, setpoint_sender,
@@ -161,7 +161,7 @@ pub async fn init(spawner: Spawner) {
         imu_filters: ImuFilterBank::with_config(config.imu_filter_bank),
         sensor_fusion: MadgwickFilterf32::new(),
         flight_controller: FlightController::new(),
-        rx_message: RxMessage::new(),
+        rc_controls: RcControls::new(),
     });
 
     let imu_ctx = IMU_CTX.init(ImuContext { imu: ImuMock::new(MockImuBus::new(), ImuAxesOrder::XPOS_YPOS_ZPOS) });

@@ -94,6 +94,8 @@ pub async fn autopilot_task(ctx: &'static mut AutopilotContext<'static>) {
                     }
                 }
                 if altitude_hold {
+                    use crate::flight::RcControls;
+
                     let throttle_stick = ctx.autopilot.altitude_controller.update(
                         estimated_altitude,
                         estimated_vertical_speed,
@@ -102,7 +104,7 @@ pub async fn autopilot_task(ctx: &'static mut AutopilotContext<'static>) {
                     );
 
                     // Send the flight control message. This will be picked by the radio task.
-                    let rx_message = RxMessage { throttle_stick, ..Default::default() };
+                    let rx_message = RxMessage { controls:RcControls {throttle_stick, ..Default::default()}, ..Default::default() };
                     ctx.autopilot_sender.send(rx_message);
                 }
             }
