@@ -268,7 +268,7 @@ impl Osd {
                 let active_element_index = self.elements.active_element_index();
 
                 let start_element_time = self.time_us();
-                self.more_elements_to_draw = self.elements.draw_next_active_element(draw_ctx);
+                self.more_elements_to_draw = self.elements.draw_next_active_element(draw_ctx).await;
                 let execute_time_us = self.time_us() - start_element_time;
 
                 if execute_time_us > (self.element_duration_fraction_us[active_element_index] >> OSD_EXEC_TIME_SHIFT) {

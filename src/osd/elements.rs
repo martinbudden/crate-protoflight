@@ -380,7 +380,7 @@ impl OsdElements {
         self.active_element_count
     }
 
-    pub fn draw_next_active_element<D: Display>(&mut self, draw_context: &mut OsdDrawContext<D>) -> bool {
+    pub async fn draw_next_active_element<D: Display>(&mut self, draw_context: &mut OsdDrawContext<'_, D>) -> bool {
         if self.active_element_index >= self.active_element_count {
             self.active_element_index = 0;
             return false;
@@ -392,12 +392,12 @@ impl OsdElements {
             //  && DrawBackgroundFunctions[element]
             // If the background layer isn't supported then we
             // have to draw the element's static layer as well.
-            self.background_rendered = self.draw_element_background_by_id(element_id, draw_context);
+            self.background_rendered = self.draw_element_background_by_id(element_id, draw_context).await;
             // After the background always come back to check for foreground
             return true;
         }
 
-        if self.draw_element_by_id(element_id, draw_context) {
+        if self.draw_element_by_id(element_id, draw_context).await {
             // If rendering is complete then advance to the next element
             // Prepare to render the background of the next element
             self.background_rendered = false;
@@ -443,10 +443,10 @@ impl OsdElements {
         true
     }
 
-    pub fn draw_element_by_id<D: Display>(
+    pub async fn draw_element_by_id<D: Display>(
         &mut self,
         element_id: OsdElementId,
-        draw_context: &mut OsdDrawContext<D>,
+        draw_context: &mut OsdDrawContext<'_, D>,
     ) -> bool {
         // By default mark the element as rendered in case it's in the off blink state
 
@@ -471,17 +471,17 @@ impl OsdElements {
 
         // TODO: need to check drawing of SYS elements
         // Call the element drawing function
-        if self.draw_element(draw_context) {
+        if self.draw_element(draw_context).await {
             self.display_pending_foreground = true;
         }
 
         self.active_element.rendered
     }
 
-    pub fn draw_element_background_by_id<D: Display>(
+    pub async fn draw_element_background_by_id<D: Display>(
         &mut self,
         element_id: OsdElementId,
-        draw_context: &mut OsdDrawContext<D>,
+        draw_context: &mut OsdDrawContext<'_, D>,
     ) -> bool {
         /*if (!DrawBackgroundFunctions[element_index]) {
             return true;
@@ -496,7 +496,7 @@ impl OsdElements {
             ..Default::default()
         };
 
-        if self.draw_element_background(draw_context) {
+        if self.draw_element_background(draw_context).await {
             self.display_pending_background = true;
         }
 
@@ -504,12 +504,12 @@ impl OsdElements {
     }
 
     // TODO: we need to clear the screen (async) before calling this.
-    pub fn draw_active_elements_background<D: Display>(&mut self, draw_context: &mut OsdDrawContext<D>) {
+    pub async fn draw_active_elements_background<D: Display>(&mut self, draw_context: &mut OsdDrawContext<'_, D>) {
         if self.background_layer_supported {
             draw_context.display_port.layer_select(DisplayPortLayer::Background);
             //draw_context.display_port.clear_screen();
             for element_id in self.active_elements {
-                while !self.draw_element_background_by_id(element_id, draw_context) {}
+                while !self.draw_element_background_by_id(element_id, draw_context).await {}
             }
             draw_context.display_port.layer_select(DisplayPortLayer::Foreground);
         }

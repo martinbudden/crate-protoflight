@@ -1,13 +1,12 @@
 use crate::{
+    config::GLOBAL_CONFIG,
     display::{Display, DisplayPortSeverity},
     flight::ArmingFlags,
     osd::{
-        OsdConfig, OsdDrawContext,
-        config::PilotConfig,
+        OsdDrawContext,
         elements::{OsdElement, OsdElements, OsdStickCameraFrameRenderPhase, OsdStickOverlayRenderPhase},
         symbols::OsdSymbols,
     },
-    sensors::BatteryMessage,
 };
 use core::convert::TryFrom;
 use strum::EnumCount;
@@ -122,14 +121,14 @@ pub enum OsdElementId {
 
 // element drawing functions
 impl OsdElements {
-    pub fn draw_element<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
+    pub async fn draw_element<D: Display>(&mut self, draw_context: &OsdDrawContext<'_, D>) -> bool {
         #[allow(clippy::enum_glob_use)]
         use OsdElementId::*;
         match self.active_element.id {
             Rssi => self.active_element.draw_rssi(),
-            MainBatteryVoltage => self.active_element.draw_main_battery_usage(&draw_context.battery_message),
+            MainBatteryVoltage => self.active_element.draw_main_battery_usage(draw_context),
             Crosshairs => self.active_element.draw_crosshairs(),
-            ArtificialHorizon => self.active_element.draw_artificial_horizon(),
+            ArtificialHorizon => self.active_element.draw_artificial_horizon().await,
             ItemTimer1 | ItemTimer2 => self.active_element.draw_item_timer(),
             FlyMode => self.active_element.draw_fly_mode(),
             RemainingTimeEstimate => self.active_element.draw_remaining_time_estimate(),
@@ -145,15 +144,15 @@ impl OsdElements {
         }
     }
 
-    pub fn draw_element_background<D: Display>(&mut self, draw_context: &mut OsdDrawContext<D>) -> bool {
+    pub async fn draw_element_background<D: Display>(&mut self, draw_context: &mut OsdDrawContext<'_, D>) -> bool {
         #[allow(clippy::enum_glob_use)]
         use OsdElementId::*;
         match self.active_element.id {
             HorizonSidebars => self.active_element.draw_background_horizon_sidebars(draw_context),
-            CraftName => self.active_element.draw_background_craft_name(),
+            CraftName => self.active_element.draw_background_craft_name().await,
             StickOverlayLeft => self.active_element.draw_background_stick_overlay(),
-            PilotName => self.active_element.draw_background_pilot_name(),
-            CameraFrame => self.active_element.draw_background_camera_frame(draw_context),
+            PilotName => self.active_element.draw_background_pilot_name().await,
+            CameraFrame => self.active_element.draw_background_camera_frame(draw_context).await,
             _ => self.active_element.draw_nothing(),
         }
     }
@@ -321,8 +320,11 @@ impl OsdElement {
         true
     }
 
-    fn draw_main_battery_usage(&mut self, _battery_data: &BatteryMessage) -> bool {
+    fn draw_main_battery_usage<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
         const USAGE_STEPS: usize = 11; // Use an odd number so the bar can be centered.
+
+        let _ = draw_context.battery_message;
+
         // TODO: calculate battery bars from the battery data
         let remaining_capacity_bars = 4;
         // Setup the boundaries
@@ -397,13 +399,11 @@ impl OsdElement {
         true
     }
 
-    fn draw_artificial_horizon(&mut self) -> bool {
+    async fn draw_artificial_horizon(&mut self) -> bool {
         const AH_SYMBOL_COUNT: i32 = 9;
-        // TODO: get the OsdConfig
         let osd_config = {
-            //let global_config = GLOBAL_CONFIG.lock().await;
-            //global_config.osd
-            OsdConfig::new()
+            let global_config = GLOBAL_CONFIG.lock().await;
+            global_config.osd
         };
         // Get pitch and roll limits in tenths of degrees
         let max_pitch = i32::from(osd_config.ah_max_pitch * 10);
@@ -506,9 +506,11 @@ impl OsdElement {
         true
     }
 
-    fn draw_background_craft_name(&mut self) -> bool {
-        // TODO: get the PilotConfig
-        let pilot_config = PilotConfig::new();
+    async fn draw_background_craft_name(&mut self) -> bool {
+        let pilot_config = {
+            let global_config = GLOBAL_CONFIG.lock().await;
+            global_config.pilot
+        };
         if pilot_config.craft_name.length == 0 {
             self.write_string("CRAFT_NAME");
         } else {
@@ -545,9 +547,11 @@ impl OsdElement {
         true
     }
 
-    fn draw_background_pilot_name(&mut self) -> bool {
-        // TODO: get the PilotConfig
-        let pilot_config = PilotConfig::new();
+    async fn draw_background_pilot_name(&mut self) -> bool {
+        let pilot_config = {
+            let global_config = GLOBAL_CONFIG.lock().await;
+            global_config.pilot
+        };
         if pilot_config.craft_name.length == 0 {
             self.write_string("PILOT_NAME");
         } else {
@@ -556,7 +560,7 @@ impl OsdElement {
         true
     }
 
-    fn draw_background_camera_frame<D: Display>(&mut self, draw_context: &mut OsdDrawContext<D>) -> bool {
+    async fn draw_background_camera_frame<D: Display>(&mut self, draw_context: &mut OsdDrawContext<'_, D>) -> bool {
         const OSD_CAMERA_FRAME_MIN_WIDTH: u8 = 2;
         const OSD_CAMERA_FRAME_MAX_WIDTH: u8 = 30; // Characters per row supported by MAX7456
         const OSD_CAMERA_FRAME_MIN_HEIGHT: u8 = 2;
@@ -564,8 +568,10 @@ impl OsdElement {
 
         let xpos = self.pos_x;
         let ypos = self.pos_y;
-        // TODO: get the OsdConfig
-        let osd_config = OsdConfig::new();
+        let osd_config = {
+            let global_config = GLOBAL_CONFIG.lock().await;
+            global_config.osd
+        };
         let width = osd_config.camera_frame_width.clamp(OSD_CAMERA_FRAME_MIN_WIDTH, OSD_CAMERA_FRAME_MAX_WIDTH);
         let height = osd_config.camera_frame_height.clamp(OSD_CAMERA_FRAME_MIN_HEIGHT, OSD_CAMERA_FRAME_MAX_HEIGHT);
 
