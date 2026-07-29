@@ -1,12 +1,13 @@
 use crate::{
-    display::Display,
+    display::{Display, DisplayPortSeverity},
     flight::ArmingFlags,
     osd::{
         OsdConfig, OsdDrawContext,
-        elements::{OsdElement, OsdElements},
+        config::PilotConfig,
+        elements::{OsdElement, OsdElements, OsdStickCameraFrameRenderPhase, OsdStickOverlayRenderPhase},
         symbols::OsdSymbols,
     },
-    sensors::{BatteryMessage, SensorFlags},
+    sensors::BatteryMessage,
 };
 use core::convert::TryFrom;
 use strum::EnumCount;
@@ -117,6 +118,45 @@ pub enum OsdElementId {
     LidarDistance,
     CustomSerialText,
     BatteryProfileName,
+}
+
+// element drawing functions
+impl OsdElements {
+    pub fn draw_element<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
+        #[allow(clippy::enum_glob_use)]
+        use OsdElementId::*;
+        match self.active_element.id {
+            Rssi => self.active_element.draw_rssi(),
+            MainBatteryVoltage => self.active_element.draw_main_battery_usage(&draw_context.battery_message),
+            Crosshairs => self.active_element.draw_crosshairs(),
+            ArtificialHorizon => self.active_element.draw_artificial_horizon(),
+            ItemTimer1 | ItemTimer2 => self.active_element.draw_item_timer(),
+            FlyMode => self.active_element.draw_fly_mode(),
+            RemainingTimeEstimate => self.active_element.draw_remaining_time_estimate(),
+            Altitude => self.active_element.draw_altitude(),
+            PitchAngle => self.active_element.draw_pitch_angle(self.pitch_angle_degrees),
+            RollAngle => self.active_element.draw_roll_angle(self.roll_angle_degrees),
+            Disarmed => self.active_element.draw_disarmed(draw_context),
+            NumericalHeading => self.active_element.draw_numerical_heading(),
+
+            #[allow(clippy::pedantic)]
+            HorizonSidebars => self.active_element.draw_nothing(), // do nothing, since only drawn in background
+            _ => self.active_element.draw_nothing(),
+        }
+    }
+
+    pub fn draw_element_background<D: Display>(&mut self, draw_context: &mut OsdDrawContext<D>) -> bool {
+        #[allow(clippy::enum_glob_use)]
+        use OsdElementId::*;
+        match self.active_element.id {
+            HorizonSidebars => self.active_element.draw_background_horizon_sidebars(draw_context),
+            CraftName => self.active_element.draw_background_craft_name(),
+            StickOverlayLeft => self.active_element.draw_background_stick_overlay(),
+            PilotName => self.active_element.draw_background_pilot_name(),
+            CameraFrame => self.active_element.draw_background_camera_frame(draw_context),
+            _ => self.active_element.draw_nothing(),
+        }
+    }
 }
 
 /// Custom error type for invalid enum index casting.
@@ -271,53 +311,16 @@ pub static OSD_ELEMENT_DISPLAY_ORDER: &[OsdElementId] = {
     ]
 };
 
-// element drawing functions
-#[allow(unused)]
-impl OsdElements {
-    pub fn add_active_elements(&mut self, sensors: SensorFlags) {
-        for element in OSD_ELEMENT_DISPLAY_ORDER {
-            self.add_active_element(*element);
-        }
-
-        #[cfg(feature = "gps")]
-        if sensors.is_set(SensorFlags::GPS) {
-            self.add_active_element(OsdElementId::GpsSats);
-            self.add_active_element(OsdElementId::GpsSpeed);
-            self.add_active_element(OsdElementId::GpsLat);
-            self.add_active_element(OsdElementId::GpsLon);
-            self.add_active_element(OsdElementId::HomeDistance);
-            self.add_active_element(OsdElementId::HomeDirection);
-            self.add_active_element(OsdElementId::FlightDistance);
-            self.add_active_element(OsdElementId::Efficiency);
-        }
-    }
-
-    pub fn draw_element<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
-        match self.active_element.id {
-            OsdElementId::Rssi => self.active_element.draw_rssi(),
-            OsdElementId::MainBatteryVoltage => {
-                self.active_element.draw_main_battery_usage(&draw_context.battery_message)
-            }
-            OsdElementId::ArtificialHorizon => self.active_element.draw_artificial_horizon(),
-            OsdElementId::PitchAngle => self.active_element.draw_pitch_angle(self.pitch_angle_degrees),
-            OsdElementId::RollAngle => self.active_element.draw_roll_angle(self.roll_angle_degrees),
-            OsdElementId::Altitude => self.active_element.draw_altitude(),
-            OsdElementId::Crosshairs => self.active_element.draw_crosshairs(),
-            OsdElementId::NumericalHeading => self.active_element.draw_numerical_heading(),
-            OsdElementId::Disarmed => self.active_element.draw_disarmed(draw_context),
-            _ => self.active_element.draw_nothing(),
-        }
-    }
-}
-
 #[allow(clippy::unused_self)]
 impl OsdElement {
     fn draw_nothing(&self) -> bool {
         false
     }
+
     fn draw_rssi(&mut self) -> bool {
         true
     }
+
     fn draw_main_battery_usage(&mut self, _battery_data: &BatteryMessage) -> bool {
         const USAGE_STEPS: usize = 11; // Use an odd number so the bar can be centered.
         // TODO: calculate battery bars from the battery data
@@ -341,13 +344,14 @@ impl OsdElement {
 
     fn draw_disarmed<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
         if !draw_context.arming_flags.is_set(ArmingFlags::ARMED) {
-            self.set_text("DISARMED");
+            self.write_string("DISARMED");
         }
         /*_ = self.write_custom(|w| {
             w.append_str_right_aligned("DISARMED", 8);
         });*/
         true
     }
+
     fn draw_roll_angle(&mut self, _angle_degrees: f32) -> bool {
         let roll_angle_degrees = 93;
         _ = self.write_custom(|w| {
@@ -356,9 +360,11 @@ impl OsdElement {
         });
         true
     }
+
     fn draw_pitch_angle(&mut self, _angle_degrees: f32) -> bool {
         true
     }
+
     fn draw_numerical_heading(&mut self) -> bool {
         let yaw_angle_degrees = 93;
         _ = self.write_custom(|w| {
@@ -367,12 +373,22 @@ impl OsdElement {
         });
         true
     }
+
+    fn draw_fly_mode(&mut self) -> bool {
+        true
+    }
+
+    fn draw_remaining_time_estimate(&mut self) -> bool {
+        true
+    }
+
     fn draw_altitude(&mut self) -> bool {
         self.buf[0] = OsdSymbols::ALTITUDE;
         self.buf[1] = OsdSymbols::HYPHEN;
         self.buf[2] = 0;
         true
     }
+
     fn draw_crosshairs(&mut self) -> bool {
         self.buf[0] = OsdSymbols::AH_CENTER_LINE;
         self.buf[1] = OsdSymbols::AH_CENTER;
@@ -383,7 +399,12 @@ impl OsdElement {
 
     fn draw_artificial_horizon(&mut self) -> bool {
         const AH_SYMBOL_COUNT: i32 = 9;
-        let osd_config = OsdConfig::new();
+        // TODO: get the OsdConfig
+        let osd_config = {
+            //let global_config = GLOBAL_CONFIG.lock().await;
+            //global_config.osd
+            OsdConfig::new()
+        };
         // Get pitch and roll limits in tenths of degrees
         let max_pitch = i32::from(osd_config.ah_max_pitch * 10);
         let max_roll = i32::from(osd_config.ah_max_roll * 10);
@@ -421,41 +442,174 @@ impl OsdElement {
         }
         self.draw_element
     }
-}
 
-impl OsdElements {
-    pub fn draw_element_background<D: Display>(&mut self, _draw_context: &OsdDrawContext<D>) -> bool {
-        match self.active_element.id {
-            OsdElementId::HorizonSidebars => self.active_element.draw_background_horizon_sidebars(),
-            OsdElementId::CraftName => self.active_element.draw_background_craft_name(),
-            OsdElementId::StickOverlayLeft => self.active_element.draw_background_stick_overlay(),
-            OsdElementId::PilotName => self.active_element.draw_background_pilot_name(),
-            OsdElementId::CameraFrame => self.active_element.draw_background_camera_frame(),
-            _ => self.active_element.draw_nothing(),
-        }
+    fn draw_item_timer(&mut self) -> bool {
+        true
     }
 }
 
 // element background drawing functions
 #[allow(clippy::unused_self)]
 impl OsdElement {
-    fn draw_background_horizon_sidebars(&mut self) -> bool {
+    fn draw_background_horizon_sidebars<D: Display>(&mut self, draw_context: &mut OsdDrawContext<D>) -> bool {
+        const AH_SIDEBAR_WIDTH_POS: u8 = 7;
+        const AH_SIDEBAR_HEIGHT_POS: i8 = 3;
+
+        self.sidebar_render_level = false;
+        self.sidebar_y = -AH_SIDEBAR_HEIGHT_POS;
+        // Draw AH sides
+        let hud_width = AH_SIDEBAR_WIDTH_POS;
+        let hud_height = AH_SIDEBAR_HEIGHT_POS;
+
+        if self.sidebar_render_level {
+            // AH level indicators
+            _ = draw_context.display_port.write_char(
+                self.pos_x - hud_width + 1,
+                self.pos_y,
+                OsdSymbols::AH_LEFT,
+                DisplayPortSeverity::Normal,
+            );
+            _ = draw_context.display_port.write_char(
+                self.pos_x + hud_width - 1,
+                self.pos_y,
+                OsdSymbols::AH_RIGHT,
+                DisplayPortSeverity::Normal,
+            );
+            self.sidebar_render_level = false;
+        } else {
+            _ = draw_context.display_port.write_char(
+                self.pos_x - hud_width,
+                (self.pos_y.cast_signed() + self.sidebar_y).cast_unsigned(),
+                OsdSymbols::AH_DECORATION,
+                DisplayPortSeverity::Normal,
+            );
+            _ = draw_context.display_port.write_char(
+                self.pos_x + hud_width,
+                (self.pos_y.cast_signed() + self.sidebar_y).cast_unsigned(),
+                OsdSymbols::AH_DECORATION,
+                DisplayPortSeverity::Normal,
+            );
+
+            if self.sidebar_y == hud_height {
+                // Rendering is complete, so prepare to start again
+                self.sidebar_y = -hud_height;
+                // On next pass render the level markers
+                self.sidebar_render_level = true;
+            } else {
+                self.sidebar_y += 1;
+            }
+            // Rendering not yet complete
+            self.rendered = false;
+        }
+
+        self.draw_element = false; // element already drawn
         true
     }
 
     fn draw_background_craft_name(&mut self) -> bool {
+        // TODO: get the PilotConfig
+        let pilot_config = PilotConfig::new();
+        if pilot_config.craft_name.length == 0 {
+            self.write_string("CRAFT_NAME");
+        } else {
+            self.write_slice(pilot_config.craft_name.as_bytes());
+        }
         true
     }
 
     fn draw_background_stick_overlay(&mut self) -> bool {
+        const OSD_STICK_OVERLAY_WIDTH: usize = 7;
+        const OSD_STICK_OVERLAY_HEIGHT: u8 = 5;
+
+        if self.stick_overlay_render_phase == OsdStickOverlayRenderPhase::Vertical {
+            self.buf[0] = OsdSymbols::STICK_OVERLAY_VERTICAL;
+            self.offset_y = self.stick_overlay_y;
+            self.stick_overlay_y += 1;
+            if self.stick_overlay_y == (OSD_STICK_OVERLAY_HEIGHT - 1) / 2 {
+                // Skip over horizontal
+                self.stick_overlay_y += 1;
+            }
+            if self.stick_overlay_y == OSD_STICK_OVERLAY_HEIGHT {
+                self.stick_overlay_y = 0;
+                self.stick_overlay_render_phase = OsdStickOverlayRenderPhase::Horizontal;
+            }
+            self.rendered = false;
+        } else {
+            self.buf[..OSD_STICK_OVERLAY_WIDTH].fill(OsdSymbols::STICK_OVERLAY_HORIZONTAL);
+            self.buf[(OSD_STICK_OVERLAY_WIDTH - 1) / 2] = OsdSymbols::STICK_OVERLAY_CENTER;
+            self.buf[OSD_STICK_OVERLAY_WIDTH] = 0; // string terminator
+
+            self.offset_y = (OSD_STICK_OVERLAY_HEIGHT - 1) / 2;
+            self.stick_overlay_render_phase = OsdStickOverlayRenderPhase::Vertical;
+        }
         true
     }
 
     fn draw_background_pilot_name(&mut self) -> bool {
+        // TODO: get the PilotConfig
+        let pilot_config = PilotConfig::new();
+        if pilot_config.craft_name.length == 0 {
+            self.write_string("PILOT_NAME");
+        } else {
+            self.write_slice(pilot_config.pilot_name.as_bytes());
+        }
         true
     }
 
-    fn draw_background_camera_frame(&mut self) -> bool {
+    fn draw_background_camera_frame<D: Display>(&mut self, draw_context: &mut OsdDrawContext<D>) -> bool {
+        const OSD_CAMERA_FRAME_MIN_WIDTH: u8 = 2;
+        const OSD_CAMERA_FRAME_MAX_WIDTH: u8 = 30; // Characters per row supported by MAX7456
+        const OSD_CAMERA_FRAME_MIN_HEIGHT: u8 = 2;
+        const OSD_CAMERA_FRAME_MAX_HEIGHT: u8 = 16; // Rows supported by MAX7456 (PAL)
+
+        let xpos = self.pos_x;
+        let ypos = self.pos_y;
+        // TODO: get the OsdConfig
+        let osd_config = OsdConfig::new();
+        let width = osd_config.camera_frame_width.clamp(OSD_CAMERA_FRAME_MIN_WIDTH, OSD_CAMERA_FRAME_MAX_WIDTH);
+        let height = osd_config.camera_frame_height.clamp(OSD_CAMERA_FRAME_MIN_HEIGHT, OSD_CAMERA_FRAME_MAX_HEIGHT);
+
+        if self.camera_frame_render_phase != OsdStickCameraFrameRenderPhase::Bottom {
+            // Rendering not yet complete
+            self.rendered = false;
+        }
+
+        if self.camera_frame_render_phase == OsdStickCameraFrameRenderPhase::Middle {
+            self.camera_frame_i = 1;
+
+            _ = draw_context.display_port.write_char(
+                xpos,
+                ypos + self.camera_frame_i,
+                OsdSymbols::STICK_OVERLAY_VERTICAL,
+                DisplayPortSeverity::Normal,
+            );
+            _ = draw_context.display_port.write_char(
+                xpos + width - 1,
+                ypos + self.camera_frame_i,
+                OsdSymbols::STICK_OVERLAY_VERTICAL,
+                DisplayPortSeverity::Normal,
+            );
+
+            self.draw_element = false; // element already drawn
+
+            self.camera_frame_i += 1;
+            if self.camera_frame_i == height {
+                self.camera_frame_i = 1;
+                self.camera_frame_render_phase = OsdStickCameraFrameRenderPhase::Bottom;
+            }
+        } else {
+            self.buf[0] = OsdSymbols::STICK_OVERLAY_CENTER;
+            self.buf[1..(width as usize - 1)].fill(OsdSymbols::STICK_OVERLAY_HORIZONTAL);
+            self.buf[width as usize - 1] = OsdSymbols::STICK_OVERLAY_CENTER;
+            self.buf[width as usize] = 0; // string terminator
+
+            if self.camera_frame_render_phase == OsdStickCameraFrameRenderPhase::Top {
+                self.camera_frame_render_phase = OsdStickCameraFrameRenderPhase::Middle;
+            } else {
+                self.offset_y = height - 1;
+                self.camera_frame_render_phase = OsdStickCameraFrameRenderPhase::Top;
+            }
+        }
         true
     }
 }

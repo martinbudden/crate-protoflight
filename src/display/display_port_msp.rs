@@ -1,6 +1,6 @@
 use core::ops::Deref;
 
-use crate::display::{Display, DisplayPort, DisplayPortDeviceType, DisplayPortLayer};
+use crate::display::{Display, DisplayPort, DisplayPortDeviceType, DisplayPortLayer, DisplayPortSeverity};
 
 struct Commands {}
 
@@ -65,7 +65,7 @@ impl DisplayPortMsp {
         0
     }
 
-    pub fn write_string(&mut self, x: u8, y: u8, text: &[u8], attr: u8) -> usize {
+    pub fn write_string(&mut self, x: u8, y: u8, text: &[u8], attr: DisplayPortSeverity) -> usize {
         const MSP_OSD_MAX_STRING_LENGTH: usize = 30;
         let mut buf = [0u8; MSP_OSD_MAX_STRING_LENGTH + 4];
 
@@ -74,7 +74,7 @@ impl DisplayPortMsp {
         buf[2] = y;
 
         let mut attr_byte = 0;
-        if (attr & DisplayPort::BLINK) != 0 {
+        if (attr as u8 & DisplayPort::BLINK) != 0 {
             attr_byte |= Self::ATTR_BLINK;
         }
         buf[3] = attr_byte;
@@ -101,12 +101,12 @@ impl Display for DisplayPortMsp {
         self.output_byte(Commands::HEARTBEAT).cast_signed() as i32
     }
 
-    fn write_char(&mut self, x: u8, y: u8, c: u8, attr: u8) -> usize {
+    fn write_char(&mut self, x: u8, y: u8, c: u8, attr: DisplayPortSeverity) -> usize {
         let s = [c];
         self.write_string(x, y, &s, attr)
     }
 
-    fn write_string(&mut self, x: u8, y: u8, text: &[u8], attr: u8) -> usize {
+    fn write_string(&mut self, x: u8, y: u8, text: &[u8], attr: DisplayPortSeverity) -> usize {
         Self::write_string(self, x, y, text, attr)
     }
 

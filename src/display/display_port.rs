@@ -234,8 +234,8 @@ pub trait Display {
 
     fn heartbeat(&mut self) -> i32;
 
-    fn write_string(&mut self, x: u8, y: u8, text: &[u8], attr: u8) -> usize;
-    fn write_char(&mut self, x: u8, y: u8, c: u8, attr: u8) -> usize;
+    fn write_string(&mut self, x: u8, y: u8, text: &[u8], attr: DisplayPortSeverity) -> usize;
+    fn write_char(&mut self, x: u8, y: u8, c: u8, attr: DisplayPortSeverity) -> usize;
 
     fn layer_supported(&self, layer: DisplayPortLayer) -> bool;
     fn layer_select(&mut self, layer: DisplayPortLayer);

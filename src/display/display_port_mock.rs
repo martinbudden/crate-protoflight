@@ -1,4 +1,6 @@
-use crate::display::{Display, DisplayPort, DisplayPortDeviceType, DisplayPortLayer, DisplayPortLayers};
+use crate::display::{
+    Display, DisplayPort, DisplayPortDeviceType, DisplayPortLayer, DisplayPortLayers, DisplayPortSeverity,
+};
 use core::ops::Deref;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -40,11 +42,11 @@ impl Display for DisplayPortMock {
         0
     }
 
-    fn write_char(&mut self, x: u8, y: u8, c: u8, attr: u8) -> usize {
+    fn write_char(&mut self, x: u8, y: u8, c: u8, attr: DisplayPortSeverity) -> usize {
         self.display_layers.write_char(x, y, c, attr)
     }
 
-    fn write_string(&mut self, x: u8, y: u8, s: &[u8], attr: u8) -> usize {
+    fn write_string(&mut self, x: u8, y: u8, s: &[u8], attr: DisplayPortSeverity) -> usize {
         self.display_layers.write_string(x, y, s, attr)
     }
 

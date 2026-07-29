@@ -1,8 +1,14 @@
 #![cfg(feature = "osd")]
 #![allow(unused)]
+#[cfg(feature = "gps")]
+use crate::sensors::SensorFlags;
 use crate::{
     display::{Display, DisplayPortLayer, DisplayPortSeverity},
-    osd::{OsdElementsConfig, display::OsdDrawContext, elements_draw::OsdElementId},
+    osd::{
+        OsdElementsConfig,
+        display::OsdDrawContext,
+        elements_draw::{OSD_ELEMENT_DISPLAY_ORDER, OsdElementId},
+    },
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -25,19 +31,40 @@ impl OsdElementType {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum OsdStickOverlayRenderPhase {
+    #[default]
+    Vertical,
+    Horizontal,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum OsdStickCameraFrameRenderPhase {
+    #[default]
+    Top,
+    Middle,
+    Bottom,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct OsdElement {
     pub buf: [u8; Self::BUFFER_LENGTH],
     pub element_type: OsdElementType,
     pub id: OsdElementId,
+    pub horizon_x: i32,
     pub pos_x: u8,
     pub pos_y: u8,
     pub offset_x: u8,
     pub offset_y: u8,
-    pub attr: u8,
+    pub attr: DisplayPortSeverity,
     pub rendered: bool,
     pub draw_element: bool,
-    pub horizon_x: i32,
+    pub stick_overlay_render_phase: OsdStickOverlayRenderPhase,
+    pub stick_overlay_y: u8,
+    pub sidebar_y: i8,
+    pub sidebar_render_level: bool,
+    pub camera_frame_render_phase: OsdStickCameraFrameRenderPhase,
+    pub camera_frame_i: u8,
 }
 
 impl OsdElement {
@@ -48,14 +75,20 @@ impl OsdElement {
             buf: [0u8; Self::BUFFER_LENGTH],
             element_type: OsdElementType::Type1,
             id: OsdElementId::Altitude,
+            horizon_x: -4,
             pos_x: 0,
             pos_y: 0,
             offset_x: 0,
             offset_y: 0,
-            attr: 0,
+            attr: DisplayPortSeverity::Normal,
             rendered: false,
             draw_element: false,
-            horizon_x: -4,
+            stick_overlay_render_phase: OsdStickOverlayRenderPhase::Vertical,
+            stick_overlay_y: 0,
+            sidebar_y: 0,
+            sidebar_render_level: false,
+            camera_frame_render_phase: OsdStickCameraFrameRenderPhase::Top,
+            camera_frame_i: 0,
         }
     }
 }
@@ -68,27 +101,31 @@ impl Default for OsdElement {
 
 impl OsdElement {
     /// Overwrites the buffer completely with a static string and fills the rest with 0.
-    pub fn set_text(&mut self, text: &str) {
-        let bytes = text.as_bytes();
+    pub fn write_string(&mut self, string: &str) {
+        let bytes = string.as_bytes();
         let len = bytes.len().min(Self::BUFFER_LENGTH);
 
         self.buf[..len].copy_from_slice(&bytes[..len]);
         self.buf[len..].fill(0);
     }
 
+    pub fn write_slice(&mut self, slice: &[u8]) {
+        let len = slice.len().min(Self::BUFFER_LENGTH);
+
+        self.buf[..len].copy_from_slice(&slice[..len]);
+        self.buf[len..].fill(0);
+    }
+
     /// Flexible multi-part writer that allows concatenating text and numbers manually.
-    /// Returns the exact number of bytes written.
+    /// Returns the number of bytes written.
     pub fn write_custom<F>(&mut self, write_logic: F) -> usize
     where
         F: FnOnce(&mut OsdBufferCursor),
     {
-        // 1. Clear the element's internal array buffer
         self.buf.fill(0);
 
-        // 2. Create an ephemeral tracking cursor over our data slice
         let mut cursor = OsdBufferCursor { buf: &mut self.buf, pos: 0 };
 
-        // 3. Execute the writing logic steps
         write_logic(&mut cursor);
 
         cursor.pos
@@ -188,16 +225,16 @@ impl OsdBufferCursor<'_> {
             return;
         }
 
-        // 1. Generate digits into a temporary array in reverse order
-        let mut temp = [0u8; Self::U32_MAX_DIGITS];
+        // Write digits into a temporary array in reverse order
+        let mut buf = [0u8; Self::U32_MAX_DIGITS];
         let mut digit_count = 0;
 
         if value == 0 {
-            temp[0] = b'0';
+            buf[0] = b'0';
             digit_count = 1;
         } else {
-            while value > 0 && digit_count < temp.len() {
-                temp[digit_count] = b'0' + (value % 10) as u8;
+            while value > 0 && digit_count < buf.len() {
+                buf[digit_count] = b'0' + (value % 10) as u8;
                 value /= 10;
                 digit_count += 1;
             }
@@ -210,7 +247,7 @@ impl OsdBufferCursor<'_> {
             // Number has more digits than the field width: truncate the leading digits
             for offset in 0..max_width {
                 // Read backwards from the end of the required visible tail slice
-                self.buf[self.pos + offset] = temp[max_width - 1 - offset];
+                self.buf[self.pos + offset] = buf[max_width - 1 - offset];
             }
             self.pos += max_width;
         } else {
@@ -221,7 +258,7 @@ impl OsdBufferCursor<'_> {
 
             // Copy the numbers into the remaining right-hand slots
             for offset in 0..digit_count {
-                self.buf[self.pos + offset] = temp[digit_count - 1 - offset];
+                self.buf[self.pos + offset] = buf[digit_count - 1 - offset];
             }
             self.pos += digit_count;
         }
@@ -285,7 +322,7 @@ impl OsdElements {
     pub const X_POSITION_MASK:   u16 = 0b_0000_0000_0011_1111;
 }
 
-#[allow(unused)]
+//#[allow(unused)]
 #[allow(clippy::unused_self)]
 impl OsdElements {
     pub fn element_type(x: u16) -> OsdElementType {
@@ -343,7 +380,7 @@ impl OsdElements {
         self.active_element_count
     }
 
-    pub fn draw_next_active_element<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
+    pub fn draw_next_active_element<D: Display>(&mut self, draw_context: &mut OsdDrawContext<D>) -> bool {
         if self.active_element_index >= self.active_element_count {
             self.active_element_index = 0;
             return false;
@@ -409,7 +446,7 @@ impl OsdElements {
     pub fn draw_element_by_id<D: Display>(
         &mut self,
         element_id: OsdElementId,
-        draw_context: &OsdDrawContext<D>,
+        draw_context: &mut OsdDrawContext<D>,
     ) -> bool {
         // By default mark the element as rendered in case it's in the off blink state
 
@@ -423,17 +460,13 @@ impl OsdElements {
 
         let position = self.config.positions[element_id as usize];
         self.active_element = OsdElement {
-            buf: [0u8; OsdElement::BUFFER_LENGTH],
             element_type: Self::element_type(position),
             id: element_id,
             pos_x: Self::pos_x(position),
             pos_y: Self::pos_y(position),
-            offset_x: 0,
-            offset_y: 0,
-            attr: DisplayPortSeverity::Normal as u8,
             rendered: true,
             draw_element: true,
-            horizon_x: -4,
+            ..Default::default()
         };
 
         // TODO: need to check drawing of SYS elements
@@ -448,23 +481,19 @@ impl OsdElements {
     pub fn draw_element_background_by_id<D: Display>(
         &mut self,
         element_id: OsdElementId,
-        draw_context: &OsdDrawContext<D>,
+        draw_context: &mut OsdDrawContext<D>,
     ) -> bool {
         /*if (!DrawBackgroundFunctions[element_index]) {
             return true;
         }*/
         self.active_element = OsdElement {
-            buf: [0u8; OsdElement::BUFFER_LENGTH],
             element_type: Self::element_type(self.config.positions[element_id as usize]),
             id: element_id,
             pos_x: Self::pos_x(self.config.positions[element_id as usize]),
             pos_y: Self::pos_y(self.config.positions[element_id as usize]),
-            offset_x: 0,
-            offset_y: 0,
-            attr: DisplayPortSeverity::Normal as u8,
             rendered: true,
             draw_element: true,
-            horizon_x: -4,
+            ..Default::default()
         };
 
         if self.draw_element_background(draw_context) {
@@ -484,6 +513,29 @@ impl OsdElements {
             }
             draw_context.display_port.layer_select(DisplayPortLayer::Foreground);
         }
+    }
+
+    pub fn add_active_elements(&mut self, sensors: SensorFlags) {
+        for element in OSD_ELEMENT_DISPLAY_ORDER {
+            self.add_active_element(*element);
+        }
+        #[cfg(feature = "gps")]
+        if sensors.is_set(SensorFlags::GPS) {
+            self.add_active_element(OsdElementId::GpsSats);
+            self.add_active_element(OsdElementId::GpsSpeed);
+            self.add_active_element(OsdElementId::GpsLat);
+            self.add_active_element(OsdElementId::GpsLon);
+            self.add_active_element(OsdElementId::HomeDistance);
+            self.add_active_element(OsdElementId::HomeDirection);
+            self.add_active_element(OsdElementId::FlightDistance);
+            self.add_active_element(OsdElementId::Efficiency);
+        }
+    }
+
+    #[allow(unused)]
+    pub fn analyze_active_elements<D: Display>(&mut self, sensors: SensorFlags, draw_context: &mut OsdDrawContext<D>) {
+        self.add_active_elements(sensors);
+        self.draw_active_elements_background(draw_context);
     }
 
     pub fn update_attitude(&mut self, roll_angle_degrees: f32, pitch_angle_degrees: f32, yaw_angle_degrees: f32) {

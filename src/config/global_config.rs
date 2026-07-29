@@ -7,6 +7,8 @@ use embassy_sync::{
 use motor_mixers::{MixerConfig, MotorConfig, MotorDeviceConfig};
 use radio_controllers::{FailsafeConfig, RatesConfig, RcControlsConfig, RcModes, RxConfig};
 
+#[cfg(feature = "osd")]
+use crate::osd::PilotConfig;
 use crate::{
     autopilot::{AutopilotConfig, PositionHoldConfig},
     config::{ImuConfig, SystemConfig, profiles::SchemaVersion},
@@ -253,6 +255,8 @@ define_configs!(
         (OsdElements, osd_elements, OsdElementsConfig),
         #[cfg(feature = "osd")]
         (OsdStats, osd_stats, OsdStatsConfig),
+        #[cfg(feature = "osd")]
+        (Pilot, pilot, PilotConfig),
 
         #[cfg(feature = "optical_flow")]
         (OpticalFlow, optical_flow, OpticalFlowConfig),

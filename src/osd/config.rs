@@ -8,7 +8,7 @@ use {
 
 use crate::{
     display::{DisplayPortBackground, DisplayPortDeviceType},
-    osd::{Osd, elements::OsdElements},
+    osd::{Osd, elements::OsdElements, fixed_buf::FixedBuf},
 };
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -183,6 +183,35 @@ impl Default for OsdElementsConfig {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct PilotConfig {
+    pub craft_name: FixedBuf<{ PilotConfig::MAX_NAME_LENGTH }>,
+    pub pilot_name: FixedBuf<{ PilotConfig::MAX_NAME_LENGTH }>,
+    pub message: [FixedBuf<{ PilotConfig::MAX_NAME_LENGTH }>; PilotConfig::CUSTOM_MESSAGE_COUNT],
+}
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for PilotConfig {}
+
+impl PilotConfig {
+    pub const MAX_NAME_LENGTH: usize = 16;
+    pub const CUSTOM_MESSAGE_COUNT: usize = 5;
+    pub const fn new() -> Self {
+        Self {
+            craft_name: FixedBuf::new(),
+            pilot_name: FixedBuf::new(),
+            message: [FixedBuf::new(); Self::CUSTOM_MESSAGE_COUNT],
+        }
+    }
+}
+
+impl Default for PilotConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -203,6 +232,9 @@ mod tests {
         is_full::<OsdElementsConfig>();
         #[cfg(feature = "serde")]
         is_config::<OsdElementsConfig>();
+        is_full::<PilotConfig>();
+        #[cfg(feature = "serde")]
+        is_config::<PilotConfig>();
     }
     #[test]
     fn test_new() {

@@ -30,7 +30,7 @@ pub struct GyroPidMessage {
 }
 
 //#[cfg(not(any(feature = "servos", feature = "eight_motors")))]
-const _: () = assert!(core::mem::size_of::<GyroPidMessage>() == 128);
+const _: () = assert!(core::mem::size_of::<GyroPidMessage>() == 112);
 
 impl GyroPidMessage {
     pub const RPY_AXIS_COUNT: usize = 3;
@@ -137,7 +137,7 @@ mod tests {
     }
     #[test]
     fn sizeof() {
-        assert_eq!(128, core::mem::size_of::<GyroPidMessage>());
+        assert_eq!(112, core::mem::size_of::<GyroPidMessage>());
         #[cfg(all(feature = "dshot_telemetry", not(any(feature = "servos", feature = "eight_motors"))))]
         assert_eq!(68, core::mem::size_of::<SetpointMessage>());
     }
