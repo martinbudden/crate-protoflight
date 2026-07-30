@@ -51,7 +51,7 @@ pub async fn imu_task(ctx: &'static mut ImuContext) {
     // Base signal levels
     let mut x_base: i32 = 0;
 
-    let _ = ctx.imu.init(8000, GyroFullScale::Max, GyroUnits::Rps, AccFullScale::Max, AccUnits::G).await;
+    _ = ctx.imu.init(8000, GyroFullScale::Max, GyroUnits::Rps, AccFullScale::Max, AccUnits::G).await;
     log::info!("      IMU: task started");
     loop {
         // Wait for the next 50Hz tick.

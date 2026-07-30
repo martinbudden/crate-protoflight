@@ -37,7 +37,7 @@ default = ["libm",
     "dshot_telemetry",
     "gps",
     #"magnetometer",
-    #"max7456",
+    #"max7456", # this doesn't even compile yet
     "msp",
     #"optical_flow",
     "osd",

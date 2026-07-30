@@ -1,5 +1,4 @@
 #![cfg(feature = "blackbox")]
-#![allow(unused)]
 
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel};
 
@@ -10,8 +9,10 @@ use crate::{
     sensors::{GyroPidMessage, SetpointMessage},
     tasks::gyro_pid_task::{GyroPidReceiver, SetpointReceiver},
 };
-use blackbox_logger::{Blackbox, BlackboxEvent, BlackboxMainData, BlackboxSlowData, LoggerState, SliceEncoder};
+use blackbox_logger::{Blackbox, BlackboxMainData, BlackboxSlowData, LoggerState, SliceEncoder};
 
+#[cfg(not(feature = "gps"))]
+use core::marker::PhantomData;
 #[cfg(feature = "gps")]
 use {
     crate::{
@@ -29,10 +30,11 @@ pub struct BlackboxContext<'a> {
     pub setpoint_message: SetpointMessage,
     #[cfg(feature = "gps")]
     pub gps_subscriber: GpsSubscriber<'a>,
+    #[cfg(not(feature = "gps"))]
+    pub _marker: PhantomData<&'a ()>,
     pub blackbox: Blackbox,
     pub buffer: [u8; BUFFER_CAPACITY],
     pub overflow_counter: u32,
-    //pub slice_writer: SliceEncoder<'static>,
 }
 
 /// A fixed-size message container used to pass blackbox chunks between tasks.
@@ -71,7 +73,7 @@ pub static BLACKBOX_WRITE_QUEUE: Channel<CriticalSectionRawMutex, BlackboxWriteB
     Channel::new();
 
 fn send_data_to_blackbox_writer_task(data: &[u8], overflow_counter: &mut u32) {
-    let _ = overflow_counter;
+    _ = overflow_counter;
     // Loop through the slice in chunks matching BlackboxWriteBlock capacity
     for chunk in data.chunks(BlackboxWriteBlock::CAPACITY) {
         let block = BlackboxWriteBlock::from_chunk(chunk);
@@ -165,7 +167,7 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext<'static>) {
 }
 
 #[inline]
-pub fn main_data_from(gyro_pid_msg: GyroPidMessage, setpoint_msg: SetpointMessage) -> BlackboxMainData {
+pub fn main_data_from(gyro_pid_msg: GyroPidMessage, _setpoint_msg: SetpointMessage) -> BlackboxMainData {
     const TO_I16: f32 = 32_757.0;
 
     #[cfg(feature = "debug")]

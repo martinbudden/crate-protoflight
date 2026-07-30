@@ -1,4 +1,4 @@
-#![allow(unused)]
+#![cfg(feature = "gps")]
 
 use crate::gps::GpsDataPosition;
 

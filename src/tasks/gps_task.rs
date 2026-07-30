@@ -14,27 +14,39 @@ use crate::{
 
 const MAX_GPS_SUBSCRIBER_COUNT: usize = 4;
 const GPS_PUBLISHER_COUNT: usize = 1;
-const GPS_CAPACITY: usize = 4;
+const GPS_PUB_SUB_CAPACITY: usize = 4;
 
 /// `PubSubChannel` for handling `GpsData` updates.
 static GPS_PUB_SUB_CHANNEL: PubSubChannel<
     CriticalSectionRawMutex,
     GpsMessage,
-    GPS_CAPACITY,
+    GPS_PUB_SUB_CAPACITY,
     MAX_GPS_SUBSCRIBER_COUNT,
     GPS_PUBLISHER_COUNT,
 > = PubSubChannel::new();
 
-pub type GpsPublisher<'a> =
-    Publisher<'a, CriticalSectionRawMutex, GpsMessage, GPS_CAPACITY, MAX_GPS_SUBSCRIBER_COUNT, GPS_PUBLISHER_COUNT>;
+pub type GpsPublisher<'a> = Publisher<
+    'a,
+    CriticalSectionRawMutex,
+    GpsMessage,
+    GPS_PUB_SUB_CAPACITY,
+    MAX_GPS_SUBSCRIBER_COUNT,
+    GPS_PUBLISHER_COUNT,
+>;
 
 #[allow(clippy::expect_used)]
 pub fn gps_publisher<'a>() -> GpsPublisher<'a> {
     GPS_PUB_SUB_CHANNEL.publisher().expect("gps_publisher failed")
 }
 
-pub type GpsSubscriber<'a> =
-    Subscriber<'a, CriticalSectionRawMutex, GpsMessage, GPS_CAPACITY, MAX_GPS_SUBSCRIBER_COUNT, GPS_PUBLISHER_COUNT>;
+pub type GpsSubscriber<'a> = Subscriber<
+    'a,
+    CriticalSectionRawMutex,
+    GpsMessage,
+    GPS_PUB_SUB_CAPACITY,
+    MAX_GPS_SUBSCRIBER_COUNT,
+    GPS_PUBLISHER_COUNT,
+>;
 
 #[allow(clippy::expect_used)]
 pub fn gps_subscriber<'a>() -> GpsSubscriber<'a> {

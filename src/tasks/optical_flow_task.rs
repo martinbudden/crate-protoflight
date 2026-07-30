@@ -9,13 +9,13 @@ use crate::sensors::OpticalFlowMessage;
 
 const MAX_OPTICAL_FLOW_SUBSCRIBER_COUNT: usize = 4;
 const OPTICAL_FLOW_PUBLISHER_COUNT: usize = 1;
-const OPTICAL_FLOW_CAPACITY: usize = 1; // only keep the last item
+const OPTICAL_FLOW_PUB_SUB_CAPACITY: usize = 1; // only keep the last item
 
 /// `PubSubChannel` for handling `battery` updates.
 static OPTICAL_FLOW_PUB_SUB_CHANNEL: PubSubChannel<
     CriticalSectionRawMutex,
     OpticalFlowMessage,
-    OPTICAL_FLOW_CAPACITY,
+    OPTICAL_FLOW_PUB_SUB_CAPACITY,
     MAX_OPTICAL_FLOW_SUBSCRIBER_COUNT,
     OPTICAL_FLOW_PUBLISHER_COUNT,
 > = PubSubChannel::new();
@@ -24,26 +24,26 @@ type OpticalFlowPublisher<'a> = Publisher<
     'a,
     CriticalSectionRawMutex,
     OpticalFlowMessage,
-    OPTICAL_FLOW_CAPACITY,
+    OPTICAL_FLOW_PUB_SUB_CAPACITY,
     MAX_OPTICAL_FLOW_SUBSCRIBER_COUNT,
     OPTICAL_FLOW_PUBLISHER_COUNT,
 >;
 
+#[allow(clippy::expect_used)]
 pub fn optical_flow_publisher<'a>() -> OpticalFlowPublisher<'a> {
     OPTICAL_FLOW_PUB_SUB_CHANNEL.publisher().expect("optical_flow_publisher failed")
 }
 
-#[allow(unused)]
 pub type OpticalFlowSubscriber<'a> = Subscriber<
     'a,
     CriticalSectionRawMutex,
     OpticalFlowMessage,
-    OPTICAL_FLOW_CAPACITY,
+    OPTICAL_FLOW_PUB_SUB_CAPACITY,
     MAX_OPTICAL_FLOW_SUBSCRIBER_COUNT,
     OPTICAL_FLOW_PUBLISHER_COUNT,
 >;
 
-#[allow(unused)]
+#[allow(clippy::expect_used)]
 pub fn optical_flow_subscriber<'a>() -> OpticalFlowSubscriber<'a> {
     OPTICAL_FLOW_PUB_SUB_CHANNEL.subscriber().expect("optical_flow_subscriber failed")
 }

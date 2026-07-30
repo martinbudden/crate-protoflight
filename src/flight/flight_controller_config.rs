@@ -1,4 +1,3 @@
-#![allow(unused)]
 #[cfg(feature = "serde")]
 use {
     sequential_storage::map::PostcardValue,
@@ -33,6 +32,7 @@ impl Default for PidConfig {
     }
 }
 
+#[allow(unused)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct PidConfigs {
@@ -88,9 +88,9 @@ impl PostcardValue<'_> for FlightControllerFiltersConfig {}
 
 impl FlightControllerFiltersConfig {
     pub const PT1: u8 = 0;
-    pub const BIQUAD: u8 = 1;
-    pub const PT2: u8 = 2;
-    pub const PT3: u8 = 3;
+    pub const _BIQUAD: u8 = 1;
+    pub const _PT2: u8 = 2;
+    pub const _PT3: u8 = 3;
 
     pub const fn new() -> Self {
         Self {
@@ -153,9 +153,9 @@ pub struct TpaConfig {
 impl PostcardValue<'_> for TpaConfig {}
 
 impl TpaConfig {
-    pub const TPA_MODE_P: u8 = 0;
+    pub const _TPA_MODE_P: u8 = 0;
     pub const TPA_MODE_D: u8 = 1;
-    pub const TPA_MODE_PDS: u8 = 2;
+    pub const _TPA_MODE_PDS: u8 = 2;
 
     pub const fn new() -> Self {
         Self { mode: Self::TPA_MODE_D, rate: 65, breakpoint: 1350, low_rate: 20, low_always: 0, low_breakpoint: 1050 }
@@ -226,8 +226,8 @@ impl PostcardValue<'_> for YawSpinRecoveryConfig {}
 
 impl YawSpinRecoveryConfig {
     pub const RECOVERY_OFF: u8 = 0;
-    pub const RECOVERY_ON: u8 = 1;
-    pub const RECOVERY_AUTO: u8 = 2;
+    pub const _RECOVERY_ON: u8 = 1;
+    pub const _RECOVERY_AUTO: u8 = 2;
 
     pub const fn new() -> Self {
         Self { yaw_spin_threshold: 0, yaw_spin_recovery: Self::RECOVERY_OFF }

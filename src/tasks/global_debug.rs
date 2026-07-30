@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 /// Sets a global debug value if the "debug" feature is enabled.
 /// Does absolutely nothing if the feature is disabled.
 macro_rules! debug_set {
@@ -76,7 +74,7 @@ impl GlobalDebug {
     }
 
     /// Return value at given index.
-    pub fn value(&self, index: usize) -> i16 {
+    pub fn _value(&self, index: usize) -> i16 {
         if index < Self::COUNT { self.values[index].load(Ordering::Relaxed) } else { 0 }
     }
 
@@ -89,6 +87,7 @@ impl GlobalDebug {
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 //#[repr(u8)]
 #[allow(missing_docs)]
+#[allow(unused)]
 pub enum DebugMode {
     #[default]
     None,

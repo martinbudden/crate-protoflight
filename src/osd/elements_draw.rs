@@ -1,14 +1,17 @@
 use crate::{
     config::GLOBAL_CONFIG,
     display::{Display, DisplayPortSeverity},
-    flight::ArmingFlags,
+    flight::{ArmingFlags, PidConfig},
     osd::{
         OsdDrawContext,
         elements::{OsdElement, OsdElements, OsdStickCameraFrameRenderPhase, OsdStickOverlayRenderPhase},
         symbols::OsdSymbols,
     },
+    tasks::GLOBAL_DEBUG,
 };
-use core::convert::TryFrom;
+
+use core::{convert::TryFrom, fmt::Write};
+use radio_controllers::RcMode;
 use strum::EnumCount;
 
 /*
@@ -121,9 +124,12 @@ pub enum OsdElementId {
 
 // element drawing functions
 impl OsdElements {
+    #[allow(clippy::too_many_lines)]
     pub async fn draw_element<D: Display>(&mut self, draw_context: &OsdDrawContext<'_, D>) -> bool {
         #[allow(clippy::enum_glob_use)]
         use OsdElementId::*;
+
+        #[allow(clippy::pedantic)]
         match self.active_element.id {
             Rssi => self.active_element.draw_rssi(),
             MainBatteryVoltage => self.active_element.draw_main_battery_usage(draw_context),
@@ -131,14 +137,118 @@ impl OsdElements {
             ArtificialHorizon => self.active_element.draw_artificial_horizon().await,
             ItemTimer1 | ItemTimer2 => self.active_element.draw_item_timer(),
             FlyMode => self.active_element.draw_fly_mode(),
-            RemainingTimeEstimate => self.active_element.draw_remaining_time_estimate(),
+            ThrottlePos => self.active_element.draw_throttle_position(),
+            #[cfg(feature = "vtx")]
+            VtxChannel => self.active_element.draw_nothing(),
+            CurrentDraw => self.active_element.draw_current_draw(draw_context),
+            MahDrawn => self.active_element.draw_mah_drawn(draw_context),
+
+            #[cfg(feature = "gps")]
+            GpsSpeed => self.active_element.draw_nothing(),
+            #[cfg(feature = "gps")]
+            GpsSats => self.active_element.draw_nothing(),
+
             Altitude => self.active_element.draw_altitude(),
+            RollPids => self.active_element.draw_roll_pids().await,
+            PitchPids => self.active_element.draw_pitch_pids().await,
+            YawPids => self.active_element.draw_yaw_pids().await,
+            Power => self.active_element.draw_nothing(),
+            PidRateProfile => self.active_element.draw_nothing(),
+            Warnings => self.active_element.draw_nothing(),
+            AvgCellVoltage => self.active_element.draw_nothing(),
+
+            #[cfg(feature = "gps")]
+            GpsLon => self.active_element.draw_nothing(),
+            #[cfg(feature = "gps")]
+            GpsLat => self.active_element.draw_nothing(),
+
+            Debug => self.active_element.draw_debug(),
             PitchAngle => self.active_element.draw_pitch_angle(self.pitch_angle_degrees),
             RollAngle => self.active_element.draw_roll_angle(self.roll_angle_degrees),
+            MainBatteryUsage => self.active_element.draw_nothing(),
             Disarmed => self.active_element.draw_disarmed(draw_context),
-            NumericalHeading => self.active_element.draw_numerical_heading(),
 
-            #[allow(clippy::pedantic)]
+            #[cfg(feature = "gps")]
+            HomeDirection => self.active_element.draw_nothing(),
+            #[cfg(feature = "gps")]
+            HomeDistance => self.active_element.draw_nothing(),
+
+            NumericalHeading => self.active_element.draw_numerical_heading(self.yaw_angle_degrees),
+            NumericalVario => self.active_element.draw_nothing(),
+            CompassBar => self.active_element.draw_nothing(),
+
+            #[cfg(feature = "dshot_telemetry")]
+            EscTemperature => self.active_element.draw_nothing(),
+            #[cfg(feature = "dshot_telemetry")]
+            EscRpm => self.active_element.draw_nothing(),
+
+            RemainingTimeEstimate => self.active_element.draw_remaining_time_estimate(),
+            RtcDatetime => self.active_element.draw_nothing(),
+            AdjustmentRange => self.active_element.draw_nothing(),
+            CoreTemperature => self.active_element.draw_nothing(),
+            AntiGravity => self.active_element.draw_anti_gravity(draw_context),
+            GForce => self.active_element.draw_nothing(),
+            MotorDiagnostics => self.active_element.draw_nothing(),
+
+            #[cfg(feature = "blackbox")]
+            LogStatus => self.active_element.draw_nothing(),
+
+            FlipArrow => self.active_element.draw_nothing(),
+            LinkQuality => self.active_element.draw_nothing(),
+
+            #[cfg(feature = "gps")]
+            FlightDistance => self.active_element.draw_nothing(),
+
+            StickOverlayLeft => self.active_element.draw_nothing(),
+            StickOverlayRight => self.active_element.draw_nothing(),
+
+            #[cfg(feature = "dshot_telemetry")]
+            EscRpmFrequency => self.active_element.draw_nothing(),
+
+            RateProfileName => self.active_element.draw_nothing(),
+            PidProfileName => self.active_element.draw_nothing(),
+            ProfileName => self.active_element.draw_nothing(),
+            RssiDbmValue => self.active_element.draw_nothing(),
+            RcChannels => self.active_element.draw_nothing(),
+
+            #[cfg(feature = "gps")]
+            Efficiency => self.active_element.draw_nothing(),
+
+            TotalFlights => self.active_element.draw_nothing(),
+            UpDownReference => self.active_element.draw_up_down_reference(),
+            TxUplinkPower => self.active_element.draw_nothing(),
+            WattHoursDrawn => self.active_element.draw_nothing(),
+            AuxValue => self.active_element.draw_nothing(),
+            ReadyMode => self.active_element.draw_nothing(),
+            RsnrValue => self.active_element.draw_nothing(),
+            SysGoggleVoltage => self.active_element.draw_nothing(),
+            SysVtxVoltage => self.active_element.draw_nothing(),
+            SysBitrate => self.active_element.draw_nothing(),
+            SysDelay => self.active_element.draw_nothing(),
+            SysDistance => self.active_element.draw_nothing(),
+            SysLq => self.active_element.draw_nothing(),
+            SysGoggleDvr => self.active_element.draw_nothing(),
+            SysVtxDvr => self.active_element.draw_nothing(),
+            SysWarnings => self.active_element.draw_nothing(),
+            SysVtxTemperature => self.active_element.draw_nothing(),
+            SysFanSpeed => self.active_element.draw_nothing(),
+
+            #[cfg(feature = "gps")]
+            GpsLapTimeCurrent => self.active_element.draw_nothing(),
+            #[cfg(feature = "gps")]
+            GpsLapTimePrevious => self.active_element.draw_nothing(),
+            #[cfg(feature = "gps")]
+            GpsLapTimeBest3 => self.active_element.draw_nothing(),
+            Debug2 => self.active_element.draw_debug2(),
+            CustomMsg0 | CustomMsg1 | CustomMsg2 | CustomMsg3 => self.active_element.draw_custom_message(),
+            #[cfg(feature = "rangefinder")]
+            LidarDistance => self.active_element.draw_nothing(),
+            CustomSerialText => self.active_element.draw_nothing(),
+            BatteryProfileName => self.active_element.draw_nothing(),
+
+            // only drawn in background
+            CraftName => self.active_element.draw_nothing(), // do nothing, since only drawn in background
+            PilotName => self.active_element.draw_nothing(), // do nothing, since only drawn in background
             HorizonSidebars => self.active_element.draw_nothing(), // do nothing, since only drawn in background
             _ => self.active_element.draw_nothing(),
         }
@@ -317,22 +427,24 @@ impl OsdElement {
     }
 
     fn draw_rssi(&mut self) -> bool {
+        let rssi = 88;
+        _ = write!(self.buf, "{}{:2}", OsdSymbols::RSSI, rssi);
         true
     }
 
     fn draw_main_battery_usage<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
         const USAGE_STEPS: usize = 11; // Use an odd number so the bar can be centered.
 
-        let _ = draw_context.battery_message;
+        _ = draw_context.battery_message;
 
         // TODO: calculate battery bars from the battery data
-        let remaining_capacity_bars = 4;
+        //let remaining_capacity_bars = 4;
         // Setup the boundaries
         self.buf[0] = OsdSymbols::PB_START;
         self.buf[USAGE_STEPS + 1] = OsdSymbols::PB_CLOSE;
 
         // Fill the battery bar using an iterator slice
-        let range = 1..=USAGE_STEPS;
+        /*let range = 1..=USAGE_STEPS;
         for (ii, symbol) in self.buf[range].iter_mut().enumerate() {
             *symbol = if ii < remaining_capacity_bars { OsdSymbols::PB_FULL } else { OsdSymbols::PB_EMPTY };
         }
@@ -340,54 +452,7 @@ impl OsdElement {
         // Handle the end-cap symbol if needed
         if (1..USAGE_STEPS).contains(&remaining_capacity_bars) {
             self.buf[1 + remaining_capacity_bars] = OsdSymbols::PB_END;
-        }
-        true
-    }
-
-    fn draw_disarmed<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
-        if !draw_context.arming_flags.is_set(ArmingFlags::ARMED) {
-            self.write_string("DISARMED");
-        }
-        /*_ = self.write_custom(|w| {
-            w.append_str_right_aligned("DISARMED", 8);
-        });*/
-        true
-    }
-
-    fn draw_roll_angle(&mut self, _angle_degrees: f32) -> bool {
-        let roll_angle_degrees = 93;
-        _ = self.write_custom(|w| {
-            w.append_str("ROL:");
-            w.append_u32(roll_angle_degrees);
-        });
-        true
-    }
-
-    fn draw_pitch_angle(&mut self, _angle_degrees: f32) -> bool {
-        true
-    }
-
-    fn draw_numerical_heading(&mut self) -> bool {
-        let yaw_angle_degrees = 93;
-        _ = self.write_custom(|w| {
-            w.append_str("YAW:");
-            w.append_u32(yaw_angle_degrees);
-        });
-        true
-    }
-
-    fn draw_fly_mode(&mut self) -> bool {
-        true
-    }
-
-    fn draw_remaining_time_estimate(&mut self) -> bool {
-        true
-    }
-
-    fn draw_altitude(&mut self) -> bool {
-        self.buf[0] = OsdSymbols::ALTITUDE;
-        self.buf[1] = OsdSymbols::HYPHEN;
-        self.buf[2] = 0;
+        }*/
         true
     }
 
@@ -444,6 +509,149 @@ impl OsdElement {
     }
 
     fn draw_item_timer(&mut self) -> bool {
+        true
+    }
+
+    fn draw_fly_mode(&mut self) -> bool {
+        true
+    }
+
+    fn draw_throttle_position(&mut self) -> bool {
+        true
+    }
+
+    fn draw_current_draw<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
+        let amperage = draw_context.battery_message.current.amperage_x100;
+        _ = write!(self.buf, "{:3}{}", amperage, OsdSymbols::AMP);
+        true
+    }
+
+    fn draw_mah_drawn<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
+        let mah_drawn = draw_context.battery_message.current.mah_drawn;
+        if mah_drawn >= self.osd_cap_alarm.into() {
+            self.attr = DisplayPortSeverity::Normal;
+        }
+        _ = write!(self.buf, "{:4}{}", mah_drawn, OsdSymbols::MAH);
+        true
+    }
+
+    fn draw_altitude(&mut self) -> bool {
+        self.buf[0] = OsdSymbols::ALTITUDE;
+        self.buf[1] = OsdSymbols::HYPHEN;
+        self.buf[2] = 0;
+        true
+    }
+
+    pub fn format_pid(&mut self, label: &str, pid: PidConfig) {
+        _ = write!(self.buf, "{} {:3} {:3} {:3} {:3} {:3}", label, pid.kp, pid.ki, pid.kd, pid.ks, pid.kk);
+    }
+
+    async fn draw_roll_pids(&mut self) -> bool {
+        let pid_config = {
+            let global_config = GLOBAL_CONFIG.lock().await;
+            global_config.pid_roll_rate
+        };
+        self.format_pid("ROL", pid_config);
+        true
+    }
+
+    async fn draw_pitch_pids(&mut self) -> bool {
+        let pid_config = {
+            let global_config = GLOBAL_CONFIG.lock().await;
+            global_config.pid_pitch_rate
+        };
+        self.format_pid("PIT", pid_config);
+        true
+    }
+
+    async fn draw_yaw_pids(&mut self) -> bool {
+        let pid_config = {
+            let global_config = GLOBAL_CONFIG.lock().await;
+            global_config.pid_roll_rate
+        };
+        self.format_pid("YAW", pid_config);
+        true
+    }
+
+    fn draw_debug(&mut self) -> bool {
+        let debug = GLOBAL_DEBUG.values();
+        _ = write!(self.buf, "DBG {:5} {:5} {:5} {:5}", debug[0], debug[1], debug[2], debug[3]);
+        true
+    }
+
+    fn draw_debug2(&mut self) -> bool {
+        let debug = GLOBAL_DEBUG.values();
+        _ = write!(self.buf, "DBG {:5} {:5} {:5} {:5}", debug[4], debug[5], debug[6], debug[7]);
+        true
+    }
+
+    fn draw_pitch_angle(&mut self, angle_degrees: i32) -> bool {
+        let sign_char = if angle_degrees < 0 { '-' } else { ' ' };
+        let angle_abs = angle_degrees.unsigned_abs(); // Converts to unsigned, avoiding negation overflow
+        _ = write!(self.buf, "{}{}{:02}", OsdSymbols::ROLL, sign_char, angle_abs);
+        true
+    }
+
+    fn draw_roll_angle(&mut self, angle_degrees: i32) -> bool {
+        // floor is supported natively on ARM Cortex-M, round is not
+        let sign_char = if angle_degrees < 0 { '-' } else { ' ' };
+        let angle_abs = angle_degrees.unsigned_abs(); // Converts to unsigned, avoiding negation overflow
+        _ = write!(self.buf, "{}{}{:02}", OsdSymbols::ROLL, sign_char, angle_abs);
+        true
+    }
+
+    fn draw_disarmed<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
+        if !draw_context.arming_flags.is_set(ArmingFlags::ARMED) {
+            self.write_string("DISARMED");
+        }
+        /*_ = self.write_custom(|w| {
+            w.append_str_right_aligned("DISARMED", 8);
+        });*/
+        true
+    }
+
+    fn direction_symbol_from_heading(heading_degrees: i32) -> u8 {
+        let heading_degrees = heading_degrees + 360; // Ensure positive value
+
+        // Split input heading 0..359 into sectors 0..(directions-1), but offset
+        // by half a sector so that sector 0 gets centered around heading 0.
+        // We multiply heading by directions to not loose precision in divisions
+        // In this way each segment will be a FULL_CIRCLE length
+        let mut direction = (heading_degrees * 16 + 180) / 360; // scale with rounding
+        direction %= 16;
+        #[allow(clippy::cast_possible_truncation)]
+        let mut heading = direction.cast_unsigned() as u8;
+
+        // Now heading has a heading with Up=0, Right=4, Down=8 and Left=12
+        // Our symbols are Down=0, Right=4, Up=8 and Left=12
+        // There're 16 arrow symbols. Transform it.
+        heading = 16 - heading;
+        heading = (heading + 8) % 16;
+
+        OsdSymbols::ARROW_SOUTH + heading
+    }
+
+    fn draw_numerical_heading(&mut self, angle_degrees: i32) -> bool {
+        _ = write!(self.buf, "{}{:03}", Self::direction_symbol_from_heading(angle_degrees), angle_degrees);
+        true
+    }
+
+    fn draw_remaining_time_estimate(&mut self) -> bool {
+        true
+    }
+
+    fn draw_anti_gravity<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
+        if draw_context.active_modes.test(RcMode::ANTIGRAVITY) {
+            self.write_string("AG");
+        }
+        true
+    }
+
+    fn draw_up_down_reference(&mut self) -> bool {
+        true
+    }
+
+    fn draw_custom_message(&mut self) -> bool {
         true
     }
 }
@@ -537,7 +745,7 @@ impl OsdElement {
             }
             self.rendered = false;
         } else {
-            self.buf[..OSD_STICK_OVERLAY_WIDTH].fill(OsdSymbols::STICK_OVERLAY_HORIZONTAL);
+            self.buf.buf[..OSD_STICK_OVERLAY_WIDTH].fill(OsdSymbols::STICK_OVERLAY_HORIZONTAL);
             self.buf[(OSD_STICK_OVERLAY_WIDTH - 1) / 2] = OsdSymbols::STICK_OVERLAY_CENTER;
             self.buf[OSD_STICK_OVERLAY_WIDTH] = 0; // string terminator
 

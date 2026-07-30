@@ -6,6 +6,7 @@ mod display;
 mod elements;
 mod elements_draw;
 mod fixed_buf;
+mod osd_buffer_cursor;
 mod symbols;
 
 #[allow(unused)]

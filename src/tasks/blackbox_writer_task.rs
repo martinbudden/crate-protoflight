@@ -107,7 +107,7 @@ pub async fn blackbox_writer_task(ctx: &'static mut BlackboxWriterContext) {
             embassy_time::Timer::after_micros(0).await;
 
             // Flushes data down at full 20 MHz speed via DMA channels!
-            let _ = log_file.write(&ctx.sector_buffer[..ctx.buffer_idx]).unwrap();
+            _ = log_file.write(&ctx.sector_buffer[..ctx.buffer_idx]).unwrap();
             ctx.buffer_idx = 0;
         }
 
@@ -127,7 +127,7 @@ where
 {
     let mut highest_idx = 0;
 
-    let _ = root_dir.iterate_dir(|entry| {
+    _ = root_dir.iterate_dir(|entry| {
         let base = entry.name.base_name(); // Returns &[u8; 8]
         let ext = entry.name.extension(); // Returns &[u8; 3]
 

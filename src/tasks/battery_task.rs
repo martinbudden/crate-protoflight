@@ -9,13 +9,13 @@ use crate::sensors::BatteryMessage;
 
 const MAX_BATTERY_SUBSCRIBER_COUNT: usize = 4;
 const BATTERY_PUBLISHER_COUNT: usize = 1;
-const BATTERY_CAPACITY: usize = 1; // only keep the last item
+const BATTERY_PUB_SUB_CAPACITY: usize = 1; // only keep the last item
 
 /// `PubSubChannel` for handling `battery` updates.
 static BATTERY_PUB_SUB_CHANNEL: PubSubChannel<
     CriticalSectionRawMutex,
     BatteryMessage,
-    BATTERY_CAPACITY,
+    BATTERY_PUB_SUB_CAPACITY,
     MAX_BATTERY_SUBSCRIBER_COUNT,
     BATTERY_PUBLISHER_COUNT,
 > = PubSubChannel::new();
@@ -24,7 +24,7 @@ type BatteryPublisher<'a> = Publisher<
     'a,
     CriticalSectionRawMutex,
     BatteryMessage,
-    BATTERY_CAPACITY,
+    BATTERY_PUB_SUB_CAPACITY,
     MAX_BATTERY_SUBSCRIBER_COUNT,
     BATTERY_PUBLISHER_COUNT,
 >;
@@ -39,7 +39,7 @@ pub type BatterySubscriber<'a> = Subscriber<
     'a,
     CriticalSectionRawMutex,
     BatteryMessage,
-    BATTERY_CAPACITY,
+    BATTERY_PUB_SUB_CAPACITY,
     MAX_BATTERY_SUBSCRIBER_COUNT,
     BATTERY_PUBLISHER_COUNT,
 >;

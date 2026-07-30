@@ -113,7 +113,7 @@ checksum = "b588b76d00fde79687d7646a9b5bdf3cc0f655e0bbd080335a95d7e96f3587da"
 [[package]]
 name = "blackbox-logger"
 version = "0.1.8"
-source = "git+https://github.com/martinbudden/crate-blackbox-logger#40e893beabf2e82df7fd6d7f253db15ac25197f6"
+source = "git+https://github.com/martinbudden/crate-blackbox-logger#8e9493de86cc27f392ad57bde90d0b0289005a78"
 dependencies = [
  "embassy-futures",
  "postcard",
@@ -191,9 +191,9 @@ dependencies = [
 
 [[package]]
 name = "cordyceps"
-version = "0.3.4"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "688d7fbb8092b8de775ef2536f36c8c31f2bc4006ece2e8d8ad2d17d00ce0a2a"
+checksum = "5b9ab7e0ca1d179628fa0172b2b97203c7fa0cd81be2448bd446fb9559ca9261"
 dependencies = [
  "loom",
  "tracing",

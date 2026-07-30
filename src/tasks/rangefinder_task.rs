@@ -9,13 +9,13 @@ use crate::sensors::RangefinderMessage;
 
 const MAX_RANGEFINDER_SUBSCRIBER_COUNT: usize = 4;
 const RANGEFINDER_PUBLISHER_COUNT: usize = 1;
-const RANGEFINDER_CAPACITY: usize = 1; // only keep the last item
+const RANGEFINDER_PUB_SUB_CAPACITY: usize = 1; // only keep the last item
 
 /// `PubSubChannel` for handling `Rangefinder` updates.
 static RANGEFINDER_PUB_SUB_CHANNEL: PubSubChannel<
     CriticalSectionRawMutex,
     RangefinderMessage,
-    RANGEFINDER_CAPACITY,
+    RANGEFINDER_PUB_SUB_CAPACITY,
     MAX_RANGEFINDER_SUBSCRIBER_COUNT,
     RANGEFINDER_PUBLISHER_COUNT,
 > = PubSubChannel::new();
@@ -24,11 +24,12 @@ type RangefinderPublisher<'a> = Publisher<
     'a,
     CriticalSectionRawMutex,
     RangefinderMessage,
-    RANGEFINDER_CAPACITY,
+    RANGEFINDER_PUB_SUB_CAPACITY,
     MAX_RANGEFINDER_SUBSCRIBER_COUNT,
     RANGEFINDER_PUBLISHER_COUNT,
 >;
 
+#[allow(clippy::expect_used)]
 pub fn rangefinder_publisher<'a>() -> RangefinderPublisher<'a> {
     RANGEFINDER_PUB_SUB_CHANNEL.publisher().expect("rangefinder_publisher failed")
 }
@@ -37,11 +38,12 @@ pub type RangefinderSubscriber<'a> = Subscriber<
     'a,
     CriticalSectionRawMutex,
     RangefinderMessage,
-    RANGEFINDER_CAPACITY,
+    RANGEFINDER_PUB_SUB_CAPACITY,
     MAX_RANGEFINDER_SUBSCRIBER_COUNT,
     RANGEFINDER_PUBLISHER_COUNT,
 >;
 
+#[allow(clippy::expect_used)]
 pub fn rangefinder_subscriber<'a>() -> RangefinderSubscriber<'a> {
     RANGEFINDER_PUB_SUB_CHANNEL.subscriber().expect("rangefinder_subscriber failed")
 }

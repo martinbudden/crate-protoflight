@@ -1,5 +1,3 @@
-//#![allow(unused)]
-
 use radio_controllers::RcMode;
 use simple_bitset::BitSet64;
 use vqm::Quaternionf32;

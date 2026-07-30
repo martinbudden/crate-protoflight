@@ -1,6 +1,7 @@
-#![allow(unused)]
+#![cfg(feature = "osd")]
 pub struct OsdSymbols {}
 
+#[allow(unused)]
 impl OsdSymbols {
     // Artificial horizon center screen Graphics
     pub const AH_CENTER_LINE: u8 = 0x72;
@@ -9,16 +10,6 @@ impl OsdSymbols {
     pub const AH_RIGHT: u8 = 0x02;
     pub const AH_LEFT: u8 = 0x03;
     pub const AH_DECORATION: u8 = 0x13;
-    // Artificial horizon bars
-    pub const AH_BAR9_0: u8 = 0x80;
-
-    // Progress bar
-    pub const PB_START: u8 = 0x8A;
-    pub const PB_FULL: u8 = 0x8B;
-    pub const PB_HALF: u8 = 0x8C;
-    pub const PB_EMPTY: u8 = 0x8D;
-    pub const PB_END: u8 = 0x8E;
-    pub const PB_CLOSE: u8 = 0x8F;
 
     //Misc
     pub const NONE: u8 = 0x00;
@@ -27,6 +18,9 @@ impl OsdSymbols {
     pub const HYPHEN: u8 = 0x2D;
     pub const BLACKBOX_LOG: u8 = 0x10;
     pub const HOME_FLAG: u8 = 0x11;
+    pub const ROLL: u8 = 0x14;
+    pub const PITCH: u8 = 0x15;
+    pub const TEMPERATURE: u8 = 0x7A;
 
     // GPS and navigation
     pub const LAT: u8 = 0x89;
@@ -85,6 +79,43 @@ impl OsdSymbols {
     pub const ARROW_SMALL_UP: u8 = 0x75;
     pub const ARROW_SMALL_DOWN: u8 = 0x76;
 
+    // Artificial horizon bars
+    pub const AH_BAR9_0: u8 = 0x80;
+    pub const AH_BAR9_1: u8 = 0x81;
+    pub const AH_BAR9_2: u8 = 0x82;
+    pub const AH_BAR9_3: u8 = 0x83;
+    pub const AH_BAR9_4: u8 = 0x84;
+    pub const AH_BAR9_5: u8 = 0x85;
+    pub const AH_BAR9_6: u8 = 0x86;
+    pub const AH_BAR9_7: u8 = 0x87;
+    pub const AH_BAR9_8: u8 = 0x88;
+
+    // Progress bar
+    pub const PB_START: u8 = 0x8A;
+    pub const PB_FULL: u8 = 0x8B;
+    pub const PB_HALF: u8 = 0x8C;
+    pub const PB_EMPTY: u8 = 0x8D;
+    pub const PB_END: u8 = 0x8E;
+    pub const PB_CLOSE: u8 = 0x8F;
+
+    // Batt evolution
+    pub const BATT_FULL: u8 = 0x90;
+    pub const BATT_5: u8 = 0x91;
+    pub const BATT_4: u8 = 0x92;
+    pub const BATT_3: u8 = 0x93;
+    pub const BATT_2: u8 = 0x94;
+    pub const BATT_1: u8 = 0x95;
+    pub const BATT_EMPTY: u8 = 0x96;
+
+    // Batt Icons
+    pub const MAIN_BATT: u8 = 0x97;
+
+    // Voltage and amperage
+    pub const VOLT: u8 = 0x06;
+    pub const AMP: u8 = 0x9A;
+    pub const MAH: u8 = 0x07;
+    pub const WATT: u8 = 0x57; // 0x57 is 'W'
+
     // Time
     pub const ON_M: u8 = 0x9B;
     pub const FLY_M: u8 = 0x9C;
@@ -103,7 +134,7 @@ impl OsdSymbols {
     // Menu cursor
     pub const CURSOR: u8 = Self::AH_LEFT;
 
-    // _stick overlays
+    // Stick overlays
     pub const STICK_OVERLAY_SPRITE_HIGH: u8 = 0x08;
     pub const STICK_OVERLAY_SPRITE_MID: u8 = 0x09;
     pub const STICK_OVERLAY_SPRITE_LOW: u8 = 0x0A;

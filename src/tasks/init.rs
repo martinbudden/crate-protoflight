@@ -54,6 +54,11 @@ use crate::{
     tasks::gps_task::{GpsContext, gps_publisher, gps_subscriber, gps_task},
 };
 
+#[cfg(feature = "magnetometer")]
+use crate::tasks::magnetometer_task::{
+    MagnetometerContext, magnetometer_publisher, magnetometer_subscriber, magnetometer_task,
+};
+
 #[cfg(feature = "msp")]
 use crate::{
     multiwii_serial_protocol::Msp,
@@ -78,6 +83,8 @@ use crate::tasks::rangefinder_task::{
 
 #[cfg(feature = "max7456")]
 use {crate::display::DisplayPortMax7456, embedded_hal_async::spi::SpiBus};
+#[cfg(feature = "max7456")]
+pub type DisplayPortMutex = Mutex<CriticalSectionRawMutex, DisplayPortMax7456>;
 
 #[cfg(not(feature = "max7456"))]
 use crate::display::DisplayPortMock;
@@ -114,6 +121,8 @@ pub async fn init(spawner: Spawner) {
     static BLACKBOX_WRITER_CTX: StaticCell<BlackboxWriterContext> = StaticCell::new();
     #[cfg(feature = "gps")]
     static GPS_CTX: StaticCell<GpsContext> = StaticCell::new();
+    #[cfg(feature = "magnetometer")]
+    static MAGNETOMETER_CTX: StaticCell<MagnetometerContext> = StaticCell::new();
     #[cfg(feature = "msp")]
     static MSP_CTX: StaticCell<MspContext> = StaticCell::new();
     #[cfg(feature = "optical_flow")]
@@ -138,6 +147,8 @@ pub async fn init(spawner: Spawner) {
 
     // --- INITIALIZE MOCK STUB (HOST PROFILE ENVIRONMENT) ---
     #[allow(unused)]
+    #[cfg(feature = "max7456")]
+    let display_ref = { DISPLAY_PORT_MUTEX_CELL.init(Mutex::new(DisplayPortMax7456::new())) };
     #[cfg(not(feature = "max7456"))]
     let display_ref = { DISPLAY_PORT_MUTEX_CELL.init(Mutex::new(DisplayPortMock::default())) };
     #[cfg(all(feature = "serde", feature = "rp2350"))]
@@ -193,6 +204,8 @@ pub async fn init(spawner: Spawner) {
         battery_subscriber: battery_subscriber(),
         #[cfg(feature = "gps")]
         gps_subscriber: gps_subscriber(),
+        #[cfg(feature = "magnetometer")]
+        magnetometer_subscriber: magnetometer_subscriber(),
         #[cfg(feature = "optical_flow")]
         optical_flow_subscriber: optical_flow_subscriber(),
         #[cfg(feature = "rangefinder")]
@@ -203,6 +216,9 @@ pub async fn init(spawner: Spawner) {
 
     #[cfg(feature = "blackbox")]
     let blackbox_ctx = {
+        #[cfg(not(feature = "gps"))]
+        use core::marker::PhantomData;
+
         //nvs::load_blackbox_config(&mut config.blackbox, &mut flash_driver, config_flash_range.clone());
         use crate::{sensors::SetpointMessage, tasks::gyro_pid_task::gyro_pid_receiver};
         config.blackbox.fields_disabled_mask = FieldSelect::PID_STERM_ROLL
@@ -229,6 +245,8 @@ pub async fn init(spawner: Spawner) {
             setpoint_message: SetpointMessage::new(),
             #[cfg(feature = "gps")]
             gps_subscriber: gps_subscriber(),
+            #[cfg(not(feature = "gps"))]
+            _marker: PhantomData,
             blackbox,
             buffer: [0u8; 1024],
             overflow_counter: 0,
@@ -263,14 +281,15 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "barometer")]
     let barometer_ctx = BAROMETER_CTX.init(BarometerContext { barometer_publisher: barometer_publisher() });
 
-    #[cfg(feature = "rangefinder")]
-    let rangefinder_ctx = RANGEFINDER_CTX.init(RangefinderContext { rangefinder_publisher: rangefinder_publisher() });
-
     #[cfg(feature = "battery")]
     let battery_ctx = BATTERY_CTX.init(BatteryContext { battery_publisher: battery_publisher() });
 
     #[cfg(feature = "gps")]
     let gps_ctx = GPS_CTX.init(GpsContext { gps_publisher: gps_publisher(), home: Geodetic::new() });
+
+    #[cfg(feature = "magnetometer")]
+    let magnetometer_ctx =
+        MAGNETOMETER_CTX.init(MagnetometerContext { magnetometer_publisher: magnetometer_publisher() });
 
     #[cfg(feature = "optical_flow")]
     let optical_flow_ctx =
@@ -292,6 +311,9 @@ pub async fn init(spawner: Spawner) {
         rangefinder_subscriber: rangefinder_subscriber(),
         osd: Osd::new(),
     });
+
+    #[cfg(feature = "rangefinder")]
+    let rangefinder_ctx = RANGEFINDER_CTX.init(RangefinderContext { rangefinder_publisher: rangefinder_publisher() });
 
     drop(config); // unlocks
 
@@ -332,6 +354,8 @@ pub async fn init(spawner: Spawner) {
     spawner.spawn(blackbox_writer_task(blackbox_writer_ctx).expect("Failed to create BLACKBOX_WRITER task"));
     #[cfg(feature = "gps")]
     spawner.spawn(gps_task(gps_ctx).expect("Failed to create GPS task"));
+    #[cfg(feature = "magnetometer")]
+    spawner.spawn(magnetometer_task(magnetometer_ctx).expect("Failed to create MAGNETOMETER task"));
     #[cfg(feature = "msp")]
     spawner.spawn(msp_task(msp_ctx).expect("Failed to create MSP task"));
     #[cfg(feature = "optical_flow")]

@@ -18,6 +18,9 @@ use crate::tasks::battery_task::BatterySubscriber;
 #[cfg(feature = "gps")]
 use crate::{gps::GpsMessage, tasks::gps_task::GpsSubscriber};
 
+#[cfg(feature = "magnetometer")]
+use crate::tasks::magnetometer_task::MagnetometerSubscriber;
+
 #[cfg(feature = "optical_flow")]
 use crate::tasks::optical_flow_task::OpticalFlowSubscriber;
 
@@ -37,6 +40,8 @@ pub struct MspContext<'a> {
     pub battery_subscriber: BatterySubscriber<'a>,
     #[cfg(feature = "gps")]
     pub gps_subscriber: GpsSubscriber<'a>,
+    #[cfg(feature = "magnetometer")]
+    pub magnetometer_subscriber: MagnetometerSubscriber<'a>,
     #[cfg(feature = "optical_flow")]
     pub optical_flow_subscriber: OpticalFlowSubscriber<'a>,
     #[cfg(feature = "rangefinder")]

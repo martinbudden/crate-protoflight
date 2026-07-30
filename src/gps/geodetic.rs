@@ -1,5 +1,5 @@
-#![allow(unused)]
-use vqm::{TrigonometricMethods, Vector3df32};
+#![cfg(feature = "gps")]
+use vqm::Vector3df32;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "std", derive(derive_more::Display))]
@@ -41,11 +41,10 @@ impl Default for Geodetic {
     }
 }
 
+#[allow(unused)]
 impl Geodetic {
     pub const WGS84_EQUATORIAL_RADIUS_METERS: f32 = 6_378_137.0;
-}
 
-impl Geodetic {
     pub fn set_home(&mut self, median: GeographicCoordinate) {
         self.home = median;
 

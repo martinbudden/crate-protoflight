@@ -46,6 +46,7 @@ impl BatteryProfile {
     pub const CELL_VOLTAGE_RANGE_MIN: u16 = 100;
     pub const CELL_VOLTAGE_RANGE_MAX: u16 = 500;
     pub const CELL_VOLTAGE_DEFAULT_MIN: u16 = 330;
+
     pub const fn new() -> Self {
         Self {
             max_cell_voltage_v_x100: Self::CELL_VOLTAGE_RANGE_MAX,
@@ -218,6 +219,7 @@ impl CurrentMeterReading {
     pub const SOURCE_MAX: u8 = 4;
     pub const SOURCE_COUNT: usize = 5;
     pub const SOURCE_NAMES: [&str; Self::SOURCE_COUNT] = ["NONE", "ADC", "VIRTUAL", "ESC", "MSP"];
+
     pub const fn new() -> Self {
         Self { amperage_x100: 0, amperage_latest_x100: 0, mah_drawn: 0, mah_drawn_offset: 0 }
     }
@@ -230,9 +232,9 @@ impl Default for CurrentMeterReading {
 }
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BatteryMessage {
-    voltage: VoltageMeterReading,
-    current: CurrentMeterReading,
-    state: BatteryState,
+    pub voltage: VoltageMeterReading,
+    pub current: CurrentMeterReading,
+    pub state: BatteryState,
 }
 
 impl BatteryMessage {

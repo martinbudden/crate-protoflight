@@ -1,3 +1,7 @@
+use core::{
+    fmt::{self, Write},
+    ops::{Index, IndexMut, Range, RangeBounds},
+};
 #[cfg(feature = "serde")]
 use sequential_storage::map::PostcardValue;
 // Ensure serde features are present
@@ -27,33 +31,131 @@ impl<const N: usize> Default for FixedBuf<N> {
 
 #[allow(unused)]
 impl<const N: usize> FixedBuf<N> {
-    // Returns a slice of the active raw bytes
+    /// Clears the buffer.
+    pub fn clear(&mut self) {
+        self.length = 0;
+    }
+    /// Returns a slice of the active raw bytes.
     pub fn as_bytes(&self) -> &[u8] {
         &self.buf[..self.length]
     }
 
-    // Returns a mutable slice of the active raw bytes
+    /// Returns a mutable slice of the active raw bytes.
     pub fn as_bytes_mut(&mut self) -> &mut [u8] {
         &mut self.buf[..self.length]
     }
 
-    // Returns a valid string slice (&str).
-    // Returns an Err if the data isn't valid UTF-8.
+    /// Returns a valid string slice (&str).
+    /// Returns an Err if the data isn't valid UTF-8.
     pub fn as_str(&self) -> Result<&str, core::str::Utf8Error> {
         core::str::from_utf8(self.as_bytes())
     }
+
+    /// Returns None if index is out of bounds.
+    pub fn get(&self, index: usize) -> Option<&u8> {
+        if index < self.length { Some(&self.buf[index]) } else { None }
+    }
+
+    // Mutable Getter: Use this to update a single byte safely
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut u8> {
+        if index < self.length { Some(&mut self.buf[index]) } else { None }
+    }
+
+    /// Fills a specific range of the active buffer with a single byte value.
+    /// Returns `Err(())` if the range is out of bounds of the active length.
+    pub fn try_fill_range<R>(&mut self, range: R, value: u8) -> Result<(), ()>
+    where
+        R: RangeBounds<usize>,
+    {
+        // 1. Resolve start and end bounds into concrete indices
+        let start = match range.start_bound() {
+            core::ops::Bound::Included(&s) => s,
+            core::ops::Bound::Excluded(&s) => s + 1,
+            core::ops::Bound::Unbounded => 0,
+        };
+        let end = match range.end_bound() {
+            core::ops::Bound::Included(&e) => e + 1,
+            core::ops::Bound::Excluded(&e) => e,
+            core::ops::Bound::Unbounded => self.length,
+        };
+
+        // 2. Bound check against the logical active length
+        if start > end || end > self.length {
+            return Err(());
+        }
+
+        // 3. Perform the fill operations safely without panicking
+        self.buf[start..end].fill(value);
+        Ok(())
+    }
 }
-// Allows referencing FixedBuf directly as a byte slice: &[u8]
+
+/// Allows referencing `FixedBuf` directly as a byte slice: &[u8].
 impl<const N: usize> AsRef<[u8]> for FixedBuf<N> {
     fn as_ref(&self) -> &[u8] {
         self.as_bytes()
     }
 }
 
-// Allows referencing FixedBuf directly as a mutable byte slice: &mut [u8]
+/// Allows referencing `FixedBuf` directly as a mutable byte slice: &mut [u8].
 impl<const N: usize> AsMut<[u8]> for FixedBuf<N> {
     fn as_mut(&mut self) -> &mut [u8] {
         self.as_bytes_mut()
+    }
+}
+
+// Immutable Index Trait: Implementation for reading syntax via `buf[i]`
+impl<const N: usize> Index<usize> for FixedBuf<N> {
+    type Output = u8;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        // Asserting bounds against length ensures you don't read uninitialized trailing bytes
+        assert!(index < self.length, "FixedBuf index out of bounds");
+        &self.buf[index]
+    }
+}
+
+// Mutable Index Trait: Implementation for modifying syntax via `buf[i] = val`
+impl<const N: usize> IndexMut<usize> for FixedBuf<N> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        assert!(index < self.length, "FixedBuf index out of bounds");
+        &mut self.buf[index]
+    }
+}
+
+// Immutable Range Slicing: Allows `&buf[1..4]`
+impl<const N: usize> Index<Range<usize>> for FixedBuf<N> {
+    type Output = [u8];
+
+    fn index(&self, range: Range<usize>) -> &Self::Output {
+        // Enforce safety: bounds check against active length, not the full capacity N
+        assert!(range.end <= self.length, "FixedBuf slice index out of bounds");
+        &self.buf[range]
+    }
+}
+
+// Mutable Range Slicing: Allows `&mut buf[1..4]`
+impl<const N: usize> IndexMut<Range<usize>> for FixedBuf<N> {
+    fn index_mut(&mut self, range: Range<usize>) -> &mut Self::Output {
+        assert!(range.end <= self.length, "FixedBuf slice index out of bounds");
+        &mut self.buf[range]
+    }
+}
+
+// The core formatting trait
+impl<const N: usize> Write for FixedBuf<N> {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        let bytes = s.as_bytes();
+
+        // Safety: Prevent buffer overflow (equivalent to snprintf safety!)
+        if self.length + bytes.len() > N {
+            return Err(fmt::Error);
+        }
+
+        // Copy incoming formatted string slice into our inline stack array
+        self.buf[self.length..self.length + bytes.len()].copy_from_slice(bytes);
+        self.length += bytes.len();
+        Ok(())
     }
 }
 

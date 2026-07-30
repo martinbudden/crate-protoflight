@@ -61,6 +61,7 @@ impl FlightController {
     //const FD_YAW: usize = 2;
     //const RPY_AXIS_COUNT: usize = 3;
 }
+
 impl Default for FlightController {
     fn default() -> Self {
         Self::new()

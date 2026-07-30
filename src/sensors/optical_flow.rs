@@ -1,5 +1,4 @@
 #![cfg(feature = "optical_flow")]
-#![allow(unused)]
 
 #[cfg(feature = "serde")]
 use {

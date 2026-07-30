@@ -227,6 +227,6 @@ mod tests {
     }
     #[test]
     fn test_new() {
-        let _ = RcAdjustments::new();
+        _ = RcAdjustments::new();
     }
 }

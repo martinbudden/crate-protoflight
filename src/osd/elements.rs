@@ -1,6 +1,5 @@
 #![cfg(feature = "osd")]
-#![allow(unused)]
-#[cfg(feature = "gps")]
+
 use crate::sensors::SensorFlags;
 use crate::{
     display::{Display, DisplayPortLayer, DisplayPortSeverity},
@@ -8,6 +7,8 @@ use crate::{
         OsdElementsConfig,
         display::OsdDrawContext,
         elements_draw::{OSD_ELEMENT_DISPLAY_ORDER, OsdElementId},
+        fixed_buf::FixedBuf,
+        //osd_buffer_cursor::OsdBufferCursor,
     },
 };
 
@@ -48,7 +49,7 @@ pub enum OsdStickCameraFrameRenderPhase {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct OsdElement {
-    pub buf: [u8; Self::BUFFER_LENGTH],
+    pub buf: FixedBuf<{ OsdElement::BUFFER_LENGTH }>,
     pub element_type: OsdElementType,
     pub id: OsdElementId,
     pub horizon_x: i32,
@@ -65,6 +66,7 @@ pub struct OsdElement {
     pub sidebar_render_level: bool,
     pub camera_frame_render_phase: OsdStickCameraFrameRenderPhase,
     pub camera_frame_i: u8,
+    pub osd_cap_alarm: i16,
 }
 
 impl OsdElement {
@@ -72,7 +74,7 @@ impl OsdElement {
 
     pub const fn new() -> Self {
         Self {
-            buf: [0u8; Self::BUFFER_LENGTH],
+            buf: FixedBuf::new(),
             element_type: OsdElementType::Type1,
             id: OsdElementId::Altitude,
             horizon_x: -4,
@@ -89,6 +91,7 @@ impl OsdElement {
             sidebar_render_level: false,
             camera_frame_render_phase: OsdStickCameraFrameRenderPhase::Top,
             camera_frame_i: 0,
+            osd_cap_alarm: 0,
         }
     }
 }
@@ -105,164 +108,31 @@ impl OsdElement {
         let bytes = string.as_bytes();
         let len = bytes.len().min(Self::BUFFER_LENGTH);
 
-        self.buf[..len].copy_from_slice(&bytes[..len]);
-        self.buf[len..].fill(0);
+        self.buf.buf[..len].copy_from_slice(&bytes[..len]);
+        self.buf.buf[len..].fill(0);
     }
 
     pub fn write_slice(&mut self, slice: &[u8]) {
         let len = slice.len().min(Self::BUFFER_LENGTH);
 
-        self.buf[..len].copy_from_slice(&slice[..len]);
-        self.buf[len..].fill(0);
+        self.buf.buf[..len].copy_from_slice(&slice[..len]);
+        self.buf.buf[len..].fill(0);
     }
 
-    /// Flexible multi-part writer that allows concatenating text and numbers manually.
+    /*/// Flexible multi-part writer that allows concatenating text and numbers manually.
     /// Returns the number of bytes written.
     pub fn write_custom<F>(&mut self, write_logic: F) -> usize
     where
         F: FnOnce(&mut OsdBufferCursor),
     {
-        self.buf.fill(0);
+        self.buf.buf.fill(0);
 
-        let mut cursor = OsdBufferCursor { buf: &mut self.buf, pos: 0 };
+        let mut cursor = OsdBufferCursor { buf: &mut self.buf.buf, pos: 0 };
 
         write_logic(&mut cursor);
 
         cursor.pos
-    }
-}
-
-/// A lightweight, ultra-fast writer cursor that replaces `core::fmt::Write`.
-pub struct OsdBufferCursor<'a> {
-    buf: &'a mut [u8],
-    pos: usize,
-}
-
-impl OsdBufferCursor<'_> {
-    /// Maximum decimal digits required to hold any 32-bit unsigned integer string.
-    pub const U32_MAX_DIGITS: usize = 10;
-
-    /// Appends a raw static byte sequence safely.
-    pub fn append_bytes(&mut self, bytes: &[u8]) {
-        let remaining = self.buf.len() - self.pos;
-        let to_copy = bytes.len().min(remaining);
-
-        if to_copy > 0 {
-            self.buf[self.pos..self.pos + to_copy].copy_from_slice(&bytes[..to_copy]);
-            self.pos += to_copy;
-        }
-    }
-
-    /// Append a static string slice.
-    pub fn append_str(&mut self, text: &str) {
-        self.append_bytes(text.as_bytes());
-    }
-
-    /// Optimized, division-based integer-to-ASCII formatter.
-    pub fn append_u32(&mut self, mut value: u32) {
-        if value == 0 {
-            self.append_bytes(b"0");
-            return;
-        }
-
-        let mut temp = [0u8; Self::U32_MAX_DIGITS];
-        let mut ii = 0;
-
-        while value > 0 && ii < temp.len() {
-            temp[ii] = b'0' + (value % 10) as u8;
-            value /= 10;
-            ii += 1;
-        }
-
-        // Copy backwards into the main buffer to fix character order
-        let remaining = self.buf.len() - self.pos;
-        let to_copy = ii.min(remaining);
-
-        for offset in 0..to_copy {
-            self.buf[self.pos + offset] = temp[ii - 1 - offset];
-        }
-        self.pos += to_copy;
-    }
-
-    /// Appends a string right-aligned within a field of a specified width.
-    /// If the string is longer than the field width, it will be left-truncated.
-    pub fn append_str_right_aligned(&mut self, text: &str, field_width: usize) {
-        let bytes = text.as_bytes();
-        let remaining = self.buf.len() - self.pos;
-
-        // Ensure we don't exceed the requested field width or remaining buffer space
-        let max_width = field_width.min(remaining);
-        if max_width == 0 {
-            return;
-        }
-
-        let text_len = bytes.len();
-
-        if text_len >= max_width {
-            // Text is too long for the field: take the tail of the string
-            let start_idx = text_len - max_width;
-            let to_copy = &bytes[start_idx..];
-            self.buf[self.pos..self.pos + max_width].copy_from_slice(to_copy);
-            self.pos += max_width;
-        } else {
-            // Text is shorter: fill the left side with padding spaces
-            let spaces_count = max_width - text_len;
-            self.buf[self.pos..self.pos + spaces_count].fill(b' ');
-            self.pos += spaces_count;
-
-            // Copy the actual text on the right side
-            self.buf[self.pos..self.pos + text_len].copy_from_slice(bytes);
-            self.pos += text_len;
-        }
-    }
-
-    /// Appends an integer right-aligned within a field of a specified width.
-    /// You can specify whether to pad the empty left space with zeroes ('0') or spaces (' ').
-    pub fn append_u32_right_aligned(&mut self, mut value: u32, field_width: usize, pad_with_zero: bool) {
-        let remaining = self.buf.len() - self.pos;
-        let max_width = field_width.min(remaining).min(Self::U32_MAX_DIGITS);
-        if max_width == 0 {
-            return;
-        }
-
-        // Write digits into a temporary array in reverse order
-        let mut buf = [0u8; Self::U32_MAX_DIGITS];
-        let mut digit_count = 0;
-
-        if value == 0 {
-            buf[0] = b'0';
-            digit_count = 1;
-        } else {
-            while value > 0 && digit_count < buf.len() {
-                buf[digit_count] = b'0' + (value % 10) as u8;
-                value /= 10;
-                digit_count += 1;
-            }
-        }
-
-        // Determine what padding character to use
-        let pad_char = if pad_with_zero { b'0' } else { b' ' };
-
-        if digit_count >= max_width {
-            // Number has more digits than the field width: truncate the leading digits
-            for offset in 0..max_width {
-                // Read backwards from the end of the required visible tail slice
-                self.buf[self.pos + offset] = buf[max_width - 1 - offset];
-            }
-            self.pos += max_width;
-        } else {
-            // Number is smaller than field width: inject padding first
-            let padding_needed = max_width - digit_count;
-            self.buf[self.pos..self.pos + padding_needed].fill(pad_char);
-            self.pos += padding_needed;
-
-            // Copy the numbers into the remaining right-hand slots
-            for offset in 0..digit_count {
-                self.buf[self.pos + offset] = buf[digit_count - 1 - offset];
-            }
-            self.pos += digit_count;
-        }
-    }
+    }*/
 }
 
 #[allow(clippy::struct_excessive_bools)]
@@ -279,9 +149,9 @@ pub struct OsdElements {
     display_pending_background: bool,
     background_rendered: bool,
     background_layer_supported: bool,
-    pub roll_angle_degrees: f32,
-    pub pitch_angle_degrees: f32,
-    pub yaw_angle_degrees: f32,
+    pub roll_angle_degrees: i32,
+    pub pitch_angle_degrees: i32,
+    pub yaw_angle_degrees: i32,
 }
 
 impl OsdElements {
@@ -297,9 +167,9 @@ impl OsdElements {
             display_pending_background: false,
             background_rendered: false,
             background_layer_supported: false,
-            roll_angle_degrees: 0.0,
-            pitch_angle_degrees: 0.0,
-            yaw_angle_degrees: 0.0,
+            roll_angle_degrees: 0,
+            pitch_angle_degrees: 0,
+            yaw_angle_degrees: 0,
         }
     }
 }
@@ -318,11 +188,11 @@ impl OsdElements {
     pub const XY_POSITION_BITS: u16 = 6; // 6 bits gives a range 0-63
     pub const ELEMENT_TYPE_MASK: u16 = 0b_1100_0000_0000_0000; // bits 14-15
     pub const PROFILE_MASK:      u16 = 0b_0011_0000_0000_0000;
-    pub const _Y_POSITION_MASK:   u16 = 0b_0000_1111_1100_0000;
+    pub const _Y_POSITION_MASK:  u16 = 0b_0000_1111_1100_0000;
     pub const X_POSITION_MASK:   u16 = 0b_0000_0000_0011_1111;
 }
 
-//#[allow(unused)]
+#[allow(unused)]
 #[allow(clippy::unused_self)]
 impl OsdElements {
     pub fn element_type(x: u16) -> OsdElementType {
@@ -419,7 +289,7 @@ impl OsdElements {
             _ = draw_context.display_port.write_string(
                 self.active_element.pos_x + self.active_element.offset_x,
                 self.active_element.pos_y + self.active_element.offset_y,
-                &self.active_element.buf,
+                &self.active_element.buf.buf,
                 self.active_element.attr,
             );
             self.active_element.buf[0] = 0;
@@ -431,7 +301,7 @@ impl OsdElements {
             _ = draw_context.display_port.write_string(
                 self.active_element.pos_x + self.active_element.offset_x,
                 self.active_element.pos_y + self.active_element.offset_y,
-                &self.active_element.buf,
+                &self.active_element.buf.buf,
                 self.active_element.attr,
             );
             self.active_element.buf[0] = 0;
@@ -538,10 +408,11 @@ impl OsdElements {
         self.draw_active_elements_background(draw_context);
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     pub fn update_attitude(&mut self, roll_angle_degrees: f32, pitch_angle_degrees: f32, yaw_angle_degrees: f32) {
-        self.roll_angle_degrees = roll_angle_degrees;
-        self.pitch_angle_degrees = pitch_angle_degrees;
-        self.yaw_angle_degrees = yaw_angle_degrees;
+        self.roll_angle_degrees = (roll_angle_degrees + 0.5).floor() as i32;
+        self.pitch_angle_degrees = (pitch_angle_degrees + 0.5).floor() as i32;
+        self.yaw_angle_degrees = (yaw_angle_degrees + 0.5).floor() as i32;
     }
 }
 

@@ -1,5 +1,4 @@
 #![cfg(feature = "magnetometer")]
-#![allow(unused)]
 
 #[cfg(feature = "serde")]
 use {

@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use vqm::Vector3df32;
 
 use crate::gps::{GeographicCoordinate, GpsSolutionData};
@@ -72,6 +70,7 @@ pub struct GpsData {
     pub update: u8,
 }
 
+#[allow(unused)]
 impl GpsData {
     const FIX_HOME: u8 = 0x01;
     const FIX: u8 = 0x02;

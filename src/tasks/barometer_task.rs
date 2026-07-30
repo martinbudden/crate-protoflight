@@ -9,13 +9,13 @@ use crate::sensors::BarometerMessage;
 
 const MAX_BAROMETER_SUBSCRIBER_COUNT: usize = 4;
 const BAROMETER_PUBLISHER_COUNT: usize = 1;
-const BAROMETER_CAPACITY: usize = 1; // only keep the last item
+const BAROMETER_PUB_SUB_CAPACITY: usize = 1; // only keep the last item
 
 /// `PubSubChannel` for handling `barometer` updates.
 static BAROMETER_PUB_SUB_CHANNEL: PubSubChannel<
     CriticalSectionRawMutex,
     BarometerMessage,
-    BAROMETER_CAPACITY,
+    BAROMETER_PUB_SUB_CAPACITY,
     MAX_BAROMETER_SUBSCRIBER_COUNT,
     BAROMETER_PUBLISHER_COUNT,
 > = PubSubChannel::new();
@@ -24,7 +24,7 @@ type BarometerPublisher<'a> = Publisher<
     'a,
     CriticalSectionRawMutex,
     BarometerMessage,
-    BAROMETER_CAPACITY,
+    BAROMETER_PUB_SUB_CAPACITY,
     MAX_BAROMETER_SUBSCRIBER_COUNT,
     BAROMETER_PUBLISHER_COUNT,
 >;
@@ -38,7 +38,7 @@ pub type BarometerSubscriber<'a> = Subscriber<
     'a,
     CriticalSectionRawMutex,
     BarometerMessage,
-    BAROMETER_CAPACITY,
+    BAROMETER_PUB_SUB_CAPACITY,
     MAX_BAROMETER_SUBSCRIBER_COUNT,
     BAROMETER_PUBLISHER_COUNT,
 >;

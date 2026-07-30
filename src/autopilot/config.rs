@@ -1,4 +1,3 @@
-#![allow(unused)]
 use crate::flight::PidConfig;
 #[cfg(feature = "serde")]
 use {
@@ -8,6 +7,8 @@ use {
 
 // RX Loss Policy: What to do when radio signal is lost during autopilot
 pub struct AutopilotRxLoss {}
+
+#[allow(unused)]
 impl AutopilotRxLoss {
     pub const DISABLE: u8 = 0; // Disable autopilot, use standard failsafe
     pub const CONTINUE: u8 = 1; // Continue mission (if GPS valid)
@@ -15,6 +16,8 @@ impl AutopilotRxLoss {
 }
 
 pub struct AutopilotYawMode {}
+
+#[allow(unused)]
 impl AutopilotYawMode {
     pub const VELOCITY: u8 = 0; // Multirotor: point nose in velocity direction
     pub const BEARING: u8 = 1; // Multirotor: point nose at waypoint
@@ -164,11 +167,15 @@ impl Default for AutopilotConfig {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct PositionHoldConfig {
     pub deadband: u8,
-    pub position_source: u8,            // Position source selection
-    pub optical_flow_quality_min: u8,   // Minimum optical flow quality threshold
-    pub optical_flow_max_range_cm: u16, // Maximum altitude for optical flow (cm)
+    /// Position source selection.
+    pub position_source: u8,
+    /// Minimum optical flow quality threshold.
+    pub optical_flow_quality_min: u8,
+    /// Maximum altitude for optical flow (cm).
+    pub optical_flow_max_range_cm: u16,
 }
 
+#[allow(unused)]
 impl PositionHoldConfig {
     pub const SOURCE_AUTO: u8 = 0;
     pub const SOURCE_GPS_ONLY: u8 = 1;
