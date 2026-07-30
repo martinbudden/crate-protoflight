@@ -8,7 +8,7 @@ use sensor_fusion::{MadgwickFilterf32, SensorFusion};
 
 use crate::{
     config::{FastConfigItem, FastConfigSubscriber},
-    flight::{FilterAccGyro, FlightController, ImuFilterBank, RcControls, VehicleControl},
+    flight::{FilterAccGyro, FlightController, ImuFilterBank, ImuFilterBankConfig, RcControls, VehicleControl},
     sensors::{GyroPidMessage, SetpointMessage},
     tasks::{imu_task::IMU_SIGNAL, motor_mixer_task::MOTOR_MIXER_SIGNAL, rx_task::RxReceiver},
 };
@@ -81,6 +81,27 @@ pub struct GyroPidContext<'a> {
     pub sensor_fusion: MadgwickFilterf32,
     pub flight_controller: FlightController,
     pub rc_controls: RcControls,
+}
+
+impl<'a> GyroPidContext<'a> {
+    pub fn new(
+        rx_receiver: RxReceiver,
+        gyro_pid_sender: GyroPidSender,
+        setpoint_sender: SetpointSender,
+        fast_config_subscriber: FastConfigSubscriber<'a>,
+        imu_filter_bank_config: ImuFilterBankConfig,
+    ) -> Self {
+        Self {
+            rx_receiver,
+            gyro_pid_sender,
+            setpoint_sender,
+            fast_config_subscriber,
+            imu_filters: ImuFilterBank::with_config(imu_filter_bank_config),
+            sensor_fusion: MadgwickFilterf32::new(),
+            flight_controller: FlightController::new(),
+            rc_controls: RcControls::new(),
+        }
+    }
 }
 
 /// The GYRO/PID task.

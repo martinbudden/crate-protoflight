@@ -61,6 +61,12 @@ pub struct GpsContext<'a> {
     pub home: Geodetic,
 }
 
+impl<'a> GpsContext<'a> {
+    pub fn new(gps_publisher: GpsPublisher<'a>) -> Self {
+        Self { gps_publisher, home: Geodetic::new() }
+    }
+}
+
 /// GPS Task Placeholder.
 #[embassy_executor::task]
 pub async fn gps_task(ctx: &'static mut GpsContext<'static>) {

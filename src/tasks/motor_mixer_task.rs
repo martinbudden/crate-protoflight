@@ -1,6 +1,8 @@
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal};
 
-use motor_mixers::{MotorMixerMessage, MotorMixerOutput, MotorMixerQuadXPwm};
+use motor_mixers::{
+    MixerConfig, MotorConfig, MotorMixerCommon, MotorMixerMessage, MotorMixerOutput, MotorMixerQuadXPwm,
+};
 
 // --- MOTOR_SIGNAL ---
 // High-speed trigger for Motors (8kHz)
@@ -10,6 +12,12 @@ pub static MOTOR_MIXER_SIGNAL: Signal<CriticalSectionRawMutex, MotorMixerMessage
 /// Context for `motor_mixer_task`.
 pub struct MotorMixerContext {
     pub motor_mixer: MotorMixerQuadXPwm,
+}
+
+impl MotorMixerContext {
+    pub fn new(mixer_config: MixerConfig, motor_config: MotorConfig) -> Self {
+        Self { motor_mixer: MotorMixerQuadXPwm::new(MotorMixerCommon::with_config(mixer_config, motor_config)) }
+    }
 }
 
 #[embassy_executor::task]

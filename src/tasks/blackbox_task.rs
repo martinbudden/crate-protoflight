@@ -1,5 +1,6 @@
 #![cfg(feature = "blackbox")]
 
+use blackbox_logger::BlackboxConfig;
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel};
 
 #[cfg(feature = "debug")]
@@ -35,6 +36,28 @@ pub struct BlackboxContext<'a> {
     pub blackbox: Blackbox,
     pub buffer: [u8; BUFFER_CAPACITY],
     pub overflow_counter: u32,
+}
+
+impl<'a> BlackboxContext<'a> {
+    #[rustfmt::skip]
+    pub fn new(
+        gyro_pid_receiver: GyroPidReceiver,
+        setpoint_receiver: SetpointReceiver,
+        setpoint_message: SetpointMessage,
+        blackbox_config: BlackboxConfig,
+        #[cfg(feature = "gps")] gps_subscriber: GpsSubscriber<'a>,
+    ) -> Self {
+        Self {
+            gyro_pid_receiver,
+            setpoint_receiver,
+            setpoint_message,
+            #[cfg(feature = "gps")] gps_subscriber,
+            #[cfg(not(feature = "gps"))] _marker: PhantomData,
+            blackbox: Blackbox::new(blackbox_config),
+            buffer: [0u8; BUFFER_CAPACITY],
+            overflow_counter: 0,
+        }
+    }
 }
 
 /// A fixed-size message container used to pass blackbox chunks between tasks.

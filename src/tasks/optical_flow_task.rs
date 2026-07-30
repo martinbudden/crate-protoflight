@@ -53,6 +53,12 @@ pub struct OpticalFlowContext<'a> {
     pub optical_flow_publisher: OpticalFlowPublisher<'a>,
 }
 
+impl<'a> OpticalFlowContext<'a> {
+    pub fn new(optical_flow_publisher: OpticalFlowPublisher<'a>) -> Self {
+        Self { optical_flow_publisher }
+    }
+}
+
 /// Optical flow Task Placeholder.
 ///
 

@@ -53,6 +53,12 @@ pub struct RangefinderContext<'a> {
     pub rangefinder_publisher: RangefinderPublisher<'a>,
 }
 
+impl<'a> RangefinderContext<'a> {
+    pub fn new(rangefinder_publisher: RangefinderPublisher<'a>) -> Self {
+        Self { rangefinder_publisher }
+    }
+}
+
 /// Rangefinder Task Placeholder.
 #[embassy_executor::task]
 pub async fn rangefinder_task(ctx: &'static mut RangefinderContext<'static>) {

@@ -1,3 +1,4 @@
+#![allow(unused)]
 /// Sets a global debug value if the "debug" feature is enabled.
 /// Does absolutely nothing if the feature is disabled.
 macro_rules! debug_set {

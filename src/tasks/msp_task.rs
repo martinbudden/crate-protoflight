@@ -51,6 +51,35 @@ pub struct MspContext<'a> {
     pub write_buf: [u8; MSP_WRITE_BUF_SIZE],
 }
 
+impl<'a> MspContext<'a> {
+    #[allow(clippy::too_many_arguments)]
+    #[rustfmt::skip]
+    pub fn new(
+        fast_config_publisher: FastConfigPublisher<'a>,
+        config_publisher: ConfigPublisher<'a>,
+        #[cfg(feature = "barometer")] barometer_subscriber: BarometerSubscriber<'a>,
+        #[cfg(feature = "battery")] battery_subscriber: BatterySubscriber<'a>,
+        #[cfg(feature = "gps")] gps_subscriber: GpsSubscriber<'a>,
+        #[cfg(feature = "magnetometer")] magnetometer_subscriber: MagnetometerSubscriber<'a>,
+        #[cfg(feature = "optical_flow")] optical_flow_subscriber: OpticalFlowSubscriber<'a>,
+        #[cfg(feature = "rangefinder")] rangefinder_subscriber: RangefinderSubscriber<'a>,
+    ) -> Self {
+        Self {
+            msp: Msp::new(),
+            fast_config_publisher,
+            config_publisher,
+            #[cfg(feature = "barometer")] barometer_subscriber,
+            #[cfg(feature = "battery")] battery_subscriber,
+            #[cfg(feature = "gps")] gps_subscriber,
+            #[cfg(feature = "magnetometer")] magnetometer_subscriber,
+            #[cfg(feature = "optical_flow")] optical_flow_subscriber,
+            #[cfg(feature = "rangefinder")] rangefinder_subscriber,
+            read_buf: [0u8; MSP_READ_BUF_SIZE],
+            write_buf: [0u8; MSP_WRITE_BUF_SIZE],
+        }
+    }
+}
+
 impl MspContext<'_> {
     /// Helper to get a reader for `read_buf`.
     pub fn reader(&'_ mut self) -> StreamBufReader<'_> {

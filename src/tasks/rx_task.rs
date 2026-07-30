@@ -5,7 +5,7 @@ use embassy_sync::{
 
 #[cfg(feature = "autopilot")]
 use radio_controllers::RcMode;
-use radio_controllers::{Rates, RcModes, RxFrame};
+use radio_controllers::{Rates, RatesConfig, RcModes, RxFrame};
 
 use crate::{
     config::{ConfigItem, ConfigPublisher, ConfigSubscriber, FastConfigPublisher},
@@ -39,11 +39,34 @@ pub struct RxContext<'a> {
     pub config_publisher: ConfigPublisher<'a>,
     /// To publish in-flight adjustments.
     pub fast_config_publisher: FastConfigPublisher<'a>,
-    #[cfg(feature = "autopilot")]
-    pub autopilot_receiver: AutopilotReceiver,
     pub rc_modes: RcModes,
     pub rates: Rates,
     pub rc_adjustments: RcAdjustments,
+    #[cfg(feature = "autopilot")]
+    pub autopilot_receiver: AutopilotReceiver,
+}
+
+impl<'a> RxContext<'a> {
+    #[rustfmt::skip]
+    pub fn new(
+        rx_sender: RxSender,
+        config_subscriber: ConfigSubscriber<'a>,
+        config_publisher: ConfigPublisher<'a>,
+        fast_config_publisher: FastConfigPublisher<'a>,
+        rates_config: RatesConfig,
+        #[cfg(feature = "autopilot")] autopilot_receiver: AutopilotReceiver,
+    ) -> Self {
+        Self {
+            rx_sender,
+            config_subscriber,
+            config_publisher,
+            fast_config_publisher,
+            rates: Rates::new(rates_config),
+            rc_modes: RcModes::new(),
+            rc_adjustments: RcAdjustments::new(),
+            #[cfg(feature = "autopilot")] autopilot_receiver,
+        }
+    }
 }
 
 /// The rx task waits (with a timeout) for a packet from the radio and when one arrives it:

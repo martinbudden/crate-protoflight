@@ -43,6 +43,29 @@ pub struct OsdContext<'a> {
     pub rangefinder_subscriber: RangefinderSubscriber<'a>,
     pub osd: Osd,
 }
+impl<'a> OsdContext<'a> {
+    #[rustfmt::skip]
+    pub fn new(
+        gyro_pid_receiver: GyroPidReceiver,
+        setpoint_receiver: SetpointReceiver,
+        #[cfg(feature = "barometer")] barometer_subscriber: BarometerSubscriber<'a>,
+        #[cfg(feature = "battery")] battery_subscriber: BatterySubscriber<'a>,
+        #[cfg(feature = "gps")] gps_subscriber: GpsSubscriber<'a>,
+        #[cfg(feature = "optical_flow")] optical_flow_subscriber: OpticalFlowSubscriber<'a>,
+        #[cfg(feature = "rangefinder")] rangefinder_subscriber: RangefinderSubscriber<'a>,
+    ) -> Self {
+        Self {
+            gyro_pid_receiver,
+            setpoint_receiver,
+            #[cfg(feature = "barometer")] barometer_subscriber,
+            #[cfg(feature = "battery")] battery_subscriber,
+            #[cfg(feature = "gps")] gps_subscriber,
+            #[cfg(feature = "optical_flow")] optical_flow_subscriber,
+            #[cfg(feature = "rangefinder")] rangefinder_subscriber,
+            osd: Osd::new(),
+        }
+    }
+}
 
 /// OSD Task Placeholder.
 ///

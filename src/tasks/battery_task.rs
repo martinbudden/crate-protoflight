@@ -55,6 +55,12 @@ pub struct BatteryContext<'a> {
     pub battery_publisher: BatteryPublisher<'a>,
 }
 
+impl<'a> BatteryContext<'a> {
+    pub fn new(battery_publisher: BatteryPublisher<'a>) -> Self {
+        Self { battery_publisher }
+    }
+}
+
 /// Battery Task Placeholder.
 ///
 

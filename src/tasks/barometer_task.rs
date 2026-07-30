@@ -53,6 +53,12 @@ pub struct BarometerContext<'a> {
     pub barometer_publisher: BarometerPublisher<'a>,
 }
 
+impl<'a> BarometerContext<'a> {
+    pub fn new(barometer_publisher: BarometerPublisher<'a>) -> Self {
+        Self { barometer_publisher }
+    }
+}
+
 /// Barometer Task Placeholder.
 #[embassy_executor::task]
 pub async fn barometer_task(ctx: &'static mut BarometerContext<'static>) {

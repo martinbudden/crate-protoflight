@@ -57,6 +57,30 @@ pub struct AutopilotContext<'a> {
     pub rangefinder_subscriber: RangefinderSubscriber<'a>,
 }
 
+impl<'a> AutopilotContext<'a> {
+    #[rustfmt::skip]
+    pub fn new(
+        gyro_pid_receiver: GyroPidReceiver,
+        rx_receiver: RxReceiver,
+        autopilot_sender: AutopilotSender,
+        #[cfg(feature = "barometer")] barometer_subscriber: BarometerSubscriber<'a>,
+        #[cfg(feature = "gps")] gps_subscriber: GpsSubscriber<'a>,
+        #[cfg(feature = "optical_flow")] optical_flow_subscriber: OpticalFlowSubscriber<'a>,
+        #[cfg(feature = "rangefinder")] rangefinder_subscriber: RangefinderSubscriber<'a>,
+    ) -> Self {
+        Self {
+            gyro_pid_receiver,
+            rx_receiver,
+            autopilot_sender,
+            autopilot: Autopilot::new(),
+            #[cfg(feature = "barometer")] barometer_subscriber,
+            #[cfg(feature = "gps")] gps_subscriber,
+            #[cfg(feature = "optical_flow")] optical_flow_subscriber,
+            #[cfg(feature = "rangefinder")] rangefinder_subscriber,
+        }
+    }
+}
+
 /// Autopilot Placeholder.
 #[embassy_executor::task]
 pub async fn autopilot_task(ctx: &'static mut AutopilotContext<'static>) {

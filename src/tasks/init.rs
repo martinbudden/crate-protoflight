@@ -3,14 +3,9 @@ use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 
 use static_cell::StaticCell;
 
-use imu_sensors::{ImuAxesOrder, ImuMock, MockImuBus};
-use motor_mixers::{MotorMixerCommon, MotorMixerQuadXPwm};
-use radio_controllers::{Rates, RcModes};
-use sensor_fusion::MadgwickFilterf32;
-
+#[allow(unused)]
 use crate::{
     config::{GLOBAL_CONFIG, config_publisher, config_subscriber, fast_config_publisher, fast_config_subscriber},
-    flight::{FlightController, ImuFilterBank, RcAdjustments, RcControls},
     tasks::{
         gyro_pid_task::{
             GyroPidContext, gyro_pid_receiver, gyro_pid_sender, gyro_pid_task, setpoint_receiver, setpoint_sender,
@@ -28,10 +23,7 @@ use crate::tasks::init_rp;
 use crate::tasks::non_volatile_storage::load_global_configs;
 
 #[cfg(feature = "autopilot")]
-use crate::{
-    autopilot::pilot::Autopilot,
-    tasks::autopilot_task::{AutopilotContext, autopilot_receiver, autopilot_sender, autopilot_task},
-};
+use crate::tasks::autopilot_task::{AutopilotContext, autopilot_receiver, autopilot_sender, autopilot_task};
 
 #[cfg(feature = "barometer")]
 use crate::tasks::barometer_task::{BarometerContext, barometer_publisher, barometer_subscriber, barometer_task};
@@ -45,14 +37,11 @@ use crate::tasks::blackbox_writer_task::{BlackboxWriterContext, blackbox_writer_
 #[cfg(feature = "blackbox")]
 use {
     crate::tasks::blackbox_task::{BlackboxContext, blackbox_task},
-    blackbox_logger::{Blackbox, FieldSelect},
+    blackbox_logger::FieldSelect,
 };
 
 #[cfg(feature = "gps")]
-use crate::{
-    gps::Geodetic,
-    tasks::gps_task::{GpsContext, gps_publisher, gps_subscriber, gps_task},
-};
+use crate::tasks::gps_task::{GpsContext, gps_publisher, gps_subscriber, gps_task};
 
 #[cfg(feature = "magnetometer")]
 use crate::tasks::magnetometer_task::{
@@ -60,10 +49,7 @@ use crate::tasks::magnetometer_task::{
 };
 
 #[cfg(feature = "msp")]
-use crate::{
-    multiwii_serial_protocol::Msp,
-    tasks::msp_task::{MSP_READ_BUF_SIZE, MSP_WRITE_BUF_SIZE, MspContext, msp_task},
-};
+use crate::tasks::msp_task::{MspContext, msp_task};
 
 #[cfg(feature = "optical_flow")]
 use crate::tasks::optical_flow_task::{
@@ -71,10 +57,7 @@ use crate::tasks::optical_flow_task::{
 };
 
 #[cfg(feature = "osd")]
-use crate::{
-    osd::Osd,
-    tasks::osd_task::{OsdContext, osd_task},
-};
+use crate::tasks::osd_task::{OsdContext, osd_task};
 
 #[cfg(feature = "rangefinder")]
 use crate::tasks::rangefinder_task::{
@@ -150,6 +133,7 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "max7456")]
     let display_ref = { DISPLAY_PORT_MUTEX_CELL.init(Mutex::new(DisplayPortMax7456::new())) };
     #[cfg(not(feature = "max7456"))]
+    #[allow(unused)]
     let display_ref = { DISPLAY_PORT_MUTEX_CELL.init(Mutex::new(DisplayPortMock::default())) };
     #[cfg(all(feature = "serde", feature = "rp2350"))]
     load_global_configs(flash).await;
@@ -164,56 +148,42 @@ pub async fn init(spawner: Spawner) {
     // ****
 
     // Initialize the modern storage driver handle matching your u16 Key setup
-    let gyro_pid_ctx = GYRO_PID_CTX.init(GyroPidContext {
-        rx_receiver: rx_receiver(),
-        gyro_pid_sender: gyro_pid_sender(),
-        setpoint_sender: setpoint_sender(),
-        fast_config_subscriber: fast_config_subscriber(),
-        imu_filters: ImuFilterBank::with_config(config.imu_filter_bank),
-        sensor_fusion: MadgwickFilterf32::new(),
-        flight_controller: FlightController::new(),
-        rc_controls: RcControls::new(),
-    });
+    let gyro_pid_ctx = GYRO_PID_CTX.init(GyroPidContext::new(
+        rx_receiver(),
+        gyro_pid_sender(),
+        setpoint_sender(),
+        fast_config_subscriber(),
+        config.imu_filter_bank,
+    ));
 
-    let imu_ctx = IMU_CTX.init(ImuContext { imu: ImuMock::new(MockImuBus::new(), ImuAxesOrder::XPOS_YPOS_ZPOS) });
+    let imu_ctx = IMU_CTX.init(ImuContext::new());
 
-    let motor_mixer_ctx = MOTOR_MIXER_CTX.init(MotorMixerContext {
-        motor_mixer: MotorMixerQuadXPwm::new(MotorMixerCommon::with_config(config.mixer, config.motor)),
-    });
+    let motor_mixer_ctx = MOTOR_MIXER_CTX.init(MotorMixerContext::new(config.mixer, config.motor));
 
-    let rx_ctx = RX_CTX.init(RxContext {
-        rx_sender: rx_sender(),
-        config_subscriber: config_subscriber(),
-        config_publisher: config_publisher(),
-        fast_config_publisher: fast_config_publisher(),
-        #[cfg(feature = "autopilot")]
-        autopilot_receiver: autopilot_receiver(),
-        rates: Rates::new(config.rates),
-        rc_modes: RcModes::new(),
-        rc_adjustments: RcAdjustments::new(),
-    });
+    #[rustfmt::skip]
+    let rx_ctx = RX_CTX.init(RxContext::new(
+        rx_sender(),
+        config_subscriber(),
+        config_publisher(),
+        fast_config_publisher(),
+        config.rates,
+        #[cfg(feature = "autopilot")] autopilot_receiver(),
+    ));
 
+    #[rustfmt::skip]
     #[cfg(feature = "msp")]
-    let msp_ctx = MSP_CTX.init(MspContext {
-        msp: Msp::new(),
-        fast_config_publisher: fast_config_publisher(),
-        config_publisher: config_publisher(),
-        #[cfg(feature = "barometer")]
-        barometer_subscriber: barometer_subscriber(),
-        #[cfg(feature = "battery")]
-        battery_subscriber: battery_subscriber(),
-        #[cfg(feature = "gps")]
-        gps_subscriber: gps_subscriber(),
-        #[cfg(feature = "magnetometer")]
-        magnetometer_subscriber: magnetometer_subscriber(),
-        #[cfg(feature = "optical_flow")]
-        optical_flow_subscriber: optical_flow_subscriber(),
-        #[cfg(feature = "rangefinder")]
-        rangefinder_subscriber: rangefinder_subscriber(),
-        read_buf: [0u8; MSP_READ_BUF_SIZE],
-        write_buf: [0u8; MSP_WRITE_BUF_SIZE],
-    });
+    let msp_ctx = MSP_CTX.init(MspContext::new(
+        fast_config_publisher(),
+        config_publisher(),
+        #[cfg(feature = "barometer")] barometer_subscriber(),
+        #[cfg(feature = "battery")] battery_subscriber(),
+        #[cfg(feature = "gps")] gps_subscriber(),
+        #[cfg(feature = "magnetometer")] magnetometer_subscriber(),
+        #[cfg(feature = "optical_flow")] optical_flow_subscriber(),
+        #[cfg(feature = "rangefinder")] rangefinder_subscriber(),
+    ));
 
+    #[rustfmt::skip]
     #[cfg(feature = "blackbox")]
     let blackbox_ctx = {
         #[cfg(not(feature = "gps"))]
@@ -237,20 +207,13 @@ pub async fn init(spawner: Spawner) {
         | FieldSelect::ATTITUDE
         | FieldSelect::MAGNETOMETER;
 
-        let mut blackbox = Blackbox::new(config.blackbox);
-        blackbox.init();
-        BLACKBOX_CTX.init(BlackboxContext {
-            gyro_pid_receiver: gyro_pid_receiver(),
-            setpoint_receiver: setpoint_receiver(),
-            setpoint_message: SetpointMessage::new(),
-            #[cfg(feature = "gps")]
-            gps_subscriber: gps_subscriber(),
-            #[cfg(not(feature = "gps"))]
-            _marker: PhantomData,
-            blackbox,
-            buffer: [0u8; 1024],
-            overflow_counter: 0,
-        })
+        BLACKBOX_CTX.init(BlackboxContext::new(
+            gyro_pid_receiver(),
+            setpoint_receiver(),
+            SetpointMessage::new(),
+            config.blackbox,
+            #[cfg(feature = "gps")] gps_subscriber(),
+        ))
     };
     #[cfg(all(feature = "blackbox", feature = "rp2350"))]
     let blackbox_writer_ctx = {
@@ -262,58 +225,47 @@ pub async fn init(spawner: Spawner) {
     #[cfg(all(feature = "blackbox", feature = "std"))]
     let blackbox_writer_ctx = { BLACKBOX_WRITER_CTX.init(BlackboxWriterContext::new()) };
 
+    #[rustfmt::skip]
     #[cfg(feature = "autopilot")]
-    let autopilot_ctx: &mut AutopilotContext<'static> = AUTOPILOT_CTX.init(AutopilotContext {
-        gyro_pid_receiver: gyro_pid_receiver(),
-        rx_receiver: rx_receiver(),
-        autopilot_sender: autopilot_sender(),
-        autopilot: Autopilot::new(),
-        #[cfg(feature = "barometer")]
-        barometer_subscriber: barometer_subscriber(),
-        #[cfg(feature = "gps")]
-        gps_subscriber: gps_subscriber(),
-        #[cfg(feature = "optical_flow")]
-        optical_flow_subscriber: optical_flow_subscriber(),
-        #[cfg(feature = "rangefinder")]
-        rangefinder_subscriber: rangefinder_subscriber(),
-    });
+    let autopilot_ctx: &mut AutopilotContext<'static> = AUTOPILOT_CTX.init(AutopilotContext::new(
+        gyro_pid_receiver(),
+        rx_receiver(),
+        autopilot_sender(),
+        #[cfg(feature = "barometer")] barometer_subscriber(),
+        #[cfg(feature = "gps")] gps_subscriber(),
+        #[cfg(feature = "optical_flow")] optical_flow_subscriber(),
+        #[cfg(feature = "rangefinder")] rangefinder_subscriber(),
+    ));
 
     #[cfg(feature = "barometer")]
-    let barometer_ctx = BAROMETER_CTX.init(BarometerContext { barometer_publisher: barometer_publisher() });
+    let barometer_ctx = BAROMETER_CTX.init(BarometerContext::new(barometer_publisher()));
 
     #[cfg(feature = "battery")]
-    let battery_ctx = BATTERY_CTX.init(BatteryContext { battery_publisher: battery_publisher() });
+    let battery_ctx = BATTERY_CTX.init(BatteryContext::new(battery_publisher()));
 
     #[cfg(feature = "gps")]
-    let gps_ctx = GPS_CTX.init(GpsContext { gps_publisher: gps_publisher(), home: Geodetic::new() });
+    let gps_ctx = GPS_CTX.init(GpsContext::new(gps_publisher()));
 
     #[cfg(feature = "magnetometer")]
-    let magnetometer_ctx =
-        MAGNETOMETER_CTX.init(MagnetometerContext { magnetometer_publisher: magnetometer_publisher() });
+    let magnetometer_ctx = MAGNETOMETER_CTX.init(MagnetometerContext::new(magnetometer_publisher()));
 
     #[cfg(feature = "optical_flow")]
-    let optical_flow_ctx =
-        OPTICAL_FLOW_CTX.init(OpticalFlowContext { optical_flow_publisher: optical_flow_publisher() });
+    let optical_flow_ctx = OPTICAL_FLOW_CTX.init(OpticalFlowContext::new(optical_flow_publisher()));
 
+    #[rustfmt::skip]
     #[cfg(feature = "osd")]
-    let osd_ctx = OSD_CTX.init(OsdContext {
-        gyro_pid_receiver: gyro_pid_receiver(),
-        setpoint_receiver: setpoint_receiver(),
-        #[cfg(feature = "barometer")]
-        barometer_subscriber: barometer_subscriber(),
-        #[cfg(feature = "battery")]
-        battery_subscriber: battery_subscriber(),
-        #[cfg(feature = "gps")]
-        gps_subscriber: gps_subscriber(),
-        #[cfg(feature = "optical_flow")]
-        optical_flow_subscriber: optical_flow_subscriber(),
-        #[cfg(feature = "rangefinder")]
-        rangefinder_subscriber: rangefinder_subscriber(),
-        osd: Osd::new(),
-    });
+    let osd_ctx = OSD_CTX.init(OsdContext::new(
+        gyro_pid_receiver(),
+        setpoint_receiver(),
+        #[cfg(feature = "barometer")] barometer_subscriber(),
+        #[cfg(feature = "battery")] battery_subscriber(),
+        #[cfg(feature = "gps")] gps_subscriber(),
+        #[cfg(feature = "optical_flow")] optical_flow_subscriber(),
+        #[cfg(feature = "rangefinder")] rangefinder_subscriber(),
+    ));
 
     #[cfg(feature = "rangefinder")]
-    let rangefinder_ctx = RANGEFINDER_CTX.init(RangefinderContext { rangefinder_publisher: rangefinder_publisher() });
+    let rangefinder_ctx = RANGEFINDER_CTX.init(RangefinderContext::new(rangefinder_publisher()));
 
     drop(config); // unlocks
 

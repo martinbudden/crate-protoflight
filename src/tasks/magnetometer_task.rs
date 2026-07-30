@@ -53,6 +53,12 @@ pub struct MagnetometerContext<'a> {
     pub magnetometer_publisher: MagnetometerPublisher<'a>,
 }
 
+impl<'a> MagnetometerContext<'a> {
+    pub fn new(magnetometer_publisher: MagnetometerPublisher<'a>) -> Self {
+        Self { magnetometer_publisher }
+    }
+}
+
 /// Magnetometer Task Placeholder.
 #[embassy_executor::task]
 pub async fn magnetometer_task(ctx: &'static mut MagnetometerContext<'static>) {

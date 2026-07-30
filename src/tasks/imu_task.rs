@@ -40,6 +40,12 @@ pub struct ImuContext {
     pub imu: ImuMock<MockImuBus>,
 }
 
+impl ImuContext {
+    pub fn new() -> Self {
+        Self { imu: ImuMock::new(MockImuBus::new(), imu_sensors::ImuAxesOrder::XPOS_YPOS_ZPOS) }
+    }
+}
+
 /// IMU Task Placeholder.
 #[embassy_executor::task]
 pub async fn imu_task(ctx: &'static mut ImuContext) {
