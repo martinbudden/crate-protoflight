@@ -118,16 +118,16 @@ impl Default for RcAdjustments {
 impl RcAdjustments {
     pub async fn process_adjustments(
         &mut self,
-        config_publisher: &ConfigPublisher<'_>,
-        fast_config_publisher: &FastConfigPublisher<'_>,
+        config_publisher: &ConfigPublisher,
+        fast_config_publisher: &FastConfigPublisher,
     ) {
         self.process_stepwise_adjustments(config_publisher, fast_config_publisher).await;
         self.process_continuos_adjustments(config_publisher, fast_config_publisher).await;
     }
     async fn process_stepwise_adjustments(
         &mut self,
-        config_publisher: &ConfigPublisher<'_>,
-        fast_config_publisher: &FastConfigPublisher<'_>,
+        config_publisher: &ConfigPublisher,
+        fast_config_publisher: &FastConfigPublisher,
     ) {
         // Dummy await statement to satisfy the compiler and yield control
         // Will be removed once function fully implemented.
@@ -135,8 +135,8 @@ impl RcAdjustments {
     }
     async fn process_continuos_adjustments(
         &mut self,
-        config_publisher: &ConfigPublisher<'_>,
-        fast_config_publisher: &FastConfigPublisher<'_>,
+        config_publisher: &ConfigPublisher,
+        fast_config_publisher: &FastConfigPublisher,
     ) {
         // Dummy await statement to satisfy the compiler and yield control
         // Will be removed once function fully implemented.
@@ -171,8 +171,8 @@ impl RcAdjustments {
 
     async fn apply_absolute_adjustment(
         &mut self,
-        config_publisher: &ConfigPublisher<'_>,
-        fast_config_publisher: &FastConfigPublisher<'_>,
+        config_publisher: &ConfigPublisher,
+        fast_config_publisher: &FastConfigPublisher,
         adjustment: RcAdjustment,
         value: i32,
     ) {

@@ -31,38 +31,38 @@ use crate::tasks::rangefinder_task::RangefinderSubscriber;
 ///
 pub const MSP_READ_BUF_SIZE: usize = 256;
 pub const MSP_WRITE_BUF_SIZE: usize = 512;
-pub struct MspContext<'a> {
-    pub fast_config_publisher: FastConfigPublisher<'a>,
-    pub config_publisher: ConfigPublisher<'a>,
+pub struct MspContext {
+    pub fast_config_publisher: FastConfigPublisher,
+    pub config_publisher: ConfigPublisher,
     #[cfg(feature = "barometer")]
-    pub barometer_subscriber: BarometerSubscriber<'a>,
+    pub barometer_subscriber: BarometerSubscriber,
     #[cfg(feature = "battery")]
-    pub battery_subscriber: BatterySubscriber<'a>,
+    pub battery_subscriber: BatterySubscriber,
     #[cfg(feature = "gps")]
-    pub gps_subscriber: GpsSubscriber<'a>,
+    pub gps_subscriber: GpsSubscriber,
     #[cfg(feature = "magnetometer")]
-    pub magnetometer_subscriber: MagnetometerSubscriber<'a>,
+    pub magnetometer_subscriber: MagnetometerSubscriber,
     #[cfg(feature = "optical_flow")]
-    pub optical_flow_subscriber: OpticalFlowSubscriber<'a>,
+    pub optical_flow_subscriber: OpticalFlowSubscriber,
     #[cfg(feature = "rangefinder")]
-    pub rangefinder_subscriber: RangefinderSubscriber<'a>,
+    pub rangefinder_subscriber: RangefinderSubscriber,
     pub msp: Msp,
     pub read_buf: [u8; MSP_READ_BUF_SIZE],
     pub write_buf: [u8; MSP_WRITE_BUF_SIZE],
 }
 
-impl<'a> MspContext<'a> {
+impl MspContext {
     #[allow(clippy::too_many_arguments)]
     #[rustfmt::skip]
     pub fn new(
-        fast_config_publisher: FastConfigPublisher<'a>,
-        config_publisher: ConfigPublisher<'a>,
-        #[cfg(feature = "barometer")] barometer_subscriber: BarometerSubscriber<'a>,
-        #[cfg(feature = "battery")] battery_subscriber: BatterySubscriber<'a>,
-        #[cfg(feature = "gps")] gps_subscriber: GpsSubscriber<'a>,
-        #[cfg(feature = "magnetometer")] magnetometer_subscriber: MagnetometerSubscriber<'a>,
-        #[cfg(feature = "optical_flow")] optical_flow_subscriber: OpticalFlowSubscriber<'a>,
-        #[cfg(feature = "rangefinder")] rangefinder_subscriber: RangefinderSubscriber<'a>,
+        fast_config_publisher: FastConfigPublisher,
+        config_publisher: ConfigPublisher,
+        #[cfg(feature = "barometer")] barometer_subscriber: BarometerSubscriber,
+        #[cfg(feature = "battery")] battery_subscriber: BatterySubscriber,
+        #[cfg(feature = "gps")] gps_subscriber: GpsSubscriber,
+        #[cfg(feature = "magnetometer")] magnetometer_subscriber: MagnetometerSubscriber,
+        #[cfg(feature = "optical_flow")] optical_flow_subscriber: OpticalFlowSubscriber,
+        #[cfg(feature = "rangefinder")] rangefinder_subscriber: RangefinderSubscriber,
     ) -> Self {
         Self {
             msp: Msp::new(),
@@ -80,7 +80,7 @@ impl<'a> MspContext<'a> {
     }
 }
 
-impl MspContext<'_> {
+impl MspContext {
     /// Helper to get a reader for `read_buf`.
     pub fn reader(&'_ mut self) -> StreamBufReader<'_> {
         StreamBufReader::new(&self.read_buf)
@@ -94,7 +94,7 @@ impl MspContext<'_> {
 
 /// MSP task Placeholder.
 #[embassy_executor::task]
-pub async fn msp_task(ctx: &'static mut MspContext<'static>) {
+pub async fn msp_task(ctx: &'static mut MspContext) {
     // for now just wait on a ticker to drive the MSP loop. TODO: change this to wait on an MSP packet instead.
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_millis(200));
     let mut loop_count: u32 = 0;

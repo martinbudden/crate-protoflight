@@ -72,23 +72,23 @@ pub fn setpoint_receiver() -> SetpointReceiver {
 }
 
 /// Context for `gyro_pid_task`.
-pub struct GyroPidContext<'a> {
+pub struct GyroPidContext {
     pub rx_receiver: RxReceiver,
     pub gyro_pid_sender: GyroPidSender,
     pub setpoint_sender: SetpointSender,
-    pub fast_config_subscriber: FastConfigSubscriber<'a>,
+    pub fast_config_subscriber: FastConfigSubscriber,
     pub imu_filters: ImuFilterBank,
     pub sensor_fusion: MadgwickFilterf32,
     pub flight_controller: FlightController,
     pub rc_controls: RcControls,
 }
 
-impl<'a> GyroPidContext<'a> {
+impl GyroPidContext {
     pub fn new(
         rx_receiver: RxReceiver,
         gyro_pid_sender: GyroPidSender,
         setpoint_sender: SetpointSender,
-        fast_config_subscriber: FastConfigSubscriber<'a>,
+        fast_config_subscriber: FastConfigSubscriber,
         imu_filter_bank_config: ImuFilterBankConfig,
     ) -> Self {
         Self {
@@ -106,7 +106,7 @@ impl<'a> GyroPidContext<'a> {
 
 /// The GYRO/PID task.
 #[embassy_executor::task]
-pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext<'static>) {
+pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext) {
     log::info!(" GYRO_PID: task started");
     let mut time_us: u32 = 0;
     let mut loop_count: u32 = 0;

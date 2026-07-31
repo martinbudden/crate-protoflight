@@ -61,8 +61,8 @@ static CONFIG_PUB_SUB_CHANNEL: PubSubChannel<
     CONFIG_PUBLISHER_COUNT,
 > = PubSubChannel::new();
 
-pub type ConfigPublisher<'a> = Publisher<
-    'a,
+pub type ConfigPublisher = Publisher<
+    'static,
     CriticalSectionRawMutex,
     ConfigItem,
     CONFIG_CAPACITY,
@@ -72,12 +72,12 @@ pub type ConfigPublisher<'a> = Publisher<
 
 #[allow(unused)]
 #[allow(clippy::expect_used)]
-pub fn config_publisher<'a>() -> ConfigPublisher<'a> {
+pub fn config_publisher() -> ConfigPublisher {
     CONFIG_PUB_SUB_CHANNEL.publisher().expect("config_publisher failed")
 }
 
-pub type ConfigSubscriber<'a> = Subscriber<
-    'a,
+pub type ConfigSubscriber = Subscriber<
+    'static,
     CriticalSectionRawMutex,
     ConfigItem,
     CONFIG_CAPACITY,
@@ -86,7 +86,7 @@ pub type ConfigSubscriber<'a> = Subscriber<
 >;
 
 #[allow(clippy::expect_used)]
-pub fn config_subscriber<'a>() -> ConfigSubscriber<'a> {
+pub fn config_subscriber() -> ConfigSubscriber {
     CONFIG_PUB_SUB_CHANNEL.subscriber().expect("config_subscriber failed")
 }
 
@@ -104,8 +104,8 @@ static FAST_CONFIG_PUB_SUB_CHANNEL: PubSubChannel<
     FAST_CONFIG_PUBLISHER_COUNT,
 > = PubSubChannel::new();
 
-pub type FastConfigPublisher<'a> = Publisher<
-    'a,
+pub type FastConfigPublisher = Publisher<
+    'static,
     CriticalSectionRawMutex,
     FastConfigItem,
     FAST_CONFIG_CAPACITY,
@@ -115,12 +115,12 @@ pub type FastConfigPublisher<'a> = Publisher<
 
 #[allow(unused)]
 #[allow(clippy::expect_used)]
-pub fn fast_config_publisher<'a>() -> FastConfigPublisher<'a> {
+pub fn fast_config_publisher() -> FastConfigPublisher {
     FAST_CONFIG_PUB_SUB_CHANNEL.publisher().expect("fast_config_publisher failed")
 }
 
-pub type FastConfigSubscriber<'a> = Subscriber<
-    'a,
+pub type FastConfigSubscriber = Subscriber<
+    'static,
     CriticalSectionRawMutex,
     FastConfigItem,
     FAST_CONFIG_CAPACITY,
@@ -129,7 +129,7 @@ pub type FastConfigSubscriber<'a> = Subscriber<
 >;
 
 #[allow(clippy::expect_used)]
-pub fn fast_config_subscriber<'a>() -> FastConfigSubscriber<'a> {
+pub fn fast_config_subscriber() -> FastConfigSubscriber {
     FAST_CONFIG_PUB_SUB_CHANNEL.subscriber().expect("fast_config_subscriber failed")
 }
 

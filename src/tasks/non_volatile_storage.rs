@@ -28,12 +28,12 @@ extern crate paste;
 
 use crate::{config::GLOBAL_CONFIG, flight::ImuFilterBankConfig, tasks::non_volatile_storage as nvs};
 
+#[cfg(feature = "osd")]
+use crate::osd::OsdConfig;
 #[cfg(feature = "battery")]
 use crate::sensors::BatteryConfig;
 #[cfg(feature = "blackbox")]
 use blackbox_logger::BlackboxConfig;
-#[cfg(feature = "osd")]
-use crate::osd::OsdConfig;
 
 const PID_PROFILE_INDEX_KEY: u16 = 0x0001;
 const RATE_PROFILE_INDEX_KEY: u16 = 0x0002;

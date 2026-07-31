@@ -9,7 +9,7 @@ use vqm::Vector3df32;
 
 use crate::{
     autopilot::pilot::Autopilot,
-    flight::{RxMessage,RcControls},
+    flight::{RcControls, RxMessage},
     tasks::{gyro_pid_task::GyroPidReceiver, rx_task::RxReceiver},
 };
 
@@ -41,32 +41,32 @@ pub fn autopilot_receiver() -> AutopilotReceiver {
 }
 
 /// Context for Autopilot task.
-pub struct AutopilotContext<'a> {
+pub struct AutopilotContext {
     pub gyro_pid_receiver: GyroPidReceiver,
     pub rx_receiver: RxReceiver,
     pub autopilot_sender: AutopilotSender,
     pub autopilot: Autopilot,
     #[cfg(feature = "barometer")]
-    pub barometer_subscriber: BarometerSubscriber<'a>,
+    pub barometer_subscriber: BarometerSubscriber,
     #[cfg(feature = "gps")]
-    pub gps_subscriber: GpsSubscriber<'a>,
+    pub gps_subscriber: GpsSubscriber,
     #[allow(unused)]
     #[cfg(feature = "optical_flow")]
-    pub optical_flow_subscriber: OpticalFlowSubscriber<'a>,
+    pub optical_flow_subscriber: OpticalFlowSubscriber,
     #[cfg(feature = "rangefinder")]
-    pub rangefinder_subscriber: RangefinderSubscriber<'a>,
+    pub rangefinder_subscriber: RangefinderSubscriber,
 }
 
-impl<'a> AutopilotContext<'a> {
+impl AutopilotContext {
     #[rustfmt::skip]
     pub fn new(
         gyro_pid_receiver: GyroPidReceiver,
         rx_receiver: RxReceiver,
         autopilot_sender: AutopilotSender,
-        #[cfg(feature = "barometer")] barometer_subscriber: BarometerSubscriber<'a>,
-        #[cfg(feature = "gps")] gps_subscriber: GpsSubscriber<'a>,
-        #[cfg(feature = "optical_flow")] optical_flow_subscriber: OpticalFlowSubscriber<'a>,
-        #[cfg(feature = "rangefinder")] rangefinder_subscriber: RangefinderSubscriber<'a>,
+        #[cfg(feature = "barometer")] barometer_subscriber: BarometerSubscriber,
+        #[cfg(feature = "gps")] gps_subscriber: GpsSubscriber,
+        #[cfg(feature = "optical_flow")] optical_flow_subscriber: OpticalFlowSubscriber,
+        #[cfg(feature = "rangefinder")] rangefinder_subscriber: RangefinderSubscriber,
     ) -> Self {
         Self {
             gyro_pid_receiver,
@@ -83,7 +83,7 @@ impl<'a> AutopilotContext<'a> {
 
 /// Autopilot Placeholder.
 #[embassy_executor::task]
-pub async fn autopilot_task(ctx: &'static mut AutopilotContext<'static>) {
+pub async fn autopilot_task(ctx: &'static mut AutopilotContext) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_millis(1));
     let delta_t = 0.001;
     let mut loop_count: u32 = 0;

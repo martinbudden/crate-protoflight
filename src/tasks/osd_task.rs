@@ -29,31 +29,31 @@ use crate::tasks::gps_task::GpsSubscriber;
 
 /// Context for OSD task.
 #[allow(unused)]
-pub struct OsdContext<'a> {
+pub struct OsdContext {
     pub gyro_pid_receiver: GyroPidReceiver,
     pub setpoint_receiver: SetpointReceiver,
     #[cfg(feature = "barometer")]
-    pub barometer_subscriber: BarometerSubscriber<'a>,
+    pub barometer_subscriber: BarometerSubscriber,
     #[cfg(feature = "battery")]
-    pub battery_subscriber: BatterySubscriber<'a>,
+    pub battery_subscriber: BatterySubscriber,
     #[cfg(feature = "gps")]
-    pub gps_subscriber: GpsSubscriber<'a>,
+    pub gps_subscriber: GpsSubscriber,
     #[cfg(feature = "optical_flow")]
-    pub optical_flow_subscriber: OpticalFlowSubscriber<'a>,
+    pub optical_flow_subscriber: OpticalFlowSubscriber,
     #[cfg(feature = "rangefinder")]
-    pub rangefinder_subscriber: RangefinderSubscriber<'a>,
+    pub rangefinder_subscriber: RangefinderSubscriber,
     pub osd: Osd,
 }
-impl<'a> OsdContext<'a> {
+impl OsdContext {
     #[rustfmt::skip]
     pub fn new(
         gyro_pid_receiver: GyroPidReceiver,
         setpoint_receiver: SetpointReceiver,
-        #[cfg(feature = "barometer")] barometer_subscriber: BarometerSubscriber<'a>,
-        #[cfg(feature = "battery")] battery_subscriber: BatterySubscriber<'a>,
-        #[cfg(feature = "gps")] gps_subscriber: GpsSubscriber<'a>,
-        #[cfg(feature = "optical_flow")] optical_flow_subscriber: OpticalFlowSubscriber<'a>,
-        #[cfg(feature = "rangefinder")] rangefinder_subscriber: RangefinderSubscriber<'a>,
+        #[cfg(feature = "barometer")] barometer_subscriber: BarometerSubscriber,
+        #[cfg(feature = "battery")] battery_subscriber: BatterySubscriber,
+        #[cfg(feature = "gps")] gps_subscriber: GpsSubscriber,
+        #[cfg(feature = "optical_flow")] optical_flow_subscriber: OpticalFlowSubscriber,
+        #[cfg(feature = "rangefinder")] rangefinder_subscriber: RangefinderSubscriber,
     ) -> Self {
         Self {
             gyro_pid_receiver,
@@ -72,7 +72,7 @@ impl<'a> OsdContext<'a> {
 ///
 
 /*#[embassy_executor::task]
-pub async fn osd_task(ctx: &'static mut OsdContext<'static>) {
+pub async fn osd_task(ctx: &'static mut OsdContext) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(50));
     let mut loop_count: u32 = 0;
 
@@ -109,7 +109,7 @@ pub async fn osd_task(ctx: &'static mut OsdContext<'static>) {
 */
 
 #[embassy_executor::task]
-pub async fn osd_task(ctx: &'static mut OsdContext<'static>, display_port_mutex: &'static DisplayPortMutex) {
+pub async fn osd_task(ctx: &'static mut OsdContext, display_port_mutex: &'static DisplayPortMutex) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(50));
     let mut loop_count: u32 = 0;
 

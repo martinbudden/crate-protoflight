@@ -20,8 +20,8 @@ static OPTICAL_FLOW_PUB_SUB_CHANNEL: PubSubChannel<
     OPTICAL_FLOW_PUBLISHER_COUNT,
 > = PubSubChannel::new();
 
-type OpticalFlowPublisher<'a> = Publisher<
-    'a,
+type OpticalFlowPublisher = Publisher<
+    'static,
     CriticalSectionRawMutex,
     OpticalFlowMessage,
     OPTICAL_FLOW_PUB_SUB_CAPACITY,
@@ -30,12 +30,12 @@ type OpticalFlowPublisher<'a> = Publisher<
 >;
 
 #[allow(clippy::expect_used)]
-pub fn optical_flow_publisher<'a>() -> OpticalFlowPublisher<'a> {
+pub fn optical_flow_publisher() -> OpticalFlowPublisher {
     OPTICAL_FLOW_PUB_SUB_CHANNEL.publisher().expect("optical_flow_publisher failed")
 }
 
-pub type OpticalFlowSubscriber<'a> = Subscriber<
-    'a,
+pub type OpticalFlowSubscriber = Subscriber<
+    'static,
     CriticalSectionRawMutex,
     OpticalFlowMessage,
     OPTICAL_FLOW_PUB_SUB_CAPACITY,
@@ -44,17 +44,17 @@ pub type OpticalFlowSubscriber<'a> = Subscriber<
 >;
 
 #[allow(clippy::expect_used)]
-pub fn optical_flow_subscriber<'a>() -> OpticalFlowSubscriber<'a> {
+pub fn optical_flow_subscriber() -> OpticalFlowSubscriber {
     OPTICAL_FLOW_PUB_SUB_CHANNEL.subscriber().expect("optical_flow_subscriber failed")
 }
 
 /// Context for optical flow task.
-pub struct OpticalFlowContext<'a> {
-    pub optical_flow_publisher: OpticalFlowPublisher<'a>,
+pub struct OpticalFlowContext {
+    pub optical_flow_publisher: OpticalFlowPublisher,
 }
 
-impl<'a> OpticalFlowContext<'a> {
-    pub fn new(optical_flow_publisher: OpticalFlowPublisher<'a>) -> Self {
+impl OpticalFlowContext {
+    pub fn new(optical_flow_publisher: OpticalFlowPublisher) -> Self {
         Self { optical_flow_publisher }
     }
 }
@@ -63,7 +63,7 @@ impl<'a> OpticalFlowContext<'a> {
 ///
 
 #[embassy_executor::task]
-pub async fn optical_flow_task(ctx: &'static mut OpticalFlowContext<'static>) {
+pub async fn optical_flow_task(ctx: &'static mut OpticalFlowContext) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(50));
     let mut loop_count: u32 = 0;
 

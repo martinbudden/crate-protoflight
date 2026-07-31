@@ -25,8 +25,8 @@ static GPS_PUB_SUB_CHANNEL: PubSubChannel<
     GPS_PUBLISHER_COUNT,
 > = PubSubChannel::new();
 
-pub type GpsPublisher<'a> = Publisher<
-    'a,
+pub type GpsPublisher = Publisher<
+    'static,
     CriticalSectionRawMutex,
     GpsMessage,
     GPS_PUB_SUB_CAPACITY,
@@ -35,12 +35,12 @@ pub type GpsPublisher<'a> = Publisher<
 >;
 
 #[allow(clippy::expect_used)]
-pub fn gps_publisher<'a>() -> GpsPublisher<'a> {
+pub fn gps_publisher() -> GpsPublisher {
     GPS_PUB_SUB_CHANNEL.publisher().expect("gps_publisher failed")
 }
 
-pub type GpsSubscriber<'a> = Subscriber<
-    'a,
+pub type GpsSubscriber = Subscriber<
+    'static,
     CriticalSectionRawMutex,
     GpsMessage,
     GPS_PUB_SUB_CAPACITY,
@@ -49,27 +49,27 @@ pub type GpsSubscriber<'a> = Subscriber<
 >;
 
 #[allow(clippy::expect_used)]
-pub fn gps_subscriber<'a>() -> GpsSubscriber<'a> {
+pub fn gps_subscriber() -> GpsSubscriber {
     GPS_PUB_SUB_CHANNEL.subscriber().expect("gps_subscriber failed")
 }
 
 pub static GPS_YAW_HEADING_SIGNAL: Signal<CriticalSectionRawMutex, GpsYawHeadingMessage> = Signal::new();
 
 /// Context for GPS task.
-pub struct GpsContext<'a> {
-    pub gps_publisher: GpsPublisher<'a>,
+pub struct GpsContext {
+    pub gps_publisher: GpsPublisher,
     pub home: Geodetic,
 }
 
-impl<'a> GpsContext<'a> {
-    pub fn new(gps_publisher: GpsPublisher<'a>) -> Self {
+impl GpsContext {
+    pub fn new(gps_publisher: GpsPublisher) -> Self {
         Self { gps_publisher, home: Geodetic::new() }
     }
 }
 
 /// GPS Task Placeholder.
 #[embassy_executor::task]
-pub async fn gps_task(ctx: &'static mut GpsContext<'static>) {
+pub async fn gps_task(ctx: &'static mut GpsContext) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(10));
     let mut loop_count: u32 = 0;
 

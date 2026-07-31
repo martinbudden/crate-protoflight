@@ -1,6 +1,6 @@
 #![cfg(feature = "blackbox")]
 
-use blackbox_logger::{Blackbox, BlackboxConfig,BlackboxMainData, BlackboxSlowData, LoggerState, SliceEncoder};
+use blackbox_logger::{Blackbox, BlackboxConfig, BlackboxMainData, BlackboxSlowData, LoggerState, SliceEncoder};
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel};
 
 use crate::{
@@ -20,13 +20,12 @@ use {
     blackbox_logger::{BlackboxGpsData, BlackboxGpsPosition},
 };
 
-
 pub struct BlackboxContext {
     pub gyro_pid_receiver: GyroPidReceiver,
     pub setpoint_receiver: SetpointReceiver,
     pub setpoint_message: SetpointMessage,
     #[cfg(feature = "gps")]
-    pub gps_subscriber: GpsSubscriber<'static>,
+    pub gps_subscriber: GpsSubscriber,
     pub blackbox: Blackbox,
     pub buffer: [u8; BlackboxContext::BUFFER_CAPACITY],
     pub overflow_counter: u32,
@@ -41,7 +40,7 @@ impl BlackboxContext {
         setpoint_receiver: SetpointReceiver,
         setpoint_message: SetpointMessage,
         blackbox_config: BlackboxConfig,
-        #[cfg(feature = "gps")] gps_subscriber: GpsSubscriber<'static>,
+        #[cfg(feature = "gps")] gps_subscriber: GpsSubscriber,
     ) -> Self {
         Self {
             gyro_pid_receiver,

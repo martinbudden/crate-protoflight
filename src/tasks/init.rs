@@ -225,7 +225,7 @@ pub async fn init(spawner: Spawner) {
 
     #[rustfmt::skip]
     #[cfg(feature = "autopilot")]
-    let autopilot_ctx: &mut AutopilotContext<'static> = AUTOPILOT_CTX.init(AutopilotContext::new(
+    let autopilot_ctx: &mut AutopilotContext = AUTOPILOT_CTX.init(AutopilotContext::new(
         gyro_pid_receiver(),
         rx_receiver(),
         autopilot_sender(),

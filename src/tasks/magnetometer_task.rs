@@ -20,8 +20,8 @@ static MAGNETOMETER_PUB_SUB_CHANNEL: PubSubChannel<
     MAGNETOMETER_PUBLISHER_COUNT,
 > = PubSubChannel::new();
 
-type MagnetometerPublisher<'a> = Publisher<
-    'a,
+type MagnetometerPublisher = Publisher<
+    'static,
     CriticalSectionRawMutex,
     MagnetometerMessage,
     MAGNETOMETER_PUB_SUB_CAPACITY,
@@ -30,12 +30,12 @@ type MagnetometerPublisher<'a> = Publisher<
 >;
 
 #[allow(clippy::expect_used)]
-pub fn magnetometer_publisher<'a>() -> MagnetometerPublisher<'a> {
+pub fn magnetometer_publisher() -> MagnetometerPublisher {
     MAGNETOMETER_PUB_SUB_CHANNEL.publisher().expect("magnetometer_publisher failed")
 }
 
-pub type MagnetometerSubscriber<'a> = Subscriber<
-    'a,
+pub type MagnetometerSubscriber = Subscriber<
+    'static,
     CriticalSectionRawMutex,
     MagnetometerMessage,
     MAGNETOMETER_PUB_SUB_CAPACITY,
@@ -44,24 +44,24 @@ pub type MagnetometerSubscriber<'a> = Subscriber<
 >;
 
 #[allow(clippy::expect_used)]
-pub fn magnetometer_subscriber<'a>() -> MagnetometerSubscriber<'a> {
+pub fn magnetometer_subscriber() -> MagnetometerSubscriber {
     MAGNETOMETER_PUB_SUB_CHANNEL.subscriber().expect("magnetometer_subscriber failed")
 }
 
 /// Context for Magnetometer task.
-pub struct MagnetometerContext<'a> {
-    pub magnetometer_publisher: MagnetometerPublisher<'a>,
+pub struct MagnetometerContext {
+    pub magnetometer_publisher: MagnetometerPublisher,
 }
 
-impl<'a> MagnetometerContext<'a> {
-    pub fn new(magnetometer_publisher: MagnetometerPublisher<'a>) -> Self {
+impl MagnetometerContext {
+    pub fn new(magnetometer_publisher: MagnetometerPublisher) -> Self {
         Self { magnetometer_publisher }
     }
 }
 
 /// Magnetometer Task Placeholder.
 #[embassy_executor::task]
-pub async fn magnetometer_task(ctx: &'static mut MagnetometerContext<'static>) {
+pub async fn magnetometer_task(ctx: &'static mut MagnetometerContext) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(40));
     let mut loop_count: u32 = 0;
 

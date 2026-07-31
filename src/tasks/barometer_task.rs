@@ -20,8 +20,8 @@ static BAROMETER_PUB_SUB_CHANNEL: PubSubChannel<
     BAROMETER_PUBLISHER_COUNT,
 > = PubSubChannel::new();
 
-type BarometerPublisher<'a> = Publisher<
-    'a,
+type BarometerPublisher = Publisher<
+    'static,
     CriticalSectionRawMutex,
     BarometerMessage,
     BAROMETER_PUB_SUB_CAPACITY,
@@ -30,12 +30,12 @@ type BarometerPublisher<'a> = Publisher<
 >;
 
 #[allow(clippy::expect_used)]
-pub fn barometer_publisher<'a>() -> BarometerPublisher<'a> {
+pub fn barometer_publisher() -> BarometerPublisher {
     BAROMETER_PUB_SUB_CHANNEL.publisher().expect("barometer_publisher failed")
 }
 
-pub type BarometerSubscriber<'a> = Subscriber<
-    'a,
+pub type BarometerSubscriber = Subscriber<
+    'static,
     CriticalSectionRawMutex,
     BarometerMessage,
     BAROMETER_PUB_SUB_CAPACITY,
@@ -44,24 +44,24 @@ pub type BarometerSubscriber<'a> = Subscriber<
 >;
 
 #[allow(clippy::expect_used)]
-pub fn barometer_subscriber<'a>() -> BarometerSubscriber<'a> {
+pub fn barometer_subscriber() -> BarometerSubscriber {
     BAROMETER_PUB_SUB_CHANNEL.subscriber().expect("barometer_subscriber failed")
 }
 
 /// Context for Barometer task.
-pub struct BarometerContext<'a> {
-    pub barometer_publisher: BarometerPublisher<'a>,
+pub struct BarometerContext {
+    pub barometer_publisher: BarometerPublisher,
 }
 
-impl<'a> BarometerContext<'a> {
-    pub fn new(barometer_publisher: BarometerPublisher<'a>) -> Self {
+impl BarometerContext {
+    pub fn new(barometer_publisher: BarometerPublisher) -> Self {
         Self { barometer_publisher }
     }
 }
 
 /// Barometer Task Placeholder.
 #[embassy_executor::task]
-pub async fn barometer_task(ctx: &'static mut BarometerContext<'static>) {
+pub async fn barometer_task(ctx: &'static mut BarometerContext) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(40));
     let mut loop_count: u32 = 0;
 

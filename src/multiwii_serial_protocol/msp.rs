@@ -191,8 +191,8 @@ impl Msp {
     pub async fn process_read_command(
         cmd_msp: u16,
         src: &mut StreamBufReader<'_>,
-        config_publisher: &ConfigPublisher<'_>,
-        fast_config_publisher: &FastConfigPublisher<'_>,
+        config_publisher: &ConfigPublisher,
+        fast_config_publisher: &FastConfigPublisher,
     ) -> MspResult {
         match cmd_msp {
             Msp::SET_MODE_RANGE => Self::set_mode_range(src, config_publisher).await,
@@ -240,7 +240,7 @@ impl Msp {
         dst.write_u32(feature.flags());
         MspResult::Ack
     }
-    async fn set_feature_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {
+    async fn set_feature_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
         // Check if enough data is even present before locking anything
         if src.bytes_remaining() < 4 {
             return MspResult::Error;
@@ -284,7 +284,7 @@ impl Msp {
         }
         MspResult::Ack
     }
-    async fn set_mode_range(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {
+    async fn set_mode_range(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
         if src.bytes_remaining() < 1 {
             return MspResult::Error;
         }
@@ -332,7 +332,7 @@ impl Msp {
         dst.write_u8(config.yaw_motors_reversed);
         MspResult::Ack
     }
-    async fn set_mixer_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {
+    async fn set_mixer_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
         if src.bytes_remaining() < 1 {
             return MspResult::Error;
         }
@@ -382,7 +382,7 @@ impl Msp {
         dst.write_u8(0); // use_dshot_telemetry
         MspResult::Ack
     }
-    async fn set_motor_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {
+    async fn set_motor_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
         if src.bytes_remaining() < 6 {
             return MspResult::Error;
         }
@@ -416,7 +416,7 @@ impl Msp {
         MspResult::Ack
     }
     #[cfg(feature = "magnetometer")]
-    async fn set_compass_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {
+    async fn set_compass_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
         let mut global_config = GLOBAL_CONFIG.lock().await;
         let mut config = global_config.imu;
 
@@ -440,7 +440,7 @@ impl Msp {
         dst.write_u16(50); // TODO: deadband3d throttle from flight3D config
         MspResult::Ack
     }
-    async fn set_rc_controls_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {
+    async fn set_rc_controls_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
         if src.bytes_remaining() < 2 {
             return MspResult::Error;
         }
@@ -477,7 +477,7 @@ impl Msp {
         dst.write_u8(rx.rssi_channel);
         MspResult::Ack
     }
-    async fn set_rssi_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {
+    async fn set_rssi_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
         // 1. Check if enough data is even present before locking anything
         if src.bytes_remaining() < 1 {
             return MspResult::Error;
@@ -504,7 +504,7 @@ impl Msp {
         dst.write_u8(arming_config.gyro_cal_on_first_arm);
         MspResult::Ack
     }
-    async fn set_arming_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {
+    async fn set_arming_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
         // Check if enough data is even present before locking anything
         if src.bytes_remaining() < 1 {
             return MspResult::Error;
@@ -560,7 +560,7 @@ impl Msp {
         dst.write_u8(0);
         MspResult::Ack
     }
-    async fn set_rx_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {
+    async fn set_rx_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
         // Check if enough data is even present before locking anything.
         if src.bytes_remaining() < 8 {
             return MspResult::Error;
@@ -613,7 +613,7 @@ impl Msp {
         dst.write_u8(config.procedure);
         MspResult::Ack
     }
-    async fn set_failsafe_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {
+    async fn set_failsafe_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
         // Check if enough data is even present before locking anything
         if src.bytes_remaining() < 8 {
             return MspResult::Error;
@@ -669,7 +669,7 @@ impl Msp {
 
         MspResult::Ack
     }
-    async fn set_advanced_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {
+    async fn set_advanced_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
         // Check if enough data is even present before locking anything
         if src.bytes_remaining() < 8 {
             return MspResult::Error;
@@ -785,7 +785,7 @@ impl Msp {
 
         MspResult::Ack
     }
-    async fn set_filter_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {
+    async fn set_filter_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
         // 1. Check if enough data is even present before locking anything
         if src.bytes_remaining() < 8 {
             return MspResult::Error;
@@ -940,7 +940,7 @@ impl Msp {
         dst.write_u8(RatesConfig::TYPE_ACTUAL); // hardcoded, since we only support RATES_TYPE_ACTUAL rates.ratesType);
         MspResult::Ack
     }
-    async fn set_rc_tuning(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {
+    async fn set_rc_tuning(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
         if src.bytes_remaining() < 10 {
             return MspResult::Error;
         }
@@ -1030,7 +1030,7 @@ impl Msp {
         dst.write_u8(pitch_angle.kd);
         MspResult::Ack
     }
-    async fn set_pid(src: &mut StreamBufReader<'_>, publisher: &FastConfigPublisher<'_>) -> MspResult {
+    async fn set_pid(src: &mut StreamBufReader<'_>, publisher: &FastConfigPublisher) -> MspResult {
         if src.bytes_remaining() < 1 {
             return MspResult::Error;
         }
@@ -1113,7 +1113,7 @@ impl Msp {
         MspResult::Ack
     }
     #[cfg(feature = "battery")]
-    async fn set_battery_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {
+    async fn set_battery_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
         use crate::sensors::{CurrentMeterReading, VoltageMeterReading};
 
         if src.bytes_remaining() < 7 {
@@ -1185,7 +1185,7 @@ impl Msp {
         MspResult::Ack
     }
     #[cfg(feature = "gps")]
-    async fn set_gps_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {
+    async fn set_gps_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
         if src.bytes_remaining() < 4 {
             return MspResult::Error;
         }
@@ -1237,7 +1237,7 @@ impl Msp {
         MspResult::Ack
     }
     #[cfg(feature = "gps")]
-    async fn set_gps_rescue(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher<'_>) -> MspResult {
+    async fn set_gps_rescue(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
         if src.bytes_remaining() < 18 {
             return MspResult::Error;
         }

@@ -20,8 +20,8 @@ static RANGEFINDER_PUB_SUB_CHANNEL: PubSubChannel<
     RANGEFINDER_PUBLISHER_COUNT,
 > = PubSubChannel::new();
 
-type RangefinderPublisher<'a> = Publisher<
-    'a,
+type RangefinderPublisher = Publisher<
+    'static,
     CriticalSectionRawMutex,
     RangefinderMessage,
     RANGEFINDER_PUB_SUB_CAPACITY,
@@ -30,12 +30,12 @@ type RangefinderPublisher<'a> = Publisher<
 >;
 
 #[allow(clippy::expect_used)]
-pub fn rangefinder_publisher<'a>() -> RangefinderPublisher<'a> {
+pub fn rangefinder_publisher() -> RangefinderPublisher {
     RANGEFINDER_PUB_SUB_CHANNEL.publisher().expect("rangefinder_publisher failed")
 }
 
-pub type RangefinderSubscriber<'a> = Subscriber<
-    'a,
+pub type RangefinderSubscriber = Subscriber<
+    'static,
     CriticalSectionRawMutex,
     RangefinderMessage,
     RANGEFINDER_PUB_SUB_CAPACITY,
@@ -44,24 +44,24 @@ pub type RangefinderSubscriber<'a> = Subscriber<
 >;
 
 #[allow(clippy::expect_used)]
-pub fn rangefinder_subscriber<'a>() -> RangefinderSubscriber<'a> {
+pub fn rangefinder_subscriber() -> RangefinderSubscriber {
     RANGEFINDER_PUB_SUB_CHANNEL.subscriber().expect("rangefinder_subscriber failed")
 }
 
 /// Context for Rangefinder task.
-pub struct RangefinderContext<'a> {
-    pub rangefinder_publisher: RangefinderPublisher<'a>,
+pub struct RangefinderContext {
+    pub rangefinder_publisher: RangefinderPublisher,
 }
 
-impl<'a> RangefinderContext<'a> {
-    pub fn new(rangefinder_publisher: RangefinderPublisher<'a>) -> Self {
+impl RangefinderContext {
+    pub fn new(rangefinder_publisher: RangefinderPublisher) -> Self {
         Self { rangefinder_publisher }
     }
 }
 
 /// Rangefinder Task Placeholder.
 #[embassy_executor::task]
-pub async fn rangefinder_task(ctx: &'static mut RangefinderContext<'static>) {
+pub async fn rangefinder_task(ctx: &'static mut RangefinderContext) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(40));
     let mut loop_count: u32 = 0;
 

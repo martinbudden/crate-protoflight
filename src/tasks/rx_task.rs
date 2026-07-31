@@ -32,13 +32,13 @@ pub fn rx_receiver() -> RxReceiver {
 use crate::tasks::autopilot_task::AutopilotReceiver;
 
 /// Context for the `flight_control_task`.
-pub struct RxContext<'a> {
+pub struct RxContext {
     pub rx_sender: RxSender,
-    pub config_subscriber: ConfigSubscriber<'a>,
+    pub config_subscriber: ConfigSubscriber,
     /// To publish in-flight adjustments.
-    pub config_publisher: ConfigPublisher<'a>,
+    pub config_publisher: ConfigPublisher,
     /// To publish in-flight adjustments.
-    pub fast_config_publisher: FastConfigPublisher<'a>,
+    pub fast_config_publisher: FastConfigPublisher,
     pub rc_modes: RcModes,
     pub rates: Rates,
     pub rc_adjustments: RcAdjustments,
@@ -46,13 +46,13 @@ pub struct RxContext<'a> {
     pub autopilot_receiver: AutopilotReceiver,
 }
 
-impl<'a> RxContext<'a> {
+impl RxContext {
     #[rustfmt::skip]
     pub fn new(
         rx_sender: RxSender,
-        config_subscriber: ConfigSubscriber<'a>,
-        config_publisher: ConfigPublisher<'a>,
-        fast_config_publisher: FastConfigPublisher<'a>,
+        config_subscriber: ConfigSubscriber,
+        config_publisher: ConfigPublisher,
+        fast_config_publisher: FastConfigPublisher,
         rates_config: RatesConfig,
         #[cfg(feature = "autopilot")] autopilot_receiver: AutopilotReceiver,
     ) -> Self {
@@ -77,7 +77,7 @@ impl<'a> RxContext<'a> {
 /// 5. Sends the `FlightControl` message to the `gyro_pid` task.
 /// If the timeout expires, then failsafe handling is invoked.
 #[embassy_executor::task]
-pub async fn rx_task(ctx: &'static mut RxContext<'static>) {
+pub async fn rx_task(ctx: &'static mut RxContext) {
     let mut loop_count: u32 = 0;
     // 50Hz = 20ms interval
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_millis(20));

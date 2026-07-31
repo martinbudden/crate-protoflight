@@ -20,8 +20,8 @@ static BATTERY_PUB_SUB_CHANNEL: PubSubChannel<
     BATTERY_PUBLISHER_COUNT,
 > = PubSubChannel::new();
 
-type BatteryPublisher<'a> = Publisher<
-    'a,
+type BatteryPublisher = Publisher<
+    'static,
     CriticalSectionRawMutex,
     BatteryMessage,
     BATTERY_PUB_SUB_CAPACITY,
@@ -30,13 +30,13 @@ type BatteryPublisher<'a> = Publisher<
 >;
 
 #[allow(clippy::expect_used)]
-pub fn battery_publisher<'a>() -> BatteryPublisher<'a> {
+pub fn battery_publisher() -> BatteryPublisher {
     BATTERY_PUB_SUB_CHANNEL.publisher().expect("battery_publisher failed")
 }
 
 #[allow(unused)]
-pub type BatterySubscriber<'a> = Subscriber<
-    'a,
+pub type BatterySubscriber = Subscriber<
+    'static,
     CriticalSectionRawMutex,
     BatteryMessage,
     BATTERY_PUB_SUB_CAPACITY,
@@ -46,17 +46,17 @@ pub type BatterySubscriber<'a> = Subscriber<
 
 #[allow(clippy::expect_used)]
 #[allow(unused)]
-pub fn battery_subscriber<'a>() -> BatterySubscriber<'a> {
+pub fn battery_subscriber() -> BatterySubscriber {
     BATTERY_PUB_SUB_CHANNEL.subscriber().expect("battery_subscriber failed")
 }
 
 /// Context for Battery task.
-pub struct BatteryContext<'a> {
-    pub battery_publisher: BatteryPublisher<'a>,
+pub struct BatteryContext {
+    pub battery_publisher: BatteryPublisher,
 }
 
-impl<'a> BatteryContext<'a> {
-    pub fn new(battery_publisher: BatteryPublisher<'a>) -> Self {
+impl BatteryContext {
+    pub fn new(battery_publisher: BatteryPublisher) -> Self {
         Self { battery_publisher }
     }
 }
@@ -65,7 +65,7 @@ impl<'a> BatteryContext<'a> {
 ///
 
 #[embassy_executor::task]
-pub async fn battery_task(ctx: &'static mut BatteryContext<'static>) {
+pub async fn battery_task(ctx: &'static mut BatteryContext) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(50));
     let mut loop_count: u32 = 0;
 
