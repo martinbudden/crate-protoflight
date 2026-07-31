@@ -132,6 +132,7 @@ impl OsdElements {
         #[allow(clippy::pedantic)]
         match self.active_element.id {
             Rssi => self.active_element.draw_rssi(),
+            #[cfg(feature = "battery")]
             MainBatteryVoltage => self.active_element.draw_main_battery_usage(draw_context),
             Crosshairs => self.active_element.draw_crosshairs(),
             ArtificialHorizon => self.active_element.draw_artificial_horizon().await,
@@ -140,7 +141,9 @@ impl OsdElements {
             ThrottlePos => self.active_element.draw_throttle_position(),
             #[cfg(feature = "vtx")]
             VtxChannel => self.active_element.draw_nothing(),
+            #[cfg(feature = "battery")]
             CurrentDraw => self.active_element.draw_current_draw(draw_context),
+            #[cfg(feature = "battery")]
             MahDrawn => self.active_element.draw_mah_drawn(draw_context),
 
             #[cfg(feature = "gps")]
@@ -432,6 +435,7 @@ impl OsdElement {
         true
     }
 
+    #[cfg(feature = "battery")]
     fn draw_main_battery_usage<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
         const USAGE_STEPS: usize = 11; // Use an odd number so the bar can be centered.
 
@@ -520,12 +524,14 @@ impl OsdElement {
         true
     }
 
+    #[cfg(feature = "battery")]
     fn draw_current_draw<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
         let amperage = draw_context.battery_message.current.amperage_x100;
         _ = write!(self.buf, "{:3}{}", amperage, OsdSymbols::AMP);
         true
     }
 
+    #[cfg(feature = "battery")]
     fn draw_mah_drawn<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
         let mah_drawn = draw_context.battery_message.current.mah_drawn;
         if mah_drawn >= self.osd_cap_alarm.into() {

@@ -107,7 +107,7 @@ impl GyroPidContext {
 /// The GYRO/PID task.
 #[embassy_executor::task]
 pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext) {
-    log::info!(" GYRO_PID: task started");
+    log::info!("    GYRO_PID: task started");
     let mut time_us: u32 = 0;
     let mut loop_count: u32 = 0;
     let mut gyro_pid_send_count: u32 = 0;

@@ -102,7 +102,7 @@ pub async fn msp_task(ctx: &'static mut MspContext) {
     // value to pass to Msp::process_write_command
     let mut msp_sensor_data = MspSensorData::new();
 
-    log::info!("      MSP: task started");
+    log::info!("         MSP: task started");
     loop {
         // Wait for msp packet
         // let msp_packet = msp.receive().await;

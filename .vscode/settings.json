@@ -149,6 +149,7 @@
         "multiwii",
         "NMEA",
         "noreturn",
+        "NRVO",
         "NTSC",
         "Oled",
         "oorandom",

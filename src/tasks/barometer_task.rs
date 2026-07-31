@@ -65,7 +65,7 @@ pub async fn barometer_task(ctx: &'static mut BarometerContext) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(40));
     let mut loop_count: u32 = 0;
 
-    log::info!("BAROMETER: task started");
+    log::info!("   BAROMETER: task started");
     loop {
         // Wait for the next tick.
         ticker.next().await;

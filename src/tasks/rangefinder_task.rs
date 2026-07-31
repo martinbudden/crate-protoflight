@@ -65,7 +65,7 @@ pub async fn rangefinder_task(ctx: &'static mut RangefinderContext) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(40));
     let mut loop_count: u32 = 0;
 
-    log::info!("RANGEFINDER: task started");
+    log::info!(" RANGEFINDER: task started");
     loop {
         // Wait for the next tick.
         ticker.next().await;

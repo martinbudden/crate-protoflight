@@ -73,7 +73,7 @@ pub async fn gps_task(ctx: &'static mut GpsContext) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(10));
     let mut loop_count: u32 = 0;
 
-    log::info!("GPS: task started");
+    log::info!("         GPS: task started");
     loop {
         // Wait for the next tick.
         ticker.next().await;

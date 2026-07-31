@@ -42,12 +42,16 @@ impl BlackboxContext {
         blackbox_config: BlackboxConfig,
         #[cfg(feature = "gps")] gps_subscriber: GpsSubscriber,
     ) -> Self {
+        // NRVO (Named Return Value Optimization) ensures blackbox is created in place and not copied.
+        let mut blackbox = Blackbox::new(blackbox_config);
+        blackbox.init();
+
         Self {
             gyro_pid_receiver,
             setpoint_receiver,
             setpoint_message,
             #[cfg(feature = "gps")] gps_subscriber,
-            blackbox: Blackbox::new(blackbox_config),
+            blackbox,
             buffer: [0u8; Self::BUFFER_CAPACITY],
             overflow_counter: 0,
         }
@@ -105,7 +109,7 @@ fn send_data_to_blackbox_writer_task(data: &[u8], overflow_counter: &mut u32) {
 /// Blackbox task.
 #[embassy_executor::task]
 pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
-    log::info!(" BLACKBOX: task started");
+    log::info!("    BLACKBOX: task started");
     let mut loop_count: u32 = 0;
 
     // Write the Blackbox log file header by using blackbox.update to step through the blackbox state machine
@@ -115,9 +119,10 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
         let time_us = 0;
         let len = ctx.blackbox.update(&mut SliceEncoder::new(&mut ctx.buffer), time_us);
         send_data_to_blackbox_writer_task(&ctx.buffer[..len], &mut ctx.overflow_counter);
-        log::info!("BLACKBOX:  hdr {loop_count},{len}");
+        //log::info!("BLACKBOX:  hdr {loop_count},{len}");
         loop_count = loop_count.wrapping_add(1);
     }
+    log::info!("    BLACKBOX: header written {loop_count}");
 
     loop_count = 0;
     loop {
@@ -138,7 +143,10 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
             && let embassy_sync::pubsub::WaitResult::Message(event) = wait_result
             && let GpsMessage::GpsSolution(gps_solution_data) = event
         {
-            ctx.blackbox.set_gps_data(gps_data_from(gps_solution_data));
+            let gps_data = gps_data_from(gps_solution_data);
+            //let satellite_count = gps_data.satellite_count;
+            //log::info!("    BLACKBOX: sat count {satellite_count}");
+            ctx.blackbox.set_gps_data(gps_data);
         }
 
         let len = ctx.blackbox.update(&mut SliceEncoder::new(&mut ctx.buffer), time_us);
@@ -271,8 +279,8 @@ pub fn gps_data_from(gps: GpsSolutionData) -> BlackboxGpsData {
         time_of_week_ms: gps.time,
         interval_ms: 0,
         position: BlackboxGpsPosition {
-            longitude_degrees_1e7: gps.llh.longitude_degrees_x1e7,
-            latitude_degrees_1e7: gps.llh.latitude_degrees_x1e7,
+            longitude_degrees_x1e7: gps.llh.longitude_degrees_x1e7,
+            latitude_degrees_x1e7: gps.llh.latitude_degrees_x1e7,
             altitude_cm: gps.llh.altitude_cm,
         },
         velocity_north_cmps: gps.velocity_ned_cmps.north,

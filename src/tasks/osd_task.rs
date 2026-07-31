@@ -77,7 +77,7 @@ pub async fn osd_task(ctx: &'static mut OsdContext) {
     let mut loop_count: u32 = 0;
 
     //println!("OSD: Started at 50Hz.");
-    log::info!("      OSD: task started");
+    log::info!("         OSD: task started");
     loop {
         // Wait for the next 50Hz tick.
         ticker.next().await;
@@ -117,7 +117,7 @@ pub async fn osd_task(ctx: &'static mut OsdContext, display_port_mutex: &'static
     let mut battery_message = BatteryMessage::new();
     let mut orientation = Quaternionf32::default();
 
-    log::info!("      OSD: task started");
+    log::info!("         OSD: task started");
     loop {
         // Wait for the next 50Hz tick.
         ticker.next().await;

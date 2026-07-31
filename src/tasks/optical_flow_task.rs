@@ -77,7 +77,7 @@ pub async fn optical_flow_task(ctx: &'static mut OpticalFlowContext) {
         ctx.optical_flow_publisher.publish_immediate(optical_flow_message);
 
         if loop_count.is_multiple_of(10) {
-            log::info!("  OPTICAL_FLOW:  loop {loop_count}");
+            log::info!("  OPTICAL_FLOW:loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }

@@ -69,7 +69,7 @@ pub async fn battery_task(ctx: &'static mut BatteryContext) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(50));
     let mut loop_count: u32 = 0;
 
-    log::info!("  BATTERY: task started");
+    log::info!("     BATTERY: task started");
     loop {
         // Wait for the next 50Hz tick.
         ticker.next().await;

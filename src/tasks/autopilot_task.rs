@@ -93,7 +93,7 @@ pub async fn autopilot_task(ctx: &'static mut AutopilotContext) {
     #[cfg(feature = "gps")]
     let mut position_hold = false;
 
-    log::info!("AUTOPILOT:task started");
+    log::info!("   AUTOPILOT: task started");
     loop {
         ticker.next().await;
 

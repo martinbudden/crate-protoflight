@@ -5,9 +5,13 @@ use vqm::Quaternionf32;
 use crate::{
     display::{Display, DisplayPort, DisplayPortDeviceType, DisplayPortLayer},
     flight::ArmingFlags,
-    osd::{OsdConfig, elements::OsdElements},
-    sensors::BatteryMessage,
 };
+
+#[cfg(feature = "battery")]
+use crate::sensors::BatteryMessage;
+
+#[cfg(feature = "osd")]
+use crate::osd::{OsdConfig, elements::OsdElements};
 
 #[allow(unused)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

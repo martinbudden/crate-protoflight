@@ -82,7 +82,7 @@ pub async fn rx_task(ctx: &'static mut RxContext) {
     // 50Hz = 20ms interval
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_millis(20));
 
-    log::info!("       RX: task started");
+    log::info!("          RX: task started");
 
     loop {
         // TODO: rx_frame should be obtained on an interrupt form the radio receiver (UART).
