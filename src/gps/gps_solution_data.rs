@@ -1,6 +1,6 @@
 #![cfg(feature = "gps")]
 
-use crate::gps::GpsDataPosition;
+use crate::gps::GpsPositionLongLatAlt;
 
 /// A value below 100 means great accuracy is possible with the GPS satellite constellation.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -73,7 +73,7 @@ impl GpsDateTime {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GpsSolutionData {
-    pub llh: GpsDataPosition,
+    pub llh: GpsPositionLongLatAlt,
     pub dop: GpsDilution,
     pub accuracy: GpsAccuracy,
     pub velocity_ned_cmps: GpsVelocityNedCmps,
@@ -94,7 +94,7 @@ pub struct GpsSolutionData {
 impl GpsSolutionData {
     pub const fn new() -> Self {
         Self {
-            llh: GpsDataPosition::new(),
+            llh: GpsPositionLongLatAlt::new(),
             dop: GpsDilution::new(),
             accuracy: GpsAccuracy::new(),
             velocity_ned_cmps: GpsVelocityNedCmps::new(),
@@ -117,7 +117,7 @@ impl Default for GpsSolutionData {
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct GpsSolutionDataAbridged {
-    pub llh: GpsDataPosition,
+    pub llh: GpsPositionLongLatAlt,
     pub satellite_count: u8,
     // speed in cm/s
     pub ground_speed_cmps: u16,
@@ -129,7 +129,7 @@ pub struct GpsSolutionDataAbridged {
 impl GpsSolutionDataAbridged {
     pub const fn new() -> Self {
         Self {
-            llh: GpsDataPosition::new(),
+            llh: GpsPositionLongLatAlt::new(),
             ground_speed_cmps: 0,
             ground_course_degrees_x10: 0,
             satellite_count: 0,

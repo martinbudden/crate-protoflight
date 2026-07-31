@@ -8,7 +8,7 @@ use embassy_sync::{
 use crate::{
     gps::{Geodetic, GeographicCoordinate, GpsSolutionData},
     gps::{
-        GpsMessage, {GpsData, GpsPosition, GpsYawHeadingMessage},
+        GpsMessage, {GpsData, GpsPositionMeters, GpsYawHeadingMessage},
     },
 };
 
@@ -88,8 +88,8 @@ pub async fn gps_task(ctx: &'static mut GpsContext) {
 
         // Convert the gps_data position to a GpsPosition item (ie position in meters from home) for use by the autopilot.
         let geographic_coordinate = GeographicCoordinate::from(gps_data.position);
-        let gps_position = GpsPosition { position: ctx.home.distance_from_home_meters(geographic_coordinate) };
-        ctx.gps_publisher.publish_immediate(GpsMessage::GpsPosition(gps_position));
+        let gps_position = GpsPositionMeters { position: ctx.home.distance_from_home_meters(geographic_coordinate) };
+        ctx.gps_publisher.publish_immediate(GpsMessage::GpsPositionMeters(gps_position));
 
         // Only trust GPS heading if moving faster than 1.5 m/s (150 cmps, approx 3 knots)
         if gps_data.ground_speed_cmps > 150 {

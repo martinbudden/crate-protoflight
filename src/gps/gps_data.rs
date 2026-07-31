@@ -3,45 +3,45 @@ use vqm::Vector3df32;
 use crate::gps::{GeographicCoordinate, GpsSolutionData};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct GpsPosition {
+pub struct GpsPositionMeters {
     pub position: Vector3df32,
 }
 
-impl GpsPosition {
+impl GpsPositionMeters {
     pub const fn new() -> Self {
         Self { position: Vector3df32 { x: 0.0, y: 0.0, z: 0.0 } }
     }
 }
 
-impl Default for GpsPosition {
+impl Default for GpsPositionMeters {
     fn default() -> Self {
         Self::new()
     }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct GpsDataPosition {
+pub struct GpsPositionLongLatAlt {
     pub longitude_degrees_x1e7: i32,
     pub latitude_degrees_x1e7: i32,
     pub altitude_cm: i32,
 }
 
-impl GpsDataPosition {
+impl GpsPositionLongLatAlt {
     pub const fn new() -> Self {
         Self { longitude_degrees_x1e7: 0, latitude_degrees_x1e7: 0, altitude_cm: 0 }
     }
 }
 
-impl Default for GpsDataPosition {
+impl Default for GpsPositionLongLatAlt {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl From<GpsDataPosition> for GeographicCoordinate {
+impl From<GpsPositionLongLatAlt> for GeographicCoordinate {
     #[inline]
     #[allow(clippy::cast_precision_loss)]
-    fn from(position: GpsDataPosition) -> Self {
+    fn from(position: GpsPositionLongLatAlt) -> Self {
         Self {
             longitude_degrees: (position.longitude_degrees_x1e7 as f32) * 1e-7,
             latitude_degrees: (position.latitude_degrees_x1e7 as f32) * 1e-7,
@@ -52,7 +52,7 @@ impl From<GpsDataPosition> for GeographicCoordinate {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GpsData {
-    pub position: GpsDataPosition,
+    pub position: GpsPositionLongLatAlt,
     pub distance_to_home_meters: f32,
     pub bearing_to_home_degrees: f32,
     pub distance_flown_meters: f32,
@@ -78,7 +78,7 @@ impl GpsData {
 
     pub const fn new() -> Self {
         Self {
-            position: GpsDataPosition::new(),
+            position: GpsPositionLongLatAlt::new(),
             distance_to_home_meters: 0.0,
             bearing_to_home_degrees: 0.0,
             distance_flown_meters: 0.0,
@@ -127,7 +127,7 @@ impl Default for GpsYawHeadingMessage {
 #[non_exhaustive]
 pub enum GpsMessage {
     Gps(GpsData),
-    GpsPosition(GpsPosition),
+    GpsPositionMeters(GpsPositionMeters),
     GpsSolution(GpsSolutionData),
 }
 
@@ -141,8 +141,8 @@ mod tests {
 
     #[test]
     fn normal_types() {
-        is_full::<GpsPosition>();
-        is_full::<GpsDataPosition>();
+        is_full::<GpsPositionMeters>();
+        is_full::<GpsPositionLongLatAlt>();
         is_full::<GpsData>();
         is_full::<GpsYawHeadingMessage>();
         is_full_no_default::<GpsMessage>();
