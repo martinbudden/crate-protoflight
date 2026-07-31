@@ -113,6 +113,7 @@ pub async fn osd_task(ctx: &'static mut OsdContext, display_port_mutex: &'static
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(50));
     let mut loop_count: u32 = 0;
 
+    #[cfg(feature = "battery")]
     let mut battery_message = BatteryMessage::new();
     let mut orientation = Quaternionf32::default();
 

@@ -31,7 +31,7 @@ pub enum OsdState {
     Transfer,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct OsdDrawContext<'a, D: Display> {
     // Accepts any type that implements the Display trait
     pub display_port: &'a mut D,
@@ -150,7 +150,6 @@ impl Osd {
 
 impl Osd {
     // TODO: placeholder OSD update display
-    #[allow(clippy::unused_self)]
     pub async fn update_display<D: Display>(&mut self, draw_ctx: &mut OsdDrawContext<'_, D>, time_microseconds: u32) {
         /*if draw_ctx.display_port.is_grabbed() {
             return;
@@ -168,7 +167,6 @@ impl Osd {
 
 impl Osd {
     #[allow(clippy::too_many_lines)]
-    #[allow(clippy::unused_self)]
     //pub async fn update_display_iteration<D: Display>(&mut self, draw_ctx: &mut OsdDrawContext<D>, time_microseconds: u32) {
     pub async fn update_display_iteration<D: Display>(
         &mut self,

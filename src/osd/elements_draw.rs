@@ -657,7 +657,6 @@ impl OsdElement {
 }
 
 // element background drawing functions
-#[allow(clippy::unused_self)]
 impl OsdElement {
     fn draw_background_horizon_sidebars<D: Display>(&mut self, draw_context: &mut OsdDrawContext<D>) -> bool {
         const AH_SIDEBAR_WIDTH_POS: u8 = 7;

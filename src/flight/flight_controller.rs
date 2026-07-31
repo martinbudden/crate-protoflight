@@ -413,7 +413,7 @@ impl FlightController {
 pub enum AngleModeCalculationState {
     #[default]
     CalculateRoll,
-    //CalculatePitch,
+    _CalculatePitch,
 }
 
 impl AngleModeCalculationState {
