@@ -186,8 +186,6 @@ pub async fn init(spawner: Spawner) {
     #[rustfmt::skip]
     #[cfg(feature = "blackbox")]
     let blackbox_ctx = {
-        #[cfg(not(feature = "gps"))]
-        use core::marker::PhantomData;
 
         //nvs::load_blackbox_config(&mut config.blackbox, &mut flash_driver, config_flash_range.clone());
         use crate::{sensors::SetpointMessage, tasks::gyro_pid_task::gyro_pid_receiver};

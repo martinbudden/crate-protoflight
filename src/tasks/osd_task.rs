@@ -3,12 +3,13 @@
 use simple_bitset::BitSet64;
 use vqm::Quaternionf32;
 
-use crate::flight::ArmingFlags;
-use crate::osd::{Osd, OsdDrawContext};
-
-use crate::tasks::{
-    gyro_pid_task::{GyroPidReceiver, SetpointReceiver},
-    init::DisplayPortMutex,
+use crate::{
+    flight::ArmingFlags,
+    osd::{Osd, OsdDrawContext},
+    tasks::{
+        gyro_pid_task::{GyroPidReceiver, SetpointReceiver},
+        init::DisplayPortMutex,
+    },
 };
 
 #[cfg(feature = "optical_flow")]

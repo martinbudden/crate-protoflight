@@ -7,11 +7,11 @@ use embassy_sync::{
 use radio_controllers::RcMode;
 use vqm::Vector3df32;
 
-use crate::tasks::{gyro_pid_task::GyroPidReceiver, rx_task::RxReceiver};
-
-use crate::autopilot::pilot::Autopilot;
-
-use crate::flight::RxMessage;
+use crate::{
+    autopilot::pilot::Autopilot,
+    flight::{RxMessage,RcControls},
+    tasks::{gyro_pid_task::GyroPidReceiver, rx_task::RxReceiver},
+};
 
 #[cfg(feature = "barometer")]
 use crate::tasks::barometer_task::BarometerSubscriber;
@@ -118,8 +118,6 @@ pub async fn autopilot_task(ctx: &'static mut AutopilotContext<'static>) {
                     }
                 }
                 if altitude_hold {
-                    use crate::flight::RcControls;
-
                     let throttle_stick = ctx.autopilot.altitude_controller.update(
                         estimated_altitude,
                         estimated_vertical_speed,

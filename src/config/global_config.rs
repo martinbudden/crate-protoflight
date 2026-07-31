@@ -7,8 +7,6 @@ use embassy_sync::{
 use motor_mixers::{MixerConfig, MotorConfig, MotorDeviceConfig};
 use radio_controllers::{FailsafeConfig, RatesConfig, RcControlsConfig, RcModes, RxConfig};
 
-#[cfg(feature = "osd")]
-use crate::osd::PilotConfig;
 use crate::{
     autopilot::{AutopilotConfig, PositionHoldConfig},
     config::{ImuConfig, SystemConfig, profiles::SchemaVersion},
@@ -16,9 +14,8 @@ use crate::{
         AntiGravityConfig, ArmingConfig, CrashFlipConfig, CrashRecoveryConfig, DMaxConfig, FeatureFlags,
         FlightControllerFiltersConfig, GyroConfig, ImuFilterBankConfig, PidConfig, TpaConfig, YawSpinRecoveryConfig,
     },
+    sensors::SensorFlags,
 };
-
-use crate::sensors::SensorFlags;
 
 #[cfg(feature = "barometer")]
 use crate::sensors::BarometerConfig;
@@ -39,7 +36,7 @@ use crate::sensors::MagnetometerConfig;
 use crate::sensors::OpticalFlowConfig;
 
 #[cfg(feature = "osd")]
-use crate::osd::{OsdConfig, OsdElementsConfig, OsdStatsConfig};
+use crate::osd::{OsdConfig, OsdElementsConfig, OsdStatsConfig, PilotConfig};
 
 #[cfg(feature = "rangefinder")]
 use crate::sensors::RangefinderConfig;

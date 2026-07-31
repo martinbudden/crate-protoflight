@@ -23,18 +23,17 @@ use embassy_rp::{
 #[cfg(feature = "rp2350")]
 const FLASH_SIZE_BYTES: usize = 4 * 1024 * 1024;
 
-use blackbox_logger::BlackboxConfig;
 use radio_controllers::RatesConfig;
 extern crate paste;
 
-use crate::config::GLOBAL_CONFIG;
-use crate::flight::ImuFilterBankConfig;
-use crate::tasks::non_volatile_storage as nvs;
+use crate::{config::GLOBAL_CONFIG, flight::ImuFilterBankConfig, tasks::non_volatile_storage as nvs};
 
-#[cfg(feature = "osd")]
-use crate::osd::OsdConfig;
 #[cfg(feature = "battery")]
 use crate::sensors::BatteryConfig;
+#[cfg(feature = "blackbox")]
+use blackbox_logger::BlackboxConfig;
+#[cfg(feature = "osd")]
+use crate::osd::OsdConfig;
 
 const PID_PROFILE_INDEX_KEY: u16 = 0x0001;
 const RATE_PROFILE_INDEX_KEY: u16 = 0x0002;

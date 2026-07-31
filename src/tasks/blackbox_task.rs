@@ -1,16 +1,15 @@
 #![cfg(feature = "blackbox")]
 
-use blackbox_logger::BlackboxConfig;
+use blackbox_logger::{Blackbox, BlackboxConfig,BlackboxMainData, BlackboxSlowData, LoggerState, SliceEncoder};
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel};
-
-#[cfg(feature = "debug")]
-use crate::tasks::DebugMode;
 
 use crate::{
     sensors::{GyroPidMessage, SetpointMessage},
     tasks::gyro_pid_task::{GyroPidReceiver, SetpointReceiver},
 };
-use blackbox_logger::{Blackbox, BlackboxMainData, BlackboxSlowData, LoggerState, SliceEncoder};
+
+#[cfg(feature = "debug")]
+use crate::tasks::DebugMode;
 
 #[cfg(not(feature = "gps"))]
 use core::marker::PhantomData;
@@ -23,7 +22,6 @@ use {
     blackbox_logger::{BlackboxGpsData, BlackboxGpsPosition},
 };
 
-const BUFFER_CAPACITY: usize = 1024;
 
 pub struct BlackboxContext<'a> {
     pub gyro_pid_receiver: GyroPidReceiver,
@@ -34,11 +32,13 @@ pub struct BlackboxContext<'a> {
     #[cfg(not(feature = "gps"))]
     pub _marker: PhantomData<&'a ()>,
     pub blackbox: Blackbox,
-    pub buffer: [u8; BUFFER_CAPACITY],
+    pub buffer: [u8; BlackboxContext::BUFFER_CAPACITY],
     pub overflow_counter: u32,
 }
 
 impl<'a> BlackboxContext<'a> {
+    const BUFFER_CAPACITY: usize = 1024;
+
     #[rustfmt::skip]
     pub fn new(
         gyro_pid_receiver: GyroPidReceiver,
@@ -54,7 +54,7 @@ impl<'a> BlackboxContext<'a> {
             #[cfg(feature = "gps")] gps_subscriber,
             #[cfg(not(feature = "gps"))] _marker: PhantomData,
             blackbox: Blackbox::new(blackbox_config),
-            buffer: [0u8; BUFFER_CAPACITY],
+            buffer: [0u8; Self::BUFFER_CAPACITY],
             overflow_counter: 0,
         }
     }

@@ -1,7 +1,7 @@
 #![cfg(feature = "osd")]
 
-use crate::sensors::SensorFlags;
 use crate::{
+    sensors::SensorFlags,
     display::{Display, DisplayPortLayer, DisplayPortSeverity},
     osd::{
         OsdElementsConfig,

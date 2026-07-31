@@ -5,6 +5,7 @@ use stream_buf::{StreamBufReader, StreamBufWriter};
 use vqm::Quaternion;
 
 use crate::config::{ConfigItem, ConfigPublisher, FastConfigItem, FastConfigPublisher, GLOBAL_CONFIG};
+
 #[cfg(feature = "debug")]
 use crate::tasks::global_debug::GlobalDebug;
 
