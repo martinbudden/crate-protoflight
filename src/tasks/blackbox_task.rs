@@ -11,8 +11,6 @@ use crate::{
 #[cfg(feature = "debug")]
 use crate::tasks::DebugMode;
 
-#[cfg(not(feature = "gps"))]
-use core::marker::PhantomData;
 #[cfg(feature = "gps")]
 use {
     crate::{
@@ -23,20 +21,18 @@ use {
 };
 
 
-pub struct BlackboxContext<'a> {
+pub struct BlackboxContext {
     pub gyro_pid_receiver: GyroPidReceiver,
     pub setpoint_receiver: SetpointReceiver,
     pub setpoint_message: SetpointMessage,
     #[cfg(feature = "gps")]
-    pub gps_subscriber: GpsSubscriber<'a>,
-    #[cfg(not(feature = "gps"))]
-    pub _marker: PhantomData<&'a ()>,
+    pub gps_subscriber: GpsSubscriber<'static>,
     pub blackbox: Blackbox,
     pub buffer: [u8; BlackboxContext::BUFFER_CAPACITY],
     pub overflow_counter: u32,
 }
 
-impl<'a> BlackboxContext<'a> {
+impl BlackboxContext {
     const BUFFER_CAPACITY: usize = 1024;
 
     #[rustfmt::skip]
@@ -45,14 +41,13 @@ impl<'a> BlackboxContext<'a> {
         setpoint_receiver: SetpointReceiver,
         setpoint_message: SetpointMessage,
         blackbox_config: BlackboxConfig,
-        #[cfg(feature = "gps")] gps_subscriber: GpsSubscriber<'a>,
+        #[cfg(feature = "gps")] gps_subscriber: GpsSubscriber<'static>,
     ) -> Self {
         Self {
             gyro_pid_receiver,
             setpoint_receiver,
             setpoint_message,
             #[cfg(feature = "gps")] gps_subscriber,
-            #[cfg(not(feature = "gps"))] _marker: PhantomData,
             blackbox: Blackbox::new(blackbox_config),
             buffer: [0u8; Self::BUFFER_CAPACITY],
             overflow_counter: 0,
@@ -110,7 +105,7 @@ fn send_data_to_blackbox_writer_task(data: &[u8], overflow_counter: &mut u32) {
 
 /// Blackbox task.
 #[embassy_executor::task]
-pub async fn blackbox_task(ctx: &'static mut BlackboxContext<'static>) {
+pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
     log::info!(" BLACKBOX: task started");
     let mut loop_count: u32 = 0;
 
