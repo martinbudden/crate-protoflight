@@ -59,7 +59,7 @@ pub struct AutopilotContext {
 
 impl AutopilotContext {
     #[rustfmt::skip]
-    pub fn new(
+    pub const fn new(
         gyro_pid_receiver: GyroPidReceiver,
         rx_receiver: RxReceiver,
         autopilot_sender: AutopilotSender,

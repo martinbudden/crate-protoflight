@@ -54,7 +54,7 @@ pub struct BarometerContext {
 }
 
 impl BarometerContext {
-    pub fn new(barometer_publisher: BarometerPublisher) -> Self {
+    pub const fn new(barometer_publisher: BarometerPublisher) -> Self {
         Self { barometer_publisher }
     }
 }

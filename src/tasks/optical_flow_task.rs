@@ -54,7 +54,7 @@ pub struct OpticalFlowContext {
 }
 
 impl OpticalFlowContext {
-    pub fn new(optical_flow_publisher: OpticalFlowPublisher) -> Self {
+    pub const fn new(optical_flow_publisher: OpticalFlowPublisher) -> Self {
         Self { optical_flow_publisher }
     }
 }

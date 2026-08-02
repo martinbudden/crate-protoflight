@@ -54,7 +54,7 @@ pub struct RangefinderContext {
 }
 
 impl RangefinderContext {
-    pub fn new(rangefinder_publisher: RangefinderPublisher) -> Self {
+    pub const fn new(rangefinder_publisher: RangefinderPublisher) -> Self {
         Self { rangefinder_publisher }
     }
 }

@@ -62,7 +62,7 @@ pub struct GpsContext {
 }
 
 impl GpsContext {
-    pub fn new(gps_publisher: GpsPublisher) -> Self {
+    pub const fn new(gps_publisher: GpsPublisher) -> Self {
         Self { gps_publisher, home: Geodetic::new() }
     }
 }

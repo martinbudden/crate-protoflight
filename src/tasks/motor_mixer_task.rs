@@ -15,7 +15,7 @@ pub struct MotorMixerContext {
 }
 
 impl MotorMixerContext {
-    pub fn new(mixer_config: MixerConfig, motor_config: MotorConfig) -> Self {
+    pub const fn new(mixer_config: MixerConfig, motor_config: MotorConfig) -> Self {
         Self { motor_mixer: MotorMixerQuadXPwm::new(MotorMixerCommon::with_config(mixer_config, motor_config)) }
     }
 }

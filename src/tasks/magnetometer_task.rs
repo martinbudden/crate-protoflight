@@ -54,7 +54,7 @@ pub struct MagnetometerContext {
 }
 
 impl MagnetometerContext {
-    pub fn new(magnetometer_publisher: MagnetometerPublisher) -> Self {
+    pub const fn new(magnetometer_publisher: MagnetometerPublisher) -> Self {
         Self { magnetometer_publisher }
     }
 }

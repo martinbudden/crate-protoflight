@@ -238,7 +238,7 @@ pub struct BatteryMessage {
 }
 
 impl BatteryMessage {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             voltage: VoltageMeterReading::new(),
             current: CurrentMeterReading::new(),
