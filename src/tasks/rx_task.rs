@@ -91,9 +91,9 @@ pub async fn rx_task(ctx: &'static mut RxContext) {
         ticker.next().await;
         let mut rx_frame = RxFrame::new();
         if loop_count == 1000 {
-            rx_frame.channels[RxChannel::AUX1] = RxChannel::MID_HIGH;
+            rx_frame.channels[RxChannel::AUX1] = RxChannel::MID_HIGH; // Armed
         } else if loop_count == 2000 {
-            rx_frame.channels[RxChannel::AUX1] = RxChannel::LOW;
+            rx_frame.channels[RxChannel::AUX1] = RxChannel::LOW; // Disarmed
         }
         let failsafe = 0;
 
@@ -109,14 +109,12 @@ pub async fn rx_task(ctx: &'static mut RxContext) {
 
         ctx.rc_adjustments.process_adjustments(&ctx.config_publisher, &ctx.fast_config_publisher).await;
 
-        let (rc_modes, flight_stabilization_mode) = ctx.rc_modes.update_modes();
+        #[allow(unused_mut)]
         let mut rx_message = RxMessage::new_from(&rx_frame, &ctx.rates, &ctx.rc_modes, loop_count, failsafe);
-        rx_message.rc_modes = rc_modes;
-        rx_message.controls.flight_stabilization_mode = flight_stabilization_mode;
 
         #[cfg(feature = "autopilot")]
         if let Some(autopilot_message) = ctx.autopilot_receiver.try_changed() {
-            // TODO: if there is a message from the autopilot, then act on it.
+            // If there is a message from the autopilot, use it to set the controls.
             if ctx.rc_modes.is_mode_active(RcMode::ALTITUDE_HOLD) {
                 rx_message.controls.throttle_stick = autopilot_message.controls.throttle_stick;
             } else if ctx.rc_modes.is_mode_active(RcMode::POSITION_HOLD)

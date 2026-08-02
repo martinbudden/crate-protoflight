@@ -157,8 +157,13 @@ pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext) {
         // and then updates the PIDs using `gyro_rps` and `orientation`.
         // `setpoints_updated` is set if the setpoints have been updated because of a new radio_control_message,
         // or if the flight controller has updated the setpoints because of crash or spin recovery.
-        let (motor_commands, setpoints_updated) =
-            ctx.flight_controller.calculate_motor_commands(gyro_rps, orientation, delta_t, ctx.rc_controls);
+        let (motor_commands, setpoints_updated) = ctx.flight_controller.calculate_motor_commands(
+            gyro_rps,
+            orientation,
+            delta_t,
+            ctx.rc_controls,
+            ctx.rc_modes,
+        );
 
         // Convert the motor commands calculated by the flight controller into a motor mixer message and send that message.
         // The signal will be picked up by the motor mixer task.

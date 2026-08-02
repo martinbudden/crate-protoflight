@@ -6,8 +6,9 @@ use crate::flight::{
 
 use motor_mixers::{MotorMixer, MotorMixerCommon};
 use pidsk_controller::{PidControllerf32, PidGainsf32};
-use radio_controllers::RcModes;
+use radio_controllers::RcMode;
 use signal_filters::{Pt1FilterVector4df32, Pt1Filterf32, UpdateFilter};
+use simple_bitset::BitSet64;
 use vqm::{Quaternionf32, Vector3df32, Vector4df32};
 
 #[allow(clippy::struct_excessive_bools)]
@@ -49,6 +50,11 @@ pub struct FlightController {
 }
 
 impl FlightController {
+    pub const FLIGHT_STABILIZATION_MODE_RATE: u8 = 0; // aka acro mode
+    pub const FLIGHT_STABILIZATION_MODE_ANGLE: u8 = 1;
+    pub const _FLIGHT_STABILIZATION_MODE_HORIZON: u8 = 2;
+    pub const FLIGHT_STABILIZATION_MODE_LEVEL_RACE: u8 = 3;
+
     pub const ROLL_RATE_DPS: usize = 0;
     pub const PITCH_RATE_DPS: usize = 1;
     pub const YAW_RATE_DPS: usize = 2;
@@ -125,12 +131,13 @@ impl VehicleControl for FlightController {
         orientation: Quaternionf32,
         delta_t: f32,
         controls: RcControls,
+        rc_modes: BitSet64,
     ) -> (Vector4df32, bool) {
         let mut setpoints_updated: bool = false;
         if controls.tick_count > self.controls_tick_count {
             // we have a new set of values from the receiver, so update the setpoints.
             self.controls_tick_count = controls.tick_count;
-            self.update_setpoints(controls);
+            self.update_setpoints(controls, rc_modes);
             setpoints_updated = true;
         }
 
@@ -290,7 +297,33 @@ impl FlightController {
         }
     }
 
-    pub fn set_stabilization_mode(&mut self, stabilization_mode: u8) {
+    /// Set the flight stabilization mode required my the `RcMode`.
+    pub fn set_stabilization_mode(&mut self, rc_modes: BitSet64) {
+        let mut stabilization_mode = Self::FLIGHT_STABILIZATION_MODE_RATE;
+
+        if rc_modes.test(RcMode::ANGLE) {
+            stabilization_mode = Self::FLIGHT_STABILIZATION_MODE_ANGLE;
+        }
+        if rc_modes.test(RcMode::HORIZON) {
+            // we don't support horizon mode, instead we use the horizon mode setting to invoke level race mode
+            stabilization_mode = Self::FLIGHT_STABILIZATION_MODE_LEVEL_RACE;
+        }
+        if rc_modes.test(RcMode::ALTITUDE_HOLD) {
+            stabilization_mode = Self::FLIGHT_STABILIZATION_MODE_ANGLE;
+        }
+        if rc_modes.test(RcMode::POSITION_HOLD) {
+            stabilization_mode = Self::FLIGHT_STABILIZATION_MODE_ANGLE;
+        }
+        if rc_modes.test(RcMode::FAILSAFE) {
+            stabilization_mode = Self::FLIGHT_STABILIZATION_MODE_ANGLE;
+        }
+        if rc_modes.test(RcMode::GPS_RESCUE) {
+            stabilization_mode = Self::FLIGHT_STABILIZATION_MODE_ANGLE;
+        }
+        if rc_modes.test(RcMode::AUTOPILOT) {
+            stabilization_mode = Self::FLIGHT_STABILIZATION_MODE_ANGLE;
+        }
+
         if stabilization_mode == self.stabilization_mode {
             return;
         }
@@ -324,10 +357,10 @@ impl FlightController {
         Vector4df32::default()
     }
 
-    pub fn update_setpoints(&mut self, controls: RcControls) {
+    pub fn update_setpoints(&mut self, controls: RcControls, rc_modes: BitSet64) {
         //detect_crash_or_spin();
 
-        self.set_stabilization_mode(controls.flight_stabilization_mode);
+        self.set_stabilization_mode(rc_modes);
 
         // output throttle may be changed by spin recovery
         self.motor_commands_throttle = controls.throttle_stick;
@@ -390,9 +423,8 @@ impl FlightController {
         // Angle Mode is used if the control_mode is set to angle mode, or failsafe is on.
         // Angle Mode is prevented when in Ground Mode, so the aircraft doesn't try and self-level while it is still on the ground.
         // This value is cached here, to avoid evaluating a reasonably complex condition in update_outputs_using_pids()
-        self.use_angle_mode =
-            (self.stabilization_mode >= RcModes::FLIGHT_STABILIZATION_MODE_ANGLE) && !self.ground_mode;
-        self.use_level_race_mode = (self.stabilization_mode == RcModes::FLIGHT_STABILIZATION_MODE_LEVEL_RACE)
+        self.use_angle_mode = (self.stabilization_mode >= Self::FLIGHT_STABILIZATION_MODE_ANGLE) && !self.ground_mode;
+        self.use_level_race_mode = (self.stabilization_mode == Self::FLIGHT_STABILIZATION_MODE_LEVEL_RACE)
             || (self.flight_mode_config.level_race_mode != 0);
     }
 }

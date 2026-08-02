@@ -1,4 +1,5 @@
 use crate::flight::{rx_message::RcControls, vehicle_controller::VehicleController};
+use simple_bitset::BitSet64;
 use vqm::{Quaternionf32, Vector3df32, Vector4df32};
 
 #[allow(unused)]
@@ -12,5 +13,6 @@ pub trait VehicleControl {
         orientation: Quaternionf32,
         delta_t: f32,
         controls: RcControls,
+        rc_modes: BitSet64,
     ) -> (Vector4df32, bool);
 }
