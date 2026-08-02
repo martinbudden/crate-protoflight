@@ -5,6 +5,7 @@ use embassy_sync::{
 
 use motor_mixers::MotorMixerMessage;
 use sensor_fusion::{MadgwickFilterf32, SensorFusion};
+use simple_bitset::BitSet64;
 
 use crate::{
     config::{FastConfigItem, FastConfigSubscriber},
@@ -81,10 +82,11 @@ pub struct GyroPidContext {
     pub sensor_fusion: MadgwickFilterf32,
     pub flight_controller: FlightController,
     pub rc_controls: RcControls,
+    pub rc_modes: BitSet64,
 }
 
 impl GyroPidContext {
-    pub fn new(
+    pub const fn new(
         rx_receiver: RxReceiver,
         gyro_pid_sender: GyroPidSender,
         setpoint_sender: SetpointSender,
@@ -100,6 +102,7 @@ impl GyroPidContext {
             sensor_fusion: MadgwickFilterf32::new(),
             flight_controller: FlightController::new(),
             rc_controls: RcControls::new(),
+            rc_modes: BitSet64::new(),
         }
     }
 }
@@ -146,12 +149,14 @@ pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext) {
         // If there are new control values from the radio, then use them.
         if let Some(rx_message) = ctx.rx_receiver.try_changed() {
             ctx.rc_controls = rx_message.controls;
+            ctx.rc_modes = rx_message.rc_modes;
         }
 
         // Calculate the motor commands:
         // the flight controller updates its setpoints from the radio control_message
         // and then updates the PIDs using `gyro_rps` and `orientation`.
-        // `setpoints_updated` is set if the setpoints have been updated because of a new radio_control_message.
+        // `setpoints_updated` is set if the setpoints have been updated because of a new radio_control_message,
+        // or if the flight controller has updated the setpoints because of crash or spin recovery.
         let (motor_commands, setpoints_updated) =
             ctx.flight_controller.calculate_motor_commands(gyro_rps, orientation, delta_t, ctx.rc_controls);
 
@@ -173,6 +178,14 @@ pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext) {
                 // TODO: put the new setpoints in the setpoints message
                 let mut setpoint_message = SetpointMessage::new();
                 setpoint_message.time_us = time_us;
+                setpoint_message.rc_modes = ctx.rc_modes;
+                setpoint_message.setpoints = [
+                    ctx.rc_controls.roll_stick_dps,
+                    ctx.rc_controls.pitch_stick_dps,
+                    ctx.rc_controls.yaw_stick_dps,
+                    ctx.rc_controls.throttle_stick,
+                ];
+                setpoint_message.failsafe_phase = ctx.rc_controls.failsafe;
                 ctx.setpoint_sender.send(setpoint_message);
             }
         }

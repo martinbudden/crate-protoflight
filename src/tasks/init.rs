@@ -203,6 +203,10 @@ pub async fn init(spawner: Spawner) {
         | FieldSelect::BAROMETER
         | FieldSelect::RANGEFINDER
         | FieldSelect::ATTITUDE
+        //| FieldSelect::ACCELEROMETER
+        //| FieldSelect::GYRO
+        //| FieldSelect::RC_COMMANDS
+        //| FieldSelect::MOTOR
         | FieldSelect::MAGNETOMETER;
 
         BLACKBOX_CTX.init(BlackboxContext::new(

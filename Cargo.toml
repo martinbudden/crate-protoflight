@@ -35,7 +35,8 @@ default = ["libm",
     "blackbox",
     "debug",
     "dshot_telemetry",
-    "gps",
+    #"gps",
+    "huffman",
     #"magnetometer",
     #"max7456", # this doesn't even compile yet
     "msp",
@@ -61,6 +62,7 @@ debug = []
 dshot_telemetry = ["blackbox-logger/dshot_telemetry"]
 eight_motors = ["blackbox-logger/eight_motors"]
 gps = ["blackbox-logger/gps"]
+huffman = ["blackbox-logger/huffman"]
 magnetometer = ["blackbox-logger/magnetometer"]
 max7456 = []
 multicore = []
@@ -72,6 +74,7 @@ rangefinder = ["blackbox-logger/rangefinder"]
 rpm_filters = []
 servos = ["blackbox-logger/servos"]
 vtx = []
+
 
 # Core backend features declared explicitly
 # libm feature activates the optional crate named "libm", etc
@@ -155,8 +158,8 @@ pidsk-controller = "0.1.7"
 sensor-fusion = { git = "https://github.com/martinbudden/crate-sensor-fusion" }
 #sensor-fusion = { path = "../sensor-fusion" }
 #blackbox-logger = { version = "0.1.8", default-features = false, optional = true }
-#blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger", default-features = false, optional = true }
-blackbox-logger = { path = "../blackbox-logger", default-features = false, optional = true }
+blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger", default-features = false, optional = true }
+#blackbox-logger = { path = "../blackbox-logger", default-features = false, optional = true }
 
 #motor-mixers = { version = "0.1.4" }
 motor-mixers = { git = "https://github.com/martinbudden/crate-motor-mixers" }

@@ -1,3 +1,4 @@
+use simple_bitset::BitSet64;
 use vqm::{Quaternionf32, Vector3df32, Vector4df32};
 /*
 Current Estimates for GyroPidMessage:
@@ -73,7 +74,7 @@ pub struct SetpointMessage {
     #[cfg(feature = "servos")]
     pub servos: [i16; Self::MAX_SUPPORTED_SERVO_COUNT],
     pub time_us: u32,
-    pub flight_mode_flags: u32,
+    pub rc_modes: BitSet64,
     pub gps_state_flags: u8,
     pub failsafe_phase: u8,
     pub rx_signal_received: bool,
@@ -108,7 +109,7 @@ impl SetpointMessage {
             #[cfg(feature = "servos")]
             servos: [0i16; Self::MAX_SUPPORTED_SERVO_COUNT],
             time_us: 0,
-            flight_mode_flags: 0,
+            rc_modes: BitSet64::new(),
             gps_state_flags: 0,
             failsafe_phase: 0,
             rx_signal_received: false,
@@ -139,7 +140,7 @@ mod tests {
     fn sizeof() {
         assert_eq!(112, core::mem::size_of::<GyroPidMessage>());
         #[cfg(all(feature = "dshot_telemetry", not(any(feature = "servos", feature = "eight_motors"))))]
-        assert_eq!(68, core::mem::size_of::<SetpointMessage>());
+        assert_eq!(80, core::mem::size_of::<SetpointMessage>());
     }
     #[test]
     fn gyro_pid_message_new() {

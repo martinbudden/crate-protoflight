@@ -1,5 +1,6 @@
 /target
 notes/*
 *.bbl
-*.event
 *.csv
+*.event
+*.gpx

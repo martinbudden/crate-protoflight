@@ -327,7 +327,7 @@ impl FlightController {
     pub fn update_setpoints(&mut self, controls: RcControls) {
         //detect_crash_or_spin();
 
-        self.set_stabilization_mode(controls.stabilization_mode);
+        self.set_stabilization_mode(controls.flight_stabilization_mode);
 
         // output throttle may be changed by spin recovery
         self.motor_commands_throttle = controls.throttle_stick;
@@ -390,8 +390,9 @@ impl FlightController {
         // Angle Mode is used if the control_mode is set to angle mode, or failsafe is on.
         // Angle Mode is prevented when in Ground Mode, so the aircraft doesn't try and self-level while it is still on the ground.
         // This value is cached here, to avoid evaluating a reasonably complex condition in update_outputs_using_pids()
-        self.use_angle_mode = (self.stabilization_mode >= RcModes::STABILIZATION_MODE_ANGLE) && !self.ground_mode;
-        self.use_level_race_mode = (self.stabilization_mode == RcModes::STABILIZATION_MODE_LEVEL_RACE)
+        self.use_angle_mode =
+            (self.stabilization_mode >= RcModes::FLIGHT_STABILIZATION_MODE_ANGLE) && !self.ground_mode;
+        self.use_level_race_mode = (self.stabilization_mode == RcModes::FLIGHT_STABILIZATION_MODE_LEVEL_RACE)
             || (self.flight_mode_config.level_race_mode != 0);
     }
 }

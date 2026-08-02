@@ -13,7 +13,7 @@ pub struct RcControls {
     pub yaw_stick_dps: f32,
     pub roll_stick_degrees: f32,
     pub pitch_stick_degrees: f32,
-    pub stabilization_mode: u8,
+    pub flight_stabilization_mode: u8,
     pub failsafe: u8,
 }
 const _: () = assert!(core::mem::size_of::<RcControls>() == 32);
@@ -34,7 +34,7 @@ impl RcControls {
             yaw_stick_dps: 0.0,
             roll_stick_degrees: 0.0,
             pitch_stick_degrees: 0.0,
-            stabilization_mode: 0,
+            flight_stabilization_mode: 0,
             failsafe: 0,
         }
     }
@@ -92,7 +92,7 @@ impl RxMessage {
                 roll_stick_degrees,
                 pitch_stick_degrees,
 
-                stabilization_mode,
+                flight_stabilization_mode: stabilization_mode,
                 failsafe,
             },
         }

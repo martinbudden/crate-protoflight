@@ -5,7 +5,7 @@ use embassy_sync::{
 
 #[cfg(feature = "autopilot")]
 use radio_controllers::RcMode;
-use radio_controllers::{Rates, RatesConfig, RcModes, RxFrame};
+use radio_controllers::{Rates, RatesConfig, RcModes, RxChannel, RxFrame};
 
 use crate::{
     config::{ConfigItem, ConfigPublisher, ConfigSubscriber, FastConfigPublisher},
@@ -62,7 +62,7 @@ impl RxContext {
             config_publisher,
             fast_config_publisher,
             rates: Rates::new(rates_config),
-            rc_modes: RcModes::new(),
+            rc_modes: RcModes::with_mac_arm(),
             rc_adjustments: RcAdjustments::new(),
             #[cfg(feature = "autopilot")] autopilot_receiver,
         }
@@ -89,7 +89,12 @@ pub async fn rx_task(ctx: &'static mut RxContext) {
         // TODO: we need to do some failsafe checking here.
         // For now we just wait for the next tick and create a dummy rx_frame.
         ticker.next().await;
-        let rx_frame = RxFrame::new();
+        let mut rx_frame = RxFrame::new();
+        if loop_count == 1000 {
+            rx_frame.channels[RxChannel::AUX1] = RxChannel::MID_HIGH;
+        } else if loop_count == 2000 {
+            rx_frame.channels[RxChannel::AUX1] = RxChannel::LOW;
+        }
         let failsafe = 0;
 
         // check if there has been in-flight adjustment of the rates, if so apply them.
@@ -101,10 +106,13 @@ pub async fn rx_task(ctx: &'static mut RxContext) {
 
         // Update rc_modes from the rx_frame that has just come in from the radio.
         ctx.rc_modes.update_activated_modes(&rx_frame);
+
         ctx.rc_adjustments.process_adjustments(&ctx.config_publisher, &ctx.fast_config_publisher).await;
 
-        #[allow(unused_mut)]
+        let (rc_modes, flight_stabilization_mode) = ctx.rc_modes.update_modes();
         let mut rx_message = RxMessage::new_from(&rx_frame, &ctx.rates, &ctx.rc_modes, loop_count, failsafe);
+        rx_message.rc_modes = rc_modes;
+        rx_message.controls.flight_stabilization_mode = flight_stabilization_mode;
 
         #[cfg(feature = "autopilot")]
         if let Some(autopilot_message) = ctx.autopilot_receiver.try_changed() {

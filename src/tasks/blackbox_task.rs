@@ -42,6 +42,9 @@ impl BlackboxContext {
         blackbox_config: BlackboxConfig,
         #[cfg(feature = "gps")] gps_subscriber: GpsSubscriber,
     ) -> Self {
+        //let mut blackbox_config = blackbox_config;
+        //blackbox_config.huffman_compress = true;
+
         // NRVO (Named Return Value Optimization) ensures blackbox is created in place and not copied.
         let mut blackbox = Blackbox::new(blackbox_config);
         blackbox.init();
@@ -133,7 +136,9 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
         if let Some(setpoint_msg) = ctx.setpoint_receiver.try_get() {
             // if we have a new setpoint message then update ctx.setpoint_message so that the most up to date setpoint_message is used.
             ctx.setpoint_message = setpoint_msg;
-            ctx.blackbox.set_slow_data(slow_data_from(ctx.setpoint_message));
+            let mut slow_data = slow_data_from(ctx.setpoint_message);
+            slow_data.set_blackbox_active(true);
+            ctx.blackbox.set_slow_data(slow_data);
         }
         // set_main_data always uses the most up to date setpoint message.
         ctx.blackbox.set_main_data(main_data_from(gyro_pid_msg, ctx.setpoint_message));
@@ -264,7 +269,7 @@ pub fn main_data_from(gyro_pid_msg: GyroPidMessage, _setpoint_msg: SetpointMessa
 #[inline]
 pub fn slow_data_from(setpoint: SetpointMessage) -> BlackboxSlowData {
     BlackboxSlowData {
-        flight_mode_flags: setpoint.flight_mode_flags | BlackboxSlowData::FLIGHT_MODE_BLACKBOX_ACTIVE,
+        flight_mode_flags: setpoint.rc_modes.bits_0_31(),
         gps_state_flags: setpoint.gps_state_flags,
         failsafe_phase: setpoint.failsafe_phase,
         rx_signal_received: setpoint.rx_signal_received,
