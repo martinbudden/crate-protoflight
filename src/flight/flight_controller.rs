@@ -7,9 +7,9 @@ use crate::flight::{
 use motor_mixers::{MotorMixer, MotorMixerCommon};
 use pidsk_controller::{PidControllerf32, PidGainsf32};
 use radio_controllers::RcMode;
-use signal_filters::{Pt1FilterVector4df32, Pt1Filterf32, UpdateFilter};
+use signal_filters::{Pt1FilterVector4f32, Pt1Filterf32, UpdateFilter};
 use simple_bitset::BitSet64;
-use vqm::{Quaternionf32, Vector3df32, Vector4df32};
+use vqm::{Quaternionf32, Vector3f32, Vector4f32};
 
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -21,7 +21,7 @@ pub struct FlightController {
     pub pid_gains: [PidGainsf32; Self::PID_COUNT],
     dterm_filters_0: [Pt1Filterf32; Self::PID_COUNT],
     dterm_filters_1: [Pt1Filterf32; Self::PID_COUNT],
-    motor_commands_filter: Pt1FilterVector4df32,
+    motor_commands_filter: Pt1FilterVector4f32,
     motor_commands_throttle: f32,
     flight_mode_config: FlightModeConfig,
 
@@ -83,7 +83,7 @@ impl FlightController {
             pid_gains: [PidGainsf32::new(1.0, 0.0, 0.0, 0.0, 0.0); Self::PID_COUNT],
             dterm_filters_0: [Pt1Filterf32::new(); Self::PID_COUNT],
             dterm_filters_1: [Pt1Filterf32::new(); Self::PID_COUNT],
-            motor_commands_filter: Pt1FilterVector4df32::new(),
+            motor_commands_filter: Pt1FilterVector4f32::new(),
             motor_commands_throttle: 0.0,
             flight_mode_config: FlightModeConfig::new(),
 
@@ -127,12 +127,12 @@ impl VehicleControl for FlightController {
     // gyro_rps, acc, and orientation come from the AHRS and use the ENU (East-North-Up) coordinate convention.
     fn calculate_motor_commands(
         &mut self,
-        gyro_rps: Vector3df32,
+        gyro_rps: Vector3f32,
         orientation: Quaternionf32,
         delta_t: f32,
         controls: RcControls,
         rc_modes: BitSet64,
-    ) -> (Vector4df32, bool) {
+    ) -> (Vector4f32, bool) {
         let mut setpoints_updated: bool = false;
         if controls.tick_count > self.controls_tick_count {
             // we have a new set of values from the receiver, so update the setpoints.
@@ -207,7 +207,7 @@ impl VehicleControl for FlightController {
         //.filter_using(&mut self.motor_command_filters[FD_YAW]);
 
         // Throttle.
-        let motor_commands = Vector4df32 {
+        let motor_commands = Vector4f32 {
             x: motor_command_roll_dps,
             y: motor_command_pitch_dps,
             z: motor_command_yaw_dps,
@@ -221,17 +221,17 @@ impl VehicleControl for FlightController {
 #[allow(unused)]
 impl FlightController {
     #[inline]
-    pub fn roll_rate_ned_dps(gyro_enu_rps: Vector3df32) -> f32 {
+    pub fn roll_rate_ned_dps(gyro_enu_rps: Vector3f32) -> f32 {
         gyro_enu_rps.y.to_degrees()
     }
 
     #[inline]
-    pub fn pitch_rate_ned_dps(gyro_enu_rps: Vector3df32) -> f32 {
+    pub fn pitch_rate_ned_dps(gyro_enu_rps: Vector3f32) -> f32 {
         gyro_enu_rps.x.to_degrees()
     }
 
     #[inline]
-    pub fn yaw_rate_ned_dps(gyro_enu_rps: Vector3df32) -> f32 {
+    pub fn yaw_rate_ned_dps(gyro_enu_rps: Vector3f32) -> f32 {
         gyro_enu_rps.z.to_degrees()
     }
 
@@ -335,8 +335,8 @@ impl FlightController {
     }
 
     #[allow(clippy::unused_self)]
-    pub fn recover_from_yaw_spin(&mut self, _gyro_rps: Vector3df32, _delta_t: f32) -> Vector4df32 {
-        Vector4df32::default()
+    pub fn recover_from_yaw_spin(&mut self, _gyro_rps: Vector3f32, _delta_t: f32) -> Vector4f32 {
+        Vector4f32::default()
     }
 
     #[inline]
@@ -353,8 +353,8 @@ impl FlightController {
     }
 
     #[allow(clippy::unused_self)]
-    pub fn apply_crash_flip_to_motors(&mut self, _gyro_rps: Vector3df32, _delta_t: f32) -> Vector4df32 {
-        Vector4df32::default()
+    pub fn apply_crash_flip_to_motors(&mut self, _gyro_rps: Vector3f32, _delta_t: f32) -> Vector4f32 {
+        Vector4f32::default()
     }
 
     pub fn update_setpoints(&mut self, controls: RcControls, rc_modes: BitSet64) {

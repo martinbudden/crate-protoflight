@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use vqm::{Quaternionf32, RollPitchf32, Vector2df32};
+use vqm::{Quaternionf32, RollPitchf32, Vector2f32};
 
 /// A simple physics simulation of a multirotor's vertical motion.
 pub struct MockMultirotorZ {
@@ -33,16 +33,16 @@ impl MockMultirotorZ {
 }
 
 pub struct MockMultirotorXY {
-    pub position_earth: Vector2df32,
-    pub velocity_earth: Vector2df32,
+    pub position_earth: Vector2f32,
+    pub velocity_earth: Vector2f32,
     pub drag_coefficient: f32,
 }
 
 impl MockMultirotorXY {
     pub const fn new() -> Self {
         Self {
-            position_earth: Vector2df32::new(0.0, 0.0),
-            velocity_earth: Vector2df32::new(0.0, 0.0),
+            position_earth: Vector2f32::new(0.0, 0.0),
+            velocity_earth: Vector2f32::new(0.0, 0.0),
             drag_coefficient: 0.4,
         }
     }

@@ -1,15 +1,15 @@
-use vqm::Vector3df32;
+use vqm::Vector3f32;
 
 use crate::gps::{GeographicCoordinate, GpsSolutionData};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GpsPositionMeters {
-    pub position: Vector3df32,
+    pub position: Vector3f32,
 }
 
 impl GpsPositionMeters {
     pub const fn new() -> Self {
-        Self { position: Vector3df32 { x: 0.0, y: 0.0, z: 0.0 } }
+        Self { position: Vector3f32 { x: 0.0, y: 0.0, z: 0.0 } }
     }
 }
 

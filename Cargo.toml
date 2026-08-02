@@ -78,7 +78,7 @@ vtx = []
 
 # Core backend features declared explicitly
 # libm feature activates the optional crate named "libm", etc
-libm = ["dep:libm", "num-traits/libm", "vqm/libm", "signal-filters/libm", "radio-controllers/libm", "blackbox-logger/libm"]
+libm = ["dep:libm", "num-traits/libm", "vqm/libm", "signal-filters/libm", "radio-controllers/libm"]
 serde = ["dep:serde", "blackbox-logger/serde", "imu-sensors/serde", "motor-mixers/serde", "radio-controllers/serde", "simple-bitset/serde", "vqm/serde" ]
 rtt-debug = ["dep:rtt-target"]
 # align feature activates align feature in vqm and signal-filters crates, etc
@@ -152,7 +152,8 @@ vqm = { git = "https://github.com/martinbudden/crate-vector-quaternion-matrix" }
 #signal-filters = "0.1.9"
 signal-filters = { git = "https://github.com/martinbudden/crate-signal-filters" }
 #signal-filters = { path = "../signal-filters" }
-pidsk-controller = "0.1.7"
+#pidsk-controller = "0.1.7"
+pidsk-controller = { git = "https://github.com/martinbudden/crate-pid-controller" }
 #pidsk-controller = { path = "../pidsk-controller" }
 #sensor-fusion = "0.1.8"
 sensor-fusion = { git = "https://github.com/martinbudden/crate-sensor-fusion" }

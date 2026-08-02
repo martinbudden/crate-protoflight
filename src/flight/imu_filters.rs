@@ -6,8 +6,8 @@ use {
 
 #[cfg(feature = "rpm_filters")]
 use motor_mixers::{RpmNotchFilterBank, RpmNotchFilterBankConfig, RpmNotchFilters};
-use signal_filters::{BiquadFilterVector3df32, MedianFilter3f32, Pt1FilterVector3df32, SignalFilter};
-use vqm::Vector3df32;
+use signal_filters::{BiquadFilterVector3f32, MedianFilter3f32, Pt1FilterVector3f32, SignalFilter};
+use vqm::Vector3f32;
 
 /// Configuration data for the IMU filters bank.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -55,12 +55,12 @@ impl Default for ImuFilterBankConfig {
 pub struct ImuFilterBank {
     motor_count: usize,
     config: ImuFilterBankConfig,
-    acc_lpf: Pt1FilterVector3df32,
+    acc_lpf: Pt1FilterVector3f32,
     gyro_skew: [MedianFilter3f32; 3],
-    gyro_lpf1: Pt1FilterVector3df32,
-    gyro_lpf2: Pt1FilterVector3df32,
-    gyro_notch1: BiquadFilterVector3df32,
-    gyro_notch2: BiquadFilterVector3df32,
+    gyro_lpf1: Pt1FilterVector3f32,
+    gyro_lpf2: Pt1FilterVector3f32,
+    gyro_notch1: BiquadFilterVector3f32,
+    gyro_notch2: BiquadFilterVector3f32,
     #[cfg(feature = "rpm_filters")]
     rpm_filters: RpmNotchFilterBank,
 }
@@ -76,12 +76,12 @@ impl ImuFilterBank {
         Self {
             motor_count: 4,
             config,
-            acc_lpf: Pt1FilterVector3df32::new(),
+            acc_lpf: Pt1FilterVector3f32::new(),
             gyro_skew: [MedianFilter3f32::new(), MedianFilter3f32::new(), MedianFilter3f32::new()],
-            gyro_lpf1: Pt1FilterVector3df32::new(),
-            gyro_lpf2: Pt1FilterVector3df32::new(),
-            gyro_notch1: BiquadFilterVector3df32::new(),
-            gyro_notch2: BiquadFilterVector3df32::new(),
+            gyro_lpf1: Pt1FilterVector3f32::new(),
+            gyro_lpf2: Pt1FilterVector3f32::new(),
+            gyro_notch1: BiquadFilterVector3f32::new(),
+            gyro_notch2: BiquadFilterVector3f32::new(),
             #[cfg(feature = "rpm_filters")]
             rpm_filters: RpmNotchFilterBank::new(),
         }
@@ -110,7 +110,7 @@ pub trait FilterAccGyro {
     fn state_mut(&mut self) -> &mut ImuFilterBank;
     fn config(&self) -> &ImuFilterBankConfig;
 
-    fn update(&mut self, acc: Vector3df32, gyro_rps: Vector3df32, delta_t: f32) -> (Vector3df32, Vector3df32);
+    fn update(&mut self, acc: Vector3f32, gyro_rps: Vector3f32, delta_t: f32) -> (Vector3f32, Vector3f32);
 }
 
 impl FilterAccGyro for ImuFilterBank {
@@ -124,7 +124,7 @@ impl FilterAccGyro for ImuFilterBank {
         &self.state().config
     }
 
-    fn update(&mut self, mut acc: Vector3df32, mut gyro_rps: Vector3df32, _delta_t: f32) -> (Vector3df32, Vector3df32) {
+    fn update(&mut self, mut acc: Vector3f32, mut gyro_rps: Vector3f32, _delta_t: f32) -> (Vector3f32, Vector3f32) {
         if self.config().acc_lpf_hz != 0 {
             acc = self.state_mut().acc_lpf.update(acc);
         }

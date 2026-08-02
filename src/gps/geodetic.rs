@@ -1,5 +1,5 @@
 #![cfg(feature = "gps")]
-use vqm::Vector3df32;
+use vqm::Vector3f32;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "std", derive(derive_more::Display))]
@@ -63,15 +63,15 @@ impl Geodetic {
         self.k_longitude * delta_longitude
     }
 
-    pub fn distance_meters(self, from: GeographicCoordinate, to: GeographicCoordinate) -> Vector3df32 {
-        Vector3df32 {
+    pub fn distance_meters(self, from: GeographicCoordinate, to: GeographicCoordinate) -> Vector3f32 {
+        Vector3f32 {
             x: self.k_latitude * (to.latitude_degrees - from.latitude_degrees),
             y: self.k_longitude * (to.longitude_degrees - from.longitude_degrees),
             z: to.altitude_meters - from.altitude_meters,
         }
     }
 
-    pub fn distance_from_home_meters(self, geographic_coordinate: GeographicCoordinate) -> Vector3df32 {
+    pub fn distance_from_home_meters(self, geographic_coordinate: GeographicCoordinate) -> Vector3f32 {
         self.distance_meters(self.home, geographic_coordinate)
     }
 }

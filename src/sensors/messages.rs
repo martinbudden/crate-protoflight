@@ -1,5 +1,5 @@
 use simple_bitset::BitSet64;
-use vqm::{Quaternionf32, Vector3df32, Vector4df32};
+use vqm::{Quaternionf32, Vector3f32, Vector4f32};
 /*
 Current Estimates for GyroPidMessage:
 AccData (4x f32 ): 16 bytes
@@ -20,10 +20,10 @@ PID Errors (3x f32): 12 bytes
 #[repr(C)]
 pub struct GyroPidMessage {
     pub orientation: Quaternionf32,
-    pub motor_commands: Vector4df32,
-    pub acc: Vector3df32,
-    pub gyro_rps: Vector3df32,
-    pub gyro_rps_unfiltered: Vector3df32,
+    pub motor_commands: Vector4f32,
+    pub acc: Vector3f32,
+    pub gyro_rps: Vector3f32,
+    pub gyro_rps_unfiltered: Vector3f32,
     pub pid_errors_p: [f32; Self::RPY_AXIS_COUNT],
     pub pid_errors_i: [f32; Self::RPY_AXIS_COUNT],
     pub pid_errors_d: [f32; Self::RP_AXIS_COUNT],
@@ -43,10 +43,10 @@ impl GyroPidMessage {
     pub const fn new() -> Self {
         Self {
             orientation: Quaternionf32::new(0.0, 0.0, 0.0, 0.0),
-            motor_commands: Vector4df32::new(0.0, 0.0, 0.0, 0.0),
-            acc: Vector3df32::new(0.0, 0.0, 0.0),
-            gyro_rps: Vector3df32::new(0.0, 0.0, 0.0),
-            gyro_rps_unfiltered: Vector3df32::new(0.0, 0.0, 0.0),
+            motor_commands: Vector4f32::new(0.0, 0.0, 0.0, 0.0),
+            acc: Vector3f32::new(0.0, 0.0, 0.0),
+            gyro_rps: Vector3f32::new(0.0, 0.0, 0.0),
+            gyro_rps_unfiltered: Vector3f32::new(0.0, 0.0, 0.0),
             pid_errors_p: [0f32; Self::RPY_AXIS_COUNT],
             pid_errors_i: [0f32; Self::RPY_AXIS_COUNT],
             pid_errors_d: [0f32; Self::RP_AXIS_COUNT],

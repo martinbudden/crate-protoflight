@@ -1,5 +1,5 @@
 use core::f32::consts::{FRAC_1_SQRT_2, FRAC_PI_2};
-use vqm::Vector2df32;
+use vqm::Vector2f32;
 
 #[allow(unused)]
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -36,13 +36,7 @@ impl Default for PathFollower {
 impl PathFollower {
     // allow non snake_case so we can use the convention that AB means the vector from A to B.
     #![allow(non_snake_case)]
-    pub fn _navigate_waypoints(
-        &mut self,
-        A: Vector2df32,
-        B: Vector2df32,
-        P: Vector2df32,
-        ground_velocity: Vector2df32,
-    ) {
+    pub fn _navigate_waypoints(&mut self, A: Vector2f32, B: Vector2f32, P: Vector2f32, ground_velocity: Vector2f32) {
         // this follows the logic presented in [1]
         let mut eta;
 

@@ -2,7 +2,7 @@ use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal}
 use tinyrand::{RandRange, StdRand};
 
 use imu_sensors::{AccFullScale, AccUnits, GyroFullScale, GyroUnits, ImuMock, MockImuBus};
-use vqm::Vector3df32;
+use vqm::Vector3f32;
 
 /*#[cfg(feature = "rp2350")]
 use embassy_rp::{
@@ -12,16 +12,16 @@ use embassy_rp::{
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ImuData {
-    pub acc: Vector3df32,
-    pub gyro_rps: Vector3df32,
+    pub acc: Vector3f32,
+    pub gyro_rps: Vector3f32,
     pub delta_t: f32,
 }
 
 impl ImuData {
     pub const fn new() -> Self {
         Self {
-            acc: Vector3df32 { x: 0.0, y: 0.0, z: 0.0 },
-            gyro_rps: Vector3df32 { x: 0.0, y: 0.0, z: 0.0 },
+            acc: Vector3f32 { x: 0.0, y: 0.0, z: 0.0 },
+            gyro_rps: Vector3f32 { x: 0.0, y: 0.0, z: 0.0 },
             delta_t: 0.1,
         }
     }
@@ -64,7 +64,7 @@ pub async fn imu_task(ctx: &'static mut ImuContext) {
         ticker.next().await;
 
         // For now we are just faking some gyro and acc values.
-        let acc_rnd = Vector3df32 { x: 1.0, y: 0.5, z: 0.25 };
+        let acc_rnd = Vector3f32 { x: 1.0, y: 0.5, z: 0.25 };
         ctx.imu.set_acc(acc_rnd).await;
         x_base += rand.next_range(0..5_u32).cast_signed() - 2;
 
@@ -72,14 +72,14 @@ pub async fn imu_task(ctx: &'static mut ImuContext) {
         let gyro_y = rand.next_range(0..11_u32).cast_signed() - 5;
         let gyro_z = rand.next_range(0..11_u32).cast_signed() - 5;
         #[allow(clippy::cast_precision_loss)]
-        let gyro_dps_rnd = Vector3df32 { x: gyro_x as f32, y: gyro_y as f32, z: gyro_z as f32 };
+        let gyro_dps_rnd = Vector3f32 { x: gyro_x as f32, y: gyro_y as f32, z: gyro_z as f32 };
         ctx.imu.set_gyro(gyro_dps_rnd).await;
 
         // ctx.drdy.wait_for_rising_edge().await; // Synchronized to IMU
         // let data = read_imu_dma(&mut ctx.spi).await;
         /*let (acc, gyro_rps) = match ctx.imu.read_acc_gyro_rps().await {
             Ok(acc) => acc,
-            Err(e) => (Vector3df32::default(),Vector3df32::default()),
+            Err(e) => (Vector3f32::default(),Vector3f32::default()),
         };*/
         //let (acc, gyro_rps) = ctx.imu.read_acc_gyro_rps().await.unwrap_or_default();
 

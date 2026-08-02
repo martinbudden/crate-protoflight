@@ -5,7 +5,7 @@ use embassy_sync::{
     watch::{Receiver, Sender, Watch},
 };
 use radio_controllers::RcMode;
-use vqm::Vector3df32;
+use vqm::Vector3f32;
 
 use crate::{
     autopilot::pilot::Autopilot,
@@ -103,7 +103,7 @@ pub async fn autopilot_task(ctx: &'static mut AutopilotContext) {
             if let Some(gyro_pid_message) = ctx.gyro_pid_receiver.try_get() {
                 let vertical_acceleration = gyro_pid_message.acc.z;
 
-                let Vector3df32 { x: estimated_vertical_speed, y: estimated_altitude, z: _estimated_bias } =
+                let Vector3f32 { x: estimated_vertical_speed, y: estimated_altitude, z: _estimated_bias } =
                     ctx.autopilot.altitude_kalman_filter.predict(vertical_acceleration, delta_t);
 
                 // Check if the rc_modes have changed.

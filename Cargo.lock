@@ -113,7 +113,7 @@ checksum = "b588b76d00fde79687d7646a9b5bdf3cc0f655e0bbd080335a95d7e96f3587da"
 [[package]]
 name = "blackbox-logger"
 version = "0.1.8"
-source = "git+https://github.com/martinbudden/crate-blackbox-logger#1d57f670e6d6bf0774da1a4ec595e48237b0d61c"
+source = "git+https://github.com/martinbudden/crate-blackbox-logger#55e2966db790b84e15c3aa964174544588aeb022"
 dependencies = [
  "embassy-futures",
  "postcard",
@@ -121,7 +121,6 @@ dependencies = [
  "sequential-storage",
  "serde",
  "simple-bitset",
- "vqm",
 ]
 
 [[package]]
@@ -949,7 +948,7 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 [[package]]
 name = "imu-sensors"
 version = "0.1.2"
-source = "git+https://github.com/martinbudden/crate-imu-sensors#ef46373f0b3526429ddf4c301f90569268a213f4"
+source = "git+https://github.com/martinbudden/crate-imu-sensors#72577d3c55a568fe5868da373ad534adc4434786"
 dependencies = [
  "cfg-if",
  "embassy-sync",
@@ -1105,7 +1104,7 @@ dependencies = [
 [[package]]
 name = "motor-mixers"
 version = "0.1.4"
-source = "git+https://github.com/martinbudden/crate-motor-mixers#cd82897cdb62790b656073a0505d4f7f64ce1cbe"
+source = "git+https://github.com/martinbudden/crate-motor-mixers#7fcb7cced618f849a5f660ffef9c4899cbd3a54c"
 dependencies = [
  "cfg-if",
  "embassy-executor",
@@ -1246,8 +1245,7 @@ checksum = "5be167a7af36ee22fe3115051bc51f6e6c7054c9348e28deb4f49bd6f705a315"
 [[package]]
 name = "pidsk-controller"
 version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ddc49e4f6b626809672acc2df869a331e5e985955a87c620134e671a238160f"
+source = "git+https://github.com/martinbudden/crate-pid-controller#712eb944aebf6e75c4a236ed79a50c345720a07b"
 dependencies = [
  "num-traits",
  "rustc_version 0.4.1",
@@ -1588,7 +1586,7 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 [[package]]
 name = "sensor-fusion"
 version = "0.1.8"
-source = "git+https://github.com/martinbudden/crate-sensor-fusion#7bcd1021c5f9d85b7d2700f32a8e54b3f4a54fa3"
+source = "git+https://github.com/martinbudden/crate-sensor-fusion#e4c272c6c14a98b1c5d60025fdf2775aa9c3841c"
 dependencies = [
  "libm",
  "num-traits",
@@ -1671,7 +1669,7 @@ checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 [[package]]
 name = "signal-filters"
 version = "0.1.9"
-source = "git+https://github.com/martinbudden/crate-signal-filters#0fdb61d9c3c5f4b7c2115aedb41c93e32d0a83d5"
+source = "git+https://github.com/martinbudden/crate-signal-filters#6920dd94b2c0b946055dd536470e7305e5deae63"
 dependencies = [
  "libm",
  "num-traits",
@@ -1998,7 +1996,7 @@ dependencies = [
 [[package]]
 name = "vqm"
 version = "0.1.13"
-source = "git+https://github.com/martinbudden/crate-vector-quaternion-matrix#560195bb42508c08f2dd4a9810b5ba910b36a6e4"
+source = "git+https://github.com/martinbudden/crate-vector-quaternion-matrix#87a89d710a342d71e8e5c3188b6473f1c5c04c09"
 dependencies = [
  "cfg-if",
  "derive_more",
