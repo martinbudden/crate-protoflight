@@ -4,7 +4,7 @@ use crate::flight::{
     {FlightModeConfig, VehicleControl},
 };
 
-use motor_mixers::{MotorMixer, MotorMixerCommon};
+use motor_mixers::MotorMixerCommon;
 use pidsk_controller::{PidControllerf32, PidGainsf32};
 use radio_controllers::RcMode;
 use signal_filters::{Pt1FilterVector4f32, Pt1Filterf32, UpdateFilter};

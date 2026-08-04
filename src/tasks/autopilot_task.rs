@@ -4,14 +4,15 @@ use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex,
     watch::{Receiver, Sender, Watch},
 };
-use radio_controllers::RcMode;
-use vqm::Vector3f32;
 
 use crate::{
     autopilot::pilot::Autopilot,
-    flight::{RcControls, RxMessage},
+    flight::RxMessage,
     tasks::{gyro_pid_task::GyroPidReceiver, rx_task::RxReceiver},
 };
+
+#[cfg(any(feature = "barometer", feature = "gps", feature = "optical_flow", feature = "rangefinder"))]
+use {crate::flight::RcControls, radio_controllers::RcMode, vqm::Vector3f32};
 
 #[cfg(feature = "barometer")]
 use crate::tasks::barometer_task::BarometerSubscriber;
@@ -41,6 +42,7 @@ pub fn autopilot_receiver() -> AutopilotReceiver {
 }
 
 /// Context for Autopilot task.
+#[allow(unused)]
 pub struct AutopilotContext {
     pub gyro_pid_receiver: GyroPidReceiver,
     pub rx_receiver: RxReceiver,
@@ -82,6 +84,7 @@ impl AutopilotContext {
 }
 
 /// Autopilot Placeholder.
+#[allow(unused)]
 #[embassy_executor::task]
 pub async fn autopilot_task(ctx: &'static mut AutopilotContext) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_millis(1));
@@ -163,7 +166,7 @@ pub async fn autopilot_task(ctx: &'static mut AutopilotContext) {
             && let embassy_sync::pubsub::WaitResult::Message(event) = wait_result
         {
             // TODO: choose position or altitude kalman filter based on settings
-            if let GpsMessage::GpsPosition(gps_position) = event {
+            if let GpsMessage::GpsPositionMeters(gps_position) = event {
                 if altitude_hold {
                     ctx.autopilot.altitude_kalman_filter.correct_altitude_using_gps(gps_position.position.z);
                 } else if position_hold {

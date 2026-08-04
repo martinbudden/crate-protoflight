@@ -328,7 +328,7 @@ impl Msp {
             let global_config = GLOBAL_CONFIG.lock().await;
             global_config.mixer
         };
-        dst.write_u8(config.mixer_type);
+        dst.write_u8(config.mixer_type as u8);
         dst.write_u8(config.yaw_motors_reversed);
         MspResult::Ack
     }
@@ -339,7 +339,7 @@ impl Msp {
         let mut global_config = GLOBAL_CONFIG.lock().await;
         let mut config = global_config.mixer;
 
-        config.mixer_type = src.read_u8();
+        config.set_mixer_type(src.read_u8());
         if src.bytes_remaining() > 0 {
             config.yaw_motors_reversed = src.read_u8();
         }
@@ -644,7 +644,7 @@ impl Msp {
         // dst.write_u8(pid.pid_process_denom); TODO: pid process denom in MSP
         dst.write_u8(1);
         dst.write_u8(motor_device.use_continuous_update);
-        dst.write_u8(motor_device.motor_protocol);
+        dst.write_u8(motor_device.motor_protocol as u8);
         dst.write_u16(motor_device.motor_pwm_rate);
         dst.write_u16(motor.motor_idle);
         dst.write_u8(0); // Deprecated: gyro_use_32kHz
@@ -682,7 +682,7 @@ impl Msp {
         _ = src.read_u8(); // was gyro_sync_denom - removed in API 1.43
         _ = src.read_u8(); // pid_process_denom
         motor_device.use_continuous_update = src.read_u8();
-        motor_device.motor_protocol = src.read_u8();
+        motor_device.set_motor_protocol(src.read_u8());
         motor_device.motor_pwm_rate = src.read_u16();
         motor.motor_idle = src.read_u16();
         _ = src.read_u8(); // Deprecated: gyro_use_32kHz
@@ -777,7 +777,7 @@ impl Msp {
         dst.write_u16(0); // dynNotchConfig.dyn_notch_q
         dst.write_u16(0); // dynNotchConfig.dyn_notch_min_hz
         #[cfg(feature = "rpm_filters")]
-        dst.write_u8(imu_filters.rpm_filters.rpm_filter_harmonics);
+        dst.write_u8(0); // imu_filters.rpm_filters.rpm_filter_harmonics);
         #[cfg(feature = "rpm_filters")]
         dst.write_u8(imu_filters.rpm_filters.rpm_filter_min_hz);
         // Added in MSP API 1.43
@@ -843,7 +843,7 @@ impl Msp {
             _ = src.read_u16();
             #[cfg(feature = "rpm_filters")]
             {
-                imu_filters.rpm_filters.rpm_filter_harmonics = src.read_u8();
+                _ = src.read_u8(); // was rpm_filter_harmonics_count
                 imu_filters.rpm_filters.rpm_filter_min_hz = src.read_u8();
             }
             #[cfg(not(feature = "rpm_filters"))]

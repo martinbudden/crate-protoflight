@@ -4,9 +4,9 @@ version = 4
 
 [[package]]
 name = "aho-corasick"
-version = "1.1.4"
+version = "1.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ddd31a130427c27518df266943a5308ed92d4b226cc639f5a8f1002816174301"
+checksum = "c982642fa9e8606056828ee9a8505737230110bb1099153c79efe865c59d12ba"
 dependencies = [
  "memchr",
 ]
@@ -1104,7 +1104,7 @@ dependencies = [
 [[package]]
 name = "motor-mixers"
 version = "0.1.4"
-source = "git+https://github.com/martinbudden/crate-motor-mixers#7fcb7cced618f849a5f660ffef9c4899cbd3a54c"
+source = "git+https://github.com/martinbudden/crate-motor-mixers#0bbf5507c5fe067d1780d30b82775b3dbc11a099"
 dependencies = [
  "cfg-if",
  "embassy-executor",
@@ -1669,7 +1669,7 @@ checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 [[package]]
 name = "signal-filters"
 version = "0.1.9"
-source = "git+https://github.com/martinbudden/crate-signal-filters#6920dd94b2c0b946055dd536470e7305e5deae63"
+source = "git+https://github.com/martinbudden/crate-signal-filters#f84208b70057257b0d08802ed7e2e2de78b6e97d"
 dependencies = [
  "libm",
  "num-traits",

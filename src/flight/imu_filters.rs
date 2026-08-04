@@ -72,6 +72,7 @@ impl Default for ImuFilterBank {
 }
 
 impl ImuFilterBank {
+    #[cfg(not(feature = "rpm_filters"))]
     pub const fn with_config(config: ImuFilterBankConfig) -> Self {
         Self {
             motor_count: 4,
@@ -86,8 +87,35 @@ impl ImuFilterBank {
             rpm_filters: RpmNotchFilterBank::new(),
         }
     }
+    #[cfg(feature = "rpm_filters")]
+    pub fn with_config_and_notch(
+        config: ImuFilterBankConfig,
+        rpm_notch_filter_bank_config: RpmNotchFilterBankConfig,
+        looptime_seconds: f32,
+    ) -> Self {
+        Self {
+            motor_count: 4,
+            config,
+            acc_lpf: Pt1FilterVector3f32::new(),
+            gyro_skew: [MedianFilter3f32::new(), MedianFilter3f32::new(), MedianFilter3f32::new()],
+            gyro_lpf1: Pt1FilterVector3f32::new(),
+            gyro_lpf2: Pt1FilterVector3f32::new(),
+            gyro_notch1: BiquadFilterVector3f32::new(),
+            gyro_notch2: BiquadFilterVector3f32::new(),
+            rpm_filters: RpmNotchFilterBank::new(rpm_notch_filter_bank_config, looptime_seconds),
+        }
+    }
 
-    pub const fn new() -> Self {
+    #[cfg(feature = "rpm_filters")]
+    pub fn new() -> Self {
+        Self::with_config_and_notch(
+            ImuFilterBankConfig::new(),
+            RpmNotchFilterBankConfig::new(),
+            RpmNotchFilterBank::DEFAULT_LOOPTIME_SECONDS,
+        )
+    }
+    #[cfg(not(feature = "rpm_filters"))]
+    pub fn new() -> Self {
         Self::with_config(ImuFilterBankConfig::new())
     }
 }
@@ -147,7 +175,7 @@ impl FilterAccGyro for ImuFilterBank {
         }
         #[cfg(feature = "rpm_filters")]
         for ii in 0..self.state().motor_count {
-            gyro_rps = self.state_mut().rpm_filters.update(gyro_rps, ii);
+            gyro_rps = self.state_mut().rpm_filters.update_notch_filters_for_motor(gyro_rps, ii);
         }
 
         (acc, gyro_rps)

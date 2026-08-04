@@ -148,17 +148,26 @@ pub async fn init(spawner: Spawner) {
     // ****
 
     // Initialize the modern storage driver handle matching your u16 Key setup
+    #[rustfmt::skip]
     let gyro_pid_ctx = GYRO_PID_CTX.init(GyroPidContext::new(
         rx_receiver(),
         gyro_pid_sender(),
         setpoint_sender(),
         fast_config_subscriber(),
         config.imu_filter_bank,
+        #[cfg(feature = "rpm_filters")] config.rpm_notch_filter_bank,
+        #[cfg(feature = "rpm_filters")] 0.001,
     ));
 
     let imu_ctx = IMU_CTX.init(ImuContext::new());
 
-    let motor_mixer_ctx = MOTOR_MIXER_CTX.init(MotorMixerContext::new(config.mixer, config.motor));
+    #[rustfmt::skip]
+    let motor_mixer_ctx = MOTOR_MIXER_CTX.init(MotorMixerContext::new(
+        config.mixer,
+        config.motor,
+        #[cfg(feature = "rpm_filters")] config.rpm_notch_filter_bank,
+        #[cfg(feature = "rpm_filters")] 0.001
+    ));
 
     #[rustfmt::skip]
     let rx_ctx = RX_CTX.init(RxContext::new(

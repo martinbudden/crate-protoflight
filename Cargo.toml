@@ -30,12 +30,12 @@ default = ["libm",
     "std",
     #"rp2350",
     #"autopilot",
-    #"barometer",
+    "barometer",
     #"battery",
     "blackbox",
     "debug",
     "dshot_telemetry",
-    #"gps",
+    "gps",
     "huffman",
     #"magnetometer",
     #"max7456", # this doesn't even compile yet
@@ -60,7 +60,7 @@ cms = []
 dashboard = []
 debug = []
 dshot_telemetry = ["blackbox-logger/dshot_telemetry"]
-eight_motors = ["blackbox-logger/eight_motors"]
+eight_motors = ["blackbox-logger/eight_motors", "motor-mixers/eight_motors"]
 gps = ["blackbox-logger/gps"]
 huffman = ["blackbox-logger/huffman"]
 magnetometer = ["blackbox-logger/magnetometer"]

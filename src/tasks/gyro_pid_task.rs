@@ -4,6 +4,8 @@ use embassy_sync::{
 };
 
 use motor_mixers::MotorMixerMessage;
+#[cfg(feature = "rpm_filters")]
+use motor_mixers::RpmNotchFilterBankConfig;
 use sensor_fusion::{MadgwickFilterf32, SensorFusion};
 use simple_bitset::BitSet64;
 
@@ -86,19 +88,28 @@ pub struct GyroPidContext {
 }
 
 impl GyroPidContext {
-    pub const fn new(
+    pub fn new(
         rx_receiver: RxReceiver,
         gyro_pid_sender: GyroPidSender,
         setpoint_sender: SetpointSender,
         fast_config_subscriber: FastConfigSubscriber,
         imu_filter_bank_config: ImuFilterBankConfig,
+        #[cfg(feature = "rpm_filters")] rpm_notch_filter_bank_config: RpmNotchFilterBankConfig,
+        #[cfg(feature = "rpm_filters")] looptime_seconds: f32,
     ) -> Self {
         Self {
             rx_receiver,
             gyro_pid_sender,
             setpoint_sender,
             fast_config_subscriber,
+            #[cfg(not(feature = "rpm_filters"))]
             imu_filters: ImuFilterBank::with_config(imu_filter_bank_config),
+            #[cfg(feature = "rpm_filters")]
+            imu_filters: ImuFilterBank::with_config_and_notch(
+                imu_filter_bank_config,
+                rpm_notch_filter_bank_config,
+                looptime_seconds,
+            ),
             sensor_fusion: MadgwickFilterf32::new(),
             flight_controller: FlightController::new(),
             rc_controls: RcControls::new(),

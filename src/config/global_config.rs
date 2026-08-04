@@ -41,6 +41,9 @@ use crate::osd::{OsdConfig, OsdElementsConfig, OsdStatsConfig, PilotConfig};
 #[cfg(feature = "rangefinder")]
 use crate::sensors::RangefinderConfig;
 
+#[cfg(feature = "rpm_filters")]
+use motor_mixers::RpmNotchFilterBankConfig;
+
 #[cfg(feature = "vtx")]
 use crate::vtx::{Vtx, VtxConfig};
 
@@ -260,6 +263,9 @@ define_configs!(
 
         #[cfg(feature = "rangefinder")]
         (Rangefinder, rangefinder, RangefinderConfig),
+
+        #[cfg(feature = "rpm_filters")]
+        (RpmNotchFilterBank, rpm_notch_filter_bank, RpmNotchFilterBankConfig),
 
         #[cfg(feature = "vtx")]
         (Vtx, vtx, VtxConfig),
