@@ -1,12 +1,10 @@
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal};
 
-use motor_mixers::{
-    MixerConfig, MotorConfig, MotorMixer, MotorMixerMessage,
-};
+use motor_mixers::{MixerConfig, MotorConfig, MotorMixer, MotorMixerMessage};
 #[cfg(feature = "rpm_filters")]
-use motor_mixers::{RpmNotchFilterBankConfig,RpmNotchFilterBank};
+use motor_mixers::{RpmNotchFilterBank, RpmNotchFilterBankConfig};
 
-    // --- MOTOR_SIGNAL ---
+// --- MOTOR_SIGNAL ---
 // High-speed trigger for Motors (8kHz)
 // no watch count, since a signal can only have one watcher.
 pub static MOTOR_MIXER_SIGNAL: Signal<CriticalSectionRawMutex, MotorMixerMessage> = Signal::new();
@@ -21,7 +19,7 @@ pub struct MotorMixerContext {
 }
 
 impl MotorMixerContext {
-    #[cfg(feature = "rpm_filters")] 
+    #[cfg(feature = "rpm_filters")]
     pub fn new(
         mixer_config: MixerConfig,
         motor_config: MotorConfig,
@@ -38,11 +36,8 @@ impl MotorMixerContext {
         //(rpm_notch_filters.rpm_filter_harmonics_count() * Self::MOTOR_COUNT).div_ceil(common.output_denominator());
         Self { motor_mixer: MotorMixer::new(mixer_config, motor_config), rpm_notch_filters, rpm_filter_iteration_count }
     }
-    #[cfg(not(feature = "rpm_filters"))] 
-    pub fn new(
-        mixer_config: MixerConfig,
-        motor_config: MotorConfig,
-    ) -> Self {
+    #[cfg(not(feature = "rpm_filters"))]
+    pub fn new(mixer_config: MixerConfig, motor_config: MotorConfig) -> Self {
         Self { motor_mixer: MotorMixer::new(mixer_config, motor_config) }
     }
 }
