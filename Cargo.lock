@@ -112,8 +112,9 @@ checksum = "b588b76d00fde79687d7646a9b5bdf3cc0f655e0bbd080335a95d7e96f3587da"
 
 [[package]]
 name = "blackbox-logger"
-version = "0.1.8"
-source = "git+https://github.com/martinbudden/crate-blackbox-logger#55e2966db790b84e15c3aa964174544588aeb022"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d0d401e3e2442ce71eb269c43088809c1814b6f6e3861979301c730dfd3c7d83"
 dependencies = [
  "embassy-futures",
  "postcard",
@@ -947,8 +948,9 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 
 [[package]]
 name = "imu-sensors"
-version = "0.1.2"
-source = "git+https://github.com/martinbudden/crate-imu-sensors#72577d3c55a568fe5868da373ad534adc4434786"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2dabaa4beff5dada4a9cd785c058a644da5c0cfba81a1320735170d72f52956e"
 dependencies = [
  "cfg-if",
  "embassy-sync",
@@ -1103,8 +1105,9 @@ dependencies = [
 
 [[package]]
 name = "motor-mixers"
-version = "0.1.4"
-source = "git+https://github.com/martinbudden/crate-motor-mixers#0bbf5507c5fe067d1780d30b82775b3dbc11a099"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "18c0fb22ae15a3fd3c72d8c82aca20632ebafaa715656e9db1c2a89a7c10e2b0"
 dependencies = [
  "cfg-if",
  "embassy-executor",
@@ -1244,8 +1247,9 @@ checksum = "5be167a7af36ee22fe3115051bc51f6e6c7054c9348e28deb4f49bd6f705a315"
 
 [[package]]
 name = "pidsk-controller"
-version = "0.1.7"
-source = "git+https://github.com/martinbudden/crate-pid-controller#712eb944aebf6e75c4a236ed79a50c345720a07b"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62679938b4845356d3213ff7754a3441b417ef0f1e0b5de966d1aeb2945530ae"
 dependencies = [
  "num-traits",
  "rustc_version 0.4.1",
@@ -1417,8 +1421,9 @@ dependencies = [
 
 [[package]]
 name = "radio-controllers"
-version = "0.1.5"
-source = "git+https://github.com/martinbudden/crate-radio-controllers#fe1de2f4c18b6afa57b4130e388258cf42879e60"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da85377e9edd63323ce99c69d90240bce6f82f7ae0c5cd34d4263de48846a031"
 dependencies = [
  "embedded-hal 1.0.0",
  "embedded-hal-nb",
@@ -1466,9 +1471,9 @@ dependencies = [
 
 [[package]]
 name = "regex-automata"
-version = "0.4.16"
+version = "0.4.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fcfdb36bda0c880c5931cdc7a2bcdc8ba4556847b9d912bca70bc94708711ad"
+checksum = "ca71a6a1a566e01ad6b3b87edcbf9bd3374c27e31978c1b4e38c9fa6412557d2"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -1585,8 +1590,9 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "sensor-fusion"
-version = "0.1.8"
-source = "git+https://github.com/martinbudden/crate-sensor-fusion#e4c272c6c14a98b1c5d60025fdf2775aa9c3841c"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4db5aaa279bb24a56816d221be936a932d01ea539d31526cca721cb5a6acb74"
 dependencies = [
  "libm",
  "num-traits",
@@ -1668,8 +1674,9 @@ checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 
 [[package]]
 name = "signal-filters"
-version = "0.1.9"
-source = "git+https://github.com/martinbudden/crate-signal-filters#f84208b70057257b0d08802ed7e2e2de78b6e97d"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6dba5c9059a54860fb0063f335fa01a4688544fd49013399ec1af4513efdebc"
 dependencies = [
  "libm",
  "num-traits",
@@ -1995,8 +2002,9 @@ dependencies = [
 
 [[package]]
 name = "vqm"
-version = "0.1.13"
-source = "git+https://github.com/martinbudden/crate-vector-quaternion-matrix#87a89d710a342d71e8e5c3188b6473f1c5c04c09"
+version = "0.1.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61d4359d462dc797246e2dc959bd78c2db051a051776e20a522a86353a8241b0"
 dependencies = [
  "cfg-if",
  "derive_more",
