@@ -11,13 +11,14 @@ use {
 #[cfg_attr(feature = "std", display("Baro{{a:{altitude_m}, p:{pressure_pascals}, t:{temperature_celsius}}}"))]
 pub struct BarometerMessage {
     pub altitude_m: f32,
+    pub altitude_m_i32: i32,
     pub pressure_pascals: f32,
     pub temperature_celsius: f32,
 }
 
 impl BarometerMessage {
     pub const fn new() -> Self {
-        Self { altitude_m: 0.0, pressure_pascals: 0.0, temperature_celsius: 0.0 }
+        Self { altitude_m: 0.0, altitude_m_i32: 0, pressure_pascals: 0.0, temperature_celsius: 0.0 }
     }
 }
 

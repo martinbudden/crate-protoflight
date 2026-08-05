@@ -238,7 +238,7 @@ pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext) {
         // Increment fake time (e.g., 1000us per sample for 1kHz)
         time_us = time_us.wrapping_add(125); // use wrapping_add to handle when time rolls over at max u32.
 
-        if loop_count.is_multiple_of(100) {
+        if loop_count.is_multiple_of(1000) {
             log::info!("      GYRO_PID: loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.

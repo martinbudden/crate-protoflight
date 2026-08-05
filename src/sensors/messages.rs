@@ -68,7 +68,7 @@ pub struct SetpointMessage {
     pub setpoints: [f32; Self::SETPOINT_COUNT],
     pub pid_errors_s: [f32; Self::RPY_AXIS_COUNT],
     pub pid_errors_k: [f32; Self::RPY_AXIS_COUNT],
-    pub rc_commands: [i16; Self::RC_COMMAND_COUNT],
+    pub rc_commands: [u16; Self::RC_COMMAND_COUNT],
     #[cfg(feature = "dshot_telemetry")]
     pub motor_rpm_d2: [i16; Self::MAX_SUPPORTED_MOTOR_COUNT], // motor rpm divided by 2
     #[cfg(feature = "servos")]
@@ -103,7 +103,7 @@ impl SetpointMessage {
             setpoints: [0.0; Self::SETPOINT_COUNT],
             pid_errors_s: [0.0; Self::RPY_AXIS_COUNT],
             pid_errors_k: [0.0; Self::RPY_AXIS_COUNT],
-            rc_commands: [0i16; Self::RC_COMMAND_COUNT],
+            rc_commands: [1500,1500,1500,1000],
             #[cfg(feature = "dshot_telemetry")]
             motor_rpm_d2: [0i16; Self::MAX_SUPPORTED_MOTOR_COUNT],
             #[cfg(feature = "servos")]

@@ -204,9 +204,9 @@ pub async fn init(spawner: Spawner) {
         | FieldSelect::PID_KTERM
         //| FieldSelect::PID
         | FieldSelect::RSSI
-        | FieldSelect::SETPOINT
+        //| FieldSelect::SETPOINT
         //| FieldSelect::GYRO_UNFILTERED
-        | FieldSelect::MOTOR_RPM
+        //| FieldSelect::MOTOR_RPM
         | FieldSelect::BATTERY_VOLTAGE
         | FieldSelect::BATTERY_CURRENT
         | FieldSelect::BAROMETER
@@ -225,7 +225,7 @@ pub async fn init(spawner: Spawner) {
             gyro_sync_denom: 1,
             pid_process_denom: 1,
             acc_1g: 4096,
-            motor_output_min: 158,
+            motor_output_min: 48,
             motor_output_max: 2047,
             vbat_scale: 0,
             vbat_min_cell_voltage: 330,
@@ -242,6 +242,8 @@ pub async fn init(spawner: Spawner) {
             SetpointMessage::new(),
             config.blackbox,
             sys_info,
+            #[cfg(feature = "barometer")] barometer_subscriber(),
+            #[cfg(feature = "battery")] battery_subscriber(),
             #[cfg(feature = "gps")] gps_subscriber(),
         ))
     };

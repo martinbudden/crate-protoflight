@@ -90,11 +90,12 @@ pub async fn rx_task(ctx: &'static mut RxContext) {
         // For now we just wait for the next tick and create a dummy rx_frame.
         ticker.next().await;
         let mut rx_frame = RxFrame::new();
-        if loop_count == 1000 {
-            rx_frame.channels[RxChannel::AUX1] = RxChannel::MID_HIGH; // Armed
-        } else if loop_count == 2000 {
-            rx_frame.channels[RxChannel::AUX1] = RxChannel::LOW; // Disarmed
-        }
+
+        // Simulate the user changing the arming channel.
+        rx_frame.channels[RxChannel::AUX1] = match loop_count {
+            0..100 | 200..400 => RxChannel::MID_HIGH,
+            _ => RxChannel::LOW,
+        };
         let failsafe = 0;
 
         // check if there has been in-flight adjustment of the rates, if so apply them.
@@ -128,7 +129,7 @@ pub async fn rx_task(ctx: &'static mut RxContext) {
         // Send the rx message. This will be picked by the gyro_pid task.
         ctx.rx_sender.send(rx_message);
 
-        if loop_count.is_multiple_of(5) {
+        if loop_count.is_multiple_of(10) {
             log::info!("            RX:       loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
