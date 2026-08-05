@@ -14,7 +14,7 @@ use crate::{
         AntiGravityConfig, ArmingConfig, CrashFlipConfig, CrashRecoveryConfig, DMaxConfig, FeatureFlags,
         FlightControllerFiltersConfig, GyroConfig, ImuFilterBankConfig, PidConfig, TpaConfig, YawSpinRecoveryConfig,
     },
-    sensors::SensorFlags,
+    sensors::{CurrentSensorAdcConfig, CurrentSensorVirtualConfig, SensorFlags},
 };
 
 #[cfg(feature = "barometer")]
@@ -226,6 +226,8 @@ define_configs!(
         (Features, features, FeatureFlags),
         (Imu, imu, ImuConfig),
         (Sensors, sensors, SensorFlags),
+        (CurrentSensorAdc, current_sensor_adc, CurrentSensorAdcConfig),
+        (CurrentSensorVirtual, current_sensor_virtual, CurrentSensorVirtualConfig),
 
         (Autopilot, autopilot, AutopilotConfig),
         (PositionHold, position_hold, PositionHoldConfig),

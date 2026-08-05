@@ -1,6 +1,8 @@
 #![cfg(feature = "blackbox")]
 
-use blackbox_logger::{Blackbox, BlackboxConfig, BlackboxMainData, BlackboxSlowData, LoggerState, SliceEncoder};
+use blackbox_logger::{
+    Blackbox, BlackboxConfig, BlackboxMainData, BlackboxSlowData, BlackboxSysInfo, LoggerState, SliceEncoder,
+};
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel};
 
 use crate::{
@@ -40,13 +42,14 @@ impl BlackboxContext {
         setpoint_receiver: SetpointReceiver,
         setpoint_message: SetpointMessage,
         blackbox_config: BlackboxConfig,
+        blackbox_sys_info: BlackboxSysInfo,
         #[cfg(feature = "gps")] gps_subscriber: GpsSubscriber,
     ) -> Self {
         //let mut blackbox_config = blackbox_config;
         //blackbox_config.huffman_compress = true;
 
         // NRVO (Named Return Value Optimization) ensures blackbox is created in place and not copied.
-        let mut blackbox = Blackbox::new(blackbox_config);
+        let mut blackbox = Blackbox::new(blackbox_config, blackbox_sys_info);
         blackbox.init();
 
         Self {
@@ -61,11 +64,11 @@ impl BlackboxContext {
     }
 }
 
-/// A fixed-size message container used to pass blackbox chunks between tasks.
-/// Set the internal buffer capacity to a size larger than your maximum possible `len` frame.
+/// A fixed-size message container used to send blackbox chunks from this task to the `blackbox_writer` task.
+/// Set the internal buffer capacity to a size larger than the maximum possible `len` frame.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BlackboxWriteBlock {
-    pub data: [u8; Self::CAPACITY], // Adjust size to match your largest expected serialized packet length
+    pub data: [u8; Self::CAPACITY], // Adjust size to match the largest expected serialized packet length
     pub len: usize,
 }
 
@@ -85,29 +88,27 @@ impl BlackboxWriteBlock {
     #[inline]
     pub fn from_chunk(slice: &[u8]) -> Self {
         // Enforce the size boundary strictly using compile-time constants
-        let copy_len = core::cmp::min(slice.len(), Self::CAPACITY);
+        let copy_len = slice.len().min(Self::CAPACITY);
         let mut block = Self { data: [0u8; Self::CAPACITY], len: copy_len };
         block.data[..copy_len].copy_from_slice(&slice[..copy_len]);
         block
+    }
+    pub fn send_data_to_blackbox_writer_task(data: &[u8], overflow_counter: &mut u32) {
+        // Loop through the slice in chunks matching BlackboxWriteBlock capacity
+        for chunk in data.chunks(Self::CAPACITY) {
+            let block = Self::from_chunk(chunk);
+            // Non-blocking try_send ensures high-speed loop deadlines are protected
+            if let Err(_overflow) = BLACKBOX_WRITE_QUEUE.try_send(block) {
+                *overflow_counter = overflow_counter.wrapping_add(1);
+                log::error!("BLACKBOX: FIFO queue full! Dropped a log chunk.");
+            }
+        }
     }
 }
 
 const BLACKBOX_WRITE_QUEUE_COUNT: usize = 256;
 pub static BLACKBOX_WRITE_QUEUE: Channel<CriticalSectionRawMutex, BlackboxWriteBlock, BLACKBOX_WRITE_QUEUE_COUNT> =
     Channel::new();
-
-fn send_data_to_blackbox_writer_task(data: &[u8], overflow_counter: &mut u32) {
-    _ = overflow_counter;
-    // Loop through the slice in chunks matching BlackboxWriteBlock capacity
-    for chunk in data.chunks(BlackboxWriteBlock::CAPACITY) {
-        let block = BlackboxWriteBlock::from_chunk(chunk);
-        // Non-blocking try_send ensures high-speed loop deadlines are protected
-        if let Err(_overflow) = BLACKBOX_WRITE_QUEUE.try_send(block) {
-            *overflow_counter = overflow_counter.wrapping_add(1);
-            log::error!("BLACKBOX: FIFO queue full! Dropped a log chunk.");
-        }
-    }
-}
 
 /// Blackbox task.
 #[embassy_executor::task]
@@ -121,7 +122,7 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
     while ctx.blackbox.state() != LoggerState::HeaderWritten {
         let time_us = 0;
         let len = ctx.blackbox.update(&mut SliceEncoder::new(&mut ctx.buffer), time_us);
-        send_data_to_blackbox_writer_task(&ctx.buffer[..len], &mut ctx.overflow_counter);
+        BlackboxWriteBlock::send_data_to_blackbox_writer_task(&ctx.buffer[..len], &mut ctx.overflow_counter);
         //log::info!("BLACKBOX:  hdr {loop_count},{len}");
         loop_count = loop_count.wrapping_add(1);
     }
@@ -154,17 +155,18 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
             ctx.blackbox.set_gps_data(gps_data);
         }
 
-        let len = ctx.blackbox.update(&mut SliceEncoder::new(&mut ctx.buffer), time_us);
         /*#[cfg(feature = "std")]
         if loop_count == 512 {
             // write End of log
             let len = ctx.blackbox.logger.log_e_frame(&mut SliceEncoder::new(&mut ctx.buffer), BlackboxEvent::LogEnd);
-            send_data_to_blackbox_writer_task(&ctx.buffer[..len], &mut ctx.overflow_counter);
+            BlackboxWriteBlock::send_data_to_blackbox_writer_task(&ctx.buffer[..len], &mut ctx.overflow_counter);
             log::info!("**** BLACKBOX: END OF LOG");
         }*/
-        send_data_to_blackbox_writer_task(&ctx.buffer[..len], &mut ctx.overflow_counter);
+        let len = ctx.blackbox.update(&mut SliceEncoder::new(&mut ctx.buffer), time_us);
+        BlackboxWriteBlock::send_data_to_blackbox_writer_task(&ctx.buffer[..len], &mut ctx.overflow_counter);
         if loop_count.is_multiple_of(10) {
-            log::info!("      BLACKBOX: loop {loop_count},{len}");
+            let overflow = ctx.overflow_counter;
+            log::info!("      BLACKBOX: loop {loop_count},{len},{overflow}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }

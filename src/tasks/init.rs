@@ -3,18 +3,18 @@ use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 
 use static_cell::StaticCell;
 
-#[allow(unused)]
 use crate::{
     config::{GLOBAL_CONFIG, config_publisher, config_subscriber, fast_config_publisher, fast_config_subscriber},
     tasks::{
-        gyro_pid_task::{
-            GyroPidContext, gyro_pid_receiver, gyro_pid_sender, gyro_pid_task, setpoint_receiver, setpoint_sender,
-        },
+        gyro_pid_task::{GyroPidContext, gyro_pid_sender, gyro_pid_task, setpoint_sender},
         imu_task::{ImuContext, imu_task},
         motor_mixer_task::{MotorMixerContext, motor_mixer_task},
         rx_task::{RxContext, rx_receiver, rx_sender, rx_task},
     },
 };
+
+#[allow(unused)]
+use crate::tasks::gyro_pid_task::{gyro_pid_receiver, setpoint_receiver};
 
 #[cfg(feature = "rp2350")]
 use crate::tasks::init_rp;
@@ -32,12 +32,12 @@ use crate::tasks::barometer_task::{BarometerContext, barometer_publisher, barome
 use crate::tasks::battery_task::{BatteryContext, battery_publisher, battery_subscriber, battery_task};
 
 #[cfg(feature = "blackbox")]
-use crate::tasks::blackbox_writer_task::{BlackboxWriterContext, blackbox_writer_task};
-
-#[cfg(feature = "blackbox")]
 use {
-    crate::tasks::blackbox_task::{BlackboxContext, blackbox_task},
-    blackbox_logger::FieldSelect,
+    crate::tasks::{
+        blackbox_task::{BlackboxContext, blackbox_task},
+        blackbox_writer_task::{BlackboxWriterContext, blackbox_writer_task},
+    },
+    blackbox_logger::{BlackboxDateTime, BlackboxSysInfo, FieldSelect},
 };
 
 #[cfg(feature = "gps")]
@@ -217,12 +217,31 @@ pub async fn init(spawner: Spawner) {
         //| FieldSelect::RC_COMMANDS
         //| FieldSelect::MOTOR
         | FieldSelect::MAGNETOMETER;
-
+        
+        let sys_info = BlackboxSysInfo {
+            features: 541_130_760,
+            gyro_scale: 0x3f80_0000,
+            looptime: 125, // 125us = 8kHz gyro/pid loop
+            gyro_sync_denom: 1,
+            pid_process_denom: 1,
+            acc_1g: 4096,
+            motor_output_min: 158,
+            motor_output_max: 2047,
+            vbat_scale: 0,
+            vbat_min_cell_voltage: 330,
+            vbat_warning_cell_voltage: 350,
+            vbat_max_cell_voltage: 430,
+            current_sensor_scale: 0,
+            current_sensor_offset: 250,
+            date_time: BlackboxDateTime::new(),
+            motor_pole_count: 14,
+        };
         BLACKBOX_CTX.init(BlackboxContext::new(
             gyro_pid_receiver(),
             setpoint_receiver(),
             SetpointMessage::new(),
             config.blackbox,
+            sys_info,
             #[cfg(feature = "gps")] gps_subscriber(),
         ))
     };

@@ -2,12 +2,14 @@
 
 mod barometer;
 mod battery;
+mod current_sensor;
 mod magnetometer;
 mod messages;
 mod optical_flow;
 mod rangefinder;
 mod sensor_flags;
 
+pub use current_sensor::{CurrentSensorAdcConfig, CurrentSensorVirtualConfig};
 pub use messages::{GyroPidMessage, SetpointMessage};
 pub use sensor_flags::SensorFlags;
 
