@@ -143,7 +143,7 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
     // Write the Blackbox log file header by using blackbox.update to step through the blackbox state machine
     // until the state is LoggerState::HeaderWritten.
     #[cfg(feature = "debug")]
-    ctx.blackbox.start(u16::from(GLOBAL_DEBUG.mode() + 1));
+    ctx.blackbox.start(u16::from(GLOBAL_DEBUG.mode()));
     #[cfg(not(feature = "debug"))]
     ctx.blackbox.start(0);
     while ctx.blackbox.state() != LoggerState::HeaderWritten {
@@ -217,8 +217,7 @@ pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
         }*/
         let len = ctx.blackbox.update(&mut SliceEncoder::new(&mut ctx.buffer), time_us);
         BlackboxWriteBlock::send_data_to_blackbox_writer_task(&ctx.buffer[..len], &mut ctx.overflow_counter);
-        if ctx.blackbox.is_active() &&
-        loop_count.is_multiple_of(10) {
+        if ctx.blackbox.is_active() && loop_count.is_multiple_of(10) {
             let overflow = ctx.overflow_counter;
             log::info!("      BLACKBOX: loop {loop_count},{len},{overflow}");
         }
