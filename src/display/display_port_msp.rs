@@ -101,12 +101,12 @@ impl Display for DisplayPortMsp {
         self.output_byte(Commands::HEARTBEAT).cast_signed() as i32
     }
 
-    fn write_char(&mut self, x: u8, y: u8, c: u8, attr: DisplayPortSeverity) -> usize {
+    fn write_byte(&mut self, x: u8, y: u8, c: u8, attr: DisplayPortSeverity) -> usize {
         let s = [c];
         self.write_string(x, y, &s, attr)
     }
 
-    fn write_string(&mut self, x: u8, y: u8, text: &[u8], attr: DisplayPortSeverity) -> usize {
+    fn write_slice(&mut self, x: u8, y: u8, text: &[u8], attr: DisplayPortSeverity) -> usize {
         Self::write_string(self, x, y, text, attr)
     }
 
@@ -136,7 +136,7 @@ impl Display for DisplayPortMsp {
         _ = self.output_byte(Commands::CLEAR_SCREEN);
     }
 
-    async fn draw_screen(&mut self) -> Result<bool, &'static str> {
+    async fn transfer_screen(&mut self) -> Result<bool, &'static str> {
         _ = self.output_byte(Commands::DRAW_SCREEN);
         Ok(false)
     }

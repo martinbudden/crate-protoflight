@@ -286,15 +286,19 @@ pub async fn init(spawner: Spawner) {
 
     #[rustfmt::skip]
     #[cfg(feature = "osd")]
-    let osd_ctx = OSD_CTX.init(OsdContext::new(
-        gyro_pid_receiver(),
-        setpoint_receiver(),
-        #[cfg(feature = "barometer")] barometer_subscriber(),
-        #[cfg(feature = "battery")] battery_subscriber(),
-        #[cfg(feature = "gps")] gps_subscriber(),
-        #[cfg(feature = "optical_flow")] optical_flow_subscriber(),
-        #[cfg(feature = "rangefinder")] rangefinder_subscriber(),
-    ));
+    let osd_ctx = {
+        let display_supports_background_layer = true;
+        OSD_CTX.init(OsdContext::new(
+            display_supports_background_layer,
+            gyro_pid_receiver(),
+            setpoint_receiver(),
+            #[cfg(feature = "barometer")] barometer_subscriber(),
+            #[cfg(feature = "battery")] battery_subscriber(),
+            #[cfg(feature = "gps")] gps_subscriber(),
+            #[cfg(feature = "optical_flow")] optical_flow_subscriber(),
+            #[cfg(feature = "rangefinder")] rangefinder_subscriber()
+        ))
+    };
 
     #[cfg(feature = "rangefinder")]
     let rangefinder_ctx = RANGEFINDER_CTX.init(RangefinderContext::new(rangefinder_publisher()));

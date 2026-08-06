@@ -216,12 +216,12 @@ impl<SPI: SpiBus> Display for DisplayPortMax7456<SPI> {
         0
     }
 
-    fn write_char(&mut self, x: u8, y: u8, c: u8, attr: DisplayPortSeverity) -> usize {
-        self.display_layers.write_char(x, y, c, attr)
+    fn write_byte(&mut self, x: u8, y: u8, byte: u8, attr: DisplayPortSeverity) -> usize {
+        self.display_layers.write_byte(x, y, byte, attr)
     }
 
-    fn write_string(&mut self, x: u8, y: u8, s: &[u8], attr: DisplayPortSeverity) -> usize {
-        self.display_layers.write_string(x, y, s, attr)
+    fn write_slice(&mut self, x: u8, y: u8, slice: &[u8], attr: DisplayPortSeverity) -> usize {
+        self.display_layers.write_slice(x, y, slice, attr)
     }
 
     fn layer_supported(&self, _layer: DisplayPortLayer) -> bool {
@@ -257,7 +257,7 @@ impl<SPI: SpiBus> Display for DisplayPortMax7456<SPI> {
         self.display_layers.clear_layer(self.active_layer());
     }
 
-    async fn draw_screen(&mut self) -> Result<bool, &'static str> {
+    async fn transfer_screen(&mut self) -> Result<bool, &'static str> {
         // Disambiguate by calling the underlying struct method explicitly and awaiting it
         // We map the SPI error to a trait-compatible string error slice
         //Self::draw_screen(self).await.map_err(|_| "SPI Hardware Transfer Failed")

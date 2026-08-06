@@ -39,7 +39,7 @@ impl DisplayPortLayers {
         self.display_layers[layer as usize].buffer.fill(0x20);
     }
 
-    pub fn write_char(&mut self, x: u8, y: u8, c: u8, _attr: DisplayPortSeverity) -> usize {
+    pub fn write_byte(&mut self, x: u8, y: u8, byte: u8, _attr: DisplayPortSeverity) -> usize {
         // Validate bounds against the runtime configuration
         if x >= self.display_port.column_count() || y >= self.display_port.row_count() {
             return 0;
@@ -50,18 +50,18 @@ impl DisplayPortLayers {
         if let Some(layer) = self.display_layers.get_mut(active_idx) {
             // Delegate coordinate translation down to the layer itself
             if let Some(cell) = layer.get_mut(x, y, self.display_port.column_count()) {
-                *cell = c;
+                *cell = byte;
                 return 1;
             }
         }
         0
     }
 
-    pub fn write_string(&mut self, x: u8, y: u8, s: &[u8], _attr: DisplayPortSeverity) -> usize {
+    pub fn write_slice(&mut self, x: u8, y: u8, slice: &[u8], _attr: DisplayPortSeverity) -> usize {
         let column_count = self.display_port.column_count();
         let row_count = self.display_port.row_count();
 
-        if x >= column_count || y >= row_count || s.is_empty() {
+        if x >= column_count || y >= row_count || slice.is_empty() {
             return 0;
         }
 
@@ -75,15 +75,15 @@ impl DisplayPortLayers {
         let max_line_len = (column_count - x) as usize;
 
         // Truncate the input string length if it would overflow past the screen edge
-        let write_len = s.len().min(max_line_len);
-        let bytes_to_write = &s[..write_len];
+        let write_len = slice.len().min(max_line_len);
+        let bytes_to_write = &slice[..write_len];
 
         // Safely slice out the relevant target sub-array segment.
         // This ensures no out-of-bounds panics can occur inside the loop.
         if let Some(target_window) = layer.buffer.get_mut(start_idx..(start_idx + write_len)) {
             // Zip the target memory spaces with your input characters and overwrite them
-            for (cell, &c) in target_window.iter_mut().zip(bytes_to_write.iter()) {
-                *cell = c;
+            for (cell, &byte) in target_window.iter_mut().zip(bytes_to_write.iter()) {
+                *cell = byte;
             }
             write_len
         } else {

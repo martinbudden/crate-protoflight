@@ -42,12 +42,12 @@ impl Display for DisplayPortMock {
         0
     }
 
-    fn write_char(&mut self, x: u8, y: u8, c: u8, attr: DisplayPortSeverity) -> usize {
-        self.display_layers.write_char(x, y, c, attr)
+    fn write_byte(&mut self, x: u8, y: u8, byte: u8, attr: DisplayPortSeverity) -> usize {
+        self.display_layers.write_byte(x, y, byte, attr)
     }
 
-    fn write_string(&mut self, x: u8, y: u8, s: &[u8], attr: DisplayPortSeverity) -> usize {
-        self.display_layers.write_string(x, y, s, attr)
+    fn write_slice(&mut self, x: u8, y: u8, slice: &[u8], attr: DisplayPortSeverity) -> usize {
+        self.display_layers.write_slice(x, y, slice, attr)
     }
 
     fn layer_supported(&self, _layer: DisplayPortLayer) -> bool {
@@ -83,7 +83,7 @@ impl Display for DisplayPortMock {
         self.display_layers.clear_layer(self.active_layer());
     }
 
-    async fn draw_screen(&mut self) -> Result<bool, &'static str> {
+    async fn transfer_screen(&mut self) -> Result<bool, &'static str> {
         Ok(false)
     }
 

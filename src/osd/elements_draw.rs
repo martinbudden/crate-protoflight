@@ -1,10 +1,14 @@
+#![cfg(feature = "osd")]
+
 use crate::{
     config::GLOBAL_CONFIG,
     display::{Display, DisplayPortSeverity},
     flight::{ArmingFlags, PidConfig},
     osd::{
         OsdDrawContext,
-        elements::{OsdElement, OsdElements, OsdStickCameraFrameRenderPhase, OsdStickOverlayRenderPhase},
+        elements::{
+            OsdElement, OsdElements, OsdElementsCache, OsdStickCameraFrameRenderPhase, OsdStickOverlayRenderPhase,
+        },
         symbols::OsdSymbols,
     },
     tasks::GLOBAL_DEBUG,
@@ -125,149 +129,157 @@ pub enum OsdElementId {
 // element drawing functions
 impl OsdElements {
     #[allow(clippy::too_many_lines)]
-    pub async fn draw_element<D: Display>(&mut self, draw_context: &OsdDrawContext<'_, D>) -> bool {
+    pub async fn draw_element_foreground<D: Display>(
+        draw_context: &OsdDrawContext<'_, D>,
+        osd_element: &mut OsdElement,
+        cache: OsdElementsCache,
+    ) -> (bool, bool) {
         #[allow(clippy::enum_glob_use)]
         use OsdElementId::*;
 
         #[allow(clippy::pedantic)]
-        match self.active_element.id {
-            Rssi => self.active_element.draw_rssi(),
+        let drawn = match osd_element.id {
+            Rssi => osd_element.draw_rssi(),
             #[cfg(feature = "battery")]
-            MainBatteryVoltage => self.active_element.draw_main_battery_usage(draw_context),
-            Crosshairs => self.active_element.draw_crosshairs(),
-            ArtificialHorizon => self.active_element.draw_artificial_horizon().await,
-            ItemTimer1 | ItemTimer2 => self.active_element.draw_item_timer(),
-            FlyMode => self.active_element.draw_fly_mode(),
-            ThrottlePos => self.active_element.draw_throttle_position(),
+            MainBatteryVoltage => osd_element.draw_main_battery_usage(draw_context),
+            Crosshairs => osd_element.draw_crosshairs(),
+            ArtificialHorizon => osd_element.draw_artificial_horizon().await,
+            ItemTimer1 | ItemTimer2 => osd_element.draw_item_timer(),
+            FlyMode => osd_element.draw_fly_mode(),
+            ThrottlePos => osd_element.draw_throttle_position(),
             #[cfg(feature = "vtx")]
-            VtxChannel => self.active_element.draw_nothing(),
+            VtxChannel => osd_element.draw_nothing(),
             #[cfg(feature = "battery")]
-            CurrentDraw => self.active_element.draw_current_draw(draw_context),
+            CurrentDraw => osd_element.draw_current_draw(draw_context),
             #[cfg(feature = "battery")]
-            MahDrawn => self.active_element.draw_mah_drawn(draw_context),
+            MahDrawn => osd_element.draw_mah_drawn(draw_context),
 
             #[cfg(feature = "gps")]
-            GpsSpeed => self.active_element.draw_nothing(),
+            GpsSpeed => osd_element.draw_nothing(),
             #[cfg(feature = "gps")]
-            GpsSats => self.active_element.draw_nothing(),
+            GpsSats => osd_element.draw_nothing(),
 
-            Altitude => self.active_element.draw_altitude(),
-            RollPids => self.active_element.draw_roll_pids().await,
-            PitchPids => self.active_element.draw_pitch_pids().await,
-            YawPids => self.active_element.draw_yaw_pids().await,
-            Power => self.active_element.draw_nothing(),
-            PidRateProfile => self.active_element.draw_nothing(),
-            Warnings => self.active_element.draw_nothing(),
-            AvgCellVoltage => self.active_element.draw_nothing(),
-
-            #[cfg(feature = "gps")]
-            GpsLon => self.active_element.draw_nothing(),
-            #[cfg(feature = "gps")]
-            GpsLat => self.active_element.draw_nothing(),
-
-            Debug => self.active_element.draw_debug(),
-            PitchAngle => self.active_element.draw_pitch_angle(self.pitch_angle_degrees),
-            RollAngle => self.active_element.draw_roll_angle(self.roll_angle_degrees),
-            MainBatteryUsage => self.active_element.draw_nothing(),
-            Disarmed => self.active_element.draw_disarmed(draw_context),
+            Altitude => osd_element.draw_altitude(),
+            RollPids => osd_element.draw_roll_pids().await,
+            PitchPids => osd_element.draw_pitch_pids().await,
+            YawPids => osd_element.draw_yaw_pids().await,
+            Power => osd_element.draw_nothing(),
+            PidRateProfile => osd_element.draw_nothing(),
+            Warnings => osd_element.draw_nothing(),
+            AvgCellVoltage => osd_element.draw_nothing(),
 
             #[cfg(feature = "gps")]
-            HomeDirection => self.active_element.draw_nothing(),
+            GpsLon => osd_element.draw_nothing(),
             #[cfg(feature = "gps")]
-            HomeDistance => self.active_element.draw_nothing(),
+            GpsLat => osd_element.draw_nothing(),
 
-            NumericalHeading => self.active_element.draw_numerical_heading(self.yaw_angle_degrees),
-            NumericalVario => self.active_element.draw_nothing(),
-            CompassBar => self.active_element.draw_nothing(),
+            Debug => osd_element.draw_debug(),
+            PitchAngle => osd_element.draw_pitch_angle(cache.pitch_angle_degrees),
+            RollAngle => osd_element.draw_roll_angle(cache.roll_angle_degrees),
+            MainBatteryUsage => osd_element.draw_nothing(),
+            Disarmed => osd_element.draw_disarmed(draw_context),
+
+            #[cfg(feature = "gps")]
+            HomeDirection => osd_element.draw_nothing(),
+            #[cfg(feature = "gps")]
+            HomeDistance => osd_element.draw_nothing(),
+
+            NumericalHeading => osd_element.draw_numerical_heading(cache.yaw_angle_degrees),
+            NumericalVario => osd_element.draw_nothing(),
+            CompassBar => osd_element.draw_nothing(),
 
             #[cfg(feature = "dshot_telemetry")]
-            EscTemperature => self.active_element.draw_nothing(),
+            EscTemperature => osd_element.draw_nothing(),
             #[cfg(feature = "dshot_telemetry")]
-            EscRpm => self.active_element.draw_nothing(),
+            EscRpm => osd_element.draw_nothing(),
 
-            RemainingTimeEstimate => self.active_element.draw_remaining_time_estimate(),
-            RtcDatetime => self.active_element.draw_nothing(),
-            AdjustmentRange => self.active_element.draw_nothing(),
-            CoreTemperature => self.active_element.draw_nothing(),
-            AntiGravity => self.active_element.draw_anti_gravity(draw_context),
-            GForce => self.active_element.draw_nothing(),
-            MotorDiagnostics => self.active_element.draw_nothing(),
+            RemainingTimeEstimate => osd_element.draw_remaining_time_estimate(),
+            RtcDatetime => osd_element.draw_nothing(),
+            AdjustmentRange => osd_element.draw_nothing(),
+            CoreTemperature => osd_element.draw_nothing(),
+            AntiGravity => osd_element.draw_anti_gravity(draw_context),
+            GForce => osd_element.draw_nothing(),
+            MotorDiagnostics => osd_element.draw_nothing(),
 
             #[cfg(feature = "blackbox")]
-            LogStatus => self.active_element.draw_nothing(),
+            LogStatus => osd_element.draw_nothing(),
 
-            FlipArrow => self.active_element.draw_nothing(),
-            LinkQuality => self.active_element.draw_nothing(),
+            FlipArrow => osd_element.draw_nothing(),
+            LinkQuality => osd_element.draw_nothing(),
 
             #[cfg(feature = "gps")]
-            FlightDistance => self.active_element.draw_nothing(),
+            FlightDistance => osd_element.draw_nothing(),
 
-            StickOverlayLeft => self.active_element.draw_nothing(),
-            StickOverlayRight => self.active_element.draw_nothing(),
+            StickOverlayLeft | StickOverlayRight => osd_element.draw_stick_overlay(),
 
             #[cfg(feature = "dshot_telemetry")]
-            EscRpmFrequency => self.active_element.draw_nothing(),
+            EscRpmFrequency => osd_element.draw_nothing(),
 
-            RateProfileName => self.active_element.draw_nothing(),
-            PidProfileName => self.active_element.draw_nothing(),
-            ProfileName => self.active_element.draw_nothing(),
-            RssiDbmValue => self.active_element.draw_nothing(),
-            RcChannels => self.active_element.draw_nothing(),
-
-            #[cfg(feature = "gps")]
-            Efficiency => self.active_element.draw_nothing(),
-
-            TotalFlights => self.active_element.draw_nothing(),
-            UpDownReference => self.active_element.draw_up_down_reference(),
-            TxUplinkPower => self.active_element.draw_nothing(),
-            WattHoursDrawn => self.active_element.draw_nothing(),
-            AuxValue => self.active_element.draw_nothing(),
-            ReadyMode => self.active_element.draw_nothing(),
-            RsnrValue => self.active_element.draw_nothing(),
-            SysGoggleVoltage => self.active_element.draw_nothing(),
-            SysVtxVoltage => self.active_element.draw_nothing(),
-            SysBitrate => self.active_element.draw_nothing(),
-            SysDelay => self.active_element.draw_nothing(),
-            SysDistance => self.active_element.draw_nothing(),
-            SysLq => self.active_element.draw_nothing(),
-            SysGoggleDvr => self.active_element.draw_nothing(),
-            SysVtxDvr => self.active_element.draw_nothing(),
-            SysWarnings => self.active_element.draw_nothing(),
-            SysVtxTemperature => self.active_element.draw_nothing(),
-            SysFanSpeed => self.active_element.draw_nothing(),
+            RateProfileName => osd_element.draw_nothing(),
+            PidProfileName => osd_element.draw_nothing(),
+            ProfileName => osd_element.draw_nothing(),
+            RssiDbmValue => osd_element.draw_nothing(),
+            RcChannels => osd_element.draw_nothing(),
 
             #[cfg(feature = "gps")]
-            GpsLapTimeCurrent => self.active_element.draw_nothing(),
+            Efficiency => osd_element.draw_nothing(),
+
+            TotalFlights => osd_element.draw_nothing(),
+            UpDownReference => osd_element.draw_up_down_reference(),
+            TxUplinkPower => osd_element.draw_nothing(),
+            WattHoursDrawn => osd_element.draw_nothing(),
+            AuxValue => osd_element.draw_nothing(),
+            ReadyMode => osd_element.draw_nothing(),
+            RsnrValue => osd_element.draw_nothing(),
+            SysGoggleVoltage => osd_element.draw_nothing(),
+            SysVtxVoltage => osd_element.draw_nothing(),
+            SysBitrate => osd_element.draw_nothing(),
+            SysDelay => osd_element.draw_nothing(),
+            SysDistance => osd_element.draw_nothing(),
+            SysLq => osd_element.draw_nothing(),
+            SysGoggleDvr => osd_element.draw_nothing(),
+            SysVtxDvr => osd_element.draw_nothing(),
+            SysWarnings => osd_element.draw_nothing(),
+            SysVtxTemperature => osd_element.draw_nothing(),
+            SysFanSpeed => osd_element.draw_nothing(),
+
             #[cfg(feature = "gps")]
-            GpsLapTimePrevious => self.active_element.draw_nothing(),
+            GpsLapTimeCurrent => osd_element.draw_nothing(),
             #[cfg(feature = "gps")]
-            GpsLapTimeBest3 => self.active_element.draw_nothing(),
-            Debug2 => self.active_element.draw_debug2(),
-            CustomMsg0 | CustomMsg1 | CustomMsg2 | CustomMsg3 => self.active_element.draw_custom_message(),
+            GpsLapTimePrevious => osd_element.draw_nothing(),
+            #[cfg(feature = "gps")]
+            GpsLapTimeBest3 => osd_element.draw_nothing(),
+            Debug2 => osd_element.draw_debug2(),
+            CustomMsg0 | CustomMsg1 | CustomMsg2 | CustomMsg3 => osd_element.draw_custom_message(),
             #[cfg(feature = "rangefinder")]
-            LidarDistance => self.active_element.draw_nothing(),
-            CustomSerialText => self.active_element.draw_nothing(),
-            BatteryProfileName => self.active_element.draw_nothing(),
+            LidarDistance => osd_element.draw_nothing(),
+            CustomSerialText => osd_element.draw_nothing(),
+            BatteryProfileName => osd_element.draw_nothing(),
 
             // only drawn in background
-            CraftName => self.active_element.draw_nothing(), // do nothing, since only drawn in background
-            PilotName => self.active_element.draw_nothing(), // do nothing, since only drawn in background
-            HorizonSidebars => self.active_element.draw_nothing(), // do nothing, since only drawn in background
-            _ => self.active_element.draw_nothing(),
-        }
+            CraftName => osd_element.draw_nothing(), // do nothing, since only drawn in background
+            PilotName => osd_element.draw_nothing(), // do nothing, since only drawn in background
+            HorizonSidebars => osd_element.draw_nothing(), // do nothing, since only drawn in background
+            _ => osd_element.draw_nothing(),
+        };
+        (drawn, osd_element.rendered)
     }
 
-    pub async fn draw_element_background<D: Display>(&mut self, draw_context: &mut OsdDrawContext<'_, D>) -> bool {
+    pub async fn draw_element_background<D: Display>(
+        draw_context: &mut OsdDrawContext<'_, D>,
+        osd_element: &mut OsdElement,
+    ) -> (bool, bool) {
         #[allow(clippy::enum_glob_use)]
         use OsdElementId::*;
-        match self.active_element.id {
-            HorizonSidebars => self.active_element.draw_background_horizon_sidebars(draw_context),
-            CraftName => self.active_element.draw_background_craft_name().await,
-            StickOverlayLeft => self.active_element.draw_background_stick_overlay(),
-            PilotName => self.active_element.draw_background_pilot_name().await,
-            CameraFrame => self.active_element.draw_background_camera_frame(draw_context).await,
-            _ => self.active_element.draw_nothing(),
-        }
+        let drawn = match osd_element.id {
+            HorizonSidebars => osd_element.draw_background_horizon_sidebars(draw_context), // Background only
+            CraftName => osd_element.draw_background_craft_name().await,                   // Background only
+            StickOverlayLeft | StickOverlayRight => osd_element.draw_background_stick_overlay(), // Background and foreground
+            PilotName => osd_element.draw_background_pilot_name().await,                         // Background only
+            CameraFrame => osd_element.draw_background_camera_frame(draw_context).await,         // Background only
+            _ => osd_element.draw_nothing(),
+        };
+        (drawn, osd_element.rendered)
     }
 }
 
@@ -363,25 +375,13 @@ pub static OSD_ELEMENT_DISPLAY_ORDER: &[OsdElementId] = {
         MotorDiagnostics,
         FlipArrow,
         PilotName,
-        /*#[cfg(feature = "rtc_time")]
+        /*
         RtcDatetime,
-
-        #[cfg(feature = "osd_adjustments")]
         AdjustmentRange,
-
-        #[cfg(feature = "adc_internal")]
         CoreTemperature,
-
-        #[cfg(feature = "rx_link_quality_info")]
         LinkQuality,
-
-        #[cfg(feature = "rx_link_uplink_power")]
         TxUplinkPower,
-
-        #[cfg(feature = "rx_rssi_dbm")]
         RssiDbmValue,
-
-        #[cfg(feature = "rx_rsnr")]
         RsnrValue,*/
         StickOverlayLeft,
         StickOverlayRight,
@@ -424,6 +424,8 @@ pub static OSD_ELEMENT_DISPLAY_ORDER: &[OsdElementId] = {
 };
 
 #[allow(clippy::unused_self)]
+/// Draw functions return false if the element is not fully rendered and requires more draw steps to complete the drawing.
+/// Used by complex elements like `draw_artificial_horizon` that require multi-step drawing.
 impl OsdElement {
     fn draw_nothing(&self) -> bool {
         false
@@ -431,7 +433,7 @@ impl OsdElement {
 
     fn draw_rssi(&mut self) -> bool {
         let rssi = 88;
-        _ = write!(self.buf, "{}{:2}", OsdSymbols::RSSI, rssi);
+        _ = write!(self.fixed_buf, "{}{:2}", OsdSymbols::RSSI, rssi);
         true
     }
 
@@ -444,8 +446,8 @@ impl OsdElement {
         // TODO: calculate battery bars from the battery data
         //let remaining_capacity_bars = 4;
         // Setup the boundaries
-        self.buf[0] = OsdSymbols::PB_START;
-        self.buf[USAGE_STEPS + 1] = OsdSymbols::PB_CLOSE;
+        self.fixed_buf[0] = OsdSymbols::PB_START;
+        self.fixed_buf[USAGE_STEPS + 1] = OsdSymbols::PB_CLOSE;
 
         // Fill the battery bar using an iterator slice
         /*let range = 1..=USAGE_STEPS;
@@ -461,10 +463,10 @@ impl OsdElement {
     }
 
     fn draw_crosshairs(&mut self) -> bool {
-        self.buf[0] = OsdSymbols::AH_CENTER_LINE;
-        self.buf[1] = OsdSymbols::AH_CENTER;
-        self.buf[2] = OsdSymbols::AH_CENTER_LINE_RIGHT;
-        self.buf[3] = 0;
+        self.fixed_buf[0] = OsdSymbols::AH_CENTER_LINE;
+        self.fixed_buf[1] = OsdSymbols::AH_CENTER;
+        self.fixed_buf[2] = OsdSymbols::AH_CENTER_LINE_RIGHT;
+        self.fixed_buf[3] = 0;
         true
     }
 
@@ -489,25 +491,25 @@ impl OsdElement {
         }
         pitch_angle -= 4 * AH_SYMBOL_COUNT + 5;
 
-        let y: i32 = (-roll_angle * self.horizon_x) / 64 - pitch_angle;
+        let y: i32 = (-roll_angle * self.state.horizon_x) / 64 - pitch_angle;
         #[allow(clippy::cast_possible_truncation)]
         if (0..=81).contains(&y) {
-            self.offset_x = self.horizon_x.cast_unsigned() as u8;
+            self.offset_x = self.state.horizon_x.cast_unsigned() as u8;
             self.offset_y = (y / AH_SYMBOL_COUNT).cast_unsigned() as u8;
 
-            self.buf[0] = OsdSymbols::AH_BAR9_0 + (y % AH_SYMBOL_COUNT).cast_unsigned() as u8;
+            self.fixed_buf[0] = OsdSymbols::AH_BAR9_0 + (y % AH_SYMBOL_COUNT).cast_unsigned() as u8;
             self.draw_element = true;
         } else {
             self.draw_element = false; // element does not need to be rendered
         }
 
-        if self.horizon_x == 4 {
+        if self.state.horizon_x == 4 {
             // Rendering is complete, so prepare to start again
-            self.horizon_x = -4;
+            self.state.horizon_x = -4;
         } else {
             // Rendering not yet complete
             self.rendered = false;
-            self.horizon_x += 1;
+            self.state.horizon_x += 1;
         }
         self.draw_element
     }
@@ -527,7 +529,7 @@ impl OsdElement {
     #[cfg(feature = "battery")]
     fn draw_current_draw<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
         let amperage = draw_context.battery_message.current.amperage_x100;
-        _ = write!(self.buf, "{:3}{}", amperage, OsdSymbols::AMP);
+        _ = write!(self.fixed_buf, "{:3}{}", amperage, OsdSymbols::AMP);
         true
     }
 
@@ -537,19 +539,19 @@ impl OsdElement {
         if mah_drawn >= self.osd_cap_alarm.into() {
             self.attr = DisplayPortSeverity::Normal;
         }
-        _ = write!(self.buf, "{:4}{}", mah_drawn, OsdSymbols::MAH);
+        _ = write!(self.fixed_buf, "{:4}{}", mah_drawn, OsdSymbols::MAH);
         true
     }
 
     fn draw_altitude(&mut self) -> bool {
-        self.buf[0] = OsdSymbols::ALTITUDE;
-        self.buf[1] = OsdSymbols::HYPHEN;
-        self.buf[2] = 0;
+        self.fixed_buf[0] = OsdSymbols::ALTITUDE;
+        self.fixed_buf[1] = OsdSymbols::HYPHEN;
+        self.fixed_buf[2] = 0;
         true
     }
 
     pub fn format_pid(&mut self, label: &str, pid: PidConfig) {
-        _ = write!(self.buf, "{} {:3} {:3} {:3} {:3} {:3}", label, pid.kp, pid.ki, pid.kd, pid.ks, pid.kk);
+        _ = write!(self.fixed_buf, "{} {:3} {:3} {:3} {:3} {:3}", label, pid.kp, pid.ki, pid.kd, pid.ks, pid.kk);
     }
 
     async fn draw_roll_pids(&mut self) -> bool {
@@ -581,20 +583,20 @@ impl OsdElement {
 
     fn draw_debug(&mut self) -> bool {
         let debug = GLOBAL_DEBUG.values();
-        _ = write!(self.buf, "DBG {:5} {:5} {:5} {:5}", debug[0], debug[1], debug[2], debug[3]);
+        _ = write!(self.fixed_buf, "DBG {:5} {:5} {:5} {:5}", debug[0], debug[1], debug[2], debug[3]);
         true
     }
 
     fn draw_debug2(&mut self) -> bool {
         let debug = GLOBAL_DEBUG.values();
-        _ = write!(self.buf, "DBG {:5} {:5} {:5} {:5}", debug[4], debug[5], debug[6], debug[7]);
+        _ = write!(self.fixed_buf, "DBG {:5} {:5} {:5} {:5}", debug[4], debug[5], debug[6], debug[7]);
         true
     }
 
     fn draw_pitch_angle(&mut self, angle_degrees: i32) -> bool {
         let sign_char = if angle_degrees < 0 { '-' } else { ' ' };
         let angle_abs = angle_degrees.unsigned_abs(); // Converts to unsigned, avoiding negation overflow
-        _ = write!(self.buf, "{}{}{:02}", OsdSymbols::ROLL, sign_char, angle_abs);
+        _ = write!(self.fixed_buf, "{}{}{:02}", OsdSymbols::ROLL, sign_char, angle_abs);
         true
     }
 
@@ -602,7 +604,7 @@ impl OsdElement {
         // floor is supported natively on ARM Cortex-M, round is not
         let sign_char = if angle_degrees < 0 { '-' } else { ' ' };
         let angle_abs = angle_degrees.unsigned_abs(); // Converts to unsigned, avoiding negation overflow
-        _ = write!(self.buf, "{}{}{:02}", OsdSymbols::ROLL, sign_char, angle_abs);
+        _ = write!(self.fixed_buf, "{}{}{:02}", OsdSymbols::ROLL, sign_char, angle_abs);
         true
     }
 
@@ -638,7 +640,7 @@ impl OsdElement {
     }
 
     fn draw_numerical_heading(&mut self, angle_degrees: i32) -> bool {
-        _ = write!(self.buf, "{}{:03}", Self::direction_symbol_from_heading(angle_degrees), angle_degrees);
+        _ = write!(self.fixed_buf, "{}{:03}", Self::direction_symbol_from_heading(angle_degrees), angle_degrees);
         true
     }
 
@@ -650,6 +652,10 @@ impl OsdElement {
         if draw_context.active_modes.test(RcMode::ANTIGRAVITY) {
             self.write_string("AG");
         }
+        true
+    }
+
+    fn draw_stick_overlay(&mut self) -> bool {
         true
     }
 
@@ -668,48 +674,48 @@ impl OsdElement {
         const AH_SIDEBAR_WIDTH_POS: u8 = 7;
         const AH_SIDEBAR_HEIGHT_POS: i8 = 3;
 
-        self.sidebar_render_level = false;
-        self.sidebar_y = -AH_SIDEBAR_HEIGHT_POS;
+        self.state.sidebar_render_level = false;
+        self.state.sidebar_y = -AH_SIDEBAR_HEIGHT_POS;
         // Draw AH sides
         let hud_width = AH_SIDEBAR_WIDTH_POS;
         let hud_height = AH_SIDEBAR_HEIGHT_POS;
 
-        if self.sidebar_render_level {
+        if self.state.sidebar_render_level {
             // AH level indicators
-            _ = draw_context.display_port.write_char(
+            _ = draw_context.display_port.write_byte(
                 self.pos_x - hud_width + 1,
                 self.pos_y,
                 OsdSymbols::AH_LEFT,
                 DisplayPortSeverity::Normal,
             );
-            _ = draw_context.display_port.write_char(
+            _ = draw_context.display_port.write_byte(
                 self.pos_x + hud_width - 1,
                 self.pos_y,
                 OsdSymbols::AH_RIGHT,
                 DisplayPortSeverity::Normal,
             );
-            self.sidebar_render_level = false;
+            self.state.sidebar_render_level = false;
         } else {
-            _ = draw_context.display_port.write_char(
+            _ = draw_context.display_port.write_byte(
                 self.pos_x - hud_width,
-                (self.pos_y.cast_signed() + self.sidebar_y).cast_unsigned(),
+                (self.pos_y.cast_signed() + self.state.sidebar_y).cast_unsigned(),
                 OsdSymbols::AH_DECORATION,
                 DisplayPortSeverity::Normal,
             );
-            _ = draw_context.display_port.write_char(
+            _ = draw_context.display_port.write_byte(
                 self.pos_x + hud_width,
-                (self.pos_y.cast_signed() + self.sidebar_y).cast_unsigned(),
+                (self.pos_y.cast_signed() + self.state.sidebar_y).cast_unsigned(),
                 OsdSymbols::AH_DECORATION,
                 DisplayPortSeverity::Normal,
             );
 
-            if self.sidebar_y == hud_height {
+            if self.state.sidebar_y == hud_height {
                 // Rendering is complete, so prepare to start again
-                self.sidebar_y = -hud_height;
+                self.state.sidebar_y = -hud_height;
                 // On next pass render the level markers
-                self.sidebar_render_level = true;
+                self.state.sidebar_render_level = true;
             } else {
-                self.sidebar_y += 1;
+                self.state.sidebar_y += 1;
             }
             // Rendering not yet complete
             self.rendered = false;
@@ -727,7 +733,7 @@ impl OsdElement {
         if pilot_config.craft_name.length == 0 {
             self.write_string("CRAFT_NAME");
         } else {
-            self.write_slice(pilot_config.craft_name.as_bytes());
+            self.write_slice(pilot_config.craft_name.as_slice());
         }
         true
     }
@@ -736,26 +742,26 @@ impl OsdElement {
         const OSD_STICK_OVERLAY_WIDTH: usize = 7;
         const OSD_STICK_OVERLAY_HEIGHT: u8 = 5;
 
-        if self.stick_overlay_render_phase == OsdStickOverlayRenderPhase::Vertical {
-            self.buf[0] = OsdSymbols::STICK_OVERLAY_VERTICAL;
-            self.offset_y = self.stick_overlay_y;
-            self.stick_overlay_y += 1;
-            if self.stick_overlay_y == (OSD_STICK_OVERLAY_HEIGHT - 1) / 2 {
+        if self.state.stick_overlay_render_phase == OsdStickOverlayRenderPhase::Vertical {
+            self.fixed_buf[0] = OsdSymbols::STICK_OVERLAY_VERTICAL;
+            self.offset_y = self.state.stick_overlay_y;
+            self.state.stick_overlay_y += 1;
+            if self.state.stick_overlay_y == (OSD_STICK_OVERLAY_HEIGHT - 1) / 2 {
                 // Skip over horizontal
-                self.stick_overlay_y += 1;
+                self.state.stick_overlay_y += 1;
             }
-            if self.stick_overlay_y == OSD_STICK_OVERLAY_HEIGHT {
-                self.stick_overlay_y = 0;
-                self.stick_overlay_render_phase = OsdStickOverlayRenderPhase::Horizontal;
+            if self.state.stick_overlay_y == OSD_STICK_OVERLAY_HEIGHT {
+                self.state.stick_overlay_y = 0;
+                self.state.stick_overlay_render_phase = OsdStickOverlayRenderPhase::Horizontal;
             }
             self.rendered = false;
         } else {
-            self.buf.buf[..OSD_STICK_OVERLAY_WIDTH].fill(OsdSymbols::STICK_OVERLAY_HORIZONTAL);
-            self.buf[(OSD_STICK_OVERLAY_WIDTH - 1) / 2] = OsdSymbols::STICK_OVERLAY_CENTER;
-            self.buf[OSD_STICK_OVERLAY_WIDTH] = 0; // string terminator
+            self.fixed_buf.bytes[..OSD_STICK_OVERLAY_WIDTH].fill(OsdSymbols::STICK_OVERLAY_HORIZONTAL);
+            self.fixed_buf[(OSD_STICK_OVERLAY_WIDTH - 1) / 2] = OsdSymbols::STICK_OVERLAY_CENTER;
+            self.fixed_buf[OSD_STICK_OVERLAY_WIDTH] = 0; // string terminator
 
             self.offset_y = (OSD_STICK_OVERLAY_HEIGHT - 1) / 2;
-            self.stick_overlay_render_phase = OsdStickOverlayRenderPhase::Vertical;
+            self.state.stick_overlay_render_phase = OsdStickOverlayRenderPhase::Vertical;
         }
         true
     }
@@ -768,7 +774,7 @@ impl OsdElement {
         if pilot_config.craft_name.length == 0 {
             self.write_string("PILOT_NAME");
         } else {
-            self.write_slice(pilot_config.pilot_name.as_bytes());
+            self.write_slice(pilot_config.pilot_name.as_slice());
         }
         true
     }
@@ -788,45 +794,45 @@ impl OsdElement {
         let width = osd_config.camera_frame_width.clamp(OSD_CAMERA_FRAME_MIN_WIDTH, OSD_CAMERA_FRAME_MAX_WIDTH);
         let height = osd_config.camera_frame_height.clamp(OSD_CAMERA_FRAME_MIN_HEIGHT, OSD_CAMERA_FRAME_MAX_HEIGHT);
 
-        if self.camera_frame_render_phase != OsdStickCameraFrameRenderPhase::Bottom {
+        if self.state.camera_frame_render_phase != OsdStickCameraFrameRenderPhase::Bottom {
             // Rendering not yet complete
             self.rendered = false;
         }
 
-        if self.camera_frame_render_phase == OsdStickCameraFrameRenderPhase::Middle {
-            self.camera_frame_i = 1;
+        if self.state.camera_frame_render_phase == OsdStickCameraFrameRenderPhase::Middle {
+            self.state.camera_frame_i = 1;
 
-            _ = draw_context.display_port.write_char(
+            _ = draw_context.display_port.write_byte(
                 xpos,
-                ypos + self.camera_frame_i,
+                ypos + self.state.camera_frame_i,
                 OsdSymbols::STICK_OVERLAY_VERTICAL,
                 DisplayPortSeverity::Normal,
             );
-            _ = draw_context.display_port.write_char(
+            _ = draw_context.display_port.write_byte(
                 xpos + width - 1,
-                ypos + self.camera_frame_i,
+                ypos + self.state.camera_frame_i,
                 OsdSymbols::STICK_OVERLAY_VERTICAL,
                 DisplayPortSeverity::Normal,
             );
 
             self.draw_element = false; // element already drawn
 
-            self.camera_frame_i += 1;
-            if self.camera_frame_i == height {
-                self.camera_frame_i = 1;
-                self.camera_frame_render_phase = OsdStickCameraFrameRenderPhase::Bottom;
+            self.state.camera_frame_i += 1;
+            if self.state.camera_frame_i == height {
+                self.state.camera_frame_i = 1;
+                self.state.camera_frame_render_phase = OsdStickCameraFrameRenderPhase::Bottom;
             }
         } else {
-            self.buf[0] = OsdSymbols::STICK_OVERLAY_CENTER;
-            self.buf[1..(width as usize - 1)].fill(OsdSymbols::STICK_OVERLAY_HORIZONTAL);
-            self.buf[width as usize - 1] = OsdSymbols::STICK_OVERLAY_CENTER;
-            self.buf[width as usize] = 0; // string terminator
+            self.fixed_buf[0] = OsdSymbols::STICK_OVERLAY_CENTER;
+            self.fixed_buf[1..(width as usize - 1)].fill(OsdSymbols::STICK_OVERLAY_HORIZONTAL);
+            self.fixed_buf[width as usize - 1] = OsdSymbols::STICK_OVERLAY_CENTER;
+            self.fixed_buf[width as usize] = 0; // string terminator
 
-            if self.camera_frame_render_phase == OsdStickCameraFrameRenderPhase::Top {
-                self.camera_frame_render_phase = OsdStickCameraFrameRenderPhase::Middle;
+            if self.state.camera_frame_render_phase == OsdStickCameraFrameRenderPhase::Top {
+                self.state.camera_frame_render_phase = OsdStickCameraFrameRenderPhase::Middle;
             } else {
                 self.offset_y = height - 1;
-                self.camera_frame_render_phase = OsdStickCameraFrameRenderPhase::Top;
+                self.state.camera_frame_render_phase = OsdStickCameraFrameRenderPhase::Top;
             }
         }
         true

@@ -13,13 +13,13 @@ use serde::{
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FixedBuf<const N: usize> {
-    pub buf: [u8; N],
+    pub bytes: [u8; N],
     pub length: usize,
 }
 
 impl<const N: usize> FixedBuf<N> {
     pub const fn new() -> Self {
-        Self { buf: [0u8; N], length: 0 }
+        Self { bytes: [0u8; N], length: 0 }
     }
 }
 
@@ -36,29 +36,29 @@ impl<const N: usize> FixedBuf<N> {
         self.length = 0;
     }
     /// Returns a slice of the active raw bytes.
-    pub fn as_bytes(&self) -> &[u8] {
-        &self.buf[..self.length]
+    pub fn as_slice(&self) -> &[u8] {
+        &self.bytes[..self.length]
     }
 
     /// Returns a mutable slice of the active raw bytes.
-    pub fn as_bytes_mut(&mut self) -> &mut [u8] {
-        &mut self.buf[..self.length]
+    pub fn as_slice_mut(&mut self) -> &mut [u8] {
+        &mut self.bytes[..self.length]
     }
 
     /// Returns a valid string slice (&str).
     /// Returns an Err if the data isn't valid UTF-8.
     pub fn as_str(&self) -> Result<&str, core::str::Utf8Error> {
-        core::str::from_utf8(self.as_bytes())
+        core::str::from_utf8(self.as_slice())
     }
 
     /// Returns None if index is out of bounds.
     pub fn get(&self, index: usize) -> Option<&u8> {
-        if index < self.length { Some(&self.buf[index]) } else { None }
+        if index < self.length { Some(&self.bytes[index]) } else { None }
     }
 
     // Mutable Getter: Use this to update a single byte safely
     pub fn get_mut(&mut self, index: usize) -> Option<&mut u8> {
-        if index < self.length { Some(&mut self.buf[index]) } else { None }
+        if index < self.length { Some(&mut self.bytes[index]) } else { None }
     }
 
     /// Fills a specific range of the active buffer with a single byte value.
@@ -85,7 +85,7 @@ impl<const N: usize> FixedBuf<N> {
         }
 
         // 3. Perform the fill operations safely without panicking
-        self.buf[start..end].fill(value);
+        self.bytes[start..end].fill(value);
         Ok(())
     }
 }
@@ -93,14 +93,14 @@ impl<const N: usize> FixedBuf<N> {
 /// Allows referencing `FixedBuf` directly as a byte slice: &[u8].
 impl<const N: usize> AsRef<[u8]> for FixedBuf<N> {
     fn as_ref(&self) -> &[u8] {
-        self.as_bytes()
+        self.as_slice()
     }
 }
 
 /// Allows referencing `FixedBuf` directly as a mutable byte slice: &mut [u8].
 impl<const N: usize> AsMut<[u8]> for FixedBuf<N> {
     fn as_mut(&mut self) -> &mut [u8] {
-        self.as_bytes_mut()
+        self.as_slice_mut()
     }
 }
 
@@ -111,7 +111,7 @@ impl<const N: usize> Index<usize> for FixedBuf<N> {
     fn index(&self, index: usize) -> &Self::Output {
         // Asserting bounds against length ensures you don't read uninitialized trailing bytes
         assert!(index < self.length, "FixedBuf index out of bounds");
-        &self.buf[index]
+        &self.bytes[index]
     }
 }
 
@@ -119,7 +119,7 @@ impl<const N: usize> Index<usize> for FixedBuf<N> {
 impl<const N: usize> IndexMut<usize> for FixedBuf<N> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         assert!(index < self.length, "FixedBuf index out of bounds");
-        &mut self.buf[index]
+        &mut self.bytes[index]
     }
 }
 
@@ -130,7 +130,7 @@ impl<const N: usize> Index<Range<usize>> for FixedBuf<N> {
     fn index(&self, range: Range<usize>) -> &Self::Output {
         // Enforce safety: bounds check against active length, not the full capacity N
         assert!(range.end <= self.length, "FixedBuf slice index out of bounds");
-        &self.buf[range]
+        &self.bytes[range]
     }
 }
 
@@ -138,7 +138,7 @@ impl<const N: usize> Index<Range<usize>> for FixedBuf<N> {
 impl<const N: usize> IndexMut<Range<usize>> for FixedBuf<N> {
     fn index_mut(&mut self, range: Range<usize>) -> &mut Self::Output {
         assert!(range.end <= self.length, "FixedBuf slice index out of bounds");
-        &mut self.buf[range]
+        &mut self.bytes[range]
     }
 }
 
@@ -153,7 +153,7 @@ impl<const N: usize> Write for FixedBuf<N> {
         }
 
         // Copy incoming formatted string slice into our inline stack array
-        self.buf[self.length..self.length + bytes.len()].copy_from_slice(bytes);
+        self.bytes[self.length..self.length + bytes.len()].copy_from_slice(bytes);
         self.length += bytes.len();
         Ok(())
     }
@@ -167,7 +167,7 @@ impl<const N: usize> Serialize for FixedBuf<N> {
         S: Serializer,
     {
         // Only serialize the active part of the buffer (the valid slice)
-        serializer.serialize_bytes(self.as_bytes())
+        serializer.serialize_bytes(self.as_slice())
     }
 }
 
@@ -195,10 +195,10 @@ impl<'de, const N: usize> Deserialize<'de> for FixedBuf<N> {
                 if v.len() > M {
                     return Err(E::custom("buffer overflow: input data exceeds capacity"));
                 }
-                let mut fixed_buf = FixedBuf::new();
-                fixed_buf.buf[..v.len()].copy_from_slice(v);
-                fixed_buf.length = v.len();
-                Ok(fixed_buf)
+                let mut fixed_buffer = FixedBuf::new();
+                fixed_buffer.bytes[..v.len()].copy_from_slice(v);
+                fixed_buffer.length = v.len();
+                Ok(fixed_buffer)
             }
 
             // Fallback handler for generic data sequences (e.g. JSON arrays)
@@ -212,7 +212,7 @@ impl<'de, const N: usize> Deserialize<'de> for FixedBuf<N> {
                     if idx >= M {
                         return Err(serde::de::Error::custom("buffer overflow"));
                     }
-                    fixed_buf.buf[idx] = byte;
+                    fixed_buf.bytes[idx] = byte;
                     idx += 1;
                 }
                 fixed_buf.length = idx;

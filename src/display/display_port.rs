@@ -234,8 +234,8 @@ pub trait Display {
 
     fn heartbeat(&mut self) -> i32;
 
-    fn write_string(&mut self, x: u8, y: u8, text: &[u8], attr: DisplayPortSeverity) -> usize;
-    fn write_char(&mut self, x: u8, y: u8, c: u8, attr: DisplayPortSeverity) -> usize;
+    fn write_slice(&mut self, x: u8, y: u8, slice: &[u8], attr: DisplayPortSeverity) -> usize;
+    fn write_byte(&mut self, x: u8, y: u8, byte: u8, attr: DisplayPortSeverity) -> usize;
 
     fn layer_supported(&self, layer: DisplayPortLayer) -> bool;
     fn layer_select(&mut self, layer: DisplayPortLayer);
@@ -247,7 +247,7 @@ pub trait Display {
     fn check_ready(&self, val: bool) -> bool;
 
     async fn clear_screen(&mut self);
-    async fn draw_screen(&mut self) -> Result<bool, &'static str>;
+    async fn transfer_screen(&mut self) -> Result<bool, &'static str>;
     fn redraw(&self);
 }
 

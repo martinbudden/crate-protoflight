@@ -5,7 +5,7 @@ use vqm::Quaternionf32;
 
 use crate::{
     flight::ArmingFlags,
-    osd::{Osd, OsdDrawContext},
+    osd::{Osd, OsdDrawContext, OsdElements, OsdState},
     tasks::{
         gyro_pid_task::{GyroPidReceiver, SetpointReceiver},
         init::DisplayPortMutex,
@@ -43,10 +43,16 @@ pub struct OsdContext {
     #[cfg(feature = "rangefinder")]
     pub rangefinder_subscriber: RangefinderSubscriber,
     pub osd: Osd,
+    pub osd_state: OsdState,
+    /// Subsystem handling layout, tracking, and rendering of individual OSD items.
+    pub osd_elements: OsdElements,
 }
+
 impl OsdContext {
     #[rustfmt::skip]
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
+        display_supports_background_layer: bool,
         gyro_pid_receiver: GyroPidReceiver,
         setpoint_receiver: SetpointReceiver,
         #[cfg(feature = "barometer")] barometer_subscriber: BarometerSubscriber,
@@ -64,6 +70,8 @@ impl OsdContext {
             #[cfg(feature = "optical_flow")] optical_flow_subscriber,
             #[cfg(feature = "rangefinder")] rangefinder_subscriber,
             osd: Osd::new(),
+            osd_state: OsdState::default(),
+            osd_elements: OsdElements::new(display_supports_background_layer),
         }
     }
 }
@@ -155,8 +163,15 @@ pub async fn osd_task(ctx: &'static mut OsdContext, display_port_mutex: &'static
             };
 
             #[allow(clippy::cast_possible_truncation)]
-            let time_microseconds = embassy_time::Instant::now().as_micros() as u32;
-            ctx.osd.update_display(&mut draw_context, time_microseconds).await;
+            let time_us = embassy_time::Instant::now().as_micros() as u32;
+
+            if ctx.osd_state.start() {
+                while ctx.osd_state != OsdState::Idle {
+                    ctx.osd_state
+                        .update_display_iteration(&ctx.osd, &mut ctx.osd_elements, &mut draw_context, time_us)
+                        .await;
+                }
+            }
 
             // display_port_guard is automatically dropped at the end of this block,
             // releasing the Mutex lock for other tasks.
