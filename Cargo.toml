@@ -47,6 +47,7 @@ default = ["libm",
     "rtt-debug",
     "servos",
     "serde",
+    "vtx",
 ]
 #default = ["rp2350", "libm", "blackbox", "max7456", "osd", "rpm_filters", "barometer", "gps", "msp", "autopilot", "rangefinder"]
 #default = ["rp2350", "libm", "max7456", "osd"]

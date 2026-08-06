@@ -5,4 +5,3 @@ mod config;
 mod video;
 
 pub use config::VtxConfig;
-pub use video::Vtx;

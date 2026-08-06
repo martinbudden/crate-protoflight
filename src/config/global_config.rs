@@ -45,7 +45,7 @@ use crate::sensors::RangefinderConfig;
 use motor_mixers::RpmNotchFilterBankConfig;
 
 #[cfg(feature = "vtx")]
-use crate::vtx::{Vtx, VtxConfig};
+use crate::vtx::VtxConfig;
 
 /// The global configuration is a global static protected by a mutex, since it is used by several tasks.
 /// A `CriticalSectionRawMutex` is used since we need to be safe across multiple executors and interrupts.
