@@ -148,30 +148,30 @@ impl OsdElements {
             FlyMode => osd_element.draw_fly_mode(),
             ThrottlePos => osd_element.draw_throttle_position(),
             #[cfg(feature = "vtx")]
-            VtxChannel => osd_element.draw_nothing(),
+            VtxChannel => osd_element.draw_vtx_channel(),
             #[cfg(feature = "battery")]
             CurrentDraw => osd_element.draw_current_draw(draw_context),
             #[cfg(feature = "battery")]
             MahDrawn => osd_element.draw_mah_drawn(draw_context),
 
             #[cfg(feature = "gps")]
-            GpsSpeed => osd_element.draw_nothing(),
+            GpsSpeed => osd_element.draw_gps_speed(),
             #[cfg(feature = "gps")]
-            GpsSats => osd_element.draw_nothing(),
+            GpsSats => osd_element.draw_gps_sats(),
 
             Altitude => osd_element.draw_altitude(),
             RollPids => osd_element.draw_roll_pids().await,
             PitchPids => osd_element.draw_pitch_pids().await,
             YawPids => osd_element.draw_yaw_pids().await,
-            Power => osd_element.draw_nothing(),
-            PidRateProfile => osd_element.draw_nothing(),
-            Warnings => osd_element.draw_nothing(),
-            AvgCellVoltage => osd_element.draw_nothing(),
+            Power => osd_element.draw_power(),
+            PidRateProfile => osd_element.draw_pid_rate_profile(),
+            Warnings => osd_element.draw_warnings(),
+            AvgCellVoltage => osd_element.draw_average_cell_voltage(),
 
             #[cfg(feature = "gps")]
-            GpsLon => osd_element.draw_nothing(),
+            GpsLon => osd_element.draw_gps_lon(),
             #[cfg(feature = "gps")]
-            GpsLat => osd_element.draw_nothing(),
+            GpsLat => osd_element.draw_gps_lat(),
 
             Debug => osd_element.draw_debug(),
             PitchAngle => osd_element.draw_pitch_angle(cache.pitch_angle_degrees),
@@ -180,58 +180,58 @@ impl OsdElements {
             Disarmed => osd_element.draw_disarmed(draw_context),
 
             #[cfg(feature = "gps")]
-            HomeDirection => osd_element.draw_nothing(),
+            HomeDirection => osd_element.draw_home_direction(),
             #[cfg(feature = "gps")]
-            HomeDistance => osd_element.draw_nothing(),
+            HomeDistance => osd_element.draw_home_distance(),
 
             NumericalHeading => osd_element.draw_numerical_heading(cache.yaw_angle_degrees),
-            NumericalVario => osd_element.draw_nothing(),
-            CompassBar => osd_element.draw_nothing(),
+            NumericalVario => osd_element.draw_numerical_vario(),
+            CompassBar => osd_element.draw_compass_bar(),
 
             #[cfg(feature = "dshot_telemetry")]
-            EscTemperature => osd_element.draw_nothing(),
+            EscTemperature => osd_element.draw_esc_temperature(),
             #[cfg(feature = "dshot_telemetry")]
-            EscRpm => osd_element.draw_nothing(),
+            EscRpm => osd_element.draw_esc_rpm(),
 
             RemainingTimeEstimate => osd_element.draw_remaining_time_estimate(),
-            RtcDatetime => osd_element.draw_nothing(),
-            AdjustmentRange => osd_element.draw_nothing(),
-            CoreTemperature => osd_element.draw_nothing(),
+            RtcDatetime => osd_element.draw_rtc_date_time(),
+            AdjustmentRange => osd_element.draw_adjustment_range(),
+            CoreTemperature => osd_element.draw_core_temperature(),
             AntiGravity => osd_element.draw_anti_gravity(draw_context),
-            GForce => osd_element.draw_nothing(),
-            MotorDiagnostics => osd_element.draw_nothing(),
+            GForce => osd_element.draw_g_force(),
+            MotorDiagnostics => osd_element.draw_motor_diagnostics(),
 
             #[cfg(feature = "blackbox")]
-            LogStatus => osd_element.draw_nothing(),
+            LogStatus => osd_element.draw_log_status(),
 
-            FlipArrow => osd_element.draw_nothing(),
-            LinkQuality => osd_element.draw_nothing(),
+            FlipArrow => osd_element.draw_flip_arrow(),
+            LinkQuality => osd_element.draw_link_quality(),
 
             #[cfg(feature = "gps")]
-            FlightDistance => osd_element.draw_nothing(),
+            FlightDistance => osd_element.draw_flight_distance(),
 
             StickOverlayLeft | StickOverlayRight => osd_element.draw_stick_overlay(),
 
             #[cfg(feature = "dshot_telemetry")]
-            EscRpmFrequency => osd_element.draw_nothing(),
+            EscRpmFrequency => osd_element.draw_esc_rpm_frequency(),
 
-            RateProfileName => osd_element.draw_nothing(),
-            PidProfileName => osd_element.draw_nothing(),
-            ProfileName => osd_element.draw_nothing(),
-            RssiDbmValue => osd_element.draw_nothing(),
-            RcChannels => osd_element.draw_nothing(),
+            RateProfileName => osd_element.draw_rate_profile_name(),
+            PidProfileName => osd_element.draw_pid_profile_name(),
+            ProfileName => osd_element.draw_profile_name(),
+            RssiDbmValue => osd_element.draw_rssi_dmb_value(),
+            RcChannels => osd_element.draw_rc_channels(),
 
             #[cfg(feature = "gps")]
-            Efficiency => osd_element.draw_nothing(),
+            Efficiency => osd_element.draw_efficiency(),
 
-            TotalFlights => osd_element.draw_nothing(),
+            TotalFlights => osd_element.draw_total_flights(),
             UpDownReference => osd_element.draw_up_down_reference(),
-            TxUplinkPower => osd_element.draw_nothing(),
-            WattHoursDrawn => osd_element.draw_nothing(),
-            AuxValue => osd_element.draw_nothing(),
-            ReadyMode => osd_element.draw_nothing(),
-            RsnrValue => osd_element.draw_nothing(),
-            SysGoggleVoltage => osd_element.draw_nothing(),
+            TxUplinkPower => osd_element.draw_tx_uplink_power(),
+            WattHoursDrawn => osd_element.draw_watt_hours_drawn(),
+            AuxValue => osd_element.draw_aux_value(),
+            ReadyMode => osd_element.draw_ready_mode(),
+            RsnrValue => osd_element.draw_rsnr_value(),
+            /*SysGoggleVoltage => osd_element.draw_nothing(),
             SysVtxVoltage => osd_element.draw_nothing(),
             SysBitrate => osd_element.draw_nothing(),
             SysDelay => osd_element.draw_nothing(),
@@ -241,25 +241,23 @@ impl OsdElements {
             SysVtxDvr => osd_element.draw_nothing(),
             SysWarnings => osd_element.draw_nothing(),
             SysVtxTemperature => osd_element.draw_nothing(),
-            SysFanSpeed => osd_element.draw_nothing(),
+            SysFanSpeed => osd_element.draw_nothing(),*/
 
             #[cfg(feature = "gps")]
-            GpsLapTimeCurrent => osd_element.draw_nothing(),
+            GpsLapTimeCurrent => osd_element.draw_lap_time_current(),
             #[cfg(feature = "gps")]
-            GpsLapTimePrevious => osd_element.draw_nothing(),
+            GpsLapTimePrevious => osd_element.draw_lap_time_previous(),
             #[cfg(feature = "gps")]
-            GpsLapTimeBest3 => osd_element.draw_nothing(),
+            GpsLapTimeBest3 => osd_element.draw_lap_time_best3(),
             Debug2 => osd_element.draw_debug2(),
             CustomMsg0 | CustomMsg1 | CustomMsg2 | CustomMsg3 => osd_element.draw_custom_message(),
             #[cfg(feature = "rangefinder")]
-            LidarDistance => osd_element.draw_nothing(),
-            CustomSerialText => osd_element.draw_nothing(),
-            BatteryProfileName => osd_element.draw_nothing(),
+            LidarDistance => osd_element.draw_lidar_distance(),
+            CustomSerialText => osd_element.draw_custom_serial_text(),
+            BatteryProfileName => osd_element.draw_battery_profile_name(),
 
             // only drawn in background
-            CraftName => osd_element.draw_nothing(), // do nothing, since only drawn in background
-            PilotName => osd_element.draw_nothing(), // do nothing, since only drawn in background
-            HorizonSidebars => osd_element.draw_nothing(), // do nothing, since only drawn in background
+            CraftName|PilotName|HorizonSidebars => osd_element.draw_nothing(), // do nothing, since only drawn in background
             _ => osd_element.draw_nothing(),
         };
         (drawn, osd_element.rendered)
@@ -526,6 +524,11 @@ impl OsdElement {
         true
     }
 
+    #[cfg(feature = "vtx")]
+    fn draw_vtx_channel(&mut self) -> bool {
+        true
+    }
+
     #[cfg(feature = "battery")]
     fn draw_current_draw<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
         let amperage = draw_context.battery_message.current.amperage_x100;
@@ -540,6 +543,16 @@ impl OsdElement {
             self.attr = DisplayPortSeverity::Normal;
         }
         _ = write!(self.fixed_buf, "{:4}{}", mah_drawn, OsdSymbols::MAH);
+        true
+    }
+
+    #[cfg(feature = "gps")]
+    fn draw_gps_speed(&mut self) -> bool {
+        true
+    }
+
+    #[cfg(feature = "gps")]
+    fn draw_gps_sats(&mut self) -> bool {
         true
     }
 
@@ -581,6 +594,32 @@ impl OsdElement {
         true
     }
 
+    fn draw_power(&mut self) -> bool {
+        true
+    }
+
+    fn draw_pid_rate_profile(&mut self) -> bool {
+        true
+    }
+
+    fn draw_warnings(&mut self) -> bool {
+        true
+    }
+
+    fn draw_average_cell_voltage(&mut self) -> bool {
+        true
+    }
+
+    #[cfg(feature = "gps")]
+    fn draw_gps_lon(&mut self) -> bool {
+        true
+    }
+
+    #[cfg(feature = "gps")]
+    fn draw_gps_lat(&mut self) -> bool {
+        true
+    }
+
     fn draw_debug(&mut self) -> bool {
         let debug = GLOBAL_DEBUG.values();
         _ = write!(self.fixed_buf, "DBG {:5} {:5} {:5} {:5}", debug[0], debug[1], debug[2], debug[3]);
@@ -618,6 +657,16 @@ impl OsdElement {
         true
     }
 
+    #[cfg(feature = "gps")]
+    fn draw_home_direction(&mut self) -> bool {
+        true
+    }
+
+    #[cfg(feature = "gps")]
+    fn draw_home_distance(&mut self) -> bool {
+        true
+    }
+
     fn direction_symbol_from_heading(heading_degrees: i32) -> u8 {
         let heading_degrees = heading_degrees + 360; // Ensure positive value
 
@@ -639,12 +688,42 @@ impl OsdElement {
         OsdSymbols::ARROW_SOUTH + heading
     }
 
+    fn draw_numerical_vario(&mut self) -> bool {
+        true
+    }
+
+    fn draw_compass_bar(&mut self) -> bool {
+        true
+    }
+
+    #[cfg(feature = "dshot_telemetry")]
+    fn draw_esc_temperature(&mut self) -> bool {
+        true
+    }
+
+    #[cfg(feature = "dshot_telemetry")]
+    fn draw_esc_rpm(&mut self) -> bool {
+        true
+    }
+
     fn draw_numerical_heading(&mut self, angle_degrees: i32) -> bool {
         _ = write!(self.fixed_buf, "{}{:03}", Self::direction_symbol_from_heading(angle_degrees), angle_degrees);
         true
     }
 
     fn draw_remaining_time_estimate(&mut self) -> bool {
+        true
+    }
+
+    fn draw_rtc_date_time(&mut self) -> bool {
+        true
+    }
+
+    fn draw_adjustment_range(&mut self) -> bool {
+        true
+    }
+
+    fn draw_core_temperature(&mut self) -> bool {
         true
     }
 
@@ -655,7 +734,66 @@ impl OsdElement {
         true
     }
 
+    fn draw_g_force(&mut self) -> bool {
+        true
+    }
+
+    fn draw_motor_diagnostics(&mut self) -> bool {
+        true
+    }
+
+    #[cfg(feature = "blackbox")]
+    fn draw_log_status(&mut self) -> bool {
+        true
+    }
+
+    fn draw_flip_arrow(&mut self) -> bool {
+        true
+    }
+
+    fn draw_link_quality(&mut self) -> bool {
+        true
+    }
+
+    #[cfg(feature = "gps")]
+    fn draw_flight_distance(&mut self) -> bool {
+        true
+    }
+
     fn draw_stick_overlay(&mut self) -> bool {
+        true
+    }
+
+    #[cfg(feature = "dshot_telemetry")]
+    fn draw_esc_rpm_frequency(&mut self) -> bool {
+        true
+    }
+
+    fn draw_rate_profile_name(&mut self) -> bool {
+        true
+    }
+
+    fn draw_pid_profile_name(&mut self) -> bool {
+        true
+    }
+
+    fn draw_profile_name(&mut self) -> bool {
+        true
+    }
+
+    fn draw_rssi_dmb_value(&mut self) -> bool {
+        true
+    }
+
+    fn draw_rc_channels(&mut self) -> bool {
+        true
+    }
+    #[cfg(feature = "gps")]
+    fn draw_efficiency(&mut self) -> bool {
+        true
+    }
+
+    fn draw_total_flights(&mut self) -> bool {
         true
     }
 
@@ -663,9 +801,58 @@ impl OsdElement {
         true
     }
 
+    fn draw_tx_uplink_power(&mut self) -> bool {
+        true
+    }
+
+    fn draw_watt_hours_drawn(&mut self) -> bool {
+        true
+    }
+
+    fn draw_aux_value(&mut self) -> bool {
+        true
+    }
+
+    fn draw_ready_mode(&mut self) -> bool {
+        true
+    }
+
+    fn draw_rsnr_value(&mut self) -> bool {
+        true
+    }
+
+    #[cfg(feature = "gps")]
+    fn draw_lap_time_current(&mut self) -> bool {
+        true
+    }
+
+    #[cfg(feature = "gps")]
+    fn draw_lap_time_previous(&mut self) -> bool {
+        true
+    }
+
+    #[cfg(feature = "gps")]
+    fn draw_lap_time_best3(&mut self) -> bool {
+        true
+    }
+
     fn draw_custom_message(&mut self) -> bool {
         true
     }
+
+    #[cfg(feature = "rangefinder")]
+    fn draw_lidar_distance(&mut self) -> bool {
+        true
+    }
+
+    fn draw_custom_serial_text(&mut self) -> bool {
+        true
+    }
+
+    fn draw_battery_profile_name(&mut self) -> bool {
+        true
+    }
+
 }
 
 // element background drawing functions
