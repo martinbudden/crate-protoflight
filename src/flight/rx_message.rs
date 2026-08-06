@@ -13,9 +13,10 @@ pub struct RcControls {
     pub yaw_stick_dps: f32,
     pub roll_stick_degrees: f32,
     pub pitch_stick_degrees: f32,
+    pub controls_pwm: [u16; 4],
     pub failsafe: u8,
 }
-const _: () = assert!(core::mem::size_of::<RcControls>() == 32);
+const _: () = assert!(core::mem::size_of::<RcControls>() == 40);
 
 impl Default for RcControls {
     fn default() -> Self {
@@ -33,6 +34,7 @@ impl RcControls {
             yaw_stick_dps: 0.0,
             roll_stick_degrees: 0.0,
             pitch_stick_degrees: 0.0,
+            controls_pwm: [0u16; 4],
             failsafe: 0,
         }
     }
@@ -43,9 +45,9 @@ impl RcControls {
 #[repr(C)]
 pub struct RxMessage {
     pub rc_modes: BitSet64,
-    pub controls: RcControls,
+    pub rc_controls: RcControls,
 }
-const _: () = assert!(core::mem::size_of::<RxMessage>() == 40);
+const _: () = assert!(core::mem::size_of::<RxMessage>() == 48);
 
 impl Default for RxMessage {
     fn default() -> Self {
@@ -55,7 +57,7 @@ impl Default for RxMessage {
 
 impl RxMessage {
     pub const fn new() -> Self {
-        Self { rc_modes: BitSet64::new(), controls: RcControls::new() }
+        Self { rc_modes: BitSet64::new(), rc_controls: RcControls::new() }
     }
 }
 
@@ -79,7 +81,7 @@ impl RxMessage {
 
         RxMessage {
             rc_modes: rc_modes.active_modes,
-            controls: RcControls {
+            rc_controls: RcControls {
                 tick_count,
 
                 throttle_stick: sticks.throttle,
@@ -88,6 +90,7 @@ impl RxMessage {
                 yaw_stick_dps,
                 roll_stick_degrees,
                 pitch_stick_degrees,
+                controls_pwm: [rx_frame.channels[0], rx_frame.channels[1], rx_frame.channels[2], rx_frame.channels[3]],
 
                 failsafe,
             },
@@ -108,6 +111,6 @@ mod tests {
     }
     #[test]
     fn sizeof() {
-        assert_eq!(40, core::mem::size_of::<RxMessage>());
+        assert_eq!(48, core::mem::size_of::<RxMessage>());
     }
 }

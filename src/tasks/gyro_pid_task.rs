@@ -159,7 +159,7 @@ pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext) {
 
         // If there are new control values from the radio, then use them.
         if let Some(rx_message) = ctx.rx_receiver.try_changed() {
-            ctx.rc_controls = rx_message.controls;
+            ctx.rc_controls = rx_message.rc_controls;
             ctx.rc_modes = rx_message.rc_modes;
         }
 

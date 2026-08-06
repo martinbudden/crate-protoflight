@@ -7,7 +7,7 @@ use crate::{
         Display, DisplayPort, DisplayPortDeviceType,
         DisplayPortLayer::{self, Background},
     },
-    osd::{Osd, OsdDrawContext, elements::OsdElements},
+    osd::{OsdConfig, OsdDrawContext, elements::OsdElements},
 };
 
 #[allow(unused)]
@@ -94,31 +94,32 @@ impl OsdState {
     #[allow(clippy::too_many_lines)]
     pub async fn update_display_iteration<D: Display>(
         &mut self,
-        osd: &Osd,
         osd_elements: &mut OsdElements,
-        draw_ctx: &mut OsdDrawContext<'_, D>,
+        draw_ctx: &mut OsdDrawContext,
+        display_port: &mut D,
+        osd_config: &OsdConfig,
         time_us: u32,
     ) {
         *self = match core::mem::take(self) {
             Self::Init => {
-                if draw_ctx.display_port.check_ready(false) {
-                    draw_ctx.display_port.begin_transaction(DisplayPort::DISPLAY_TRANSACTION_OPTION_RESET_DRAWING);
+                if display_port.check_ready(false) {
+                    display_port.begin_transaction(DisplayPort::DISPLAY_TRANSACTION_OPTION_RESET_DRAWING);
                     self.draw_logo_and_complete_initialization();
                     Self::Commit
                 } else {
                     // Frsky OSD needs a display redraw after search for MAX7456 devices
-                    if draw_ctx.display_port.device_type() == DisplayPortDeviceType::FrskyOsd {
-                        draw_ctx.display_port.redraw();
+                    if display_port.device_type() == DisplayPortDeviceType::FrskyOsd {
+                        display_port.redraw();
                     }
                     Self::Init
                 }
             }
             Self::Start => {
                 // don't touch buffers if DMA transaction is in progress
-                if draw_ctx.display_port.is_transfer_in_progress() { Self::Start } else { Self::UpdateHeartbeat }
+                if display_port.is_transfer_in_progress() { Self::Start } else { Self::UpdateHeartbeat }
             }
             Self::UpdateHeartbeat => {
-                if draw_ctx.display_port.heartbeat() != 0 {
+                if display_port.heartbeat() != 0 {
                     // Extraordinary action was taken, so return without allowing state_duration_fraction_us table to be updated
                     return;
                 }
@@ -126,7 +127,7 @@ impl OsdState {
             }
             Self::ProcessStats1 => {
                 // transaction begins here since RefreshStats draws to the screen
-                draw_ctx.display_port.begin_transaction(DisplayPort::DISPLAY_TRANSACTION_OPTION_RESET_DRAWING);
+                display_port.begin_transaction(DisplayPort::DISPLAY_TRANSACTION_OPTION_RESET_DRAWING);
                 if self.process_stats1(time_us) { Self::RefreshStats } else { Self::ProcessStats2 }
             }
             Self::RefreshStats => {
@@ -144,29 +145,30 @@ impl OsdState {
             Self::ProcessStats3 => {
                 self.process_stats3();
                 #[cfg(feature = "cms")]
-                if draw_ctx.display_port.is_grabbed() {
+                if display_port.is_grabbed() {
                     Self::Commit
                 }
                 Self::UpdateAlarms
             }
             Self::UpdateAlarms => {
                 self.update_alarms();
-                if osd.resume_refresh_at_us == 0 { Self::UpdateCanvas } else { Self::Transfer }
+                //if osd.resume_refresh_at_us == 0 { Self::UpdateCanvas } else { Self::Transfer }
+                Self::UpdateCanvas
             }
             Self::UpdateCanvas => {
-                if draw_ctx.active_modes.test(RcMode::OSD) {
+                if draw_ctx.rx_message.rc_modes.test(RcMode::OSD) {
                     // Hide OSD when OSD SW mode is active
-                    draw_ctx.display_port.clear_screen().await;
+                    display_port.clear_screen().await;
                     Self::Commit
                 } else {
-                    if draw_ctx.display_port.layer_supported(Background) {
+                    if display_port.layer_supported(Background) {
                         // Background layer is supported, overlay it onto the foreground
                         // so that we only need to draw the active parts of the elements.
-                        draw_ctx.display_port.layer_copy(DisplayPortLayer::Foreground, DisplayPortLayer::Background);
+                        display_port.layer_copy(DisplayPortLayer::Foreground, DisplayPortLayer::Background);
                     } else {
                         // Background layer not supported, just clear the foreground in preparation
                         // for drawing the elements including their backgrounds.
-                        draw_ctx.display_port.clear_screen().await;
+                        display_port.clear_screen().await;
                     }
                     self.sync_blink(time_us);
                     // update the orientation, so it is only needed to be calculated once for all elements that require it
@@ -197,14 +199,14 @@ impl OsdState {
                 // For complex elements (like the artificial horizon) this may take several steps.
 
                 //let active_element_index = osd_elements.active_element_index();*/
-                let more_to_draw = osd_elements.draw_current_element(draw_ctx).await;
+                let more_to_draw = osd_elements.draw_current_element(draw_ctx, display_port, osd_config).await;
 
                 // Display the part of the element we have drawn.
                 Self::DisplayCurrentElementStep { element_index, more_to_draw }
             }
             // DisplayElementStep copies the element buffer to the displayport buffer
             Self::DisplayCurrentElementStep { element_index, more_to_draw } => {
-                let more_to_display = osd_elements.display_current_element(draw_ctx.display_port);
+                let more_to_display = osd_elements.display_current_element(display_port);
                 if more_to_display {
                     // this element requires several steps display it , so display the next step
                     Self::DisplayCurrentElementStep { element_index, more_to_draw }
@@ -226,12 +228,13 @@ impl OsdState {
                 }
             }
             Self::Commit => {
-                draw_ctx.display_port.commit_transaction();
-                if osd.resume_refresh_at_us == 0 { Self::Transfer } else { Self::Idle }
+                display_port.commit_transaction();
+                //if osd.resume_refresh_at_us == 0 { Self::Transfer } else { Self::Idle }
+                Self::Transfer
             }
             Self::Transfer => {
                 // Transfer the display port buffer to the actual display port hardware
-                match draw_ctx.display_port.transfer_screen().await {
+                match display_port.transfer_screen().await {
                     Ok(still_transferring) => {
                         if still_transferring {
                             // The transfer is not complete, so continue transferring

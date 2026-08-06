@@ -1,20 +1,17 @@
 #![cfg(feature = "osd")]
 
-use simple_bitset::BitSet64;
 use vqm::Quaternionf32;
 
-use crate::{display::Display, flight::ArmingFlags};
+use crate::flight::{ArmingFlags, RxMessage};
 
 #[cfg(feature = "battery")]
 use crate::sensors::BatteryMessage;
 
 #[derive(Debug, PartialEq)]
-pub struct OsdDrawContext<'a, D: Display> {
-    // Accepts any type that implements the Display trait
-    pub display_port: &'a mut D,
+pub struct OsdDrawContext {
     pub orientation: Quaternionf32,
     pub arming_flags: ArmingFlags,
-    pub active_modes: BitSet64,
+    pub rx_message: RxMessage,
     #[cfg(feature = "battery")]
     pub battery_message: BatteryMessage,
 }

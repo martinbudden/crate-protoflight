@@ -5,7 +5,7 @@ use crate::{
     display::{Display, DisplayPortSeverity},
     flight::{ArmingFlags, PidConfig},
     osd::{
-        Osd, OsdDrawContext,
+        Osd, OsdConfig, OsdDrawContext,
         elements::{
             OsdElement, OsdElements, OsdElementsCache, OsdStickCameraFrameRenderPhase, OsdStickOverlayRenderPhase,
         },
@@ -129,9 +129,10 @@ pub enum OsdElementId {
 // element drawing functions
 impl OsdElements {
     #[allow(clippy::too_many_lines)]
-    pub async fn draw_element_foreground<D: Display>(
-        draw_context: &OsdDrawContext<'_, D>,
+    pub async fn draw_element_foreground(
+        draw_context: &OsdDrawContext,
         osd_element: &mut OsdElement,
+        osd_config: &OsdConfig,
         cache: OsdElementsCache,
     ) -> (bool, bool) {
         #[allow(clippy::enum_glob_use)]
@@ -141,9 +142,9 @@ impl OsdElements {
         let drawn = match osd_element.id {
             Rssi => osd_element.draw_rssi(),
             #[cfg(feature = "battery")]
-            MainBatteryVoltage => osd_element.draw_main_battery_usage(draw_context),
+            MainBatteryVoltage => osd_element.draw_main_battery_usage(),
             Crosshairs => osd_element.draw_crosshairs(),
-            ArtificialHorizon => osd_element.draw_artificial_horizon().await,
+            ArtificialHorizon => osd_element.draw_artificial_horizon(osd_config),
             ItemTimer1 | ItemTimer2 => osd_element.draw_item_timer(),
             FlyMode => osd_element.draw_fly_mode(),
             ThrottlePos => osd_element.draw_throttle_position(),
@@ -219,7 +220,9 @@ impl OsdElements {
             PidProfileName => osd_element.draw_pid_profile_name(),
             ProfileName => osd_element.draw_profile_name(),
             RssiDbmValue => osd_element.draw_rssi_dmb_value(),
-            RcChannels => osd_element.draw_rc_channels().await,
+            RcChannels => {
+                osd_element.draw_rc_channels(draw_context.rx_message.rc_controls.controls_pwm, osd_config.rc_channels)
+            }
 
             #[cfg(feature = "gps")]
             Efficiency => osd_element.draw_efficiency(),
@@ -263,17 +266,18 @@ impl OsdElements {
     }
 
     pub async fn draw_element_background<D: Display>(
-        draw_context: &mut OsdDrawContext<'_, D>,
+        display_port: &mut D,
         osd_element: &mut OsdElement,
+        osd_config: &OsdConfig,
     ) -> (bool, bool) {
         #[allow(clippy::enum_glob_use)]
         use OsdElementId::*;
         let drawn = match osd_element.id {
-            HorizonSidebars => osd_element.draw_background_horizon_sidebars(draw_context), // Background only
+            HorizonSidebars => osd_element.draw_background_horizon_sidebars(display_port), // Background only
             CraftName => osd_element.draw_background_craft_name().await,                   // Background only
             StickOverlayLeft | StickOverlayRight => osd_element.draw_background_stick_overlay(), // Background and foreground
             PilotName => osd_element.draw_background_pilot_name().await,                         // Background only
-            CameraFrame => osd_element.draw_background_camera_frame(draw_context).await,         // Background only
+            CameraFrame => osd_element.draw_background_camera_frame(display_port, osd_config),   // Background only
             _ => osd_element.draw_nothing(),
         };
         (drawn, osd_element.rendered)
@@ -435,10 +439,10 @@ impl OsdElement {
     }
 
     #[cfg(feature = "battery")]
-    fn draw_main_battery_usage<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
+    fn draw_main_battery_usage(&mut self) -> bool {
         const USAGE_STEPS: usize = 11; // Use an odd number so the bar can be centered.
 
-        _ = draw_context.battery_message;
+        //_ = draw_context.battery_message;
 
         // TODO: calculate battery bars from the battery data
         //let remaining_capacity_bars = 4;
@@ -467,12 +471,8 @@ impl OsdElement {
         true
     }
 
-    async fn draw_artificial_horizon(&mut self) -> bool {
+    fn draw_artificial_horizon(&mut self, osd_config: &OsdConfig) -> bool {
         const AH_SYMBOL_COUNT: i32 = 9;
-        let osd_config = {
-            let global_config = GLOBAL_CONFIG.lock().await;
-            global_config.osd
-        };
         // Get pitch and roll limits in tenths of degrees
         let max_pitch = i32::from(osd_config.ah_max_pitch * 10);
         let max_roll = i32::from(osd_config.ah_max_roll * 10);
@@ -529,14 +529,14 @@ impl OsdElement {
     }
 
     #[cfg(feature = "battery")]
-    fn draw_current_draw<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
+    fn draw_current_draw(&mut self, draw_context: &OsdDrawContext) -> bool {
         let amperage = draw_context.battery_message.current.amperage_x100;
         _ = write!(self.fixed_buf, "{:3}{}", amperage, OsdSymbols::AMP);
         true
     }
 
     #[cfg(feature = "battery")]
-    fn draw_mah_drawn<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
+    fn draw_mah_drawn(&mut self, draw_context: &OsdDrawContext) -> bool {
         let mah_drawn = draw_context.battery_message.current.mah_drawn;
         if mah_drawn >= self.osd_cap_alarm.into() {
             self.attr = DisplayPortSeverity::Normal;
@@ -646,7 +646,7 @@ impl OsdElement {
         true
     }
 
-    fn draw_disarmed<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
+    fn draw_disarmed(&mut self, draw_context: &OsdDrawContext) -> bool {
         if !draw_context.arming_flags.is_set(ArmingFlags::ARMED) {
             self.write_string("DISARMED");
         }
@@ -726,8 +726,8 @@ impl OsdElement {
         true
     }
 
-    fn draw_anti_gravity<D: Display>(&mut self, draw_context: &OsdDrawContext<D>) -> bool {
-        if draw_context.active_modes.test(RcMode::ANTIGRAVITY) {
+    fn draw_anti_gravity(&mut self, draw_context: &OsdDrawContext) -> bool {
+        if draw_context.rx_message.rc_modes.test(RcMode::ANTIGRAVITY) {
             self.write_string("AG");
         }
         true
@@ -784,15 +784,11 @@ impl OsdElement {
         true
     }
 
-    async fn draw_rc_channels(&mut self) -> bool {
-        let rc_channels = {
-            // lock().await takes approximately 10 to 50 CPU cycles if the lock is uncontested.
-            let global_config = GLOBAL_CONFIG.lock().await;
-            global_config.osd.rc_channels
-        };
-        
-        let channel_pwm = 1000;
-        if rc_channels[usize::from(self.state.rc_channel)] >= 0 {
+    fn draw_rc_channels(&mut self, rc_controls_pwm: [u16; 4], rc_channels: [i8; 4]) -> bool {
+        let rc_channel_index = usize::from(self.state.rc_channel.min(3));
+
+        let channel_pwm = rc_controls_pwm[rc_channel_index];
+        if rc_channels[rc_channel_index] >= 0 {
             let channel = radio_controllers::RxChannel::map_rpy_pwm_to_plus_minus_1000(channel_pwm);
             _ = write!(self.fixed_buf, "{channel:5}");
             self.offset_y = self.state.rc_channel;
@@ -876,7 +872,7 @@ impl OsdElement {
 
 // element background drawing functions
 impl OsdElement {
-    fn draw_background_horizon_sidebars<D: Display>(&mut self, draw_context: &mut OsdDrawContext<D>) -> bool {
+    fn draw_background_horizon_sidebars<D: Display>(&mut self, display_port: &mut D) -> bool {
         const AH_SIDEBAR_WIDTH_POS: u8 = 7;
         const AH_SIDEBAR_HEIGHT_POS: i8 = 3;
 
@@ -888,13 +884,13 @@ impl OsdElement {
 
         if self.state.sidebar_render_level {
             // AH level indicators
-            _ = draw_context.display_port.write_byte(
+            _ = display_port.write_byte(
                 self.pos_x - hud_width + 1,
                 self.pos_y,
                 OsdSymbols::AH_LEFT,
                 DisplayPortSeverity::Normal,
             );
-            _ = draw_context.display_port.write_byte(
+            _ = display_port.write_byte(
                 self.pos_x + hud_width - 1,
                 self.pos_y,
                 OsdSymbols::AH_RIGHT,
@@ -902,13 +898,13 @@ impl OsdElement {
             );
             self.state.sidebar_render_level = false;
         } else {
-            _ = draw_context.display_port.write_byte(
+            _ = display_port.write_byte(
                 self.pos_x - hud_width,
                 (self.pos_y.cast_signed() + self.state.sidebar_y).cast_unsigned(),
                 OsdSymbols::AH_DECORATION,
                 DisplayPortSeverity::Normal,
             );
-            _ = draw_context.display_port.write_byte(
+            _ = display_port.write_byte(
                 self.pos_x + hud_width,
                 (self.pos_y.cast_signed() + self.state.sidebar_y).cast_unsigned(),
                 OsdSymbols::AH_DECORATION,
@@ -985,7 +981,7 @@ impl OsdElement {
         true
     }
 
-    async fn draw_background_camera_frame<D: Display>(&mut self, draw_context: &mut OsdDrawContext<'_, D>) -> bool {
+    fn draw_background_camera_frame<D: Display>(&mut self, display_port: &mut D, osd_config: &OsdConfig) -> bool {
         const OSD_CAMERA_FRAME_MIN_WIDTH: u8 = 2;
         const OSD_CAMERA_FRAME_MAX_WIDTH: u8 = 30; // Characters per row supported by MAX7456
         const OSD_CAMERA_FRAME_MIN_HEIGHT: u8 = 2;
@@ -993,10 +989,6 @@ impl OsdElement {
 
         let xpos = self.pos_x;
         let ypos = self.pos_y;
-        let osd_config = {
-            let global_config = GLOBAL_CONFIG.lock().await;
-            global_config.osd
-        };
         let width = osd_config.camera_frame_width.clamp(OSD_CAMERA_FRAME_MIN_WIDTH, OSD_CAMERA_FRAME_MAX_WIDTH);
         let height = osd_config.camera_frame_height.clamp(OSD_CAMERA_FRAME_MIN_HEIGHT, OSD_CAMERA_FRAME_MAX_HEIGHT);
 
@@ -1008,13 +1000,13 @@ impl OsdElement {
         if self.state.camera_frame_render_phase == OsdStickCameraFrameRenderPhase::Middle {
             self.state.camera_frame_i = 1;
 
-            _ = draw_context.display_port.write_byte(
+            _ = display_port.write_byte(
                 xpos,
                 ypos + self.state.camera_frame_i,
                 OsdSymbols::STICK_OVERLAY_VERTICAL,
                 DisplayPortSeverity::Normal,
             );
-            _ = draw_context.display_port.write_byte(
+            _ = display_port.write_byte(
                 xpos + width - 1,
                 ypos + self.state.camera_frame_i,
                 OsdSymbols::STICK_OVERLAY_VERTICAL,

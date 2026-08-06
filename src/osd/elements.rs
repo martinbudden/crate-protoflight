@@ -3,11 +3,10 @@
 use crate::{
     display::{Display, DisplayPortLayer, DisplayPortSeverity},
     osd::{
-        OsdElementsConfig,
+        OsdConfig, OsdElementsConfig,
         display::OsdDrawContext,
         elements_draw::{OSD_ELEMENT_DISPLAY_ORDER, OsdElementId},
         fixed_buf::FixedBuf,
-        //osd_buffer_cursor::OsdBufferCursor,
     },
     sensors::SensorFlags,
 };
@@ -295,7 +294,12 @@ impl OsdElements {
         };
     }
 
-    pub async fn draw_current_element<D: Display>(&mut self, draw_context: &mut OsdDrawContext<'_, D>) -> bool {
+    pub async fn draw_current_element<D: Display>(
+        &mut self,
+        draw_context: &mut OsdDrawContext,
+        display_port: &mut D,
+        osd_config: &OsdConfig,
+    ) -> bool {
         // const OSD_EXEC_TIME_SHIFT: u32 = 5;
 
         //let start_element_time = Self::time_us();
@@ -304,7 +308,8 @@ impl OsdElements {
         if !self.display_supports_background_layer && !self.background_rendered {
             // If the display doesn't support a background layer then we need to draw the element background now.
             self.current_element.rendered = true;
-            let (drawn, rendered) = Self::draw_element_background(draw_context, &mut self.current_element).await;
+            let (drawn, rendered) =
+                Self::draw_element_background(display_port, &mut self.current_element, osd_config).await;
             if drawn {
                 self.display_pending_background = true;
             }
@@ -315,7 +320,7 @@ impl OsdElements {
         // Call the element drawing function
         self.current_element.rendered = true;
         let (drawn, rendered) =
-            Self::draw_element_foreground(draw_context, &mut self.current_element, self.cache).await;
+            Self::draw_element_foreground(draw_context, &mut self.current_element, osd_config, self.cache).await;
         if drawn {
             self.display_pending_foreground = true;
         }
@@ -364,21 +369,23 @@ impl OsdElements {
     // TODO: we need to clear the screen (async) before calling this.
     pub async fn draw_background_for_all_active_elements<D: Display>(
         &mut self,
-        draw_context: &mut OsdDrawContext<'_, D>,
+        display_port: &mut D,
+        osd_config: &OsdConfig,
     ) {
         if self.display_supports_background_layer {
             // If the display supports a background layer then we can all the background now
             // and we don't need to draw the background for each individual element.
-            draw_context.display_port.layer_select(DisplayPortLayer::Background);
+            display_port.layer_select(DisplayPortLayer::Background);
             for element_id in self.active_elements {
                 self.set_current_element(element_id);
 
                 let mut rendered = false;
                 while !rendered {
-                    (_, rendered) = Self::draw_element_background(draw_context, &mut self.current_element).await;
+                    (_, rendered) =
+                        Self::draw_element_background(display_port, &mut self.current_element, osd_config).await;
                 }
             }
-            draw_context.display_port.layer_select(DisplayPortLayer::Foreground);
+            display_port.layer_select(DisplayPortLayer::Foreground);
         }
     }
 
@@ -400,9 +407,14 @@ impl OsdElements {
     }
 
     #[allow(unused)]
-    pub fn analyze_active_elements<D: Display>(&mut self, sensors: SensorFlags, draw_context: &mut OsdDrawContext<D>) {
+    pub fn analyze_active_elements<D: Display>(
+        &mut self,
+        sensors: SensorFlags,
+        display_port: &mut D,
+        osd_config: &OsdConfig,
+    ) {
         self.add_active_elements(sensors);
-        self.draw_background_for_all_active_elements(draw_context);
+        self.draw_background_for_all_active_elements(display_port, osd_config);
     }
 
     // Cache values that are used by more than one element, so we only have to calculate them once.

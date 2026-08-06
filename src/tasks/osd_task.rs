@@ -1,14 +1,15 @@
 #![cfg(feature = "osd")]
 
-use simple_bitset::BitSet64;
 use vqm::Quaternionf32;
 
 use crate::{
+    config::GLOBAL_CONFIG,
     flight::ArmingFlags,
     osd::{Osd, OsdDrawContext, OsdElements, OsdState},
     tasks::{
         gyro_pid_task::{GyroPidReceiver, SetpointReceiver},
         init::DisplayPortMutex,
+        rx_task::RxReceiver,
     },
 };
 
@@ -32,6 +33,7 @@ use crate::tasks::gps_task::GpsSubscriber;
 pub struct OsdContext {
     pub gyro_pid_receiver: GyroPidReceiver,
     pub setpoint_receiver: SetpointReceiver,
+    pub rx_receiver: RxReceiver,
     #[cfg(feature = "barometer")]
     pub barometer_subscriber: BarometerSubscriber,
     #[cfg(feature = "battery")]
@@ -55,6 +57,7 @@ impl OsdContext {
         display_supports_background_layer: bool,
         gyro_pid_receiver: GyroPidReceiver,
         setpoint_receiver: SetpointReceiver,
+        rx_receiver: RxReceiver,
         #[cfg(feature = "barometer")] barometer_subscriber: BarometerSubscriber,
         #[cfg(feature = "battery")] battery_subscriber: BatterySubscriber,
         #[cfg(feature = "gps")] gps_subscriber: GpsSubscriber,
@@ -64,6 +67,7 @@ impl OsdContext {
         Self {
             gyro_pid_receiver,
             setpoint_receiver,
+            rx_receiver,
             #[cfg(feature = "barometer")] barometer_subscriber,
             #[cfg(feature = "battery")] battery_subscriber,
             #[cfg(feature = "gps")] gps_subscriber,
@@ -134,9 +138,6 @@ pub async fn osd_task(ctx: &'static mut OsdContext, display_port_mutex: &'static
         let osd_enabled = true;
 
         if osd_enabled {
-            // Lock the display port, while this guard lives other tasks cannot use the display port.
-            let mut display_port_guard = display_port_mutex.lock().await;
-
             // TODO: replace these placeholder values with real values
             let arming_flags = ArmingFlags::new();
 
@@ -152,23 +153,37 @@ pub async fn osd_task(ctx: &'static mut OsdContext, display_port_mutex: &'static
                 battery_message = battery_data;
             }
 
-            // Construct the draw context borrowing the display port.
-            let mut draw_context = OsdDrawContext {
-                display_port: &mut *display_port_guard,
-                orientation,
-                arming_flags,
-                active_modes: BitSet64::new(),
-                #[cfg(feature = "battery")]
-                battery_message,
-            };
-
             #[allow(clippy::cast_possible_truncation)]
             let time_us = embassy_time::Instant::now().as_micros() as u32;
 
             if ctx.osd_state.start() {
+                let rx_message = ctx.rx_receiver.get().await;
+                // Construct the draw context borrowing the display port.
+                let mut draw_context = OsdDrawContext {
+                    orientation,
+                    arming_flags,
+                    rx_message,
+                    #[cfg(feature = "battery")]
+                    battery_message,
+                };
+
+                let osd_config = {
+                    // lock().await takes approximately 10 to 50 CPU cycles if the lock is uncontested.
+                    let global_config = GLOBAL_CONFIG.lock().await;
+                    global_config.osd
+                };
+                // Lock the display port, while this guard lives other tasks cannot use the display port.
+                let mut display_port_guard = display_port_mutex.lock().await;
+
                 while ctx.osd_state != OsdState::Idle {
                     ctx.osd_state
-                        .update_display_iteration(&ctx.osd, &mut ctx.osd_elements, &mut draw_context, time_us)
+                        .update_display_iteration(
+                            &mut ctx.osd_elements,
+                            &mut draw_context,
+                            &mut *display_port_guard,
+                            &osd_config,
+                            time_us,
+                        )
                         .await;
                 }
             }

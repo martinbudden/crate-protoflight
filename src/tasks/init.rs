@@ -292,6 +292,7 @@ pub async fn init(spawner: Spawner) {
             display_supports_background_layer,
             gyro_pid_receiver(),
             setpoint_receiver(),
+            rx_receiver(),
             #[cfg(feature = "barometer")] barometer_subscriber(),
             #[cfg(feature = "battery")] battery_subscriber(),
             #[cfg(feature = "gps")] gps_subscriber(),

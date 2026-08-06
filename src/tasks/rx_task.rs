@@ -117,12 +117,12 @@ pub async fn rx_task(ctx: &'static mut RxContext) {
         if let Some(autopilot_message) = ctx.autopilot_receiver.try_changed() {
             // If there is a message from the autopilot, use it to set the controls.
             if ctx.rc_modes.is_mode_active(RcMode::ALTITUDE_HOLD) {
-                rx_message.controls.throttle_stick = autopilot_message.controls.throttle_stick;
+                rx_message.rc_controls.throttle_stick = autopilot_message.rc_controls.throttle_stick;
             } else if ctx.rc_modes.is_mode_active(RcMode::POSITION_HOLD)
                 || ctx.rc_modes.is_mode_active(RcMode::GPS_RESCUE)
                 || ctx.rc_modes.is_mode_active(RcMode::AUTOPILOT)
             {
-                rx_message.controls = autopilot_message.controls;
+                rx_message.rc_controls = autopilot_message.rc_controls;
             }
         }
 
