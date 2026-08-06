@@ -193,5 +193,6 @@ pub enum DebugMode {
     MavlinkTelemetry,
     AutopilotPid,
     PositionNav,
-    Count,
+    #[allow(clippy::upper_case_acronyms)]
+    COUNT,
 }
