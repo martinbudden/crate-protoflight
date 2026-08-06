@@ -40,6 +40,12 @@ pub struct BatteryProfile {
 #[cfg(feature = "serde")]
 impl PostcardValue<'_> for BatteryProfile {}
 
+impl Default for BatteryProfile {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BatteryProfile {
     pub const COUNT: usize = 3;
     pub const MAX_NAME_LENGTH: usize = 8;
@@ -61,11 +67,6 @@ impl BatteryProfile {
     }
 }
 
-impl Default for BatteryProfile {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct BatteryProfiles {
