@@ -80,6 +80,7 @@ impl GlobalDebug {
     }
 
     /// Returns an array of all the values.
+    /// Approximately 15 to 40 CPU cycles.
     pub fn values(&self) -> [i16; Self::COUNT] {
         core::array::from_fn(|ii| self.values[ii].load(Ordering::Relaxed))
     }

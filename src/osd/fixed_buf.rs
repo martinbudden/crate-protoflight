@@ -243,4 +243,27 @@ mod tests {
         #[cfg(feature = "serde")]
         is_config::<FixedBuf<16>>();
     }
+    #[test]
+    fn write() {
+        let mut fb = FixedBuf::<32>::new();
+        let value: u16 = 1234;
+        _ = write!(fb, "{value:5}");
+        assert_eq!(b' ', fb[0]);
+        assert_eq!(b'1', fb[1]);
+        assert_eq!(b'2', fb[2]);
+        assert_eq!(b'3', fb[3]);
+        assert_eq!(b'4', fb[4]);
+
+        let value: u8 = 9;
+        _ = write!(fb, "{value:02}");
+        assert_eq!(b'0', fb[5]);
+        assert_eq!(b'9', fb[6]);
+
+        let mut fb = FixedBuf::<32>::new();
+        let value: u8 = 7;
+        _ = write!(fb, "{value:03}");
+        assert_eq!(b'0', fb[0]);
+        assert_eq!(b'0', fb[1]);
+        assert_eq!(b'7', fb[2]);
+    }
 }

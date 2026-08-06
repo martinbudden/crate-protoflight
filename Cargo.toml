@@ -167,9 +167,9 @@ blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger
 motor-mixers = { version = "0.1.5" }
 #motor-mixers = { git = "https://github.com/martinbudden/crate-motor-mixers" }
 #motor-mixers = { path = "../motor-mixers" }
-radio-controllers = { version = "0.1.6" }
+#radio-controllers = { version = "0.1.6" }
 #radio-controllers = { git = "https://github.com/martinbudden/crate-radio-controllers" }
-#radio-controllers = { path = "../radio-controllers" }
+radio-controllers = { path = "../radio-controllers" }
 imu-sensors = { version = "0.1.3" }
 #imu-sensors = { git = "https://github.com/martinbudden/crate-imu-sensors" }
 #imu-sensors = { path = "../imu-sensors" }

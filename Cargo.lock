@@ -1435,8 +1435,6 @@ dependencies = [
 [[package]]
 name = "radio-controllers"
 version = "0.1.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da85377e9edd63323ce99c69d90240bce6f82f7ae0c5cd34d4263de48846a031"
 dependencies = [
  "embedded-hal 1.0.0",
  "embedded-hal-nb",

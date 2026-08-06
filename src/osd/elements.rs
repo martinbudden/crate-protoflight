@@ -57,6 +57,7 @@ pub struct OsdElementState {
     pub sidebar_render_level: bool,
     pub camera_frame_render_phase: OsdStickCameraFrameRenderPhase,
     pub camera_frame_i: u8,
+    pub rc_channel: u8,
 }
 
 impl Default for OsdElementState {
@@ -75,6 +76,7 @@ impl OsdElementState {
             sidebar_render_level: false,
             camera_frame_render_phase: OsdStickCameraFrameRenderPhase::Top,
             camera_frame_i: 0,
+            rc_channel: 0,
         }
     }
 }

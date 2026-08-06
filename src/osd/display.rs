@@ -46,6 +46,7 @@ impl Osd {
     pub const PROFILE_COUNT: usize = 2;
     pub const PROFILE_NAME_LENGTH: usize = 16;
     pub const RC_CHANNELS_COUNT: usize = 4;
+    pub const RC_CHANNELS_COUNT_U8: u8 = 4;
     pub const TIMER_COUNT: usize = 2;
 
     pub const _LOGO_ROW_COUNT: usize = 4;

@@ -5,7 +5,7 @@ use crate::{
     display::{Display, DisplayPortSeverity},
     flight::{ArmingFlags, PidConfig},
     osd::{
-        OsdDrawContext,
+        Osd, OsdDrawContext,
         elements::{
             OsdElement, OsdElements, OsdElementsCache, OsdStickCameraFrameRenderPhase, OsdStickOverlayRenderPhase,
         },
@@ -219,7 +219,7 @@ impl OsdElements {
             PidProfileName => osd_element.draw_pid_profile_name(),
             ProfileName => osd_element.draw_profile_name(),
             RssiDbmValue => osd_element.draw_rssi_dmb_value(),
-            RcChannels => osd_element.draw_rc_channels(),
+            RcChannels => osd_element.draw_rc_channels().await,
 
             #[cfg(feature = "gps")]
             Efficiency => osd_element.draw_efficiency(),
@@ -242,7 +242,6 @@ impl OsdElements {
             SysWarnings => osd_element.draw_nothing(),
             SysVtxTemperature => osd_element.draw_nothing(),
             SysFanSpeed => osd_element.draw_nothing(),*/
-
             #[cfg(feature = "gps")]
             GpsLapTimeCurrent => osd_element.draw_lap_time_current(),
             #[cfg(feature = "gps")]
@@ -257,7 +256,7 @@ impl OsdElements {
             BatteryProfileName => osd_element.draw_battery_profile_name(),
 
             // only drawn in background
-            CraftName|PilotName|HorizonSidebars => osd_element.draw_nothing(), // do nothing, since only drawn in background
+            CraftName | PilotName | HorizonSidebars => osd_element.draw_nothing(), // do nothing, since only drawn in background
             _ => osd_element.draw_nothing(),
         };
         (drawn, osd_element.rendered)
@@ -785,9 +784,30 @@ impl OsdElement {
         true
     }
 
-    fn draw_rc_channels(&mut self) -> bool {
+    async fn draw_rc_channels(&mut self) -> bool {
+        let rc_channels = {
+            // lock().await takes approximately 10 to 50 CPU cycles if the lock is uncontested.
+            let global_config = GLOBAL_CONFIG.lock().await;
+            global_config.osd.rc_channels
+        };
+        
+        let channel_pwm = 1000;
+        if rc_channels[usize::from(self.state.rc_channel)] >= 0 {
+            let channel = radio_controllers::RxChannel::map_rpy_pwm_to_plus_minus_1000(channel_pwm);
+            _ = write!(self.fixed_buf, "{channel:5}");
+            self.offset_y = self.state.rc_channel;
+        }
+
+        self.state.rc_channel += 1;
+        if self.state.rc_channel == Osd::RC_CHANNELS_COUNT_U8 {
+            self.state.rc_channel = 0;
+        } else {
+            // we have more channels to draw
+            self.rendered = false;
+        }
         true
     }
+
     #[cfg(feature = "gps")]
     fn draw_efficiency(&mut self) -> bool {
         true
@@ -852,7 +872,6 @@ impl OsdElement {
     fn draw_battery_profile_name(&mut self) -> bool {
         true
     }
-
 }
 
 // element background drawing functions
