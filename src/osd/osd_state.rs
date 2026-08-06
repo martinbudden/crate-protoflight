@@ -24,10 +24,17 @@ pub enum OsdState {
     UpdateAlarms,
     RefreshPreArm,
     UpdateCanvas,
-    SetCurrentElement(usize),
+    SetCurrentElement {
+        element_index: usize,
+    },
     // Elements are handled in two steps, drawing into a buffer, and then sending to the display
-    DrawCurrentElementStep(usize),
-    DisplayCurrentElementStep(usize, bool),
+    DrawCurrentElementStep {
+        element_index: usize,
+    },
+    DisplayCurrentElementStep {
+        element_index: usize,
+        more_to_draw: bool,
+    },
     UpdateHeartbeat,
     Commit,
     Transfer,
@@ -169,12 +176,12 @@ impl OsdState {
                         orientation.calculate_pitch_degrees(),
                         orientation.calculate_yaw_degrees(),
                     );
-                    Self::SetCurrentElement(0)
+                    Self::SetCurrentElement { element_index: 0 }
                 }
             }
-            Self::SetCurrentElement(element_index) => {
+            Self::SetCurrentElement { element_index } => {
                 if osd_elements.set_current_element_by_index(element_index) {
-                    Self::DrawCurrentElementStep(element_index)
+                    Self::DrawCurrentElementStep { element_index }
                 } else {
                     // We've exhausted all the elements, so move on to the next state.
                     /* if ctx.cockpit.is_armed() && self.config.osd_show_spec_prearm {
@@ -185,7 +192,7 @@ impl OsdState {
                     Self::Commit
                 }
             }
-            Self::DrawCurrentElementStep(element_index) => {
+            Self::DrawCurrentElementStep { element_index } => {
                 // Drawing an element renders it to the element buffer
                 // For complex elements (like the artificial horizon) this may take several steps.
 
@@ -193,20 +200,20 @@ impl OsdState {
                 let more_to_draw = osd_elements.draw_current_element(draw_ctx).await;
 
                 // Display the part of the element we have drawn.
-                Self::DisplayCurrentElementStep(element_index, more_to_draw)
+                Self::DisplayCurrentElementStep { element_index, more_to_draw }
             }
             // DisplayElementStep copies the element buffer to the displayport buffer
-            Self::DisplayCurrentElementStep(element_index, more_to_draw) => {
+            Self::DisplayCurrentElementStep { element_index, more_to_draw } => {
                 let more_to_display = osd_elements.display_current_element(draw_ctx.display_port);
                 if more_to_display {
                     // this element requires several steps display it , so display the next step
-                    Self::DisplayCurrentElementStep(element_index, more_to_draw)
+                    Self::DisplayCurrentElementStep { element_index, more_to_draw }
                 } else {
                     // if the element needs more draw steps, the do those, otherwise move onto the next element
                     if more_to_draw {
-                        Self::DrawCurrentElementStep(element_index)
+                        Self::DrawCurrentElementStep { element_index }
                     } else {
-                        Self::SetCurrentElement(element_index + 1)
+                        Self::SetCurrentElement { element_index: element_index + 1 }
                     }
                 }
             }
