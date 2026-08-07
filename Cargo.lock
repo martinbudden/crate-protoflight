@@ -1433,6 +1433,7 @@ dependencies = [
 [[package]]
 name = "radio-controllers"
 version = "0.1.6"
+source = "git+https://github.com/martinbudden/crate-radio-controllers#fd1037c443627452883708c319724bf7740e9557"
 dependencies = [
  "embedded-hal 1.0.0",
  "embedded-hal-nb",

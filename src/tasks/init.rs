@@ -125,8 +125,9 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "std")]
     env_logger::init();
 
+    #[allow(unused)]
     #[cfg(feature = "rp2350")]
-    let _board = crate::boards::rp2350::init();
+    let board = crate::boards::rp2350::init();
 
     // --- INITIALIZE MOCK STUB (HOST PROFILE ENVIRONMENT) ---
     #[allow(unused)]

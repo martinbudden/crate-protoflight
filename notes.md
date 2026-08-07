@@ -37,5 +37,5 @@ cargo build --target thumbv8m.main-none-eabihf --features rp2350
 ```
 
 ```sh
-cargo build --no-default-features --features rp2350,libm,autopilot
+cargo build --target thumbv8m.main-none-eabihf --no-default-features --features rp2350,libm
 ```
