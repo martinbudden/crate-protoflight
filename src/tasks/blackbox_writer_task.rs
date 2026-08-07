@@ -3,11 +3,11 @@
 use crate::tasks::blackbox_task::BLACKBOX_WRITE_QUEUE;
 
 #[cfg(feature = "rp2350")]
-use crate::tasks::init_rp::BlackboxSpiDevice;
+use crate::boards::rp2350::BlackboxSpiDevice;
 
 #[cfg(feature = "std")]
 use crate::drivers::sd_card::{MockSdCard, SdStorage};
-#[cfg(not(feature = "std"))]
+#[cfg(feature = "rp2350")]
 use embedded_sdmmc::{Directory, Mode, SdCard, VolumeIdx, VolumeManager};
 
 /// Dummy time source required by the embedded-sdmmc library
@@ -23,7 +23,7 @@ impl embedded_sdmmc::TimeSource for VehicleTimeSource {
 }
 
 /// System execution context for the background storage worker pipeline.
-#[cfg(not(feature = "std"))]
+#[cfg(feature = "rp2350")]
 pub struct BlackboxWriterContext {
     /// Concrete async SPI bus instance assigned to the card subsystem
     pub spi_device: BlackboxSpiDevice,
@@ -32,7 +32,7 @@ pub struct BlackboxWriterContext {
     pub buffer_idx: usize,
 }
 
-#[cfg(not(feature = "std"))]
+#[cfg(feature = "rp2350")]
 impl BlackboxWriterContext {
     const BUFFER_SIZE: usize = 512;
     pub fn new(spi_device: BlackboxSpiDevice) -> Self {
@@ -66,7 +66,7 @@ pub async fn blackbox_writer_task(ctx: &'static mut BlackboxWriterContext) {
 }
 
 /// Blackbox writer background processing task loop using embedded-sdmmc 0.9.0.
-#[cfg(not(feature = "std"))]
+#[cfg(feature = "rp2350")]
 #[embassy_executor::task]
 pub async fn blackbox_writer_task(ctx: &'static mut BlackboxWriterContext) {
     log::info!("BLACKBOX SD WRITER: task started");

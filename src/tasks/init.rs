@@ -16,9 +16,7 @@ use crate::{
 #[allow(unused)]
 use crate::tasks::gyro_pid_task::{gyro_pid_receiver, setpoint_receiver};
 
-#[cfg(feature = "rp2350")]
-use crate::tasks::init_rp;
-
+#[allow(unused)]
 #[cfg(feature = "serde")]
 use crate::tasks::non_volatile_storage::load_global_configs;
 
@@ -128,7 +126,7 @@ pub async fn init(spawner: Spawner) {
     env_logger::init();
 
     #[cfg(feature = "rp2350")]
-    let (_gyro_res, _gyro_interrupt, _blackbox_res, _aux_pio_res, _uart0, _uart1, _i2c0, flash) = init_rp::init_rp();
+    let _board = crate::boards::rp2350::init();
 
     // --- INITIALIZE MOCK STUB (HOST PROFILE ENVIRONMENT) ---
     #[allow(unused)]
@@ -138,7 +136,7 @@ pub async fn init(spawner: Spawner) {
     #[allow(unused)]
     let display_ref = { DISPLAY_PORT_MUTEX_CELL.init(Mutex::new(DisplayPortMock::default())) };
     #[cfg(all(feature = "serde", feature = "rp2350"))]
-    load_global_configs(flash).await;
+    load_global_configs(board.flash).await;
     #[cfg(all(feature = "serde", feature = "std"))]
     load_global_configs().await;
 
@@ -255,7 +253,7 @@ pub async fn init(spawner: Spawner) {
         //    BLACKBOX_WRITER_CTX.init(BlackboxWriterContext::new(blackbox_spi))
         //}
         //let blackbox_spi = blackbox_res.unwrap();
-        //BLACKBOX_WRITER_CTX.init(BlackboxWriterContext::new(blackbox_spi.into()))
+        BLACKBOX_WRITER_CTX.init(BlackboxWriterContext::new(board.sdcard_spi.unwrap()))
     };
     #[cfg(all(feature = "blackbox", feature = "std"))]
     let blackbox_writer_ctx = { BLACKBOX_WRITER_CTX.init(BlackboxWriterContext::new()) };

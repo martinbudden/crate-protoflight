@@ -13,7 +13,6 @@ mod gps_task;
 mod gyro_pid_task;
 mod imu_task;
 pub mod init;
-mod init_rp;
 mod magnetometer_task;
 mod motor_mixer_task;
 mod msp_task;

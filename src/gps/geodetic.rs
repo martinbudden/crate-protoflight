@@ -1,7 +1,7 @@
 #![cfg(feature = "gps")]
 use vqm::Vector3f32;
 
-#[cfg(not(feature = "std"))]
+#[allow(unused)]
 use vqm::TrigonometricMethods;
 
 #[derive(Clone, Copy, Debug, PartialEq)]

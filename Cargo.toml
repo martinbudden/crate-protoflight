@@ -27,7 +27,7 @@ rustc_version = "0.4.1"
 #default = ["std", "libm"]
 #default = ["rp2350", "libm"]
 default = ["libm",
-    #"std",
+    "std",
     #"rp2350",
     "autopilot",
     "barometer",
@@ -46,7 +46,7 @@ default = ["libm",
     "rpm_filters",
     "rtt-debug",
     "servos",
-    "serde",
+    #"serde",
     "vtx",
 ]
 #default = ["rp2350", "libm", "blackbox", "max7456", "osd", "rpm_filters", "barometer", "gps", "msp", "autopilot", "rangefinder"]
@@ -128,7 +128,7 @@ static_cell = "2.1.1"
 critical-section = { version = "1.2.0" }
 # Hardware-specific Embassy HAL
 embassy-rp = { version = "0.10.0", default-features = false, features = ["time-driver", "critical-section-impl"], optional = true }
-#embassy-rp = { version = "0.10.0", default-features = false, features = ["time-driver", "critical-section-impl", "rp235xa", "rt"], optional = true }
+#embassy-rp = { version = "0.10.0", default-features = false, features = ["time-driver", "critical-section-impl", "rp235xa"], optional = true }
 cortex-m-rt = { version = "0.7.5", optional = true }
 #cortex-m = { version = "0.7.8", optional = true }
 embedded-hal-bus = { version = "0.3.0", features = ["async"] }

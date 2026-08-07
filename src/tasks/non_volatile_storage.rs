@@ -304,7 +304,7 @@ pub fn init_flash_driver() -> impl embedded_storage_async::nor_flash::NorFlash {
     NorMemoryAsync::new(inner_sync_nor)
 }
 
-#[cfg(feature = "std")]
+//#[cfg(feature = "std")]
 pub async fn load_global_configs() {
     // Initialize Embassy peripherals.
     let flash_driver = init_flash_driver();
@@ -315,11 +315,11 @@ pub async fn load_global_configs() {
     nvs::load_rates_config(&mut config.rates, &mut storage).await;
 }
 
-#[cfg(not(feature = "std"))]
-pub fn init_flash_driver<'a>(
+#[cfg(feature = "rp2350")]
+pub fn init_flash_driver(
     // Pass the Peri structural instance bound to the FLASH singleton type
-    flash_pin: Peri<'a, FLASH>,
-) -> Flash<'a, FLASH, Blocking, FLASH_SIZE_BYTES> {
+    flash_pin: Peri<FLASH>,
+) -> Flash<FLASH, Blocking, FLASH_SIZE_BYTES> {
     Flash::<_, Blocking, FLASH_SIZE_BYTES>::new_blocking(flash_pin)
 }
 
