@@ -11,8 +11,9 @@ use crate::{
         },
         symbols::OsdSymbols,
     },
-    tasks::GLOBAL_DEBUG,
 };
+#[cfg(feature = "debug")]
+use crate::tasks::GLOBAL_DEBUG;
 
 use core::{convert::TryFrom, fmt::Write};
 use radio_controllers::RcMode;
@@ -174,7 +175,9 @@ impl OsdElements {
             #[cfg(feature = "gps")]
             GpsLat => osd_element.draw_gps_lat(),
 
+            #[cfg(feature = "debug")]
             Debug => osd_element.draw_debug(),
+
             PitchAngle => osd_element.draw_pitch_angle(cache.pitch_angle_degrees),
             RollAngle => osd_element.draw_roll_angle(cache.roll_angle_degrees),
             MainBatteryUsage => osd_element.draw_nothing(),
@@ -251,7 +254,10 @@ impl OsdElements {
             GpsLapTimePrevious => osd_element.draw_lap_time_previous(),
             #[cfg(feature = "gps")]
             GpsLapTimeBest3 => osd_element.draw_lap_time_best3(),
+
+            #[cfg(feature = "debug")]
             Debug2 => osd_element.draw_debug2(),
+
             CustomMsg0 | CustomMsg1 | CustomMsg2 | CustomMsg3 => osd_element.draw_custom_message(),
             #[cfg(feature = "rangefinder")]
             LidarDistance => osd_element.draw_lidar_distance(),
@@ -619,12 +625,14 @@ impl OsdElement {
         true
     }
 
+    #[cfg(feature = "debug")]
     fn draw_debug(&mut self) -> bool {
         let debug = GLOBAL_DEBUG.values();
         _ = write!(self.fixed_buf, "DBG {:5} {:5} {:5} {:5}", debug[0], debug[1], debug[2], debug[3]);
         true
     }
 
+    #[cfg(feature = "debug")]
     fn draw_debug2(&mut self) -> bool {
         let debug = GLOBAL_DEBUG.values();
         _ = write!(self.fixed_buf, "DBG {:5} {:5} {:5} {:5}", debug[4], debug[5], debug[6], debug[7]);

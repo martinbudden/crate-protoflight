@@ -104,21 +104,24 @@ std = [
     "dep:env_logger",
     "dep:env_filter"
 ]
+
 rp2350 = [
-    "dep:cortex-m-rt",
     "dep:embassy-rp",
     "dep:cyw43-pio",
+    "dep:cortex-m-rt",
     "embassy-rp/rp235xa",
     "embassy-rp/rt",
-    "embassy-rp/executor-thread",           # <-- Let the HAL define the hardware executor
-    "embassy-rp/executor-interrupt",        # <-- Add if you require high-priority interrupt task pools
+    "embassy-rp/time-driver",
+    "embassy-rp/critical-section-impl",
+    #"embassy-rp/executor-thread",           # <-- Let the HAL define the hardware executor
+    #"embassy-rp/executor-interrupt",        # <-- Add if you require high-priority interrupt task pools
     "embassy-executor/platform-cortex-m",   # <-- Explicitly satisfies the executor's platform check
+    "embassy-executor/executor-thread",
 ]
 
 [dependencies]
 # Core Embassy executor and concurrency primitives
 embassy-executor = { version = "0.10.0", default-features = false }
-#embassy-executor = { version = "0.10.0", default-features = false, features = ["platform-cortex-m", "executor-thread"] }#"task-arena-size-32768",
 embassy-futures = { version = "0.1.2", default-features = false }
 embassy-time = { version = "0.5.1", default-features = false }
 embassy-sync = { version = "0.8.0", default-features = false }
@@ -127,10 +130,8 @@ embassy-embedded-hal = "0.6.0"
 static_cell = "2.1.1"
 critical-section = { version = "1.2.0" }
 # Hardware-specific Embassy HAL
-embassy-rp = { version = "0.10.0", default-features = false, features = ["time-driver", "critical-section-impl"], optional = true }
-#embassy-rp = { version = "0.10.0", default-features = false, features = ["time-driver", "critical-section-impl", "rp235xa"], optional = true }
+embassy-rp = { version = "0.10.0", default-features = false, optional = true }
 cortex-m-rt = { version = "0.7.5", optional = true }
-#cortex-m = { version = "0.7.8", optional = true }
 embedded-hal-bus = { version = "0.3.0", features = ["async"] }
 embedded-sdmmc = { version = "0.9.0", default-features = false, features = ["log"], optional = true }
 

@@ -67,3 +67,17 @@ run-m7 = [
     "--target", "thumbv7em-none-eabihf", 
     "--config", "target.thumbv7em-none-eabihf.rustflags=['-C', 'target-cpu=cortex-m7', '-C', 'inline-threshold=300']"
 ]
+
+test-rp2350 = [
+    "test",
+    "--no-default-features",
+    "--features",
+    "rp2350,libm,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug"
+]
+
+run-rp2350 = [
+    "run",
+    "--no-default-features",
+    "--features",
+    "rp2350,libm,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug"
+]
