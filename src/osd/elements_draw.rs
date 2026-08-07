@@ -538,7 +538,7 @@ impl OsdElement {
     #[cfg(feature = "battery")]
     fn draw_mah_drawn(&mut self, draw_context: &OsdDrawContext) -> bool {
         let mah_drawn = draw_context.battery_message.current.mah_drawn;
-        if mah_drawn >= self.osd_cap_alarm.into() {
+        if mah_drawn >= <i16 as Into<i32>>::into(self.osd_cap_alarm) {
             self.attr = DisplayPortSeverity::Normal;
         }
         _ = write!(self.fixed_buf, "{:4}{}", mah_drawn, OsdSymbols::MAH);

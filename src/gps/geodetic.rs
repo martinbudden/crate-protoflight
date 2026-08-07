@@ -1,6 +1,9 @@
 #![cfg(feature = "gps")]
 use vqm::Vector3f32;
 
+#[cfg(not(feature = "std"))]
+use vqm::TrigonometricMethods;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "std", derive(derive_more::Display))]
 #[cfg_attr(feature = "std", display("Gps{{long:{longitude_degrees}, lat:{latitude_degrees}, alt:{altitude_meters}}}"))]
