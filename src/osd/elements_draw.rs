@@ -1,5 +1,7 @@
 #![cfg(feature = "osd")]
 
+#[cfg(feature = "debug")]
+use crate::tasks::GLOBAL_DEBUG;
 use crate::{
     config::GLOBAL_CONFIG,
     display::{Display, DisplayPortSeverity},
@@ -12,8 +14,6 @@ use crate::{
         symbols::OsdSymbols,
     },
 };
-#[cfg(feature = "debug")]
-use crate::tasks::GLOBAL_DEBUG;
 
 use core::{convert::TryFrom, fmt::Write};
 use radio_controllers::RcMode;

@@ -29,6 +29,7 @@ rustc_version = "0.4.1"
 default = ["libm",
     "std",
     #"rp2350",
+    #"stm32f405",
     "autopilot",
     "barometer",
     "battery",
@@ -119,6 +120,16 @@ rp2350 = [
     "embassy-executor/executor-thread",
 ]
 
+stm32xx = []
+stm32f405 = [
+    "dep:embassy-stm32",
+    "dep:cortex-m-rt",
+    "embassy-stm32/stm32f405rg",
+    "embassy-stm32/time-driver-tim2",
+    "embassy-executor/platform-cortex-m",   # <-- Explicitly satisfies the executor's platform check
+    "embassy-executor/executor-thread",
+]
+
 [dependencies]
 # Core Embassy executor and concurrency primitives
 embassy-executor = { version = "0.10.0", default-features = false }
@@ -130,11 +141,15 @@ embassy-embedded-hal = "0.6.0"
 static_cell = "2.1.1"
 critical-section = { version = "1.2.0" }
 # Hardware-specific Embassy HAL
-embassy-rp = { version = "0.10.0", default-features = false, optional = true }
 cortex-m-rt = { version = "0.7.5", optional = true }
 embedded-hal-bus = { version = "0.3.0", features = ["async"] }
 embedded-sdmmc = { version = "0.9.0", default-features = false, features = ["log"], optional = true }
-
+# Raspberry Pi Pico specific
+embassy-rp = { version = "0.10.0", default-features = false, optional = true }
+# stm32f4 specific
+embassy-stm32 = { version = "0.6.0", default-features = false, optional = true }
+#stm32-metapac = { version = "21.0.0", default-features = false, optional = true }
+#stm32f4xx-hal = { version = "0.23.0", default-features = false, optional = true }
 strum = { version = "0.28.0", default-features = false, features = ["derive"] }
 derive_more = { version = "2.1.1", default-features = false, features = ["display"] }
 num-traits = { version = "0.2.19", default-features = false }

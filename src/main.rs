@@ -26,7 +26,7 @@ mod vtx;
 // =========================================================================
 // MANDATORY EMBEDDED PANIC HANDLER
 // =========================================================================
-#[cfg(feature = "rp2350")]
+#[cfg(any(feature = "rp2350", feature = "stm32f405"))]
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {
