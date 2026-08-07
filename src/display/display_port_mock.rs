@@ -3,7 +3,7 @@ use crate::display::{
 };
 use core::ops::Deref;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct DisplayPortMock {
     display_layers: DisplayPortLayers,
 }

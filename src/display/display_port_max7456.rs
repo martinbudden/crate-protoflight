@@ -5,18 +5,18 @@ use embedded_hal_async::spi::SpiBus;
 use crate::display::{
     Display, DisplayPort, DisplayPortDeviceType, DisplayPortLayer, DisplayPortLayers, DisplayPortSeverity,
 };
-use core::ops::Deref;
 
 const SPI_BUFFER_SIZE: usize = 512;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct DisplayPortMax7456<SPI> {
     display_layers: DisplayPortLayers,
     shadow_buffer: [u8; DisplayPort::VIDEO_BUFFER_PAL_CHARACTER_COUNT],
+    // Temporary command buffer for MAX7456 register operations
     buffer: [u8; 32],
     spi_buffer: [u8; SPI_BUFFER_SIZE], // DMA buffer
 
-    pub font_is_loading: bool,
+    font_is_loading: bool,
     pub display_memory_mode_reg: u8,
     //    pub bus: SpiBus,                        // Your low-level SPI/DMA interface
     spi_device: SPI, // Wrapped generic Embassy SPI peripheral
@@ -55,14 +55,6 @@ impl<SPI: SpiBus> DisplayPortMax7456<SPI> {
             // Capture the runtime hardware peripheral instance passed into the constructor
             spi_device,
         }
-    }
-}
-
-impl<SPI: SpiBus> Deref for DisplayPortMax7456<SPI> {
-    type Target = DisplayPort;
-
-    fn deref(&self) -> &Self::Target {
-        &self.display_layers.display_port
     }
 }
 
@@ -134,10 +126,14 @@ impl<SPI: SpiBus> DisplayPortMax7456<SPI> {
                     }
                     spi_buffer_index += 2;
 
+                    #[allow(clippy::cast_possible_truncation)]
+                    // MAX7456 expects DMAH then DMAL (big-endian register order)
+                    // MAX7456 address registers are written high byte first (DMAH then DMAL) (ie big-endian)
+                    let address = (pos as u16).to_be_bytes();
                     self.spi_buffer[spi_buffer_index] = Self::MAX_7456ADD_DMAH;
-                    self.spi_buffer[spi_buffer_index + 1] = pos.to_le_bytes()[1];
+                    self.spi_buffer[spi_buffer_index + 1] = address[0];
                     self.spi_buffer[spi_buffer_index + 2] = Self::MAX_7456ADD_DMAL;
-                    self.spi_buffer[spi_buffer_index + 3] = pos.to_le_bytes()[0];
+                    self.spi_buffer[spi_buffer_index + 3] = address[1];
                     spi_buffer_index += 4;
                     set_address = false;
                 }
@@ -254,7 +250,7 @@ impl<SPI: SpiBus> Display for DisplayPortMax7456<SPI> {
     }
 
     async fn clear_screen(&mut self) {
-        self.display_layers.clear_layer(self.active_layer());
+        //self.display_layers.clear_layer(self.active_layer());
     }
 
     async fn transfer_screen(&mut self) -> Result<bool, &'static str> {
@@ -263,7 +259,7 @@ impl<SPI: SpiBus> Display for DisplayPortMax7456<SPI> {
         //Self::draw_screen(self).await.map_err(|_| "SPI Hardware Transfer Failed")
         match Self::draw_screen(self).await {
             Ok(transferring) => Ok(transferring),
-            Err(_hardware_error) => Err("RP2350 SPI Bus hardware error occurred"),
+            Err(_hardware_error) => Err("SPI Bus transfer failed"),
         }
     }
     fn redraw(&self) {}
