@@ -1,10 +1,12 @@
 #![cfg(feature = "osd")]
 
+#[cfg(feature = "battery")]
+use embassy_sync::pubsub::WaitResult;
 use vqm::Quaternionf32;
 
 use crate::{
     config::GLOBAL_CONFIG,
-    flight::ArmingFlags,
+    flight::{ArmingFlags, RxMessage},
     osd::{Osd, OsdDrawContext, OsdElements, OsdState},
     tasks::{
         gyro_pid_task::{GyroPidReceiver, SetpointReceiver},
@@ -128,38 +130,37 @@ pub async fn osd_task(ctx: &'static mut OsdContext, display_port_mutex: &'static
     #[cfg(feature = "battery")]
     let mut battery_message = BatteryMessage::new();
     let mut orientation = Quaternionf32::default();
+    let mut rx_message = RxMessage::new();
 
     log::info!("         OSD: task started");
     loop {
         // Wait for the next 50Hz tick.
         ticker.next().await;
 
-        // check_if_osd_active();
+        // TODO: check_if_osd_active();
         let osd_enabled = true;
 
         if osd_enabled {
             // TODO: replace these placeholder values with real values
             let arming_flags = ArmingFlags::new();
 
+            #[cfg(feature = "battery")]
+            if let Some(WaitResult::Message(battery_data)) = ctx.battery_subscriber.try_next_message() {
+                battery_message = battery_data;
+            }
+
             // Get the latest messages without consuming the notifications.
             if let Some(gyro_pid_message) = ctx.gyro_pid_receiver.try_get() {
                 orientation = gyro_pid_message.orientation;
             }
 
-            #[cfg(feature = "battery")]
-            if let Some(wait_result) = ctx.battery_subscriber.try_next_message()
-                && let embassy_sync::pubsub::WaitResult::Message(battery_data) = wait_result
-            {
-                battery_message = battery_data;
+            if let Some(rx) = ctx.rx_receiver.try_get() {
+                rx_message = rx;
             }
 
-            #[allow(clippy::cast_possible_truncation)]
-            let time_us = embassy_time::Instant::now().as_micros() as u32;
-
-            if ctx.osd_state.start() {
-                let rx_message = ctx.rx_receiver.get().await;
+            if ctx.osd_state.start_frame() {
                 // Construct the draw context borrowing the display port.
-                let mut draw_context = OsdDrawContext {
+                let draw_context = OsdDrawContext {
                     orientation,
                     arming_flags,
                     rx_message,
@@ -172,27 +173,26 @@ pub async fn osd_task(ctx: &'static mut OsdContext, display_port_mutex: &'static
                     let global_config = GLOBAL_CONFIG.lock().await;
                     global_config.osd
                 };
-                // Lock the display port, while this guard lives other tasks cannot use the display port.
-                let mut display_port_guard = display_port_mutex.lock().await;
 
+                // TODO: Investigate whether a complete OSD refresh can consistently complete
+                // within one 50 Hz period. If not, consider spreading element updates
+                // across multiple task iterations to reduce latency spikes.
                 while ctx.osd_state != OsdState::Idle {
+                    #[allow(clippy::cast_possible_truncation)]
+                    let time_us = embassy_time::Instant::now().as_micros() as u32;
                     ctx.osd_state
                         .update_display_iteration(
                             &mut ctx.osd_elements,
-                            &mut draw_context,
-                            &mut *display_port_guard,
+                            &draw_context,
+                            display_port_mutex,
                             &osd_config,
                             time_us,
                         )
                         .await;
                 }
             }
-
-            // display_port_guard is automatically dropped at the end of this block,
-            // releasing the Mutex lock for other tasks.
         }
-
-        if loop_count.is_multiple_of(10) {
+        if loop_count.is_multiple_of(50) {
             log::info!("           OSD:      loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.

@@ -13,7 +13,7 @@ use crate::{
 };
 
 // Note, we use a `Watch` rather than a `Signal` since the receiver (`gyro_pid_task`) uses `try_changed` to see if the value has changed.
-const RX_WATCH_COUNT: usize = 2;
+const RX_WATCH_COUNT: usize = 3;
 static RX_WATCH: Watch<CriticalSectionRawMutex, RxMessage, RX_WATCH_COUNT> = Watch::new();
 
 type RxSender = Sender<'static, CriticalSectionRawMutex, RxMessage, RX_WATCH_COUNT>;

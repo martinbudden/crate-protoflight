@@ -296,7 +296,7 @@ impl OsdElements {
 
     pub async fn draw_current_element<D: Display>(
         &mut self,
-        draw_context: &mut OsdDrawContext,
+        draw_context: &OsdDrawContext,
         display_port: &mut D,
         osd_config: &OsdConfig,
     ) -> bool {
@@ -421,9 +421,9 @@ impl OsdElements {
     pub fn update_cache(&mut self, roll_angle_degrees: f32, pitch_angle_degrees: f32, yaw_angle_degrees: f32) {
         #[allow(clippy::cast_possible_truncation)]
         {
-            self.cache.roll_angle_degrees = (roll_angle_degrees + 0.5).floor() as i32;
-            self.cache.pitch_angle_degrees = (pitch_angle_degrees + 0.5).floor() as i32;
-            self.cache.yaw_angle_degrees = (yaw_angle_degrees + 0.5).floor() as i32;
+            self.cache.roll_angle_degrees = libm::floorf(roll_angle_degrees + 0.5) as i32;
+            self.cache.pitch_angle_degrees = libm::floorf(pitch_angle_degrees + 0.5) as i32;
+            self.cache.yaw_angle_degrees = libm::floorf(yaw_angle_degrees + 0.5) as i32;
         }
     }
 }
