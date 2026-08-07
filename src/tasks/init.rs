@@ -65,9 +65,11 @@ use crate::tasks::rangefinder_task::{
 };
 
 #[cfg(feature = "max7456")]
-use {crate::display::DisplayPortMax7456, embedded_hal_async::spi::SpiBus};
+use crate::display::DisplayPortMax7456;
 #[cfg(feature = "max7456")]
-pub type DisplayPortMutex = Mutex<CriticalSectionRawMutex, DisplayPortMax7456>;
+pub type DisplayPortMax7456Spi = DisplayPortMax7456<DisplaySpi>;
+#[cfg(feature = "max7456")]
+pub type DisplayPortMutex = Mutex<CriticalSectionRawMutex, DisplayPortMax7456Spi>;
 
 #[cfg(not(feature = "max7456"))]
 use crate::display::DisplayPortMock;
@@ -115,8 +117,8 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "rangefinder")]
     static RANGEFINDER_CTX: StaticCell<RangefinderContext> = StaticCell::new();
 
-    #[cfg(all(feature = "max7456", feature = "rp2350"))]
-    static SPI_BUS_CELL: StaticCell<ConcreteSpiType> = StaticCell::new();
+    //#[cfg(all(feature = "max7456", feature = "rp2350"))]
+    //static SPI_BUS_CELL: StaticCell<ConcreteSpiType> = StaticCell::new();
 
     static DISPLAY_PORT_MUTEX_CELL: StaticCell<DisplayPortMutex> = StaticCell::new();
 
@@ -131,7 +133,7 @@ pub async fn init(spawner: Spawner) {
     // --- INITIALIZE MOCK STUB (HOST PROFILE ENVIRONMENT) ---
     #[allow(unused)]
     #[cfg(feature = "max7456")]
-    let display_ref = { DISPLAY_PORT_MUTEX_CELL.init(Mutex::new(DisplayPortMax7456::new())) };
+    let display_ref = { DISPLAY_PORT_MUTEX_CELL.init(Mutex::new(DisplayPortMax7456Spi::new(aux_pio_spi))) };
     #[cfg(not(feature = "max7456"))]
     #[allow(unused)]
     let display_ref = { DISPLAY_PORT_MUTEX_CELL.init(Mutex::new(DisplayPortMock::default())) };
@@ -252,7 +254,8 @@ pub async fn init(spawner: Spawner) {
         //if let Ok(blackbox_spi) = _blackbox_res {
         //    BLACKBOX_WRITER_CTX.init(BlackboxWriterContext::new(blackbox_spi))
         //}
-        BLACKBOX_WRITER_CTX.init(BlackboxWriterContext::new(_blackbox_res.unwrap()))
+        //let blackbox_spi = blackbox_res.unwrap();
+        //BLACKBOX_WRITER_CTX.init(BlackboxWriterContext::new(blackbox_spi.into()))
     };
     #[cfg(all(feature = "blackbox", feature = "std"))]
     let blackbox_writer_ctx = { BLACKBOX_WRITER_CTX.init(BlackboxWriterContext::new()) };

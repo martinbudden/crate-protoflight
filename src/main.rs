@@ -10,6 +10,7 @@
 #![warn(clippy::doc_paragraphs_missing_punctuation)]
 
 mod autopilot;
+mod boards;
 mod config;
 mod display;
 mod drivers;
