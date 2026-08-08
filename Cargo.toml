@@ -30,6 +30,7 @@ default = ["libm",
     "std",
     #"rp2350",
     #"stm32f405",
+    #"speedybee_f405_v4",
     "autopilot",
     "barometer",
     "battery",
@@ -77,6 +78,10 @@ rangefinder = ["blackbox-logger/rangefinder"]
 rpm_filters = []
 servos = ["blackbox-logger/servos"]
 vtx = []
+
+# Boards supported
+matek_f405_wte = []
+speedybee_f405_v4 = []
 
 
 # Core backend features declared explicitly
@@ -151,6 +156,7 @@ embassy-stm32 = { version = "0.6.0", default-features = false, optional = true }
 #stm32-metapac = { version = "21.0.0", default-features = false, optional = true }
 #stm32f4xx-hal = { version = "0.23.0", default-features = false, optional = true }
 strum = { version = "0.28.0", default-features = false, features = ["derive"] }
+cfg-if = "1.0.4"
 derive_more = { version = "2.1.1", default-features = false, features = ["display"] }
 num-traits = { version = "0.2.19", default-features = false }
 libm = { version = "0.2.16", optional = true }

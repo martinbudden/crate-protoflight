@@ -113,5 +113,5 @@ build-stm32f405 = [
     "build",
     "--target", "thumbv7em-none-eabihf",
     "--no-default-features",
-    "--features", "stm32f405,stm32xx,,libm"
+    "--features", "stm32f405,stm32xx,libm"
 ]
