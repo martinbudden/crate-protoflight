@@ -1,9 +1,16 @@
 #![allow(unused)]
 use cfg_if::cfg_if;
+use imu_sensors::ImuDevice;
+#[cfg(feature = "std")]
+use imu_sensors::{ImuMock, MockImuBus};
+use motor_mixers::MotorDriver;
 
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum BoardInitError {
-    GyroNotAvailable,
-    GyroError,
+    ImuNotAvailable,
+    ImuError,
+    GyroInterruptNotAvailable,
+    GyroInterruptError,
     SdCardNotAvailable,
     SdCardError,
     Max7456NotAvailable,
@@ -14,41 +21,63 @@ pub enum BoardInitError {
     MspUartError,
     EscSensorUartNotAvailable,
     EscSensorUartError,
+    SensorsI2cNotAvailable,
+    SensorsI2cError,
+    MotorDriverNotAvailable,
+    MotorDriverError,
+}
+
+/// Context for IMU task.
+pub struct ImuContext<I: ImuDevice> {
+    pub imu: I,
+}
+
+impl<I: ImuDevice> ImuContext<I> {
+    pub fn new(imu: I) -> Self {
+        Self { imu }
+    }
 }
 
 cfg_if! {
 if #[cfg(feature = "stm32f405")] {
 
-pub struct Board {
-    pub gyro_spi: Result<SpiDevice, BoardInitError>,
-    pub sdcard_spi: Result<SpiDevice, BoardInitError>,
-    pub max7456_spi: Result<SpiDevice, BoardInitError>,
+pub struct Board<I: ImuDevice> {
+    pub imu: I,
+    pub sdcard_spi: Result<SpiDeviceAsync, BoardInitError>,
+    pub max7456_spi: Result<SpiDeviceBlocking, BoardInitError>,
 
     pub serial_rx_uart: Result<UartDevice, BoardInitError>,
-    pub msp_uart: Result<UartDevice, BoardInitError>,
+    pub msp_uart: Option<UartDevice>,
 
-    pub esc_sensor_uart: Result<UartDevice, BoardInitError>,
-    //pub sensors_i2c: Result<I2cDevice,BoardInitError>,
+    pub esc_sensor_uart: Option<UartDevice>,
+    pub sensors_i2c: Option<I2cDeviceBlocking>,
+    pub motor_driver: Result<MotorDriver, BoardInitError>,
 }
 
 // Bus = raw hardware peripheral
 // Device = bus + chip select + transaction locking
 use embassy_stm32::{
-    gpio::Output,
-    mode::Async,
-    spi::{Spi, mode::Master},
+    gpio::{Output,Input},
+    i2c::{I2c,mode::Master as I2cMaster},
+    mode::{Async, Blocking},
+    spi::{Spi, mode::Master as SpiMaster},
     usart::Uart,
 };
 
-type SpiBus = Spi<'static, Async, Master>;
-pub type SpiDevice = embedded_hal_bus::spi::ExclusiveDevice<SpiBus, Output<'static>, embassy_time::Delay>;
+pub type SpiDeviceAsync = embedded_hal_bus::spi::ExclusiveDevice<Spi<'static, Async, SpiMaster>, Output<'static>, embassy_time::Delay>;
+pub type SpiDeviceBlocking = embedded_hal_bus::spi::ExclusiveDevice<Spi<'static, Blocking, SpiMaster>, Output<'static>, embassy_time::Delay>;
+pub type I2cDeviceBlocking = I2c<'static, Blocking, I2cMaster>;
 pub type UartDevice = Uart<'static, Async>;
+pub type GpioInputPin = Input<'static>;
+pub type GpioOutputPin = Output<'static>;
+pub type MotorPins = [GpioOutputPin;8];
+
+pub type MotorOutput = Output<'static>;
 
 } else if #[cfg(feature = "rp2350")] {
 
-pub struct Board {
-    pub gyro_spi: Result<GyroSpiDevice, BoardInitError>,
-    pub gyro_interrupt: GyroInterruptPin,
+pub struct Board<I: ImuDevice> {
+    pub imu: I,
     pub sdcard_spi: Result<SdSpiDevice, BoardInitError>,
     //pub osd_spi: AuxiliaryPioSpiDevice,
 
@@ -56,6 +85,8 @@ pub struct Board {
     pub msp_uart: Result<UartDevice, BoardInitError>,
 
     pub sensors_i2c: Result<I2cDevice, BoardInitError>,
+
+    pub motor_driver: Result<MotorDriver, BoardInitError>,
 
     pub flash: Peri<'static, peripherals::FLASH>,
 }
@@ -67,7 +98,9 @@ pub struct Board {
 // Tied to SPI0 running asynchronously via the DMA system
 pub type GyroSpiBus = Spi<'static, peripherals::SPI0, SpiAsync>;
 pub type GyroSpiDevice = ExclusiveDevice<GyroSpiBus, Output<'static>, Delay>;
-pub type GyroInterruptPin = Input<'static>;
+pub type GpioInputPin = Input<'static>;
+pub type GpioOutputPin = Output<'static>;
+pub type MotorPins = [GpioOutputPin;8];
 
 // --- Device 2: Hardware SPI1 (Blackbox SD Card) ---
 // Tied to SPI1 running asynchronously via the DMA system
@@ -97,5 +130,12 @@ use embassy_rp::{
     uart,
     uart::{Async as UartAsync, Uart},
 };
+
+} else  {
+
+pub struct Board<I: ImuDevice> {
+    pub imu: I,
+    pub motor_driver: Result<MotorDriver, BoardInitError>,
+}
 
 }}

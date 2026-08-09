@@ -7,7 +7,7 @@ use crate::{
     config::{GLOBAL_CONFIG, config_publisher, config_subscriber, fast_config_publisher, fast_config_subscriber},
     tasks::{
         gyro_pid_task::{GyroPidContext, gyro_pid_sender, gyro_pid_task, setpoint_sender},
-        imu_task::{ImuContext, imu_task},
+        imu_task::imu_task,
         motor_mixer_task::{MotorMixerContext, motor_mixer_task},
         rx_task::{RxContext, rx_receiver, rx_sender, rx_task},
     },
@@ -87,7 +87,6 @@ pub async fn init(spawner: Spawner) {
     // ****
     // Statically allocate the task contexts.
     // ****
-    static IMU_CTX: StaticCell<ImuContext> = StaticCell::new();
     static GYRO_PID_CTX: StaticCell<GyroPidContext> = StaticCell::new();
     static RX_CTX: StaticCell<RxContext> = StaticCell::new();
     static MOTOR_MIXER_CTX: StaticCell<MotorMixerContext> = StaticCell::new();
@@ -125,9 +124,16 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "std")]
     env_logger::init();
 
+    // ---- GET THE DEVICES FROM THE BOARD SUPPORT PACKAGE
     #[allow(unused)]
     #[cfg(feature = "rp2350")]
     let board = crate::boards::rp2350::init();
+
+    #[cfg(feature = "speedybee_f405_v4")]
+    let board = crate::boards::speedybee_f405_v4::init();
+
+    #[cfg(feature = "std")]
+    let board = crate::boards::std::init();
 
     // --- INITIALIZE MOCK STUB (HOST PROFILE ENVIRONMENT) ---
     #[allow(unused)]
@@ -160,12 +166,16 @@ pub async fn init(spawner: Spawner) {
         #[cfg(feature = "rpm_filters")] 0.001,
     ));
 
-    let imu_ctx = IMU_CTX.init(ImuContext::new());
+    #[cfg(feature = "std")]
+    let imu_ctx = crate::boards::std::imu_context(board.imu);
+    #[cfg(feature = "speedybee_f405_v4")]
+    let imu_ctx = crate::boards::speedybee_f405_v4::imu_context(board.imu);
 
     #[rustfmt::skip]
     let motor_mixer_ctx = MOTOR_MIXER_CTX.init(MotorMixerContext::new(
         config.mixer,
         config.motor,
+        board.motor_driver.expect("motor driver fail"),
         #[cfg(feature = "rpm_filters")] config.rpm_notch_filter_bank,
         #[cfg(feature = "rpm_filters")] 0.001
     ));

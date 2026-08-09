@@ -37,6 +37,7 @@ default = ["libm",
     #"blackbox",
     "debug",
     "dshot_telemetry",
+    #"eight_motors",
     "gps",
     "huffman",
     "magnetometer",
@@ -102,6 +103,7 @@ std = [
     "embassy-executor/platform-std",
     "imu-sensors/std",
     "num-traits/std",
+    "motor-mixers/std",
     "signal-filters/std",
     "vqm/std",
     "log/std",
@@ -123,18 +125,21 @@ rp2350 = [
     #"embassy-rp/executor-interrupt",        # <-- Add if you require high-priority interrupt task pools
     "embassy-executor/platform-cortex-m",   # <-- Explicitly satisfies the executor's platform check
     "embassy-executor/executor-thread",
+    "motor-mixers/rp2350",
 ]
 
-stm32xx = []
-stm32f405 = [
+stm32 = [
     "dep:embassy-stm32",
     "dep:cortex-m-rt",
-    "embassy-stm32/stm32f405rg",
     "embassy-stm32/time-driver-tim2",
     "embassy-executor/platform-cortex-m",   # <-- Explicitly satisfies the executor's platform check
     "embassy-executor/executor-thread",
+    "motor-mixers/stm32",
 ]
 
+stm32f405 = [
+    "embassy-stm32/stm32f405rg",
+]
 [dependencies]
 # Core Embassy executor and concurrency primitives
 embassy-executor = { version = "0.10.0", default-features = false }
@@ -188,14 +193,14 @@ sensor-fusion = "0.1.9"
 blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger", default-features = false, optional = true }
 #blackbox-logger = { path = "../blackbox-logger", default-features = false, optional = true }
 
-motor-mixers = { version = "0.1.5" }
-#motor-mixers = { git = "https://github.com/martinbudden/crate-motor-mixers" }
-#motor-mixers = { path = "../motor-mixers" }
+#motor-mixers = { version = "0.1.5", default-features = false }
+motor-mixers = { git = "https://github.com/martinbudden/crate-motor-mixers", default-features = false }
+#motor-mixers = { path = "../motor-mixers", default-features = false }
 #radio-controllers = { version = "0.1.6" }
 radio-controllers = { git = "https://github.com/martinbudden/crate-radio-controllers" }
 #radio-controllers = { path = "../radio-controllers" }
-imu-sensors = { version = "0.1.3" }
-#imu-sensors = { git = "https://github.com/martinbudden/crate-imu-sensors" }
+#imu-sensors = { version = "0.1.3" }
+imu-sensors = { git = "https://github.com/martinbudden/crate-imu-sensors" }
 #imu-sensors = { path = "../imu-sensors" }
 
 paste = { version = "1.0.15", default-features = false }

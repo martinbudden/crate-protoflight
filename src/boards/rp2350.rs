@@ -4,7 +4,11 @@
 
 // NOTE: rp2350 numbers peripheral starting at 0, eg SPI0, SPI0, I2C0, I2C0 etc
 
-use crate::boards::board::{Board, BoardInitError};
+use crate::boards::{
+    ImuContext,
+    board::{Board, BoardInitError},
+};
+
 use cyw43_pio::PioSpi;
 #[cfg(feature = "multicore")]
 use embassy_rp::multicore::{Stack, spawn_core1};
@@ -21,28 +25,21 @@ use embassy_rp::{
 };
 use embassy_time::Delay;
 use embedded_hal_bus::spi::ExclusiveDevice;
+use imu_sensors::{Imu426xx, ImuAxesOrder, ImuSpiBus};
+use static_cell::StaticCell;
 
-// Binds the global hardware DMA vectors.
-// This creates the type validation struct "Irqs" required by Spi::new.
-bind_interrupts!(pub struct Irqs {
-    // Both SPI0 and SPI1 use these DMA channels to handle async wake ups
-    DMA_IRQ_0 => dma::InterruptHandler<peripherals::DMA_CH0>,
-                 dma::InterruptHandler<peripherals::DMA_CH1>,
-                 dma::InterruptHandler<peripherals::DMA_CH2>,
-                 dma::InterruptHandler<peripherals::DMA_CH3>,
-                 dma::InterruptHandler<peripherals::DMA_CH4>,
-                 dma::InterruptHandler<peripherals::DMA_CH5>,
-                 dma::InterruptHandler<peripherals::DMA_CH6>,
-                 dma::InterruptHandler<peripherals::DMA_CH7>;
+type BoardSpi =
+    ExclusiveDevice<embassy_rp::spi::Spi<'static, peripherals::SPI0, embassy_rp::spi::Async>, Output<'static>, Delay>;
 
-    // Used by your 3rd PIO-backed SPI device
-    PIO0_IRQ_0 => pio::InterruptHandler<peripherals::PIO0>;
-    UART0_IRQ => uart::InterruptHandler<peripherals::UART0>;
-    UART1_IRQ => uart::InterruptHandler<peripherals::UART1>;
-    I2C0_IRQ => i2c::InterruptHandler<peripherals::I2C0>;
-});
+pub type BoardImu = Imu426xx<ImuSpiBus<BoardSpi>>;
 
-pub fn init() -> Board {
+static IMU_CTX: StaticCell<ImuContext<BoardImu>> = StaticCell::new();
+
+pub fn imu_context(imu: BoardImu) -> &'static mut ImuContext<BoardImu> {
+    IMU_CTX.init(ImuContext::new(imu))
+}
+
+pub fn init() -> Board<BoardImu> {
     // Take ownership of the raw RP2350 hardware peripherals block
     #[allow(clippy::default_trait_access)]
     let peripherals = embassy_rp::init(Default::default());
@@ -89,7 +86,11 @@ pub fn init() -> Board {
         let spi_cs_output = Output::new(spi0_cs, Level::High);
         ExclusiveDevice::new(spi_bus, spi_cs_output, embassy_time::Delay)
     };
+    // Trick to find type of spi
+    //let spi1_type: () = spi1;
+
     let spi0_interrupt = Input::new(spi0_interrupt_pin, embassy_rp::gpio::Pull::Up);
+    let mut imu: BoardImu = Imu426xx::new(ImuSpiBus::new(spi0), ImuAxesOrder::XPOS_YPOS_ZPOS);
 
     let spi1 = {
         let mut spi_config = SpiConfig::default();
@@ -129,13 +130,33 @@ pub fn init() -> Board {
 
     // Map physical device names to logical device names and return.
     Board {
-        gyro_spi: spi0.map_err(|_| BoardInitError::GyroError),
-        gyro_interrupt: spi0_interrupt,
+        imu,
         sdcard_spi: spi1.map_err(|_| BoardInitError::SdCardError),
         // osd_spi: aux_pio_spi,
         serial_rx_uart: Ok(uart0),
         msp_uart: Ok(uart1),
         sensors_i2c: Ok(i2c0),
+        motor_driver: Err(BoardInitError::MotorDriverNotAvailable),
         flash: peripherals.FLASH,
     }
 }
+
+// Binds the global hardware DMA vectors.
+// This creates the type validation struct "Irqs" required by Spi::new.
+bind_interrupts!(pub struct Irqs {
+    // Both SPI0 and SPI1 use these DMA channels to handle async wake ups
+    DMA_IRQ_0 => dma::InterruptHandler<peripherals::DMA_CH0>,
+                 dma::InterruptHandler<peripherals::DMA_CH1>,
+                 dma::InterruptHandler<peripherals::DMA_CH2>,
+                 dma::InterruptHandler<peripherals::DMA_CH3>,
+                 dma::InterruptHandler<peripherals::DMA_CH4>,
+                 dma::InterruptHandler<peripherals::DMA_CH5>,
+                 dma::InterruptHandler<peripherals::DMA_CH6>,
+                 dma::InterruptHandler<peripherals::DMA_CH7>;
+
+    // Used by your 3rd PIO-backed SPI device
+    PIO0_IRQ_0 => pio::InterruptHandler<peripherals::PIO0>;
+    UART0_IRQ => uart::InterruptHandler<peripherals::UART0>;
+    UART1_IRQ => uart::InterruptHandler<peripherals::UART1>;
+    I2C0_IRQ => i2c::InterruptHandler<peripherals::I2C0>;
+});

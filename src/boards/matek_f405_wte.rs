@@ -1,5 +1,4 @@
-//#![cfg(all(feature = "stm32f405",feature="matek_f405_wte"))]
-#![cfg(feature = "stm32f405")]
+#![cfg(all(feature = "stm32f405", feature = "matek_f405_wte"))]
 #![allow(unused)]
 #![allow(clippy::similar_names)]
 

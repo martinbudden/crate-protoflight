@@ -1,8 +1,16 @@
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal};
-use tinyrand::{RandRange, StdRand};
 
-use imu_sensors::{AccFullScale, AccUnits, GyroFullScale, GyroUnits, ImuMock, MockImuBus};
-use vqm::Vector3f32;
+use imu_sensors::{AccFullScale, AccUnits, GyroFullScale, GyroUnits};
+use vqm::{Vector3, Vector3f32};
+
+use crate::boards::ImuContext;
+
+#[cfg(feature = "rp2350")]
+use crate::boards::rp2350::BoardImu;
+#[cfg(feature = "speedybee_f405_v4")]
+use crate::boards::speedybee_f405_v4::BoardImu;
+#[cfg(feature = "std")]
+use crate::boards::std::BoardImu;
 
 /*#[cfg(feature = "rp2350")]
 use embassy_rp::{
@@ -35,27 +43,13 @@ impl Default for ImuData {
 
 pub static IMU_SIGNAL: Signal<CriticalSectionRawMutex, ImuData> = Signal::new();
 
-/// Context for IMU task.
-pub struct ImuContext {
-    pub imu: ImuMock<MockImuBus>,
-}
-
-impl ImuContext {
-    pub fn new() -> Self {
-        Self { imu: ImuMock::new(MockImuBus::new(), imu_sensors::ImuAxesOrder::XPOS_YPOS_ZPOS) }
-    }
-}
-
 /// IMU Task Placeholder.
 #[embassy_executor::task]
-pub async fn imu_task(ctx: &'static mut ImuContext) {
+pub async fn imu_task(ctx: &'static mut ImuContext<BoardImu>) {
     let delta_t_us = 1000;
     let delta_t = 0.001_f32;
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_micros(delta_t_us));
     let mut loop_count: u32 = 0;
-    let mut rand = StdRand::default();
-    // Base signal levels
-    let mut x_base: i32 = 0;
 
     _ = ctx.imu.init(8000, GyroFullScale::Max, GyroUnits::Rps, AccFullScale::Max, AccUnits::G).await;
     log::info!("         IMU: task started");
@@ -64,7 +58,7 @@ pub async fn imu_task(ctx: &'static mut ImuContext) {
         ticker.next().await;
 
         // For now we are just faking some gyro and acc values.
-        let acc_rnd = Vector3f32 { x: 1.0, y: 0.5, z: 0.25 };
+        /*let acc_rnd = Vector3f32 { x: 1.0, y: 0.5, z: 0.25 };
         ctx.imu.set_acc(acc_rnd).await;
         x_base += rand.next_range(0..5_u32).cast_signed() - 2;
 
@@ -73,7 +67,7 @@ pub async fn imu_task(ctx: &'static mut ImuContext) {
         let gyro_z = rand.next_range(0..11_u32).cast_signed() - 5;
         #[allow(clippy::cast_precision_loss)]
         let gyro_dps_rnd = Vector3f32 { x: gyro_x as f32, y: gyro_y as f32, z: gyro_z as f32 };
-        ctx.imu.set_gyro(gyro_dps_rnd).await;
+        ctx.imu.set_gyro(gyro_dps_rnd).await;*/
 
         // ctx.drdy.wait_for_rising_edge().await; // Synchronized to IMU
         // let data = read_imu_dma(&mut ctx.spi).await;
@@ -84,7 +78,7 @@ pub async fn imu_task(ctx: &'static mut ImuContext) {
         //let (acc, gyro_rps) = ctx.imu.read_acc_gyro_rps().await.unwrap_or_default();
 
         // Signal the gyro_pid task that there is new ImuData available.
-        let imu_data = ImuData { acc: acc_rnd, gyro_rps: gyro_dps_rnd.to_radians(), delta_t };
+        let imu_data = ImuData { acc: Vector3::default(), gyro_rps: Vector3::default(), delta_t };
         IMU_SIGNAL.signal(imu_data);
 
         if loop_count.is_multiple_of(1000) {

@@ -1049,8 +1049,7 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 [[package]]
 name = "imu-sensors"
 version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2dabaa4beff5dada4a9cd785c058a644da5c0cfba81a1320735170d72f52956e"
+source = "git+https://github.com/martinbudden/crate-imu-sensors#eabf4feb4fa28558241c990262f1dfec80d99f6f"
 dependencies = [
  "cfg-if",
  "embassy-sync",
@@ -1206,15 +1205,14 @@ dependencies = [
 [[package]]
 name = "motor-mixers"
 version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18c0fb22ae15a3fd3c72d8c82aca20632ebafaa715656e9db1c2a89a7c10e2b0"
+source = "git+https://github.com/martinbudden/crate-motor-mixers#6596bc60e42bc5aab5059f65a62335d600352eed"
 dependencies = [
- "cfg-if",
  "embassy-executor",
  "embassy-futures",
+ "embassy-rp",
+ "embassy-stm32",
  "embassy-sync",
  "embassy-time",
- "libm",
  "pidsk-controller",
  "postcard",
  "rustc_version 0.4.1",

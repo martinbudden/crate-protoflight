@@ -1,6 +1,6 @@
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal};
 
-use motor_mixers::{MixerConfig, MotorConfig, MotorMixer, MotorMixerMessage};
+use motor_mixers::{MixerConfig, MotorConfig, MotorDriver, MotorMixer, MotorMixerMessage};
 #[cfg(feature = "rpm_filters")]
 use motor_mixers::{RpmNotchFilterBank, RpmNotchFilterBankConfig};
 
@@ -23,6 +23,7 @@ impl MotorMixerContext {
     pub fn new(
         mixer_config: MixerConfig,
         motor_config: MotorConfig,
+        motor_driver: MotorDriver,
         rpm_notch_filter_config: RpmNotchFilterBankConfig,
         looptime_seconds: f32,
     ) -> Self {
@@ -34,11 +35,15 @@ impl MotorMixerContext {
         // If output denominator is 3, then we need to do 3 iterations.
         let rpm_filter_iteration_count = 8;
         //(rpm_notch_filters.rpm_filter_harmonics_count() * Self::MOTOR_COUNT).div_ceil(common.output_denominator());
-        Self { motor_mixer: MotorMixer::new(mixer_config, motor_config), rpm_notch_filters, rpm_filter_iteration_count }
+        Self {
+            motor_mixer: MotorMixer::new(mixer_config, motor_config, motor_driver),
+            rpm_notch_filters,
+            rpm_filter_iteration_count,
+        }
     }
     #[cfg(not(feature = "rpm_filters"))]
-    pub fn new(mixer_config: MixerConfig, motor_config: MotorConfig) -> Self {
-        Self { motor_mixer: MotorMixer::new(mixer_config, motor_config) }
+    pub fn new(mixer_config: MixerConfig, motor_config: MotorConfig, motor_driver: MotorDriver) -> Self {
+        Self { motor_mixer: MotorMixer::new(mixer_config, motor_config, motor_driver) }
     }
 }
 

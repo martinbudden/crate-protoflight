@@ -4,8 +4,18 @@
 
 
 # -----------------------------------------------------------------------------
+# Configuration for Cortex-M4F / Cortex-M7F (Single-Precision FPUs)
+# Devices like: STM32F4, STM32F7 (SP variants), NXP Kinetis K64
+# -----------------------------------------------------------------------------
+[target.thumbv7em-none-eabihf]
+rustflags = [
+    "-C", "target-cpu=cortex-m4",
+    "-C", "llvm-args=--inline-threshold=250",
+]
+
+# -----------------------------------------------------------------------------
 # Configuration for Cortex-M33 (Modern Armv8-M with FPU)
-# Devices like: Nordic nRF5340, STM32U5, LPC55S69
+# Devices like: Nordic nRF5340, STM32U5, LPC55S69, RP2350
 # -----------------------------------------------------------------------------
 [target.thumbv8m.main-none-eabihf]
 rustflags = [
@@ -14,16 +24,6 @@ rustflags = [
     "-C", "no-vectorize-loops",
     "-C", "link-arg=-Tlink.x",
     "-C", "link-arg=-Tdefmt.x",
-]
-
-# -----------------------------------------------------------------------------
-# Configuration for Cortex-M4F / Cortex-M7F (Single-Precision FPUs)
-# Devices like: STM32F4, STM32F7 (SP variants), NXP Kinetis K64
-# -----------------------------------------------------------------------------
-[target.thumbv7em-none-eabihf]
-rustflags = [
-    "-C", "target-cpu=cortex-m4",
-    "-C", "llvm-args=--inline-threshold=250",
 ]
 
 # Note for ESP32:
@@ -52,6 +52,7 @@ rustflags = [
 [alias]
 # Run using: 'cargo test-host'
 test-host = "test --no-default-features --features std,libm,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug,serde --target x86_64-unknown-linux-gnu"
+check-host = "check --no-default-features --features std,libm,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug,serde --target x86_64-unknown-linux-gnu"
 
 # Shortcut to build specifically for the Double-Precision Cortex-M7
 # Devices like: STM32H7, NXP i.MX RT1060
@@ -73,8 +74,8 @@ test-rp2350 = [
     "--target", "thumbv8m.main-none-eabihf",
     "--no-default-features",
     "--features",
-    #"rp2350,libm,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug"
-    "rp2350,libm"
+    #"libm,rp2350,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug"
+    "libm,rp2350"
 ]
 
 check-rp2350 = [
@@ -83,14 +84,14 @@ check-rp2350 = [
     "--no-default-features",
     "--features",
     #"rp2350,libm,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug"
-    "rp2350,libm"
+    "libm,rp2350"
 ]
 
 build-rp2350 = [
     "build",
     "--target", "thumbv8m.main-none-eabihf",
     "--no-default-features",
-    "--features", "rp2350,libm,battery"
+    "--features", "libm,rp2350,battery"
 ]
 
 run-rp2350 = [
@@ -98,7 +99,7 @@ run-rp2350 = [
     "--target", "thumbv8m.main-none-eabihf",
     "--no-default-features",
     "--features",
-    "rp2350,libm,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug"
+    "libm,rp2350,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug"
 ]
 
 
@@ -106,12 +107,12 @@ check-stm32f405 = [
     "check",
     "--target", "thumbv7em-none-eabihf",
     "--no-default-features",
-    "--features", "stm32f405,libm"
+    "--features", "libm,stm32,stm32f405,speedybee_f405_v4"
 ]
 
 build-stm32f405 = [
     "build",
     "--target", "thumbv7em-none-eabihf",
     "--no-default-features",
-    "--features", "stm32f405,stm32xx,libm"
+    "--features", "libm,stm32,stm32f405,speedybee_f405_v4"
 ]
