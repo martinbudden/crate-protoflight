@@ -86,8 +86,6 @@ pub struct Board<I: ImuDevice> {
 
     pub msp_uart: Option<UartDevice>,
     pub sensors_i2c: Option<I2cDevice>,
-
-    pub flash: Peri<'static, peripherals::FLASH>,
 }
 
 // Bus = raw hardware peripheral

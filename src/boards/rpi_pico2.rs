@@ -2,7 +2,14 @@
 #![allow(unused)]
 #![allow(clippy::similar_names)]
 
-use cyw43_pio::PioSpi;
+use crate::boards::{
+    ImuContext,
+    board::{Board, BoardInitError},
+};
+
+use imu_sensors::{Imu426xx, ImuAxisOrder, ImuSpiBus};
+use motor_mixers::MotorDriverQuadPwm;
+
 use embassy_rp::{
     Peri, bind_interrupts, dma, gpio,
     gpio::{Input, Level, Output, Pull},
@@ -16,8 +23,6 @@ use embassy_rp::{
 };
 use embassy_time::Delay;
 use embedded_hal_bus::spi::ExclusiveDevice;
-use imu_sensors::{Imu426xx, ImuAxisOrder, ImuSpiBus};
-
 type BoardSpi =
     ExclusiveDevice<embassy_rp::spi::Spi<'static, peripherals::SPI0, embassy_rp::spi::Async>, Output<'static>, Delay>;
 
@@ -127,7 +132,8 @@ pub fn board_init(_axis_order: ImuAxisOrder) -> Board<BoardImu> {
         // osd_spi: aux_pio_spi,
         msp_uart: Some(uart1),
         sensors_i2c: Some(i2c0),
-        flash: peripherals.FLASH,
+        // pub flash: Peri<'static, peripherals::FLASH>,
+        // flash: peripherals.FLASH, // 
     }
 }
 
