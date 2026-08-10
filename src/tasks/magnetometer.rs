@@ -4,8 +4,11 @@ use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex,
     pubsub::{PubSubChannel, Publisher, Subscriber},
 };
+use static_cell::StaticCell;
 
 use crate::sensors::MagnetometerMessage;
+
+static MAGNETOMETER_CTX: StaticCell<MagnetometerContext> = StaticCell::new();
 
 const MAX_MAGNETOMETER_SUBSCRIBER_COUNT: usize = 4;
 const MAGNETOMETER_PUBLISHER_COUNT: usize = 1;
@@ -57,9 +60,13 @@ impl MagnetometerContext {
     }
 }
 
+pub fn init() -> &'static mut MagnetometerContext {
+    MAGNETOMETER_CTX.init(MagnetometerContext::new())
+}
+
 /// Magnetometer Task Placeholder.
 #[embassy_executor::task]
-pub async fn magnetometer_task(ctx: &'static mut MagnetometerContext) {
+pub async fn run(ctx: &'static mut MagnetometerContext) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(40));
     let mut loop_count: u32 = 0;
 

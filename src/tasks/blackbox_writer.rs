@@ -1,7 +1,7 @@
 #![cfg(feature = "blackbox")]
 
 #[allow(unused)]
-use crate::tasks::blackbox_task::BLACKBOX_WRITE_QUEUE;
+use crate::tasks::blackbox::BLACKBOX_WRITE_QUEUE;
 
 #[cfg(feature = "rp2350")]
 use crate::boards::rp2350::BlackboxSpiDevice;
@@ -10,6 +10,7 @@ use crate::boards::rp2350::BlackboxSpiDevice;
 use crate::drivers::sd_card::{MockSdCard, SdStorage};
 #[cfg(feature = "rp2350")]
 use embedded_sdmmc::{Directory, Mode, SdCard, VolumeIdx, VolumeManager};
+use static_cell::StaticCell;
 
 /// Dummy time source required by the embedded-sdmmc library
 #[cfg(not(feature = "std"))]
@@ -22,6 +23,8 @@ impl embedded_sdmmc::TimeSource for VehicleTimeSource {
         embedded_sdmmc::Timestamp::from_fat(0, 0)
     }
 }
+
+static BLACKBOX_WRITER_CTX: StaticCell<BlackboxWriterContext> = StaticCell::new();
 
 /// System execution context for the background storage worker pipeline.
 #[cfg(feature = "rp2350")]
@@ -52,13 +55,16 @@ impl BlackboxWriterContext {
         Self { sd_card: MockSdCard::new("blackbox_log.bbl") }
     }
 }
+pub fn init() -> &'static mut BlackboxWriterContext {
+    BLACKBOX_WRITER_CTX.init(BlackboxWriterContext::new())
+}
 
 #[cfg(feature = "std")]
 #[embassy_executor::task]
-pub async fn blackbox_writer_task(ctx: &'static mut BlackboxWriterContext) {
+pub async fn run(ctx: &'static mut BlackboxWriterContext) {
     log::info!("BLACKBOX SD WRITER: task started");
     loop {
-        // Asynchronously wait until blackbox_task sends a new serialized block chunk
+        // Asynchronously wait until blackbox task sends a new serialized block chunk
         let block = BLACKBOX_WRITE_QUEUE.receive().await;
         let chunk = &block.data[..block.len];
         // On desktop, directly await the full file flash operation
@@ -69,7 +75,7 @@ pub async fn blackbox_writer_task(ctx: &'static mut BlackboxWriterContext) {
 /// Blackbox writer background processing task loop using embedded-sdmmc 0.9.0.
 #[cfg(feature = "rp2350")]
 #[embassy_executor::task]
-pub async fn blackbox_writer_task(ctx: &'static mut BlackboxWriterContext) {
+pub async fn run(ctx: &'static mut BlackboxWriterContext) {
     log::info!("BLACKBOX SD WRITER: task started");
 
     // LOW-SPEED BOOT HARDWARE HANDSHAKE ---
@@ -100,7 +106,7 @@ pub async fn blackbox_writer_task(ctx: &'static mut BlackboxWriterContext) {
     let log_file = root_dir.open_file_in_dir(filename_str, Mode::ReadWriteCreateOrAppend).unwrap();
 
     loop {
-        // Asynchronously wait until blackbox_task sends a new serialized block chunk
+        // Asynchronously wait until blackbox task sends a new serialized block chunk
         let block = BLACKBOX_WRITE_QUEUE.receive().await;
         let chunk = &block.data[..block.len];
 

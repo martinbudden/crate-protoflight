@@ -2,6 +2,7 @@
 
 #[cfg(feature = "battery")]
 use embassy_sync::pubsub::WaitResult;
+use static_cell::StaticCell;
 use vqm::Quaternionf32;
 
 use crate::{
@@ -9,30 +10,31 @@ use crate::{
     flight::{ArmingFlags, RxMessage},
     osd::{Osd, OsdDrawContext, OsdElements, OsdState},
     tasks::{
-        gyro_pid_task::{GyroPidReceiver, SetpointReceiver, gyro_pid_receiver, setpoint_receiver},
+        gyro_pid::{GyroPidReceiver, SetpointReceiver, gyro_pid_receiver, setpoint_receiver},
         init::DisplayPortMutex,
-        rx_task::{RxReceiver, rx_receiver},
+        rx::{RxReceiver, rx_receiver},
     },
 };
 
 #[cfg(feature = "optical_flow")]
-use crate::tasks::optical_flow_task::{OpticalFlowSubscriber, optical_flow_subscriber};
+use crate::tasks::optical::{OpticalFlowSubscriber, optical_flow_subscriber};
 
 #[cfg(feature = "rangefinder")]
-use crate::tasks::rangefinder_task::{RangefinderSubscriber, rangefinder_subscriber};
+use crate::tasks::rangefinder::{RangefinderSubscriber, rangefinder_subscriber};
 
 #[cfg(feature = "barometer")]
-use crate::tasks::barometer_task::{BarometerSubscriber, barometer_subscriber};
+use crate::tasks::barometer::{BarometerSubscriber, barometer_subscriber};
 
 #[cfg(feature = "battery")]
 use crate::{
     sensors::BatteryMessage,
-    tasks::battery_task::{BatterySubscriber, battery_subscriber},
+    tasks::battery::{BatterySubscriber, battery_subscriber},
 };
 
 #[cfg(feature = "gps")]
-use crate::tasks::gps_task::{GpsSubscriber, gps_subscriber};
+use crate::tasks::gps::{GpsSubscriber, gps_subscriber};
 
+static OSD_CTX: StaticCell<OsdContext> = StaticCell::new();
 /// Context for OSD task.
 #[allow(unused)]
 pub struct OsdContext {
@@ -77,48 +79,13 @@ impl OsdContext {
     }
 }
 
-/// OSD Task Placeholder.
-///
-
-/*#[embassy_executor::task]
-pub async fn osd_task(ctx: &'static mut OsdContext) {
-    let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(50));
-    let mut loop_count: u32 = 0;
-
-    //println!("OSD: Started at 50Hz.");
-    log::info!("         OSD: task started");
-    loop {
-        // Wait for the next 50Hz tick.
-        ticker.next().await;
-
-        // Get the latest messages without consuming the notifications.
-        let orientation = if let Some(gyro_pid_message) = ctx.gyro_pid_receiver.try_get() {
-            gyro_pid_message.orientation
-        } else {
-            Quaternionf32::default()
-        };
-
-        #[cfg(feature = "max7456")]
-        let mut display_port = DisplayPortMax7456::new();
-        #[cfg(not(feature = "max7456"))]
-        let mut display_port = DisplayPortMock::new();
-
-        let arming_flags = ArmingFlags::new();
-        let mut draw_context = OsdDrawContext { display_port: &mut display_port, orientation, arming_flags };
-        // Update the OSD with the latest data.
-        let time_microseconds = 0_u32;
-        ctx.osd.update_display(&mut draw_context, time_microseconds);
-
-        if loop_count.is_multiple_of(10) {
-            log::info!("      OSD:      loop {loop_count}");
-        }
-        loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
-    }
+pub fn init(display_supports_background_layer: bool) -> &'static mut OsdContext {
+    OSD_CTX.init(OsdContext::new(display_supports_background_layer))
 }
-*/
 
+/// OSD Task Placeholder.
 #[embassy_executor::task]
-pub async fn osd_task(ctx: &'static mut OsdContext, display_port_mutex: &'static DisplayPortMutex) {
+pub async fn run(ctx: &'static mut OsdContext, display_port_mutex: &'static DisplayPortMutex) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(50));
     let mut loop_count: u32 = 0;
 
@@ -193,3 +160,40 @@ pub async fn osd_task(ctx: &'static mut OsdContext, display_port_mutex: &'static
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }
 }
+
+/*#[embassy_executor::task]
+pub async fn run(ctx: &'static mut OsdContext) {
+    let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(50));
+    let mut loop_count: u32 = 0;
+
+    //println!("OSD: Started at 50Hz.");
+    log::info!("         OSD: task started");
+    loop {
+        // Wait for the next 50Hz tick.
+        ticker.next().await;
+
+        // Get the latest messages without consuming the notifications.
+        let orientation = if let Some(gyro_pid_message) = ctx.gyro_pid_receiver.try_get() {
+            gyro_pid_message.orientation
+        } else {
+            Quaternionf32::default()
+        };
+
+        #[cfg(feature = "max7456")]
+        let mut display_port = DisplayPortMax7456::new();
+        #[cfg(not(feature = "max7456"))]
+        let mut display_port = DisplayPortMock::new();
+
+        let arming_flags = ArmingFlags::new();
+        let mut draw_context = OsdDrawContext { display_port: &mut display_port, orientation, arming_flags };
+        // Update the OSD with the latest data.
+        let time_microseconds = 0_u32;
+        ctx.osd.update_display(&mut draw_context, time_microseconds);
+
+        if loop_count.is_multiple_of(10) {
+            log::info!("      OSD:      loop {loop_count}");
+        }
+        loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
+    }
+}
+*/

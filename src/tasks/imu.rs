@@ -1,6 +1,7 @@
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal};
 
 use imu_sensors::{AccFullScale, AccUnits, GyroFullScale, GyroUnits};
+use static_cell::StaticCell;
 use vqm::{Vector3, Vector3f32};
 
 use crate::boards::{BoardImu, ImuContext};
@@ -36,9 +37,15 @@ impl Default for ImuData {
 
 pub static IMU_SIGNAL: Signal<CriticalSectionRawMutex, ImuData> = Signal::new();
 
+static IMU_CTX: StaticCell<ImuContext<crate::boards::BoardImu>> = StaticCell::new();
+
+pub fn init(imu: BoardImu) -> &'static mut ImuContext<BoardImu> {
+    IMU_CTX.init(ImuContext::<BoardImu>::new(imu))
+}
+
 /// IMU Task Placeholder.
 #[embassy_executor::task]
-pub async fn imu_task(ctx: &'static mut ImuContext<BoardImu>) {
+pub async fn run(ctx: &'static mut ImuContext<BoardImu>) {
     let delta_t_us = 1000;
     let delta_t = 0.001_f32;
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_micros(delta_t_us));

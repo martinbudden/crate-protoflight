@@ -4,33 +4,36 @@ use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex,
     watch::{Receiver, Sender, Watch},
 };
+use static_cell::StaticCell;
 
 use crate::{
     autopilot::pilot::Autopilot,
     flight::RxMessage,
     tasks::{
-        gyro_pid_task::{GyroPidReceiver, gyro_pid_receiver},
-        rx_task::{RxReceiver, rx_receiver},
+        gyro_pid::{GyroPidReceiver, gyro_pid_receiver},
+        rx::{RxReceiver, rx_receiver},
     },
 };
+
+static AUTOPILOT_CTX: StaticCell<AutopilotContext> = StaticCell::new();
 
 #[cfg(any(feature = "barometer", feature = "gps", feature = "optical_flow", feature = "rangefinder"))]
 use {crate::flight::RcControls, radio_controllers::RcMode, vqm::Vector3f32};
 
 #[cfg(feature = "barometer")]
-use crate::tasks::barometer_task::{BarometerSubscriber, barometer_subscriber};
+use crate::tasks::barometer::{BarometerSubscriber, barometer_subscriber};
 
 #[cfg(feature = "gps")]
 use crate::{
     gps::GpsMessage,
-    tasks::gps_task::{GpsSubscriber, gps_subscriber},
+    tasks::gps::{GpsSubscriber, gps_subscriber},
 };
 
 #[cfg(feature = "optical_flow")]
-use crate::tasks::optical_flow_task::{OpticalFlowSubscriber, optical_flow_subscriber};
+use crate::tasks::optical::{OpticalFlowSubscriber, optical_flow_subscriber};
 
 #[cfg(feature = "rangefinder")]
-use crate::tasks::rangefinder_task::{RangefinderSubscriber, rangefinder_subscriber};
+use crate::tasks::rangefinder::{RangefinderSubscriber, rangefinder_subscriber};
 
 const AUTOPILOT_WATCH_COUNT: usize = 1;
 static AUTOPILOT_WATCH: Watch<CriticalSectionRawMutex, RxMessage, AUTOPILOT_WATCH_COUNT> = Watch::new();
@@ -82,10 +85,14 @@ impl AutopilotContext {
     }
 }
 
+pub fn init() -> &'static mut AutopilotContext {
+    AUTOPILOT_CTX.init(AutopilotContext::new())
+}
+
 /// Autopilot Placeholder.
 #[allow(unused)]
 #[embassy_executor::task]
-pub async fn autopilot_task(ctx: &'static mut AutopilotContext) {
+pub async fn run(ctx: &'static mut AutopilotContext) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_millis(1));
     let delta_t = 0.001;
     let mut loop_count: u32 = 0;

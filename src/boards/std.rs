@@ -6,6 +6,7 @@ use motor_mixers::{MotorDriver, MotorDriverQuadPwm};
 
 pub type BoardImu = ImuMock<MockImuBus>;
 
+#[allow(unused)]
 pub fn imu_context(imu: BoardImu) -> ImuContext<BoardImu> {
     ImuContext::new(imu)
 }

@@ -4,6 +4,7 @@ use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex,
     pubsub::{PubSubChannel, Publisher, Subscriber},
 };
+use static_cell::StaticCell;
 
 use crate::sensors::OpticalFlowMessage;
 
@@ -43,6 +44,7 @@ pub fn optical_flow_subscriber() -> OpticalFlowSubscriber {
     OPTICAL_FLOW_PUB_SUB_CHANNEL.subscriber().expect("optical_flow_subscriber failed")
 }
 
+static OPTICAL_FLOW_CTX: StaticCell<OpticalFlowContext> = StaticCell::new();
 /// Context for optical flow task.
 pub struct OpticalFlowContext {
     pub optical_flow_publisher: OpticalFlowPublisher,
@@ -57,11 +59,13 @@ impl OpticalFlowContext {
     }
 }
 
-/// Optical flow Task Placeholder.
-///
+pub fn init() -> &'static mut OpticalFlowContext {
+    OPTICAL_FLOW_CTX.init(OpticalFlowContext::new())
+}
 
+/// Optical flow Task Placeholder.
 #[embassy_executor::task]
-pub async fn optical_flow_task(ctx: &'static mut OpticalFlowContext) {
+pub async fn run(ctx: &'static mut OpticalFlowContext) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(50));
     let mut loop_count: u32 = 0;
 

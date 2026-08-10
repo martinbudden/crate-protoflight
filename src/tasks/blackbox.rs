@@ -6,19 +6,20 @@ use blackbox_logger::{
 };
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel};
 use radio_controllers::RcMode;
+use static_cell::StaticCell;
 
 #[cfg(feature = "gps")]
-use crate::tasks::gps_task::gps_subscriber;
+use crate::tasks::gps::gps_subscriber;
 use crate::{
     sensors::{GyroPidMessage, SetpointMessage},
-    tasks::gyro_pid_task::{GyroPidReceiver, SetpointReceiver, gyro_pid_receiver, setpoint_receiver},
+    tasks::gyro_pid::{GyroPidReceiver, SetpointReceiver, gyro_pid_receiver, setpoint_receiver},
 };
 
 #[cfg(feature = "barometer")]
-use crate::tasks::barometer_task::{BarometerSubscriber, barometer_subscriber};
+use crate::tasks::barometer::{BarometerSubscriber, barometer_subscriber};
 
 #[cfg(feature = "battery")]
-use crate::tasks::battery_task::{BatterySubscriber, battery_subscriber};
+use crate::tasks::battery::{BatterySubscriber, battery_subscriber};
 
 #[cfg(feature = "debug")]
 use crate::tasks::{DebugMode, GLOBAL_DEBUG};
@@ -27,10 +28,12 @@ use crate::tasks::{DebugMode, GLOBAL_DEBUG};
 use {
     crate::{
         gps::{GpsMessage, GpsSolutionData},
-        tasks::gps_task::GpsSubscriber,
+        tasks::gps::GpsSubscriber,
     },
     blackbox_logger::{BlackboxGpsData, BlackboxGpsPosition},
 };
+
+static BLACKBOX_CTX: StaticCell<BlackboxContext> = StaticCell::new();
 
 #[rustfmt::skip]
 pub struct BlackboxContext {
@@ -169,9 +172,13 @@ const BLACKBOX_WRITE_QUEUE_COUNT: usize = 256;
 pub static BLACKBOX_WRITE_QUEUE: Channel<CriticalSectionRawMutex, BlackboxWriteBlock, BLACKBOX_WRITE_QUEUE_COUNT> =
     Channel::new();
 
+pub fn init(config: BlackboxConfig) -> &'static mut BlackboxContext {
+    BLACKBOX_CTX.init(BlackboxContext::new(config))
+}
+
 /// Blackbox task.
 #[embassy_executor::task]
-pub async fn blackbox_task(ctx: &'static mut BlackboxContext) {
+pub async fn run(ctx: &'static mut BlackboxContext) {
     log::info!("    BLACKBOX: task started");
     let mut loop_count: u32 = 0;
 

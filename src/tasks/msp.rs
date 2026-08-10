@@ -1,6 +1,7 @@
 #![cfg(feature = "msp")]
 #![allow(unused)]
 
+use static_cell::StaticCell;
 //use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, pubsub::PubSubChannel};
 use stream_buf::{StreamBufReader, StreamBufWriter};
 
@@ -10,25 +11,27 @@ use crate::{
 };
 
 #[cfg(feature = "barometer")]
-use crate::tasks::barometer_task::{BarometerSubscriber, barometer_subscriber};
+use crate::tasks::barometer::{BarometerSubscriber, barometer_subscriber};
 
 #[cfg(feature = "battery")]
-use crate::tasks::battery_task::{BatterySubscriber, battery_subscriber};
+use crate::tasks::battery::{BatterySubscriber, battery_subscriber};
 
 #[cfg(feature = "gps")]
 use crate::{
     gps::GpsMessage,
-    tasks::gps_task::{GpsSubscriber, gps_subscriber},
+    tasks::gps::{GpsSubscriber, gps_subscriber},
 };
 
 #[cfg(feature = "magnetometer")]
-use crate::tasks::magnetometer_task::{MagnetometerSubscriber, magnetometer_subscriber};
+use crate::tasks::magnetometer::{MagnetometerSubscriber, magnetometer_subscriber};
 
 #[cfg(feature = "optical_flow")]
-use crate::tasks::optical_flow_task::{OpticalFlowSubscriber, optical_flow_subscriber};
+use crate::tasks::optical::{OpticalFlowSubscriber, optical_flow_subscriber};
 
 #[cfg(feature = "rangefinder")]
-use crate::tasks::rangefinder_task::{RangefinderSubscriber, rangefinder_subscriber};
+use crate::tasks::rangefinder::{RangefinderSubscriber, rangefinder_subscriber};
+
+static MSP_CTX: StaticCell<MspContext> = StaticCell::new();
 
 /// Context for MSP task.
 ///
@@ -87,9 +90,13 @@ impl MspContext {
     }
 }
 
+pub fn init() -> &'static mut MspContext {
+    MSP_CTX.init(MspContext::new())
+}
+
 /// MSP task Placeholder.
 #[embassy_executor::task]
-pub async fn msp_task(ctx: &'static mut MspContext) {
+pub async fn run(ctx: &'static mut MspContext) {
     // for now just wait on a ticker to drive the MSP loop. TODO: change this to wait on an MSP packet instead.
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_millis(200));
     let mut loop_count: u32 = 0;

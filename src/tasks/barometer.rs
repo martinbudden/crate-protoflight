@@ -4,8 +4,11 @@ use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex,
     pubsub::{PubSubChannel, Publisher, Subscriber},
 };
+use static_cell::StaticCell;
 
 use crate::sensors::BarometerMessage;
+
+static BAROMETER_CTX: StaticCell<BarometerContext> = StaticCell::new();
 
 const MAX_BAROMETER_SUBSCRIBER_COUNT: usize = 4;
 const BAROMETER_PUBLISHER_COUNT: usize = 1;
@@ -55,9 +58,13 @@ impl BarometerContext {
     }
 }
 
+pub fn init() -> &'static mut BarometerContext {
+    BAROMETER_CTX.init(BarometerContext::new())
+}
+
 /// Barometer Task Placeholder.
 #[embassy_executor::task]
-pub async fn barometer_task(ctx: &'static mut BarometerContext) {
+pub async fn run(ctx: &'static mut BarometerContext) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(40));
     let mut loop_count: u32 = 0;
 

@@ -6,6 +6,7 @@ use embassy_sync::{
 #[cfg(feature = "autopilot")]
 use radio_controllers::RcMode;
 use radio_controllers::{Rates, RatesConfig, RcModes, RxChannel, RxFrame};
+use static_cell::StaticCell;
 
 use crate::{
     config::{
@@ -15,7 +16,9 @@ use crate::{
     flight::{RcAdjustments, RxMessage},
 };
 
-// Note, we use a `Watch` rather than a `Signal` since the receiver (`gyro_pid_task`) uses `try_changed` to see if the value has changed.
+static RX_CTX: StaticCell<RxContext> = StaticCell::new();
+
+// Note, we use a `Watch` rather than a `Signal` since the receiver (`gyro_pid` task) uses `try_changed` to see if the value has changed.
 const RX_WATCH_COUNT: usize = 3;
 static RX_WATCH: Watch<CriticalSectionRawMutex, RxMessage, RX_WATCH_COUNT> = Watch::new();
 
@@ -32,9 +35,9 @@ pub fn rx_receiver() -> RxReceiver {
 }
 
 #[cfg(feature = "autopilot")]
-use crate::tasks::autopilot_task::{AutopilotReceiver, autopilot_receiver};
+use crate::tasks::autopilot::{AutopilotReceiver, autopilot_receiver};
 
-/// Context for the `flight_control_task`.
+/// Context for the receiver task.
 pub struct RxContext {
     pub rx_sender: RxSender,
     pub config_subscriber: ConfigSubscriber,
@@ -67,6 +70,10 @@ impl RxContext {
     }
 }
 
+pub fn init(rates: RatesConfig) -> &'static mut RxContext {
+    RX_CTX.init(RxContext::new(rates))
+}
+
 /// The rx task waits (with a timeout) for a packet from the radio and when one arrives it:
 /// 1. Checks for any in-flight adjustments of rates.
 /// 2. Updates the control modes using the AUX channel values.
@@ -75,7 +82,7 @@ impl RxContext {
 /// 5. Sends the `FlightControl` message to the `gyro_pid` task.
 /// If the timeout expires, then failsafe handling is invoked.
 #[embassy_executor::task]
-pub async fn rx_task(ctx: &'static mut RxContext) {
+pub async fn run(ctx: &'static mut RxContext) {
     let mut loop_count: u32 = 0;
     // 50Hz = 20ms interval
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_millis(20));

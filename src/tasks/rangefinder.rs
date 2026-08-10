@@ -4,6 +4,7 @@ use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex,
     pubsub::{PubSubChannel, Publisher, Subscriber},
 };
+use static_cell::StaticCell;
 
 use crate::sensors::RangefinderMessage;
 
@@ -43,6 +44,8 @@ pub fn rangefinder_subscriber() -> RangefinderSubscriber {
     RANGEFINDER_PUB_SUB_CHANNEL.subscriber().expect("rangefinder_subscriber failed")
 }
 
+static RANGEFINDER_CTX: StaticCell<RangefinderContext> = StaticCell::new();
+
 /// Context for Rangefinder task.
 pub struct RangefinderContext {
     pub rangefinder_publisher: RangefinderPublisher,
@@ -55,9 +58,13 @@ impl RangefinderContext {
     }
 }
 
+pub fn init() -> &'static mut RangefinderContext {
+    RANGEFINDER_CTX.init(RangefinderContext::new())
+}
+
 /// Rangefinder Task Placeholder.
 #[embassy_executor::task]
-pub async fn rangefinder_task(ctx: &'static mut RangefinderContext) {
+pub async fn run(ctx: &'static mut RangefinderContext) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(40));
     let mut loop_count: u32 = 0;
 

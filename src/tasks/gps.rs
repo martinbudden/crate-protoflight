@@ -4,6 +4,7 @@ use embassy_sync::{
     pubsub::{PubSubChannel, Publisher, Subscriber},
     {blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal},
 };
+use static_cell::StaticCell;
 
 use crate::{
     gps::{Geodetic, GeographicCoordinate, GpsSolutionData},
@@ -11,6 +12,8 @@ use crate::{
         GpsMessage, {GpsData, GpsPositionMeters, GpsYawHeadingMessage},
     },
 };
+
+static GPS_CTX: StaticCell<GpsContext> = StaticCell::new();
 
 const MAX_GPS_SUBSCRIBER_COUNT: usize = 4;
 const GPS_PUBLISHER_COUNT: usize = 1;
@@ -63,9 +66,13 @@ impl GpsContext {
     }
 }
 
+pub fn init() -> &'static mut GpsContext {
+    GPS_CTX.init(GpsContext::new())
+}
+
 /// GPS Task Placeholder.
 #[embassy_executor::task]
-pub async fn gps_task(ctx: &'static mut GpsContext) {
+pub async fn run(ctx: &'static mut GpsContext) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(10));
     let mut loop_count: u32 = 0;
 

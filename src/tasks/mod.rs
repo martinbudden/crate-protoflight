@@ -4,23 +4,23 @@
 #[macro_use]
 pub mod global_debug;
 
-mod autopilot_task;
-mod barometer_task;
-mod battery_task;
-mod blackbox_task;
-mod blackbox_writer_task;
-mod gps_task;
-mod gyro_pid_task;
-mod imu_task;
+mod autopilot;
+mod barometer;
+mod battery;
+mod blackbox;
+mod blackbox_writer;
+mod gps;
+mod gyro_pid;
+mod imu;
 pub mod init;
-mod magnetometer_task;
-mod motor_mixer_task;
-mod msp_task;
+mod magnetometer;
+mod motor_mixer;
+mod msp;
 mod non_volatile_storage;
-mod optical_flow_task;
-mod osd_task;
-mod rangefinder_task;
-mod rx_task;
+mod optical;
+mod osd;
+mod rangefinder;
+mod rx;
 
 #[allow(unused)]
 #[cfg(feature = "debug")]

@@ -8,29 +8,30 @@ use motor_mixers::MotorMixerMessage;
 use motor_mixers::RpmNotchFilterBankConfig;
 use sensor_fusion::{MadgwickFilterf32, SensorFusion};
 use simple_bitset::BitSet64;
+use static_cell::StaticCell;
 
 use crate::{
     config::{FastConfigItem, FastConfigSubscriber, fast_config_subscriber},
     flight::{FilterAccGyro, FlightController, ImuFilterBank, ImuFilterBankConfig, RcControls, VehicleControl},
     sensors::{GyroPidMessage, SetpointMessage},
     tasks::{
-        imu_task::IMU_SIGNAL,
-        motor_mixer_task::MOTOR_MIXER_SIGNAL,
-        rx_task::{RxReceiver, rx_receiver},
+        imu::IMU_SIGNAL,
+        motor_mixer::MOTOR_MIXER_SIGNAL,
+        rx::{RxReceiver, rx_receiver},
     },
 };
 
 #[cfg(feature = "gps")]
-use crate::tasks::gps_task::GPS_YAW_HEADING_SIGNAL;
+use crate::tasks::gps::GPS_YAW_HEADING_SIGNAL;
 
-/// Spawns `gyro_pid_task` to core1 if we are using a dual-core processor.
+/// Spawns `gyro_pid` task to core1 if we are using a dual-core processor.
 #[cfg(feature = "multicore")]
 fn core1_entry(ctx_ptr: usize) -> ! {
     // 1. Retrieve the context pointer passed from Core 0
     let ctx = unsafe { &mut *(ctx_ptr as *mut GyroPidContext) };
 
     let spawner = EXECUTOR_CORE1.start(interrupt::IO_IRQ_BANK0);
-    spawner.spawn(gyro_pid_task(ctx)).unwrap();
+    spawner.spawn(run(ctx)).unwrap();
 
     loop {
         cortex_m::asm::wfi();
@@ -73,7 +74,9 @@ pub fn setpoint_receiver() -> SetpointReceiver {
     SETPOINT_WATCH.receiver().expect("setpoint receiver failed")
 }
 
-/// Context for `gyro_pid_task`.
+static GYRO_PID_CTX: StaticCell<GyroPidContext> = StaticCell::new();
+/// Context for `gyro_pid` task.
+#[allow(unused)]
 pub struct GyroPidContext {
     pub rx_receiver: RxReceiver,
     pub gyro_pid_sender: GyroPidSender,
@@ -113,11 +116,24 @@ impl GyroPidContext {
     }
 }
 
+#[rustfmt::skip]
+pub fn init(
+    imu_filter_bank_config: ImuFilterBankConfig,
+    #[cfg(feature = "rpm_filters")] rpm_notch_filter_bank_config: RpmNotchFilterBankConfig,
+    #[cfg(feature = "rpm_filters")] looptime_seconds: f32,
+) -> &'static mut GyroPidContext {
+    GYRO_PID_CTX.init(GyroPidContext::new(
+        imu_filter_bank_config,
+        #[cfg(feature = "rpm_filters")] rpm_notch_filter_bank_config,
+        #[cfg(feature = "rpm_filters")] looptime_seconds,
+    ))
+}
+
 /// The GYRO/PID task.
 // The gyro_pid task calculates the motor commands, sends them immediately to the motor_mixer task
 // and then updates the GyroPidMessage and sends it.
 #[embassy_executor::task]
-pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext) {
+pub async fn run(ctx: &'static mut GyroPidContext) {
     log::info!("    GYRO_PID: task started");
     let mut time_us: u32 = 0;
     let mut loop_count: u32 = 0;

@@ -4,8 +4,11 @@ use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex,
     pubsub::{PubSubChannel, Publisher, Subscriber},
 };
+use static_cell::StaticCell;
 
 use crate::sensors::BatteryMessage;
+
+static BATTERY_CTX: StaticCell<BatteryContext> = StaticCell::new();
 
 const MAX_BATTERY_SUBSCRIBER_COUNT: usize = 4;
 const BATTERY_PUBLISHER_COUNT: usize = 1;
@@ -57,11 +60,13 @@ impl BatteryContext {
     }
 }
 
+pub fn init() -> &'static mut BatteryContext {
+    BATTERY_CTX.init(BatteryContext::new())
+}
 /// Battery Task Placeholder.
 ///
-
 #[embassy_executor::task]
-pub async fn battery_task(ctx: &'static mut BatteryContext) {
+pub async fn run(ctx: &'static mut BatteryContext) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(50));
     let mut loop_count: u32 = 0;
 

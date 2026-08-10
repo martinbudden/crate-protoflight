@@ -3,13 +3,16 @@ use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal}
 use motor_mixers::{MixerConfig, MotorConfig, MotorDriver, MotorMixer, MotorMixerMessage};
 #[cfg(feature = "rpm_filters")]
 use motor_mixers::{RpmNotchFilterBank, RpmNotchFilterBankConfig};
+use static_cell::StaticCell;
 
 // --- MOTOR_SIGNAL ---
 // High-speed trigger for Motors (8kHz)
 // no watch count, since a signal can only have one watcher.
 pub static MOTOR_MIXER_SIGNAL: Signal<CriticalSectionRawMutex, MotorMixerMessage> = Signal::new();
 
-/// Context for `motor_mixer_task`.
+static MOTOR_MIXER_CTX: StaticCell<MotorMixerContext> = StaticCell::new();
+
+/// Context for `motor_mixer` task.
 #[allow(unused)]
 #[rustfmt::skip]
 pub struct MotorMixerContext {
@@ -47,8 +50,25 @@ impl MotorMixerContext {
     }
 }
 
+#[rustfmt::skip]
+pub fn init(
+    mixer_config: MixerConfig,
+    motor_config: MotorConfig,
+    motor_driver: MotorDriver,
+    #[cfg(feature = "rpm_filters")] rpm_notch_filter_config: RpmNotchFilterBankConfig,
+    #[cfg(feature = "rpm_filters")] looptime_seconds: f32,
+) -> &'static mut MotorMixerContext {
+    MOTOR_MIXER_CTX.init(MotorMixerContext::new(
+        mixer_config,
+        motor_config,
+        motor_driver,
+        #[cfg(feature = "rpm_filters")] rpm_notch_filter_config,
+        #[cfg(feature = "rpm_filters")] looptime_seconds,
+    ))
+}
+
 #[embassy_executor::task]
-pub async fn motor_mixer_task(ctx: &'static mut MotorMixerContext) {
+pub async fn run(ctx: &'static mut MotorMixerContext) {
     loop {
         // wait for the motor mixer message from the gyro_pid task
         let motor_mixer_message = MOTOR_MIXER_SIGNAL.wait().await;
