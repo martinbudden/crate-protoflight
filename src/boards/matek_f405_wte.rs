@@ -4,7 +4,11 @@
 
 // NOTE: stm32 numbers peripheral starting at 1, eg SPI1, SPI1, I2C1, I2C2 etc
 
-use crate::boards::board::{Board, BoardInitError, ImuContext};
+use crate::boards::{
+    ImuContext,
+    board::{Board, BoardInitError},
+};
+
 use embassy_stm32::{
     bind_interrupts, dma,
     gpio::{Input, Level, Output, Speed},
@@ -18,16 +22,13 @@ use embassy_time::Delay;
 use embedded_hal_bus::spi::ExclusiveDevice;
 use imu_sensors::{Imu426xx, ImuAxesOrder, ImuSpiBus};
 use motor_mixers::MotorDriverQuadPwm;
-use static_cell::StaticCell;
 
 type BoardSpi =
     ExclusiveDevice<Spi<'static, embassy_stm32::mode::Async, embassy_stm32::spi::mode::Master>, Output<'static>, Delay>;
 pub type BoardImu = Imu426xx<ImuSpiBus<BoardSpi>>;
 
-static IMU_CTX: StaticCell<ImuContext<BoardImu>> = StaticCell::new();
-
-pub fn imu_context(imu: BoardImu) -> &'static mut ImuContext<BoardImu> {
-    IMU_CTX.init(ImuContext::new(imu))
+pub fn imu_context(imu: BoardImu) -> ImuContext<BoardImu> {
+    ImuContext::new(imu)
 }
 
 pub fn board_init() -> Board<BoardImu> {

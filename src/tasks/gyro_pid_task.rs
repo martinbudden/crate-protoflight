@@ -23,11 +23,6 @@ use crate::{
 #[cfg(feature = "gps")]
 use crate::tasks::gps_task::GPS_YAW_HEADING_SIGNAL;
 
-#[cfg(feature = "multicore")]
-// TODO: put EXECUTOR_CORE1 in a static cell
-static EXECUTOR_CORE1: embassy_executor::InterruptExecutor = InterruptExecutor::new();
-//static EXECUTOR_CORE1: StaticCell<Executor> = StaticCell::new();
-
 /// Spawns `gyro_pid_task` to core1 if we are using a dual-core processor.
 #[cfg(feature = "multicore")]
 fn core1_entry(ctx_ptr: usize) -> ! {

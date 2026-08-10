@@ -4,7 +4,7 @@ use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 use static_cell::StaticCell;
 
 use crate::{
-    boards::{board_init, imu_context},
+    boards::{ImuContext, board_init, imu_context},
     config::GLOBAL_CONFIG,
     tasks::{
         gyro_pid_task::{GyroPidContext, gyro_pid_task},
@@ -86,10 +86,16 @@ static mut CORE1_STACK: Stack<4096> = Stack::new();
 #[allow(clippy::expect_used)]
 #[allow(clippy::too_many_lines)]
 pub async fn init(spawner: Spawner) {
+    // TODO: put EXECUTOR_CORE1 in a static cell
+    #[cfg(feature = "multicore")]
+    static EXECUTOR_CORE1: embassy_executor::InterruptExecutor = InterruptExecutor::new();
+    //static EXECUTOR_CORE1: StaticCell<Executor> = StaticCell::new();
+
     // ****
     // Statically allocate the task contexts.
     // ****
     static GYRO_PID_CTX: StaticCell<GyroPidContext> = StaticCell::new();
+    static IMU_CTX: StaticCell<ImuContext<crate::boards::BoardImu>> = StaticCell::new();
     static RX_CTX: StaticCell<RxContext> = StaticCell::new();
     static MOTOR_MIXER_CTX: StaticCell<MotorMixerContext> = StaticCell::new();
 
@@ -152,7 +158,7 @@ pub async fn init(spawner: Spawner) {
         #[cfg(feature = "rpm_filters")] 0.001,
     ));
 
-    let imu_ctx = imu_context(board.imu);
+    let imu_ctx = IMU_CTX.init(imu_context(board.imu));
 
     #[rustfmt::skip]
     let motor_mixer_ctx = MOTOR_MIXER_CTX.init(MotorMixerContext::new(
