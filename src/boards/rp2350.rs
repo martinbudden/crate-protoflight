@@ -84,7 +84,7 @@ pub fn init() -> Board<BoardImu> {
         let spi_bus =
             Spi::new(peripherals.SPI0, spi0_clk, spi0_mosi, spi0_miso, spi0_tx_dma, spi0_rx_dma, Irqs, spi_config);
         let spi_cs_output = Output::new(spi0_cs, Level::High);
-        ExclusiveDevice::new(spi_bus, spi_cs_output, embassy_time::Delay)
+        ExclusiveDevice::new(spi_bus, spi_cs_output, embassy_time::Delay).unwrap()
     };
     // Trick to find type of spi
     //let spi1_type: () = spi1;
@@ -131,12 +131,12 @@ pub fn init() -> Board<BoardImu> {
     // Map physical device names to logical device names and return.
     Board {
         imu,
-        sdcard_spi: spi1.map_err(|_| BoardInitError::SdCardError),
-        // osd_spi: aux_pio_spi,
         serial_rx_uart: Ok(uart0),
-        msp_uart: Ok(uart1),
-        sensors_i2c: Ok(i2c0),
         motor_driver: Err(BoardInitError::MotorDriverNotAvailable),
+        sdcard_spi: None,
+        // osd_spi: aux_pio_spi,
+        msp_uart: Some(uart1),
+        sensors_i2c: Some(i2c0),
         flash: peripherals.FLASH,
     }
 }

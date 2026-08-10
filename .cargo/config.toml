@@ -110,6 +110,13 @@ check-stm32f405 = [
     "--features", "libm,stm32,stm32f405,speedybee_f405_v4"
 ]
 
+check-stm32f405-m = [
+    "check",
+    "--target", "thumbv7em-none-eabihf",
+    "--no-default-features",
+    "--features", "libm,stm32,stm32f405,matek_f405_wte"
+]
+
 build-stm32f405 = [
     "build",
     "--target", "thumbv7em-none-eabihf",

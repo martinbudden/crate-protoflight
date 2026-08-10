@@ -1,8 +1,7 @@
 #![allow(unused)]
 use cfg_if::cfg_if;
+
 use imu_sensors::ImuDevice;
-#[cfg(feature = "std")]
-use imu_sensors::{ImuMock, MockImuBus};
 use motor_mixers::MotorDriver;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -43,15 +42,16 @@ if #[cfg(feature = "stm32f405")] {
 
 pub struct Board<I: ImuDevice> {
     pub imu: I,
-    pub sdcard_spi: Result<SpiDeviceAsync, BoardInitError>,
-    pub max7456_spi: Result<SpiDeviceBlocking, BoardInitError>,
-
     pub serial_rx_uart: Result<UartDevice, BoardInitError>,
-    pub msp_uart: Option<UartDevice>,
-
-    pub esc_sensor_uart: Option<UartDevice>,
-    pub sensors_i2c: Option<I2cDeviceBlocking>,
     pub motor_driver: Result<MotorDriver, BoardInitError>,
+
+    pub max7456_spi: Option<SpiDeviceBlocking>,
+    pub sdcard_spi: Option<SpiDeviceAsync>,
+
+    pub msp_uart: Option<UartDevice>,
+    pub esc_sensor_uart: Option<UartDevice>,
+
+    pub sensors_i2c: Option<I2cDeviceBlocking>,
 }
 
 // Bus = raw hardware peripheral
@@ -78,15 +78,14 @@ pub type MotorOutput = Output<'static>;
 
 pub struct Board<I: ImuDevice> {
     pub imu: I,
-    pub sdcard_spi: Result<SdSpiDevice, BoardInitError>,
+    pub serial_rx_uart: Result<UartDevice, BoardInitError>,
+    pub motor_driver: Result<MotorDriver, BoardInitError>,
+
+    pub sdcard_spi: Option<SdSpiDevice>,
     //pub osd_spi: AuxiliaryPioSpiDevice,
 
-    pub serial_rx_uart: Result<UartDevice, BoardInitError>,
-    pub msp_uart: Result<UartDevice, BoardInitError>,
-
-    pub sensors_i2c: Result<I2cDevice, BoardInitError>,
-
-    pub motor_driver: Result<MotorDriver, BoardInitError>,
+    pub msp_uart: Option<UartDevice>,
+    pub sensors_i2c: Option<I2cDevice>,
 
     pub flash: Peri<'static, peripherals::FLASH>,
 }

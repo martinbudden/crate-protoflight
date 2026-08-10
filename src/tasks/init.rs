@@ -4,6 +4,7 @@ use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 use static_cell::StaticCell;
 
 use crate::{
+    boards::{board_init, imu_context},
     config::{GLOBAL_CONFIG, config_publisher, config_subscriber, fast_config_publisher, fast_config_subscriber},
     tasks::{
         gyro_pid_task::{GyroPidContext, gyro_pid_sender, gyro_pid_task, setpoint_sender},
@@ -114,9 +115,6 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "rangefinder")]
     static RANGEFINDER_CTX: StaticCell<RangefinderContext> = StaticCell::new();
 
-    //#[cfg(all(feature = "max7456", feature = "rp2350"))]
-    //static SPI_BUS_CELL: StaticCell<ConcreteSpiType> = StaticCell::new();
-
     static DISPLAY_PORT_MUTEX_CELL: StaticCell<DisplayPortMutex> = StaticCell::new();
 
     // Initialize env_logger for logging to stdout on desktop platforms.
@@ -124,16 +122,16 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "std")]
     env_logger::init();
 
+    // ---- LOAD THE GLOBAL CONFIGS
+    #[cfg(all(feature = "serde", feature = "rp2350"))]
+    load_global_configs(board.flash).await;
+    #[cfg(all(feature = "serde", feature = "std"))]
+    load_global_configs().await;
+    #[allow(unused_mut)]
+    let mut config = GLOBAL_CONFIG.lock().await;
+
     // ---- GET THE DEVICES FROM THE BOARD SUPPORT PACKAGE
-    #[allow(unused)]
-    #[cfg(feature = "rp2350")]
-    let board = crate::boards::rp2350::init();
-
-    #[cfg(feature = "speedybee_f405_v4")]
-    let board = crate::boards::speedybee_f405_v4::init();
-
-    #[cfg(feature = "std")]
-    let board = crate::boards::std::init();
+    let board = board_init();
 
     // --- INITIALIZE MOCK STUB (HOST PROFILE ENVIRONMENT) ---
     #[allow(unused)]
@@ -142,13 +140,6 @@ pub async fn init(spawner: Spawner) {
     #[cfg(not(feature = "max7456"))]
     #[allow(unused)]
     let display_ref = { DISPLAY_PORT_MUTEX_CELL.init(Mutex::new(DisplayPortMock::default())) };
-    #[cfg(all(feature = "serde", feature = "rp2350"))]
-    load_global_configs(board.flash).await;
-    #[cfg(all(feature = "serde", feature = "std"))]
-    load_global_configs().await;
-
-    #[allow(unused_mut)]
-    let mut config = GLOBAL_CONFIG.lock().await;
 
     // ****
     // Initialize the task contexts.
@@ -166,10 +157,7 @@ pub async fn init(spawner: Spawner) {
         #[cfg(feature = "rpm_filters")] 0.001,
     ));
 
-    #[cfg(feature = "std")]
-    let imu_ctx = crate::boards::std::imu_context(board.imu);
-    #[cfg(feature = "speedybee_f405_v4")]
-    let imu_ctx = crate::boards::speedybee_f405_v4::imu_context(board.imu);
+    let imu_ctx = imu_context(board.imu);
 
     #[rustfmt::skip]
     let motor_mixer_ctx = MOTOR_MIXER_CTX.init(MotorMixerContext::new(

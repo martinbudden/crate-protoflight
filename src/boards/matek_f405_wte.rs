@@ -4,7 +4,8 @@
 
 // NOTE: stm32 numbers peripheral starting at 1, eg SPI1, SPI1, I2C1, I2C2 etc
 
-use crate::boards::board::{Board, BoardInitError};
+use crate::boards::board::{Board, BoardInitError,    ImuContext,
+};
 use embassy_stm32::{
     bind_interrupts, dma,
     gpio::{Input, Level, Output, Speed},
@@ -16,27 +17,21 @@ use embassy_stm32::{
 };
 use embassy_time::Delay;
 use embedded_hal_bus::spi::ExclusiveDevice;
+use imu_sensors::{Imu426xx, ImuAxesOrder, ImuSpiBus};
+use motor_mixers::MotorDriverQuadPwm;
+use static_cell::StaticCell;
 
-// Binds the global hardware DMA vectors.
-// This creates the type validation struct "Irqs" required by Spi::new.
-bind_interrupts!(struct Irqs {
-    // Gyro SPI1
-    DMA2_STREAM2 => dma::InterruptHandler<peripherals::DMA2_CH2>;
-    DMA2_STREAM3 => dma::InterruptHandler<peripherals::DMA2_CH3>;
+type BoardSpi =
+    ExclusiveDevice<Spi<'static, embassy_stm32::mode::Async, embassy_stm32::spi::mode::Master>, Output<'static>, Delay>;
+pub type BoardImu = Imu426xx<ImuSpiBus<BoardSpi>>;
 
-    // SD SPI2
-    DMA1_STREAM3 => dma::InterruptHandler<peripherals::DMA1_CH3>;
-    DMA1_STREAM4 => dma::InterruptHandler<peripherals::DMA1_CH4>;
+static IMU_CTX: StaticCell<ImuContext<BoardImu>> = StaticCell::new();
 
-    // Receiver USART2
-    DMA1_STREAM5 => dma::InterruptHandler<peripherals::DMA1_CH5>;
-    DMA1_STREAM6 => dma::InterruptHandler<peripherals::DMA1_CH6>;
+pub fn imu_context(imu: BoardImu) -> &'static mut ImuContext<BoardImu> {
+    IMU_CTX.init(ImuContext::new(imu))
+}
 
-    // USART2 peripheral interrupt
-    USART2 => usart::InterruptHandler<peripherals::USART2>;
-});
-
-pub fn init() -> Board {
+pub fn board_init() -> Board<BoardImu> {
     let peripherals = embassy_stm32::init(Default::default());
 
     // SPI1
@@ -69,8 +64,10 @@ pub fn init() -> Board {
         let spi_bus =
             Spi::new(peripherals.SPI1, spi1_sck, spi1_mosi, spi1_miso, spi1_tx_dma, spi1_rx_dma, Irqs, config);
         let cs_output = Output::new(spi1_cs, Level::High, Speed::VeryHigh);
-        ExclusiveDevice::new(spi_bus, cs_output, Delay)
+        ExclusiveDevice::new(spi_bus, cs_output, Delay).unwrap()
     };
+
+    let mut imu: BoardImu = Imu426xx::new(ImuSpiBus::new(spi1), ImuAxesOrder::XPOS_YPOS_ZPOS);
 
     let spi2 = {
         let mut config = SpiConfig::default();
@@ -94,11 +91,32 @@ pub fn init() -> Board {
 
     // Map physical device names to logical device names and return.
     Board {
-        gyro_spi: spi1.map_err(|_| BoardInitError::GyroError),
-        sdcard_spi: spi2.map_err(|_| BoardInitError::SdCardError),
-        max7456_spi: Err(BoardInitError::Max7456NotAvailable),
+        imu,
         serial_rx_uart: uart2.map_err(|_| BoardInitError::SerialRxUartError),
-        msp_uart: Err(BoardInitError::MspUartNotAvailable),
-        esc_sensor_uart: Err(BoardInitError::EscSensorUartNotAvailable),
+        motor_driver: Err(BoardInitError::MotorDriverNotAvailable),
+        max7456_spi: None,
+        sdcard_spi: None,
+        msp_uart: None,
+        esc_sensor_uart: None,
+        sensors_i2c: None,
     }
 }
+
+// Binds the global hardware DMA vectors.
+// This creates the type validation struct "Irqs" required by Spi::new.
+bind_interrupts!(struct Irqs {
+    // Gyro SPI1
+    DMA2_STREAM2 => dma::InterruptHandler<peripherals::DMA2_CH2>;
+    DMA2_STREAM3 => dma::InterruptHandler<peripherals::DMA2_CH3>;
+
+    // SD SPI2
+    DMA1_STREAM3 => dma::InterruptHandler<peripherals::DMA1_CH3>;
+    DMA1_STREAM4 => dma::InterruptHandler<peripherals::DMA1_CH4>;
+
+    // Receiver USART2
+    DMA1_STREAM5 => dma::InterruptHandler<peripherals::DMA1_CH5>;
+    DMA1_STREAM6 => dma::InterruptHandler<peripherals::DMA1_CH6>;
+
+    // USART2 peripheral interrupt
+    USART2 => usart::InterruptHandler<peripherals::USART2>;
+});

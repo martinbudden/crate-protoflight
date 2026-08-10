@@ -44,7 +44,7 @@ pub fn imu_context(imu: BoardImu) -> &'static mut ImuContext<BoardImu> {
     IMU_CTX.init(ImuContext::new(imu))
 }
 
-pub fn init() -> Board<BoardImu> {
+pub fn board_init() -> Board<BoardImu> {
     let peripherals = embassy_stm32::init(Default::default());
 
     /*
@@ -229,8 +229,8 @@ pub fn init() -> Board<BoardImu> {
     // Map physical device names to logical device names and return.
     Board {
         imu,
-        sdcard_spi: spi3.map_err(|_| BoardInitError::SdCardError),
-        max7456_spi: spi2.map_err(|_| BoardInitError::SerialRxUartError),
+        sdcard_spi: Some(spi3.map_err(|_| BoardInitError::SdCardError).unwrap()),
+        max7456_spi: Some(spi2.map_err(|_| BoardInitError::Max7456NotAvailable).unwrap()),
         serial_rx_uart: uart2.map_err(|_| BoardInitError::SerialRxUartError),
         msp_uart: None,
         esc_sensor_uart: None,

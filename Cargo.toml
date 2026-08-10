@@ -29,8 +29,10 @@ rustc_version = "0.4.1"
 default = ["libm",
     "std",
     #"rp2350",
+    #"stm32",
     #"stm32f405",
     #"speedybee_f405_v4",
+    #"matek_f405_wte",
     "autopilot",
     "barometer",
     "battery",
@@ -140,6 +142,9 @@ stm32 = [
 stm32f405 = [
     "embassy-stm32/stm32f405rg",
 ]
+
+esp32 =[]
+
 [dependencies]
 # Core Embassy executor and concurrency primitives
 embassy-executor = { version = "0.10.0", default-features = false }
