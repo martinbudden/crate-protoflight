@@ -11,7 +11,7 @@ use crate::boards::{
 };
 
 use imu_sensors::{Imu426xx, ImuAxisOrder, ImuSpiBus};
-use motor_mixers::MotorDriverQuadPwm;
+use motor_mixers::{MotorDriver, MotorDriverQuadDshot, MotorDriverQuadPwm};
 
 use embassy_stm32::{
     bind_interrupts, dma,
@@ -39,7 +39,7 @@ pub fn imu_context(imu: BoardImu) -> ImuContext<BoardImu> {
     ImuContext::new(imu)
 }
 
-pub fn board_init(axis_order: ImuAxisOrder) -> Board<BoardImu> {
+pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInitError> {
     // NOTE: stm32 numbers peripheral start at 1, eg SPI1, SPI1, I2C1, I2C2 etc
 
     let peripherals = embassy_stm32::init(Default::default());
@@ -221,19 +221,21 @@ pub fn board_init(axis_order: ImuAxisOrder) -> Board<BoardImu> {
         CountingMode::EdgeAlignedUp,
     );
 
-    //let motor_driver = MotorDriverQuadPwm::new(motor_pwm_tim4, motor_pwm_tim3);
+    let motor_driver_quad_pwm = MotorDriverQuadPwm::new(motor_pwm_tim4, motor_pwm_tim3);
+    //let motor_driver_quad_dshot = MotorDriverQuadDshot::new();
+    let motor_driver = MotorDriver::QuadPwm(motor_driver_quad_pwm);
 
     // Map physical device names to logical device names and return.
-    Board {
+    Ok(Board {
         imu,
-        sdcard_spi: Some(spi3.map_err(|_| BoardInitError::SdCardError).unwrap()),
-        max7456_spi: Some(spi2.map_err(|_| BoardInitError::Max7456NotAvailable).unwrap()),
-        serial_rx_uart: uart2.map_err(|_| BoardInitError::SerialRxUartError),
+        serial_rx_uart: uart2.map_err(|_| BoardInitError::SerialRxUartError)?,
+        sdcard_spi: Some(spi3.map_err(|_| BoardInitError::SdCardError)?),
+        max7456_spi: Some(spi2.map_err(|_| BoardInitError::Max7456NotAvailable)?),
         msp_uart: None,
         esc_sensor_uart: None,
         sensors_i2c: Some(i2c1),
-        motor_driver: Err(BoardInitError::MotorDriverNotAvailable),
-    }
+        motor_driver,
+    })
 }
 
 // Binds the global hardware DMA vectors.

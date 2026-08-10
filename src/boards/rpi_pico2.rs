@@ -8,7 +8,7 @@ use crate::boards::{
 };
 
 use imu_sensors::{Imu426xx, ImuAxisOrder, ImuSpiBus};
-use motor_mixers::MotorDriverQuadPwm;
+use motor_mixers::{MotorDriver, MotorDriverQuadDshot, MotorDriverQuadPwm};
 
 use embassy_rp::{
     Peri, bind_interrupts, dma, gpio,
@@ -32,7 +32,7 @@ pub fn imu_context(imu: BoardImu) -> ImuContext<BoardImu> {
     ImuContext::new(imu)
 }
 
-pub fn board_init(_axis_order: ImuAxisOrder) -> Board<BoardImu> {
+pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInitError> {
     // NOTE: rp2350 numbers peripheral starting at 0, eg SPI0, SPI0, I2C0, I2C0 etc
 
     // Take ownership of the raw RP2350 hardware peripherals block
@@ -122,19 +122,21 @@ pub fn board_init(_axis_order: ImuAxisOrder) -> Board<BoardImu> {
         i2c_config.frequency = 400_000; // Standard Fast-Mode I2C frequency (400 kHz)
         I2c::new_async(peripherals.I2C0, i2c0_scl, i2c0_sda, Irqs, i2c_config)
     };
+    let motor_driver_quad_dshot = MotorDriverQuadDshot::new();
+    let motor_driver = MotorDriver::QuadDshot(motor_driver_quad_dshot);
 
     // Map physical device names to logical device names and return.
-    Board {
+    Ok(Board {
         imu,
-        serial_rx_uart: Ok(uart0),
-        motor_driver: Err(BoardInitError::MotorDriverNotAvailable),
+        serial_rx_uart: uart0,
+        motor_driver,
         sdcard_spi: None,
         // osd_spi: aux_pio_spi,
         msp_uart: Some(uart1),
         sensors_i2c: Some(i2c0),
         // pub flash: Peri<'static, peripherals::FLASH>,
         // flash: peripherals.FLASH, // 
-    }
+    })
 }
 
 // Binds the global hardware DMA vectors.

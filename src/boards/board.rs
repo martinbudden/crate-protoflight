@@ -42,8 +42,8 @@ if #[cfg(feature = "stm32f405")] {
 
 pub struct Board<I: ImuDevice> {
     pub imu: I,
-    pub serial_rx_uart: Result<UartDevice, BoardInitError>,
-    pub motor_driver: Result<MotorDriver, BoardInitError>,
+    pub serial_rx_uart: UartDevice,
+    pub motor_driver: MotorDriver,
 
     pub max7456_spi: Option<SpiDeviceBlocking>,
     pub sdcard_spi: Option<SpiDeviceAsync>,
@@ -78,8 +78,8 @@ pub type MotorOutput = Output<'static>;
 
 pub struct Board<I: ImuDevice> {
     pub imu: I,
-    pub serial_rx_uart: Result<UartDevice, BoardInitError>,
-    pub motor_driver: Result<MotorDriver, BoardInitError>,
+    pub serial_rx_uart: UartDevice,
+    pub motor_driver: MotorDriver,
 
     pub sdcard_spi: Option<SdSpiDevice>,
     //pub osd_spi: AuxiliaryPioSpiDevice,
@@ -132,7 +132,7 @@ use embassy_rp::{
 
 pub struct Board<I: ImuDevice> {
     pub imu: I,
-    pub motor_driver: Result<MotorDriver, BoardInitError>,
+    pub motor_driver: MotorDriver,
 }
 
 }}

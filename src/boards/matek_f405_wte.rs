@@ -1,5 +1,6 @@
 #![cfg(all(feature = "stm32f405", feature = "matek_f405_wte"))]
 #![allow(unused)]
+#![allow(clippy::similar_names)]
 
 use crate::boards::{
     ImuContext,
@@ -18,7 +19,7 @@ use embassy_stm32::{
 use embassy_time::Delay;
 use embedded_hal_bus::spi::ExclusiveDevice;
 use imu_sensors::{Imu426xx, ImuAxisOrder, ImuSpiBus};
-use motor_mixers::MotorDriverQuadPwm;
+use motor_mixers::{MotorDriver, MotorDriverQuadDshot, MotorDriverQuadPwm};
 
 type BoardSpi =
     ExclusiveDevice<Spi<'static, embassy_stm32::mode::Async, embassy_stm32::spi::mode::Master>, Output<'static>, Delay>;
@@ -28,7 +29,7 @@ pub fn imu_context(imu: BoardImu) -> ImuContext<BoardImu> {
     ImuContext::new(imu)
 }
 
-pub fn board_init(axis_order: ImuAxisOrder) -> Board<BoardImu> {
+pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInitError> {
     // NOTE: stm32 numbers peripheral starting at 1, eg SPI1, SPI1, I2C1, I2C2 etc
 
     let peripherals = embassy_stm32::init(Default::default());
@@ -88,17 +89,20 @@ pub fn board_init(axis_order: ImuAxisOrder) -> Board<BoardImu> {
         Uart::new(peripherals.USART2, uart2_rx, uart2_tx, uart2_tx_dma, uart2_rx_dma, Irqs, config)
     };
 
+    let motor_driver_quad_dshot = MotorDriverQuadDshot::new();
+    let motor_driver = MotorDriver::QuadDshot(motor_driver_quad_dshot);
+
     // Map physical device names to logical device names and return.
-    Board {
+    Ok(Board {
         imu,
-        serial_rx_uart: uart2.map_err(|_| BoardInitError::SerialRxUartError),
-        motor_driver: Err(BoardInitError::MotorDriverNotAvailable),
+        serial_rx_uart: uart2.map_err(|_| BoardInitError::SerialRxUartError)?,
+        motor_driver,
         max7456_spi: None,
         sdcard_spi: None,
         msp_uart: None,
         esc_sensor_uart: None,
         sensors_i2c: None,
-    }
+    })
 }
 
 // Binds the global hardware DMA vectors.

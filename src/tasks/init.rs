@@ -67,7 +67,11 @@ pub async fn init(spawner: Spawner) {
     let config = GLOBAL_CONFIG.lock().await;
 
     // **** GET THE DEVICES FROM THE BOARD SUPPORT PACKAGE
-    let board = board_init(config.imu_device.axis_order);
+
+    #[allow(clippy::panic)]
+    let Ok(board) = board_init(config.imu_device.axis_order) else {
+        panic!("board_init failed");
+    };
 
     #[rustfmt::skip]
     #[cfg(feature = "osd")]
@@ -95,7 +99,7 @@ pub async fn init(spawner: Spawner) {
     let motor_mixer_ctx = tasks::motor_mixer::init(
         config.mixer,
         config.motor,
-        board.motor_driver.expect("motor driver fail"),
+        board.motor_driver,
         #[cfg(feature = "rpm_filters")] config.rpm_notch_filter_bank,
         #[cfg(feature = "rpm_filters")] 0.001
     );

@@ -1,6 +1,6 @@
 #![cfg(feature = "std")]
 
-use crate::boards::{ImuContext, board::Board};
+use crate::boards::{ImuContext, board::{Board, BoardInitError}};
 use imu_sensors::{ImuAxisOrder, ImuMock, MockImuBus};
 use motor_mixers::{MotorDriver, MotorDriverQuadPwm};
 
@@ -11,10 +11,11 @@ pub fn imu_context(imu: BoardImu) -> ImuContext<BoardImu> {
     ImuContext::new(imu)
 }
 
-pub fn board_init(axis_order: ImuAxisOrder) -> Board<BoardImu> {
+#[allow(clippy::unnecessary_wraps)]
+pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInitError> {
     let motor_driver_pwm = MotorDriverQuadPwm::new();
     let motor_driver = MotorDriver::QuadPwm(motor_driver_pwm);
     let imu = ImuMock::new(MockImuBus::new(), axis_order);
 
-    Board { imu, motor_driver: Ok(motor_driver) }
+    Ok(Board { imu, motor_driver })
 }

@@ -27,6 +27,7 @@ use embassy_rp::{
 use embassy_time::Delay;
 use embedded_hal_bus::spi::ExclusiveDevice;
 use imu_sensors::{Imu426xx, ImuAxisOrder, ImuSpiBus};
+use motor_mixers::{MotorDriver, MotorDriverQuadDshot, MotorDriverQuadPwm};
 
 type BoardSpi =
     ExclusiveDevice<embassy_rp::spi::Spi<'static, peripherals::SPI0, embassy_rp::spi::Async>, Output<'static>, Delay>;
@@ -180,12 +181,14 @@ pub fn board_init(_axis_order: ImuAxisOrder) -> Board<BoardImu> {
 
 
     */
+    let motor_driver_quad_dshot = MotorDriverQuadDshot::new();
+    let motor_driver = MotorDriver::QuadDshot(motor_driver_quad_dshot);
 
     // Map physical device names to logical device names and return.
     Board {
         imu,
         serial_rx_uart: Ok(uart0),
-        motor_driver: Err(BoardInitError::MotorDriverNotAvailable),
+        motor_driver,
         sdcard_spi: None,
         // osd_spi: aux_pio_spi,
         msp_uart: Some(uart1),
