@@ -44,6 +44,8 @@ static mut CORE1_STACK: Stack<4096> = Stack::new();
 ///
 #[allow(clippy::expect_used)]
 pub async fn init(spawner: Spawner) {
+    use crate::tasks;
+
     // TODO: put EXECUTOR_CORE1 in a static cell
     #[cfg(feature = "multicore")]
     static EXECUTOR_CORE1: embassy_executor::InterruptExecutor = InterruptExecutor::new();
@@ -57,9 +59,9 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "std")]
     env_logger::init();
 
-    // **** Load the GLOBAL_CONFIGs
+    // **** Load and lock the GLOBAL_CONFIGs
     #[cfg(all(feature = "serde", feature = "rp2350"))]
-    load_global_configs(board.flash).await;
+    load_global_configs(board_flash()).await;
     #[cfg(all(feature = "serde", feature = "std"))]
     load_global_configs().await;
     let config = GLOBAL_CONFIG.lock().await;
@@ -79,18 +81,18 @@ pub async fn init(spawner: Spawner) {
     // ****
 
     #[rustfmt::skip]
-    let gyro_pid_ctx = crate::tasks::gyro_pid::init(
+    let gyro_pid_ctx = tasks::gyro_pid::init(
         config.imu_filter_bank,
         #[cfg(feature = "rpm_filters")] config.rpm_notch_filter_bank,
         #[cfg(feature = "rpm_filters")] 0.001,
     );
 
     // Initialize the IMU task context with the IMU provided by the Board Support Package.
-    let imu_ctx = crate::tasks::imu::init(board.imu);
+    let imu_ctx = tasks::imu::init(board.imu);
 
     // Initialize the motor mixer task context with the motor driver provided by the Board Support Package.
     #[rustfmt::skip]
-    let motor_mixer_ctx = crate::tasks::motor_mixer::init(
+    let motor_mixer_ctx = tasks::motor_mixer::init(
         config.mixer,
         config.motor,
         board.motor_driver.expect("motor driver fail"),
@@ -99,47 +101,47 @@ pub async fn init(spawner: Spawner) {
     );
 
     // TODO: Initialize the receiver task context with the UART provided by the Board Support Package.
-    let rx_ctx = crate::tasks::rx::init(config.rates);
+    let rx_ctx = tasks::rx::init(config.rates);
 
     // TODO: Initialize the MSP task context with the UART provided by the Board Support Package.
     #[cfg(feature = "msp")]
-    let msp_ctx = crate::tasks::msp::init();
+    let msp_ctx = tasks::msp::init();
 
     // TODO: Initialize the blackbox task context with the ... provided by the Board Support Package.
     #[cfg(feature = "blackbox")]
-    let blackbox_ctx = crate::tasks::blackbox::init(config.blackbox);
+    let blackbox_ctx = tasks::blackbox::init(config.blackbox);
     #[cfg(all(feature = "blackbox", feature = "rp2350"))]
     let blackbox_writer_ctx = { BLACKBOX_WRITER_CTX.init(BlackboxWriterContext::new(board.sdcard_spi.unwrap())) };
     #[cfg(all(feature = "blackbox", feature = "std"))]
-    let blackbox_writer_ctx = crate::tasks::blackbox_writer::init();
+    let blackbox_writer_ctx = tasks::blackbox_writer::init();
 
     #[cfg(feature = "autopilot")]
-    let autopilot_ctx = crate::tasks::autopilot::init();
+    let autopilot_ctx = tasks::autopilot::init();
 
     // TODO: Initialize the barometer task context with the barometer driver provided by the Board Support Package.
     #[cfg(feature = "barometer")]
-    let barometer_ctx = crate::tasks::barometer::init();
+    let barometer_ctx = tasks::barometer::init();
 
     #[cfg(feature = "battery")]
-    let battery_ctx = crate::tasks::battery::init();
+    let battery_ctx = tasks::battery::init();
 
     #[cfg(feature = "gps")]
-    let gps_ctx = crate::tasks::gps::init();
+    let gps_ctx = tasks::gps::init();
 
     #[cfg(feature = "magnetometer")]
-    let magnetometer_ctx = crate::tasks::magnetometer::init();
+    let magnetometer_ctx = tasks::magnetometer::init();
 
     #[cfg(feature = "optical_flow")]
-    let optical_flow_ctx = crate::tasks::optical::init();
+    let optical_flow_ctx = tasks::optical::init();
 
     #[cfg(feature = "osd")]
     let osd_ctx = {
         let display_supports_background_layer = true;
-        crate::tasks::osd::init(display_supports_background_layer)
+        tasks::osd::init(display_supports_background_layer)
     };
 
     #[cfg(feature = "rangefinder")]
-    let rangefinder_ctx = crate::tasks::rangefinder::init();
+    let rangefinder_ctx = tasks::rangefinder::init();
 
     // **** UnLock the GLOBAL_CONFIGs
     drop(config);
@@ -159,33 +161,32 @@ pub async fn init(spawner: Spawner) {
     // ****
 
     // The four mandatory tasks.
-    spawner.spawn(crate::tasks::gyro_pid::run(gyro_pid_ctx).expect("Failed to create GYRO PID task"));
-    spawner.spawn(crate::tasks::imu::run(imu_ctx).expect("Failed to create IMU task"));
-    spawner.spawn(crate::tasks::motor_mixer::run(motor_mixer_ctx).expect("Failed to create MOTOR MIXER task")); // No receiver needed, since it uses a SIGNAL
-    spawner.spawn(crate::tasks::rx::run(rx_ctx).expect("Failed to create RX task"));
+    spawner.spawn(tasks::gyro_pid::run(gyro_pid_ctx).expect("Failed to create GYRO PID task"));
+    spawner.spawn(tasks::imu::run(imu_ctx).expect("Failed to create IMU task"));
+    spawner.spawn(tasks::motor_mixer::run(motor_mixer_ctx).expect("Failed to create MOTOR MIXER task")); // No receiver needed, since it uses a SIGNAL
+    spawner.spawn(tasks::rx::run(rx_ctx).expect("Failed to create RX task"));
 
     // The optional tasks.
     #[cfg(feature = "autopilot")]
-    spawner.spawn(crate::tasks::autopilot::run(autopilot_ctx).expect("Failed to create AUTOPILOT task"));
+    spawner.spawn(tasks::autopilot::run(autopilot_ctx).expect("Failed to create AUTOPILOT task"));
     #[cfg(feature = "barometer")]
-    spawner.spawn(crate::tasks::barometer::run(barometer_ctx).expect("Failed to create BAROMETER task"));
+    spawner.spawn(tasks::barometer::run(barometer_ctx).expect("Failed to create BAROMETER task"));
     #[cfg(feature = "battery")]
-    spawner.spawn(crate::tasks::battery::run(battery_ctx).expect("Failed to create BATTERY task"));
+    spawner.spawn(tasks::battery::run(battery_ctx).expect("Failed to create BATTERY task"));
     #[cfg(feature = "blackbox")]
-    spawner.spawn(crate::tasks::blackbox::run(blackbox_ctx).expect("Failed to create BLACKBOX task"));
+    spawner.spawn(tasks::blackbox::run(blackbox_ctx).expect("Failed to create BLACKBOX task"));
     #[cfg(feature = "blackbox")]
-    spawner
-        .spawn(crate::tasks::blackbox_writer::run(blackbox_writer_ctx).expect("Failed to create BLACKBOX_WRITER task"));
+    spawner.spawn(tasks::blackbox_writer::run(blackbox_writer_ctx).expect("Failed to create BLACKBOX_WRITER task"));
     #[cfg(feature = "gps")]
-    spawner.spawn(crate::tasks::gps::run(gps_ctx).expect("Failed to create GPS task"));
+    spawner.spawn(tasks::gps::run(gps_ctx).expect("Failed to create GPS task"));
     #[cfg(feature = "magnetometer")]
-    spawner.spawn(crate::tasks::magnetometer::run(magnetometer_ctx).expect("Failed to create MAGNETOMETER task"));
+    spawner.spawn(tasks::magnetometer::run(magnetometer_ctx).expect("Failed to create MAGNETOMETER task"));
     #[cfg(feature = "msp")]
-    spawner.spawn(crate::tasks::msp::run(msp_ctx).expect("Failed to create MSP task"));
+    spawner.spawn(tasks::msp::run(msp_ctx).expect("Failed to create MSP task"));
     #[cfg(feature = "optical_flow")]
-    spawner.spawn(crate::tasks::optical::run(optical_flow_ctx).expect("Failed to create OSD task"));
+    spawner.spawn(tasks::optical::run(optical_flow_ctx).expect("Failed to create OSD task"));
     #[cfg(feature = "osd")]
-    spawner.spawn(crate::tasks::osd::run(osd_ctx, display_ref).expect("Failed to create OSD task"));
+    spawner.spawn(tasks::osd::run(osd_ctx, display_ref).expect("Failed to create OSD task"));
     #[cfg(feature = "rangefinder")]
-    spawner.spawn(crate::tasks::rangefinder::run(rangefinder_ctx).expect("Failed to create RANGEFINDER task"));
+    spawner.spawn(tasks::rangefinder::run(rangefinder_ctx).expect("Failed to create RANGEFINDER task"));
 }
