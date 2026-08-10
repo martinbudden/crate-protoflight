@@ -1,5 +1,6 @@
 #![cfg(feature = "blackbox")]
 
+#[allow(unused)]
 use crate::tasks::blackbox_task::BLACKBOX_WRITE_QUEUE;
 
 #[cfg(feature = "rp2350")]

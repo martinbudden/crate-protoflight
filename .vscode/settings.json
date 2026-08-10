@@ -43,6 +43,7 @@
         "centiampere",
         "centiamps",
         "chacha",
+        "cipo",
         "Cleanflight",
         "clippy",
         "cmps",
@@ -52,6 +53,7 @@
         "colorchoice",
         "configurator",
         "Controllerf",
+        "copi",
         "corasick",
         "cordyceps",
         "cpufeatures",
@@ -255,7 +257,9 @@
         "wasmparser",
         "winapi",
         "wincon",
+        "XNEG",
         "xtensa",
+        "YNEG",
         "zerocopy",
         "zmij"
     ]

@@ -129,7 +129,7 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "std")]
     env_logger::init();
 
-    // **** LOAD THE GLOBAL CONFIGS
+    // **** Load the GLOBAL_CONFIGs
     #[cfg(all(feature = "serde", feature = "rp2350"))]
     load_global_configs(board.flash).await;
     #[cfg(all(feature = "serde", feature = "std"))]
@@ -137,7 +137,7 @@ pub async fn init(spawner: Spawner) {
     let config = GLOBAL_CONFIG.lock().await;
 
     // **** GET THE DEVICES FROM THE BOARD SUPPORT PACKAGE
-    let board = board_init();
+    let board = board_init(config.imu_device.axis_order);
 
     #[rustfmt::skip]
     #[cfg(feature = "osd")]

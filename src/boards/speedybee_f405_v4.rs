@@ -3,8 +3,6 @@
 #![allow(unused)]
 #![allow(clippy::similar_names)]
 
-// NOTE: stm32 numbers peripheral start at 1, eg SPI1, SPI1, I2C1, I2C2 etc
-
 // See <https://github.com/betaflight/config/blob/master/configs/SPBE/SPEEDYBEEF405V4/config.h> for Betaflight configuration file
 
 use crate::boards::{
@@ -12,7 +10,7 @@ use crate::boards::{
     board::{Board, BoardInitError},
 };
 
-use imu_sensors::{Imu426xx, ImuAxesOrder, ImuSpiBus};
+use imu_sensors::{Imu426xx, ImuAxisOrder, ImuSpiBus};
 use motor_mixers::MotorDriverQuadPwm;
 
 use embassy_stm32::{
@@ -41,7 +39,9 @@ pub fn imu_context(imu: BoardImu) -> ImuContext<BoardImu> {
     ImuContext::new(imu)
 }
 
-pub fn board_init() -> Board<BoardImu> {
+pub fn board_init(axis_order: ImuAxisOrder) -> Board<BoardImu> {
+    // NOTE: stm32 numbers peripheral start at 1, eg SPI1, SPI1, I2C1, I2C2 etc
+
     let peripherals = embassy_stm32::init(Default::default());
 
     /*
@@ -132,7 +132,7 @@ pub fn board_init() -> Board<BoardImu> {
         ExclusiveDevice::new(spi_bus, cs_output, Delay).unwrap()
     };
 
-    let mut imu: BoardImu = Imu426xx::new(ImuSpiBus::new(spi1), ImuAxesOrder::XPOS_YPOS_ZPOS);
+    let mut imu: BoardImu = Imu426xx::new(ImuSpiBus::new(spi1), axis_order);
 
     let spi2 = {
         let mut config = SpiConfig::default();

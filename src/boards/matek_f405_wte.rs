@@ -1,8 +1,5 @@
 #![cfg(all(feature = "stm32f405", feature = "matek_f405_wte"))]
 #![allow(unused)]
-#![allow(clippy::similar_names)]
-
-// NOTE: stm32 numbers peripheral starting at 1, eg SPI1, SPI1, I2C1, I2C2 etc
 
 use crate::boards::{
     ImuContext,
@@ -20,7 +17,7 @@ use embassy_stm32::{
 };
 use embassy_time::Delay;
 use embedded_hal_bus::spi::ExclusiveDevice;
-use imu_sensors::{Imu426xx, ImuAxesOrder, ImuSpiBus};
+use imu_sensors::{Imu426xx, ImuAxisOrder, ImuSpiBus};
 use motor_mixers::MotorDriverQuadPwm;
 
 type BoardSpi =
@@ -31,7 +28,9 @@ pub fn imu_context(imu: BoardImu) -> ImuContext<BoardImu> {
     ImuContext::new(imu)
 }
 
-pub fn board_init() -> Board<BoardImu> {
+pub fn board_init(axis_order: ImuAxisOrder) -> Board<BoardImu> {
+    // NOTE: stm32 numbers peripheral starting at 1, eg SPI1, SPI1, I2C1, I2C2 etc
+
     let peripherals = embassy_stm32::init(Default::default());
 
     // SPI1
@@ -67,7 +66,7 @@ pub fn board_init() -> Board<BoardImu> {
         ExclusiveDevice::new(spi_bus, cs_output, Delay).unwrap()
     };
 
-    let mut imu: BoardImu = Imu426xx::new(ImuSpiBus::new(spi1), ImuAxesOrder::XPOS_YPOS_ZPOS);
+    let mut imu: BoardImu = Imu426xx::new(ImuSpiBus::new(spi1), axis_order);
 
     let spi2 = {
         let mut config = SpiConfig::default();

@@ -4,6 +4,7 @@ use embassy_sync::{
     pubsub::{PubSubChannel, Publisher, Subscriber},
 };
 
+use imu_sensors::ImuDeviceConfig;
 use motor_mixers::{MixerConfig, MotorConfig, MotorDeviceConfig};
 use radio_controllers::{FailsafeConfig, RatesConfig, RcControlsConfig, RcModes, RxConfig};
 
@@ -225,6 +226,7 @@ define_configs!(
         (Arming, arming, ArmingConfig),
         (Features, features, FeatureFlags),
         (Imu, imu, ImuConfig),
+        (ImuDevice, imu_device, ImuDeviceConfig),
         (Sensors, sensors, SensorFlags),
         (CurrentSensorAdc, current_sensor_adc, CurrentSensorAdcConfig),
         (CurrentSensorVirtual, current_sensor_virtual, CurrentSensorVirtualConfig),

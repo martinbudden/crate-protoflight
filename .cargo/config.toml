@@ -84,7 +84,7 @@ check-rp2350 = [
     "--no-default-features",
     "--features",
     #"rp2350,libm,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug"
-    "libm,rp2350"
+    "libm,rp2350,rpi_pico2"
 ]
 
 build-rp2350 = [
