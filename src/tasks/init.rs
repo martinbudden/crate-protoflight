@@ -116,6 +116,7 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "autopilot")]
     let autopilot_ctx = crate::tasks::autopilot::init();
 
+    // TODO: Initialize the barometer task context with the barometer driver provided by the Board Support Package.
     #[cfg(feature = "barometer")]
     let barometer_ctx = crate::tasks::barometer::init();
 
