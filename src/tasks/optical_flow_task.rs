@@ -29,11 +29,6 @@ type OpticalFlowPublisher = Publisher<
     OPTICAL_FLOW_PUBLISHER_COUNT,
 >;
 
-#[allow(clippy::expect_used)]
-pub fn optical_flow_publisher() -> OpticalFlowPublisher {
-    OPTICAL_FLOW_PUB_SUB_CHANNEL.publisher().expect("optical_flow_publisher failed")
-}
-
 pub type OpticalFlowSubscriber = Subscriber<
     'static,
     CriticalSectionRawMutex,
@@ -54,8 +49,11 @@ pub struct OpticalFlowContext {
 }
 
 impl OpticalFlowContext {
-    pub const fn new(optical_flow_publisher: OpticalFlowPublisher) -> Self {
-        Self { optical_flow_publisher }
+    pub fn new() -> Self {
+        #[allow(clippy::expect_used)]
+        Self {
+            optical_flow_publisher: OPTICAL_FLOW_PUB_SUB_CHANNEL.publisher().expect("optical_flow_publisher failed"),
+        }
     }
 }
 

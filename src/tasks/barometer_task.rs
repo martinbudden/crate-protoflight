@@ -29,11 +29,6 @@ type BarometerPublisher = Publisher<
     BAROMETER_PUBLISHER_COUNT,
 >;
 
-#[allow(clippy::expect_used)]
-pub fn barometer_publisher() -> BarometerPublisher {
-    BAROMETER_PUB_SUB_CHANNEL.publisher().expect("barometer_publisher failed")
-}
-
 pub type BarometerSubscriber = Subscriber<
     'static,
     CriticalSectionRawMutex,
@@ -54,8 +49,9 @@ pub struct BarometerContext {
 }
 
 impl BarometerContext {
-    pub const fn new(barometer_publisher: BarometerPublisher) -> Self {
-        Self { barometer_publisher }
+    pub fn new() -> Self {
+        #[allow(clippy::expect_used)]
+        Self { barometer_publisher: BAROMETER_PUB_SUB_CHANNEL.publisher().expect("barometer_publisher failed") }
     }
 }
 

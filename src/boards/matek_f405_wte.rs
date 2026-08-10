@@ -4,8 +4,7 @@
 
 // NOTE: stm32 numbers peripheral starting at 1, eg SPI1, SPI1, I2C1, I2C2 etc
 
-use crate::boards::board::{Board, BoardInitError,    ImuContext,
-};
+use crate::boards::board::{Board, BoardInitError, ImuContext};
 use embassy_stm32::{
     bind_interrupts, dma,
     gpio::{Input, Level, Output, Speed},

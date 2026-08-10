@@ -29,11 +29,6 @@ type RangefinderPublisher = Publisher<
     RANGEFINDER_PUBLISHER_COUNT,
 >;
 
-#[allow(clippy::expect_used)]
-pub fn rangefinder_publisher() -> RangefinderPublisher {
-    RANGEFINDER_PUB_SUB_CHANNEL.publisher().expect("rangefinder_publisher failed")
-}
-
 pub type RangefinderSubscriber = Subscriber<
     'static,
     CriticalSectionRawMutex,
@@ -54,8 +49,9 @@ pub struct RangefinderContext {
 }
 
 impl RangefinderContext {
-    pub const fn new(rangefinder_publisher: RangefinderPublisher) -> Self {
-        Self { rangefinder_publisher }
+    pub fn new() -> Self {
+        #[allow(clippy::expect_used)]
+        Self { rangefinder_publisher: RANGEFINDER_PUB_SUB_CHANNEL.publisher().expect("rangefinder_publisher failed") }
     }
 }
 

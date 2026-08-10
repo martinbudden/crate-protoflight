@@ -8,7 +8,10 @@ use radio_controllers::RcMode;
 use radio_controllers::{Rates, RatesConfig, RcModes, RxChannel, RxFrame};
 
 use crate::{
-    config::{ConfigItem, ConfigPublisher, ConfigSubscriber, FastConfigPublisher},
+    config::{
+        ConfigItem, ConfigPublisher, ConfigSubscriber, FastConfigPublisher, config_publisher, config_subscriber,
+        fast_config_publisher,
+    },
     flight::{RcAdjustments, RxMessage},
 };
 
@@ -29,7 +32,7 @@ pub fn rx_receiver() -> RxReceiver {
 }
 
 #[cfg(feature = "autopilot")]
-use crate::tasks::autopilot_task::AutopilotReceiver;
+use crate::tasks::autopilot_task::{AutopilotReceiver, autopilot_receiver};
 
 /// Context for the `flight_control_task`.
 pub struct RxContext {
@@ -49,22 +52,17 @@ pub struct RxContext {
 impl RxContext {
     #[rustfmt::skip]
     pub fn new(
-        rx_sender: RxSender,
-        config_subscriber: ConfigSubscriber,
-        config_publisher: ConfigPublisher,
-        fast_config_publisher: FastConfigPublisher,
         rates_config: RatesConfig,
-        #[cfg(feature = "autopilot")] autopilot_receiver: AutopilotReceiver,
     ) -> Self {
         Self {
-            rx_sender,
-            config_subscriber,
-            config_publisher,
-            fast_config_publisher,
+            rx_sender:rx_sender(),
+            config_subscriber:config_subscriber(),
+            config_publisher:config_publisher(),
+            fast_config_publisher:fast_config_publisher(),
             rates: Rates::new(rates_config),
             rc_modes: RcModes::with_mac_arm(),
             rc_adjustments: RcAdjustments::new(),
-            #[cfg(feature = "autopilot")] autopilot_receiver,
+            #[cfg(feature = "autopilot")] autopilot_receiver:autopilot_receiver(),
         }
     }
 }

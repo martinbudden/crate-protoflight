@@ -29,11 +29,6 @@ type BatteryPublisher = Publisher<
     BATTERY_PUBLISHER_COUNT,
 >;
 
-#[allow(clippy::expect_used)]
-pub fn battery_publisher() -> BatteryPublisher {
-    BATTERY_PUB_SUB_CHANNEL.publisher().expect("battery_publisher failed")
-}
-
 #[allow(unused)]
 pub type BatterySubscriber = Subscriber<
     'static,
@@ -56,8 +51,9 @@ pub struct BatteryContext {
 }
 
 impl BatteryContext {
-    pub fn new(battery_publisher: BatteryPublisher) -> Self {
-        Self { battery_publisher }
+    pub fn new() -> Self {
+        #[allow(clippy::expect_used)]
+        Self { battery_publisher: BATTERY_PUB_SUB_CHANNEL.publisher().expect("battery_publisher failed") }
     }
 }
 

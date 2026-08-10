@@ -9,26 +9,29 @@ use crate::{
     flight::{ArmingFlags, RxMessage},
     osd::{Osd, OsdDrawContext, OsdElements, OsdState},
     tasks::{
-        gyro_pid_task::{GyroPidReceiver, SetpointReceiver},
+        gyro_pid_task::{GyroPidReceiver, SetpointReceiver, gyro_pid_receiver, setpoint_receiver},
         init::DisplayPortMutex,
-        rx_task::RxReceiver,
+        rx_task::{RxReceiver, rx_receiver},
     },
 };
 
 #[cfg(feature = "optical_flow")]
-use crate::tasks::optical_flow_task::OpticalFlowSubscriber;
+use crate::tasks::optical_flow_task::{OpticalFlowSubscriber, optical_flow_subscriber};
 
 #[cfg(feature = "rangefinder")]
-use crate::tasks::rangefinder_task::RangefinderSubscriber;
+use crate::tasks::rangefinder_task::{RangefinderSubscriber, rangefinder_subscriber};
 
 #[cfg(feature = "barometer")]
-use crate::tasks::barometer_task::BarometerSubscriber;
+use crate::tasks::barometer_task::{BarometerSubscriber, barometer_subscriber};
 
 #[cfg(feature = "battery")]
-use crate::{sensors::BatteryMessage, tasks::battery_task::BatterySubscriber};
+use crate::{
+    sensors::BatteryMessage,
+    tasks::battery_task::{BatterySubscriber, battery_subscriber},
+};
 
 #[cfg(feature = "gps")]
-use crate::tasks::gps_task::GpsSubscriber;
+use crate::tasks::gps_task::{GpsSubscriber, gps_subscriber};
 
 /// Context for OSD task.
 #[allow(unused)]
@@ -57,24 +60,16 @@ impl OsdContext {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         display_supports_background_layer: bool,
-        gyro_pid_receiver: GyroPidReceiver,
-        setpoint_receiver: SetpointReceiver,
-        rx_receiver: RxReceiver,
-        #[cfg(feature = "barometer")] barometer_subscriber: BarometerSubscriber,
-        #[cfg(feature = "battery")] battery_subscriber: BatterySubscriber,
-        #[cfg(feature = "gps")] gps_subscriber: GpsSubscriber,
-        #[cfg(feature = "optical_flow")] optical_flow_subscriber: OpticalFlowSubscriber,
-        #[cfg(feature = "rangefinder")] rangefinder_subscriber: RangefinderSubscriber,
     ) -> Self {
         Self {
-            gyro_pid_receiver,
-            setpoint_receiver,
-            rx_receiver,
-            #[cfg(feature = "barometer")] barometer_subscriber,
-            #[cfg(feature = "battery")] battery_subscriber,
-            #[cfg(feature = "gps")] gps_subscriber,
-            #[cfg(feature = "optical_flow")] optical_flow_subscriber,
-            #[cfg(feature = "rangefinder")] rangefinder_subscriber,
+            gyro_pid_receiver:gyro_pid_receiver(),
+            setpoint_receiver:setpoint_receiver(),
+            rx_receiver:rx_receiver(),
+            #[cfg(feature = "barometer")] barometer_subscriber:barometer_subscriber(),
+            #[cfg(feature = "battery")] battery_subscriber:battery_subscriber(),
+            #[cfg(feature = "gps")] gps_subscriber:gps_subscriber(),
+            #[cfg(feature = "optical_flow")] optical_flow_subscriber:optical_flow_subscriber(),
+            #[cfg(feature = "rangefinder")] rangefinder_subscriber:rangefinder_subscriber(),
             osd: Osd::new(),
             osd_state: OsdState::default(),
             osd_elements: OsdElements::new(display_supports_background_layer),

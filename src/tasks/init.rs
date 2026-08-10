@@ -5,66 +5,54 @@ use static_cell::StaticCell;
 
 use crate::{
     boards::{board_init, imu_context},
-    config::{GLOBAL_CONFIG, config_publisher, config_subscriber, fast_config_publisher, fast_config_subscriber},
+    config::GLOBAL_CONFIG,
     tasks::{
-        gyro_pid_task::{GyroPidContext, gyro_pid_sender, gyro_pid_task, setpoint_sender},
+        gyro_pid_task::{GyroPidContext, gyro_pid_task},
         imu_task::imu_task,
         motor_mixer_task::{MotorMixerContext, motor_mixer_task},
-        rx_task::{RxContext, rx_receiver, rx_sender, rx_task},
+        rx_task::{RxContext, rx_task},
     },
 };
 
-#[allow(unused)]
-use crate::tasks::gyro_pid_task::{gyro_pid_receiver, setpoint_receiver};
-
-#[allow(unused)]
 #[cfg(feature = "serde")]
 use crate::tasks::non_volatile_storage::load_global_configs;
 
 #[cfg(feature = "autopilot")]
-use crate::tasks::autopilot_task::{AutopilotContext, autopilot_receiver, autopilot_sender, autopilot_task};
+use crate::tasks::autopilot_task::{AutopilotContext, autopilot_task};
 
 #[cfg(feature = "barometer")]
-use crate::tasks::barometer_task::{BarometerContext, barometer_publisher, barometer_subscriber, barometer_task};
+use crate::tasks::barometer_task::{BarometerContext, barometer_task};
 
 #[cfg(feature = "battery")]
-use crate::tasks::battery_task::{BatteryContext, battery_publisher, battery_subscriber, battery_task};
+use crate::tasks::battery_task::{BatteryContext, battery_task};
 
 #[cfg(feature = "blackbox")]
-use {
-    crate::tasks::{
-        blackbox_task::{BlackboxContext, blackbox_task},
-        blackbox_writer_task::{BlackboxWriterContext, blackbox_writer_task},
-    },
-    blackbox_logger::{BlackboxDateTime, BlackboxSysInfo, FieldSelect},
+use crate::tasks::{
+    blackbox_task::{BlackboxContext, blackbox_task},
+    blackbox_writer_task::{BlackboxWriterContext, blackbox_writer_task},
 };
 
 #[cfg(feature = "gps")]
-use crate::tasks::gps_task::{GpsContext, gps_publisher, gps_subscriber, gps_task};
+use crate::tasks::gps_task::{GpsContext, gps_task};
 
 #[cfg(feature = "magnetometer")]
-use crate::tasks::magnetometer_task::{
-    MagnetometerContext, magnetometer_publisher, magnetometer_subscriber, magnetometer_task,
-};
+use crate::tasks::magnetometer_task::{MagnetometerContext, magnetometer_task};
 
 #[cfg(feature = "msp")]
 use crate::tasks::msp_task::{MspContext, msp_task};
 
 #[cfg(feature = "optical_flow")]
-use crate::tasks::optical_flow_task::{
-    OpticalFlowContext, optical_flow_publisher, optical_flow_subscriber, optical_flow_task,
-};
+use crate::tasks::optical_flow_task::{OpticalFlowContext, optical_flow_task};
 
 #[cfg(feature = "osd")]
 use crate::tasks::osd_task::{OsdContext, osd_task};
 
 #[cfg(feature = "rangefinder")]
-use crate::tasks::rangefinder_task::{
-    RangefinderContext, rangefinder_publisher, rangefinder_subscriber, rangefinder_task,
-};
+use crate::tasks::rangefinder_task::{RangefinderContext, rangefinder_task};
 
 #[cfg(feature = "max7456")]
 use crate::display::DisplayPortMax7456;
+
 #[cfg(feature = "max7456")]
 pub type DisplayPortMax7456Spi = DisplayPortMax7456<DisplaySpi>;
 #[cfg(feature = "max7456")]
@@ -74,6 +62,7 @@ pub type DisplayPortMutex = Mutex<CriticalSectionRawMutex, DisplayPortMax7456Spi
 use crate::display::DisplayPortMock;
 
 // --- 2. HOST ARCHITECTURE TESTING / MOCK CONFIGURATION ---
+#[allow(unused)]
 #[cfg(not(feature = "max7456"))]
 pub type DisplayPortMutex = Mutex<CriticalSectionRawMutex, DisplayPortMock>;
 
@@ -81,7 +70,19 @@ pub type DisplayPortMutex = Mutex<CriticalSectionRawMutex, DisplayPortMock>;
 #[cfg(feature = "multicore")]
 static mut CORE1_STACK: Stack<4096> = Stack::new();
 
-/// Create all the contexts for the tasks, and then spawn the tasks.
+/// Protoflight initialization, called directly from main.
+/// Does the following:
+/// 1. Statically allocates all the task contexts (`*_CTX`).
+/// 2. Loads the global configuration `GLOBAL_CONFIG`.
+/// 3. Initializes the board hardware `board_init`.
+/// 4. Initializes all the task contexts using values from `GLOBAL_CONFIG`.
+/// 5. spawns all the tasks.
+///
+/// `panic()`, `.unwrap()` and `.expect()` are allowed during initialization
+/// since if anything fails during initialization there is no possibility of recovery
+/// and so there is no point continuing.
+///
+/// Once initialization is complete `panic()`, `.unwrap()` and `.expect()` are NOT allowed.
 #[allow(clippy::expect_used)]
 #[allow(clippy::too_many_lines)]
 pub async fn init(spawner: Spawner) {
@@ -114,7 +115,7 @@ pub async fn init(spawner: Spawner) {
     static OSD_CTX: StaticCell<OsdContext> = StaticCell::new();
     #[cfg(feature = "rangefinder")]
     static RANGEFINDER_CTX: StaticCell<RangefinderContext> = StaticCell::new();
-
+    #[allow(unused)]
     static DISPLAY_PORT_MUTEX_CELL: StaticCell<DisplayPortMutex> = StaticCell::new();
 
     // Initialize env_logger for logging to stdout on desktop platforms.
@@ -122,24 +123,22 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "std")]
     env_logger::init();
 
-    // ---- LOAD THE GLOBAL CONFIGS
+    // **** LOAD THE GLOBAL CONFIGS
     #[cfg(all(feature = "serde", feature = "rp2350"))]
     load_global_configs(board.flash).await;
     #[cfg(all(feature = "serde", feature = "std"))]
     load_global_configs().await;
-    #[allow(unused_mut)]
-    let mut config = GLOBAL_CONFIG.lock().await;
+    let config = GLOBAL_CONFIG.lock().await;
 
-    // ---- GET THE DEVICES FROM THE BOARD SUPPORT PACKAGE
+    // **** GET THE DEVICES FROM THE BOARD SUPPORT PACKAGE
     let board = board_init();
 
-    // --- INITIALIZE MOCK STUB (HOST PROFILE ENVIRONMENT) ---
-    #[allow(unused)]
-    #[cfg(feature = "max7456")]
-    let display_ref = { DISPLAY_PORT_MUTEX_CELL.init(Mutex::new(DisplayPortMax7456Spi::new(aux_pio_spi))) };
-    #[cfg(not(feature = "max7456"))]
-    #[allow(unused)]
-    let display_ref = { DISPLAY_PORT_MUTEX_CELL.init(Mutex::new(DisplayPortMock::default())) };
+    #[rustfmt::skip]
+    #[cfg(feature = "osd")]
+    let display_ref = {
+        #[cfg(feature = "max7456")] { DISPLAY_PORT_MUTEX_CELL.init(Mutex::new(DisplayPortMax7456Spi::new(aux_pio_spi))) }
+        #[cfg(not(feature = "max7456"))] { DISPLAY_PORT_MUTEX_CELL.init(Mutex::new(DisplayPortMock::default())) }
+    };
 
     // ****
     // Initialize the task contexts.
@@ -148,10 +147,6 @@ pub async fn init(spawner: Spawner) {
     // Initialize the modern storage driver handle matching your u16 Key setup
     #[rustfmt::skip]
     let gyro_pid_ctx = GYRO_PID_CTX.init(GyroPidContext::new(
-        rx_receiver(),
-        gyro_pid_sender(),
-        setpoint_sender(),
-        fast_config_subscriber(),
         config.imu_filter_bank,
         #[cfg(feature = "rpm_filters")] config.rpm_notch_filter_bank,
         #[cfg(feature = "rpm_filters")] 0.001,
@@ -168,158 +163,56 @@ pub async fn init(spawner: Spawner) {
         #[cfg(feature = "rpm_filters")] 0.001
     ));
 
-    #[rustfmt::skip]
-    let rx_ctx = RX_CTX.init(RxContext::new(
-        rx_sender(),
-        config_subscriber(),
-        config_publisher(),
-        fast_config_publisher(),
-        config.rates,
-        #[cfg(feature = "autopilot")] autopilot_receiver(),
-    ));
+    let rx_ctx = RX_CTX.init(RxContext::new(config.rates));
 
-    #[rustfmt::skip]
     #[cfg(feature = "msp")]
-    let msp_ctx = MSP_CTX.init(MspContext::new(
-        fast_config_publisher(),
-        config_publisher(),
-        #[cfg(feature = "barometer")] barometer_subscriber(),
-        #[cfg(feature = "battery")] battery_subscriber(),
-        #[cfg(feature = "gps")] gps_subscriber(),
-        #[cfg(feature = "magnetometer")] magnetometer_subscriber(),
-        #[cfg(feature = "optical_flow")] optical_flow_subscriber(),
-        #[cfg(feature = "rangefinder")] rangefinder_subscriber(),
-    ));
+    let msp_ctx = MSP_CTX.init(MspContext::new());
 
-    #[rustfmt::skip]
     #[cfg(feature = "blackbox")]
-    let blackbox_ctx = {
-
-        //nvs::load_blackbox_config(&mut config.blackbox, &mut flash_driver, config_flash_range.clone());
-        use crate::{sensors::SetpointMessage, tasks::gyro_pid_task::gyro_pid_receiver};
-        config.blackbox.fields_disabled_mask = FieldSelect::PID_STERM_ROLL
-        | FieldSelect::PID_STERM_PITCH
-        | FieldSelect::PID_STERM_YAW
-        | FieldSelect::PID_KTERM
-        //| FieldSelect::PID
-        | FieldSelect::RSSI
-        //| FieldSelect::SETPOINT
-        //| FieldSelect::GYRO_UNFILTERED
-        //| FieldSelect::MOTOR_RPM
-        | FieldSelect::BATTERY_VOLTAGE
-        | FieldSelect::BATTERY_CURRENT
-        | FieldSelect::BAROMETER
-        | FieldSelect::RANGEFINDER
-        | FieldSelect::ATTITUDE
-        //| FieldSelect::ACCELEROMETER
-        //| FieldSelect::GYRO
-        //| FieldSelect::RC_COMMANDS
-        //| FieldSelect::MOTOR
-        | FieldSelect::MAGNETOMETER;
-        
-        let sys_info = BlackboxSysInfo {
-            features: 541_130_760,
-            gyro_scale: 0x3f80_0000,
-            looptime: 125, // 125us = 8kHz gyro/pid loop
-            gyro_sync_denom: 1,
-            pid_process_denom: 1,
-            acc_1g: 4096,
-            motor_output_min: 48,
-            motor_output_max: 2047,
-            vbat_scale: 0,
-            vbat_min_cell_voltage: 330,
-            vbat_warning_cell_voltage: 350,
-            vbat_max_cell_voltage: 430,
-            current_sensor_scale: 0,
-            current_sensor_offset: 250,
-            date_time: BlackboxDateTime::new(),
-            motor_pole_count: 14,
-        };
-        BLACKBOX_CTX.init(BlackboxContext::new(
-            gyro_pid_receiver(),
-            setpoint_receiver(),
-            SetpointMessage::new(),
-            config.blackbox,
-            sys_info,
-            #[cfg(feature = "barometer")] barometer_subscriber(),
-            #[cfg(feature = "battery")] battery_subscriber(),
-            #[cfg(feature = "gps")] gps_subscriber(),
-        ))
-    };
+    let blackbox_ctx = { BLACKBOX_CTX.init(BlackboxContext::new(config.blackbox)) };
     #[cfg(all(feature = "blackbox", feature = "rp2350"))]
-    let blackbox_writer_ctx = {
-        //if let Ok(blackbox_spi) = _blackbox_res {
-        //    BLACKBOX_WRITER_CTX.init(BlackboxWriterContext::new(blackbox_spi))
-        //}
-        //let blackbox_spi = blackbox_res.unwrap();
-        BLACKBOX_WRITER_CTX.init(BlackboxWriterContext::new(board.sdcard_spi.unwrap()))
-    };
+    let blackbox_writer_ctx = { BLACKBOX_WRITER_CTX.init(BlackboxWriterContext::new(board.sdcard_spi.unwrap())) };
     #[cfg(all(feature = "blackbox", feature = "std"))]
-    let blackbox_writer_ctx = { BLACKBOX_WRITER_CTX.init(BlackboxWriterContext::new()) };
+    let blackbox_writer_ctx = BLACKBOX_WRITER_CTX.init(BlackboxWriterContext::new());
 
-    #[rustfmt::skip]
     #[cfg(feature = "autopilot")]
-    let autopilot_ctx: &mut AutopilotContext = AUTOPILOT_CTX.init(AutopilotContext::new(
-        gyro_pid_receiver(),
-        rx_receiver(),
-        autopilot_sender(),
-        #[cfg(feature = "barometer")] barometer_subscriber(),
-        #[cfg(feature = "gps")] gps_subscriber(),
-        #[cfg(feature = "optical_flow")] optical_flow_subscriber(),
-        #[cfg(feature = "rangefinder")] rangefinder_subscriber(),
-    ));
+    let autopilot_ctx: &mut AutopilotContext = AUTOPILOT_CTX.init(AutopilotContext::new());
 
     #[cfg(feature = "barometer")]
-    let barometer_ctx = BAROMETER_CTX.init(BarometerContext::new(barometer_publisher()));
+    let barometer_ctx = BAROMETER_CTX.init(BarometerContext::new());
 
     #[cfg(feature = "battery")]
-    let battery_ctx = BATTERY_CTX.init(BatteryContext::new(battery_publisher()));
+    let battery_ctx = BATTERY_CTX.init(BatteryContext::new());
 
     #[cfg(feature = "gps")]
-    let gps_ctx = GPS_CTX.init(GpsContext::new(gps_publisher()));
+    let gps_ctx = GPS_CTX.init(GpsContext::new());
 
     #[cfg(feature = "magnetometer")]
-    let magnetometer_ctx = MAGNETOMETER_CTX.init(MagnetometerContext::new(magnetometer_publisher()));
+    let magnetometer_ctx = MAGNETOMETER_CTX.init(MagnetometerContext::new());
 
     #[cfg(feature = "optical_flow")]
-    let optical_flow_ctx = OPTICAL_FLOW_CTX.init(OpticalFlowContext::new(optical_flow_publisher()));
+    let optical_flow_ctx = OPTICAL_FLOW_CTX.init(OpticalFlowContext::new());
 
-    #[rustfmt::skip]
     #[cfg(feature = "osd")]
     let osd_ctx = {
         let display_supports_background_layer = true;
-        OSD_CTX.init(OsdContext::new(
-            display_supports_background_layer,
-            gyro_pid_receiver(),
-            setpoint_receiver(),
-            rx_receiver(),
-            #[cfg(feature = "barometer")] barometer_subscriber(),
-            #[cfg(feature = "battery")] battery_subscriber(),
-            #[cfg(feature = "gps")] gps_subscriber(),
-            #[cfg(feature = "optical_flow")] optical_flow_subscriber(),
-            #[cfg(feature = "rangefinder")] rangefinder_subscriber()
-        ))
+        OSD_CTX.init(OsdContext::new(display_supports_background_layer))
     };
 
     #[cfg(feature = "rangefinder")]
-    let rangefinder_ctx = RANGEFINDER_CTX.init(RangefinderContext::new(rangefinder_publisher()));
+    let rangefinder_ctx = RANGEFINDER_CTX.init(RangefinderContext::new());
 
     drop(config); // unlocks
 
     /*
-    TODO: gyro_pid on core1 and motor_mixer and radio on high priority interrupt driven spawner
-    // Launch Core 1
-    unsafe {
-        spawn_core1(p.CORE1, &mut CORE1_STACK, core1_entry);
-    }    // Create the task tokens and spawn the tasks.
-    // 2. Start an InterruptExecutor on Core 0 for 1kHz tasks
-    let high_spawner = EXECUTOR_HIGH.start(interrupt::SWI_IRQ_0);
-    high_spawner.spawn(motor_mixer_task(motor_mixer_ctx).expect("Failed to create motor mixer task")); // No receiver needed, since it uses a SIGNAL
-    high_spawner.spawn(radio_task(radio_ctx).expect("Failed to create radio task"));
+    TODO: for raspberry pi pico put gyro_pid on core1 and motor_mixer and radio on high priority interrupt driven spawner
+        // 1. Launch Core 1
+        unsafe { spawn_core1(p.CORE1, &mut CORE1_STACK, core1_entry); }
+        // 2. Start an InterruptExecutor on Core 0 for the 1kHz tasks, ie the motor_mixer and rx tasks.
+        let high_spawner = EXECUTOR_HIGH.start(interrupt::SWI_IRQ_0);
+        high_spawner.spawn(motor_mixer_task(motor_mixer_ctx).expect("Failed to create motor mixer task")); // No receiver needed, since it uses a SIGNAL
+        high_spawner.spawn(rx_task(rx_ctx).expect("Failed to create radio task"));
     */
-
-    // The gyro_pid task calculates the motor commands, sends them immediately to the motor_mixer task
-    // and then updates the GyroPidMessage and sends it.
 
     // ****
     // Spawn the tasks.

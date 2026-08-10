@@ -34,11 +34,6 @@ pub type GpsPublisher = Publisher<
     GPS_PUBLISHER_COUNT,
 >;
 
-#[allow(clippy::expect_used)]
-pub fn gps_publisher() -> GpsPublisher {
-    GPS_PUB_SUB_CHANNEL.publisher().expect("gps_publisher failed")
-}
-
 pub type GpsSubscriber = Subscriber<
     'static,
     CriticalSectionRawMutex,
@@ -62,8 +57,9 @@ pub struct GpsContext {
 }
 
 impl GpsContext {
-    pub const fn new(gps_publisher: GpsPublisher) -> Self {
-        Self { gps_publisher, home: Geodetic::new() }
+    pub fn new() -> Self {
+        #[allow(clippy::expect_used)]
+        Self { gps_publisher: GPS_PUB_SUB_CHANNEL.publisher().expect("gps_publisher failed"), home: Geodetic::new() }
     }
 }
 

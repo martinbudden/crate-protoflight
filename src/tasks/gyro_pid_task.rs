@@ -10,10 +10,14 @@ use sensor_fusion::{MadgwickFilterf32, SensorFusion};
 use simple_bitset::BitSet64;
 
 use crate::{
-    config::{FastConfigItem, FastConfigSubscriber},
+    config::{FastConfigItem, FastConfigSubscriber, fast_config_subscriber},
     flight::{FilterAccGyro, FlightController, ImuFilterBank, ImuFilterBankConfig, RcControls, VehicleControl},
     sensors::{GyroPidMessage, SetpointMessage},
-    tasks::{imu_task::IMU_SIGNAL, motor_mixer_task::MOTOR_MIXER_SIGNAL, rx_task::RxReceiver},
+    tasks::{
+        imu_task::IMU_SIGNAL,
+        motor_mixer_task::MOTOR_MIXER_SIGNAL,
+        rx_task::{RxReceiver, rx_receiver},
+    },
 };
 
 #[cfg(feature = "gps")]
@@ -89,19 +93,15 @@ pub struct GyroPidContext {
 
 impl GyroPidContext {
     pub fn new(
-        rx_receiver: RxReceiver,
-        gyro_pid_sender: GyroPidSender,
-        setpoint_sender: SetpointSender,
-        fast_config_subscriber: FastConfigSubscriber,
         imu_filter_bank_config: ImuFilterBankConfig,
         #[cfg(feature = "rpm_filters")] rpm_notch_filter_bank_config: RpmNotchFilterBankConfig,
         #[cfg(feature = "rpm_filters")] looptime_seconds: f32,
     ) -> Self {
         Self {
-            rx_receiver,
-            gyro_pid_sender,
-            setpoint_sender,
-            fast_config_subscriber,
+            rx_receiver: rx_receiver(),
+            gyro_pid_sender: gyro_pid_sender(),
+            setpoint_sender: setpoint_sender(),
+            fast_config_subscriber: fast_config_subscriber(),
             #[cfg(not(feature = "rpm_filters"))]
             imu_filters: ImuFilterBank::with_config(imu_filter_bank_config),
             #[cfg(feature = "rpm_filters")]
@@ -119,6 +119,8 @@ impl GyroPidContext {
 }
 
 /// The GYRO/PID task.
+// The gyro_pid task calculates the motor commands, sends them immediately to the motor_mixer task
+// and then updates the GyroPidMessage and sends it.
 #[embassy_executor::task]
 pub async fn gyro_pid_task(ctx: &'static mut GyroPidContext) {
     log::info!("    GYRO_PID: task started");

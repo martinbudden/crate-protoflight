@@ -5,27 +5,30 @@
 use stream_buf::{StreamBufReader, StreamBufWriter};
 
 use crate::{
-    config::{ConfigPublisher, FastConfigPublisher},
+    config::{ConfigPublisher, FastConfigPublisher, config_publisher, fast_config_publisher},
     multiwii_serial_protocol::{Msp, MspSensorData},
 };
 
 #[cfg(feature = "barometer")]
-use crate::tasks::barometer_task::BarometerSubscriber;
+use crate::tasks::barometer_task::{BarometerSubscriber, barometer_subscriber};
 
 #[cfg(feature = "battery")]
-use crate::tasks::battery_task::BatterySubscriber;
+use crate::tasks::battery_task::{BatterySubscriber, battery_subscriber};
 
 #[cfg(feature = "gps")]
-use crate::{gps::GpsMessage, tasks::gps_task::GpsSubscriber};
+use crate::{
+    gps::GpsMessage,
+    tasks::gps_task::{GpsSubscriber, gps_subscriber},
+};
 
 #[cfg(feature = "magnetometer")]
-use crate::tasks::magnetometer_task::MagnetometerSubscriber;
+use crate::tasks::magnetometer_task::{MagnetometerSubscriber, magnetometer_subscriber};
 
 #[cfg(feature = "optical_flow")]
-use crate::tasks::optical_flow_task::OpticalFlowSubscriber;
+use crate::tasks::optical_flow_task::{OpticalFlowSubscriber, optical_flow_subscriber};
 
 #[cfg(feature = "rangefinder")]
-use crate::tasks::rangefinder_task::RangefinderSubscriber;
+use crate::tasks::rangefinder_task::{RangefinderSubscriber, rangefinder_subscriber};
 
 /// Context for MSP task.
 ///
@@ -55,25 +58,17 @@ impl MspContext {
     #[allow(clippy::too_many_arguments)]
     #[rustfmt::skip]
     pub fn new(
-        fast_config_publisher: FastConfigPublisher,
-        config_publisher: ConfigPublisher,
-        #[cfg(feature = "barometer")] barometer_subscriber: BarometerSubscriber,
-        #[cfg(feature = "battery")] battery_subscriber: BatterySubscriber,
-        #[cfg(feature = "gps")] gps_subscriber: GpsSubscriber,
-        #[cfg(feature = "magnetometer")] magnetometer_subscriber: MagnetometerSubscriber,
-        #[cfg(feature = "optical_flow")] optical_flow_subscriber: OpticalFlowSubscriber,
-        #[cfg(feature = "rangefinder")] rangefinder_subscriber: RangefinderSubscriber,
     ) -> Self {
         Self {
             msp: Msp::new(),
-            fast_config_publisher,
-            config_publisher,
-            #[cfg(feature = "barometer")] barometer_subscriber,
-            #[cfg(feature = "battery")] battery_subscriber,
-            #[cfg(feature = "gps")] gps_subscriber,
-            #[cfg(feature = "magnetometer")] magnetometer_subscriber,
-            #[cfg(feature = "optical_flow")] optical_flow_subscriber,
-            #[cfg(feature = "rangefinder")] rangefinder_subscriber,
+            fast_config_publisher:fast_config_publisher(),
+            config_publisher:config_publisher(),
+            #[cfg(feature = "barometer")] barometer_subscriber:barometer_subscriber(),
+            #[cfg(feature = "battery")] battery_subscriber:battery_subscriber(),
+            #[cfg(feature = "gps")] gps_subscriber:gps_subscriber(),
+            #[cfg(feature = "magnetometer")] magnetometer_subscriber:magnetometer_subscriber(),
+            #[cfg(feature = "optical_flow")] optical_flow_subscriber:optical_flow_subscriber(),
+            #[cfg(feature = "rangefinder")] rangefinder_subscriber:rangefinder_subscriber(),
             read_buf: [0u8; MSP_READ_BUF_SIZE],
             write_buf: [0u8; MSP_WRITE_BUF_SIZE],
         }

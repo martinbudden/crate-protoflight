@@ -3,8 +3,7 @@ use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal}
 use imu_sensors::{AccFullScale, AccUnits, GyroFullScale, GyroUnits};
 use vqm::{Vector3, Vector3f32};
 
-use crate::boards::{ImuContext,BoardImu};
-
+use crate::boards::{BoardImu, ImuContext};
 
 /*#[cfg(feature = "rp2350")]
 use embassy_rp::{

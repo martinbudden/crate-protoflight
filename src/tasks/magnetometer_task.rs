@@ -29,11 +29,6 @@ type MagnetometerPublisher = Publisher<
     MAGNETOMETER_PUBLISHER_COUNT,
 >;
 
-#[allow(clippy::expect_used)]
-pub fn magnetometer_publisher() -> MagnetometerPublisher {
-    MAGNETOMETER_PUB_SUB_CHANNEL.publisher().expect("magnetometer_publisher failed")
-}
-
 pub type MagnetometerSubscriber = Subscriber<
     'static,
     CriticalSectionRawMutex,
@@ -54,8 +49,11 @@ pub struct MagnetometerContext {
 }
 
 impl MagnetometerContext {
-    pub const fn new(magnetometer_publisher: MagnetometerPublisher) -> Self {
-        Self { magnetometer_publisher }
+    pub fn new() -> Self {
+        #[allow(clippy::expect_used)]
+        Self {
+            magnetometer_publisher: MAGNETOMETER_PUB_SUB_CHANNEL.publisher().expect("magnetometer_publisher failed"),
+        }
     }
 }
 

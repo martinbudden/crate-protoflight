@@ -8,23 +8,29 @@ use embassy_sync::{
 use crate::{
     autopilot::pilot::Autopilot,
     flight::RxMessage,
-    tasks::{gyro_pid_task::GyroPidReceiver, rx_task::RxReceiver},
+    tasks::{
+        gyro_pid_task::{GyroPidReceiver, gyro_pid_receiver},
+        rx_task::{RxReceiver, rx_receiver},
+    },
 };
 
 #[cfg(any(feature = "barometer", feature = "gps", feature = "optical_flow", feature = "rangefinder"))]
 use {crate::flight::RcControls, radio_controllers::RcMode, vqm::Vector3f32};
 
 #[cfg(feature = "barometer")]
-use crate::tasks::barometer_task::BarometerSubscriber;
+use crate::tasks::barometer_task::{BarometerSubscriber, barometer_subscriber};
 
 #[cfg(feature = "gps")]
-use crate::{gps::GpsMessage, tasks::gps_task::GpsSubscriber};
+use crate::{
+    gps::GpsMessage,
+    tasks::gps_task::{GpsSubscriber, gps_subscriber},
+};
 
 #[cfg(feature = "optical_flow")]
-use crate::tasks::optical_flow_task::OpticalFlowSubscriber;
+use crate::tasks::optical_flow_task::{OpticalFlowSubscriber, optical_flow_subscriber};
 
 #[cfg(feature = "rangefinder")]
-use crate::tasks::rangefinder_task::RangefinderSubscriber;
+use crate::tasks::rangefinder_task::{RangefinderSubscriber, rangefinder_subscriber};
 
 const AUTOPILOT_WATCH_COUNT: usize = 1;
 static AUTOPILOT_WATCH: Watch<CriticalSectionRawMutex, RxMessage, AUTOPILOT_WATCH_COUNT> = Watch::new();
@@ -61,24 +67,17 @@ pub struct AutopilotContext {
 
 impl AutopilotContext {
     #[rustfmt::skip]
-    pub const fn new(
-        gyro_pid_receiver: GyroPidReceiver,
-        rx_receiver: RxReceiver,
-        autopilot_sender: AutopilotSender,
-        #[cfg(feature = "barometer")] barometer_subscriber: BarometerSubscriber,
-        #[cfg(feature = "gps")] gps_subscriber: GpsSubscriber,
-        #[cfg(feature = "optical_flow")] optical_flow_subscriber: OpticalFlowSubscriber,
-        #[cfg(feature = "rangefinder")] rangefinder_subscriber: RangefinderSubscriber,
+    pub fn new(
     ) -> Self {
         Self {
-            gyro_pid_receiver,
-            rx_receiver,
-            autopilot_sender,
+            gyro_pid_receiver :gyro_pid_receiver(),
+            rx_receiver:rx_receiver(),
+            autopilot_sender:autopilot_sender(),
             autopilot: Autopilot::new(),
-            #[cfg(feature = "barometer")] barometer_subscriber,
-            #[cfg(feature = "gps")] gps_subscriber,
-            #[cfg(feature = "optical_flow")] optical_flow_subscriber,
-            #[cfg(feature = "rangefinder")] rangefinder_subscriber,
+            #[cfg(feature = "barometer")] barometer_subscriber:barometer_subscriber(),
+            #[cfg(feature = "gps")] gps_subscriber:gps_subscriber(),
+            #[cfg(feature = "optical_flow")] optical_flow_subscriber:optical_flow_subscriber(),
+            #[cfg(feature = "rangefinder")] rangefinder_subscriber: rangefinder_subscriber(),
         }
     }
 }
