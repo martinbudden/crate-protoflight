@@ -165,7 +165,7 @@ pub async fn init(spawner: Spawner) {
     // The four mandatory tasks.
     spawner.spawn(tasks::gyro_pid::run(gyro_pid_ctx).expect("Failed to create GYRO PID task"));
     spawner.spawn(tasks::imu::run(imu_ctx).expect("Failed to create IMU task"));
-    spawner.spawn(tasks::motor_mixer::run(motor_mixer_ctx).expect("Failed to create MOTOR MIXER task")); // No receiver needed, since it uses a SIGNAL
+    spawner.spawn(tasks::motor_mixer::run(motor_mixer_ctx).expect("Failed to create MOTOR MIXER task"));
     spawner.spawn(tasks::rx::run(rx_ctx).expect("Failed to create RX task"));
 
     // The optional tasks.

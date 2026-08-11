@@ -135,7 +135,7 @@ pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInit
         msp_uart: Some(uart1),
         sensors_i2c: Some(i2c0),
         // pub flash: Peri<'static, peripherals::FLASH>,
-        // flash: peripherals.FLASH, // 
+        // flash: peripherals.FLASH, //
     })
 }
 

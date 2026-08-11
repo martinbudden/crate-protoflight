@@ -1,6 +1,9 @@
 #![cfg(feature = "std")]
 
-use crate::boards::{ImuContext, board::{Board, BoardInitError}};
+use crate::boards::{
+    ImuContext,
+    board::{Board, BoardInitError},
+};
 use imu_sensors::{ImuAxisOrder, ImuMock, MockImuBus};
 use motor_mixers::{MotorDriver, MotorDriverQuadPwm};
 

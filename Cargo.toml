@@ -31,6 +31,7 @@ default = ["libm",
     #"rp2350",
     #"speedybee_f405_v4",
     #"sp_racing_f4_evo",
+    #"airb_omnibus_f4",
     #"matek_f405_wte",
     #"rpi_pico2",
     #"madflight_fc3", # rp235xb board
@@ -85,6 +86,7 @@ vtx = []
 # stm32 motor timers
 motors_t8 = [ "motor-mixers/motors_t8"]
 motors_t4_t3 = [ "motor-mixers/motors_t4_t3"]
+motors_t3_t2 = [ "motor-mixers/motors_t3_t2"]
 
 
 # Boards supported
@@ -93,7 +95,8 @@ madflight_fc3 = ["rp2350", "rp235xb"] #, "multicore"]
 matek_f405_wte = ["stm32", "stm32f405", "motors_t4_t3"]
 speedybee_f405_v4 = ["stm32", "stm32f405", "motors_t4_t3"]
 sp_racing_f4_evo = ["stm32", "stm32f405", "motors_t8"]
-
+airb_omnibus_f4 = ["stm32", "stm32f405", "motors_t8"]
+airb_omnibus_f4_sd = ["stm32", "stm32f405", "motors_t3_t2"]
 
 # Core backend features declared explicitly
 # libm feature activates the optional crate named "libm", etc

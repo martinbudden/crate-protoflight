@@ -114,7 +114,6 @@ pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInit
     let spi0_interrupt = Input::new(spi0_interrupt_pin, embassy_rp::gpio::Pull::Up);
     let mut imu: BoardImu = Imu426xx::new(ImuSpiBus::new(spi0), axis_order);
 
-
     let spi1 = {
         let mut spi_config = SpiConfig::default();
         // When an SD card boots up, it starts in native SD mode.

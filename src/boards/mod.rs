@@ -1,12 +1,14 @@
 #![doc = include_str!("README.md")]
 
+pub mod airb_omnibus_f4;
 pub mod board;
 pub mod madflight_fc3;
 pub mod matek_f405_wte;
 pub mod rpi_pico2;
+pub mod sp_racing_f4_evo;
 pub mod speedybee_f405_v4;
 pub mod std;
-pub mod sp_racing_f4_evo;
+
 pub use board::ImuContext;
 
 #[cfg(feature = "std")]
@@ -26,3 +28,6 @@ pub use crate::boards::sp_racing_f4_evo::{BoardImu, board_init};
 
 #[cfg(feature = "matek_f405_wte")]
 pub use crate::boards::matek_f405_wte::{BoardImu, board_init};
+
+#[cfg(feature = "airb_omnibus_f4")]
+pub use crate::boards::airb_omnibus_f4::{BoardImu, board_init};

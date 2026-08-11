@@ -1,17 +1,20 @@
-#![cfg(all(feature = "stm32f405", feature = "sp_racing_f4_evo"))]
+#![cfg(all(feature = "stm32f405", feature = "airb_omnibus_f4"))]
 //#![cfg(feature = "stm32f405")]
 #![allow(unused)]
 #![allow(clippy::similar_names)]
 
 // For Betaflight configuration files:
-// see <https://github.com/betaflight/unified-targets/blob/master/configs/default/SPRO-SPRACINGF4EVO.config>,
-// and <https://github.com/betaflight/config/blob/master/configs/SPRO/SPRACINGF4EVO/config.h>.
+// see <https://github.com/betaflight/unified-targets/blob/master/configs/default/AIRB-OMNIBUSF4.config>
+// and <https://github.com/betaflight/config/blob/master/configs/AIRB/OMNIBUSF4/config.h>.
+
+// This board has onboard flash and no SD card slot.
+// The Omnibus F4 SD has an SD card slot, but no MAX7465 chip.
 
 use crate::boards::{
     ImuContext,
     board::{Board, BoardInitError},
 };
-use imu_sensors::{Imu426xx, ImuAxisOrder, ImuSpiBus};
+use imu_sensors::{ImuAxisOrder, ImuSpiBus, Mpu6050}; // TODO: this is placeholder, change to Mpu6000 when driver is available
 use motor_mixers::{MotorDriver, MotorDriverQuadDshot, MotorDriverQuadPwm};
 
 use embassy_stm32::{
@@ -34,7 +37,7 @@ use embedded_hal_bus::spi::ExclusiveDevice;
 type BoardSpi =
     ExclusiveDevice<Spi<'static, embassy_stm32::mode::Async, embassy_stm32::spi::mode::Master>, Output<'static>, Delay>;
 
-pub type BoardImu = Imu426xx<ImuSpiBus<BoardSpi>>;
+pub type BoardImu = Mpu6050<ImuSpiBus<BoardSpi>>;
 
 pub fn imu_context(imu: BoardImu) -> ImuContext<BoardImu> {
     ImuContext::new(imu)
@@ -60,59 +63,40 @@ pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInit
     let gyro1_spi_cs = peripherals.PA4;
     let gyro1_exti = peripherals.PC4;
 
-    // SPI2 - MAX7456
-    let spi2_sck = peripherals.PB13;
-    let spi2_sdi = peripherals.PC2;
-    let spi2_sdo = peripherals.PC3;
-    let max7456_spi_cs = peripherals.PB12;
-
-    // SPI3 - SD card
-    let spi3_sck = peripherals.PB3;
-    let spi3_sdi = peripherals.PB4;
-    let spi3_sdo = peripherals.PB5;
-    let spi3_tx_dma = peripherals.DMA1_CH7;
-    let spi3_rx_dma = peripherals.DMA1_CH2;
-    let sdcard_spi_cs = peripherals.PC14;
+    // SPI3 - MAX7456 and Flash
+    let spi3_sck = peripherals.PC10;
+    let spi3_sdi = peripherals.PC11;
+    let spi3_sdo = peripherals.PC12;
+    let max7456_spi_cs = peripherals.PA15;
+    let flash_spi_cs = peripherals.PB3;
 
     // I2C1
     let i2c1_scl = peripherals.PB8;
     let i2c1_sda = peripherals.PB9;
 
     // UART1
-    // SERIAL_TX 1 A09
-    // SERIAL_RX 1 A10
+    // UART1_TX PA9
+    // UART1_RX PA10
     let uart1_tx = peripherals.PA9;
     let uart1_rx = peripherals.PA10;
 
-    // UART2
-    // SERIAL_TX 2 A02
-    // SERIAL_RX 2 A03
-    let uart2_tx = peripherals.PA2;
-    let uart2_rx = peripherals.PA3;
-
-    let uart2 = {
-        let mut config = embassy_stm32::usart::Config::default();
-        config.baudrate = 115_200;
-        Uart::new_blocking(peripherals.USART2, uart2_rx, uart2_tx, config)
-    };
-
     // UART3
-    // SERIAL_TX 3 B10
-    // SERIAL_RX 3 B11
+    // UART3_TX PB10
+    // UART3_RX PB11
     let uart3_tx = peripherals.PB10;
     let uart3_rx = peripherals.PB11;
 
-    // UART4
-    // SERIAL_TX 4 C10
-    // SERIAL_RX 4 C11
-    let uart4_tx = peripherals.PC10;
-    let uart4_rx = peripherals.PC11;
+    let uart3 = {
+        let mut config = embassy_stm32::usart::Config::default();
+        config.baudrate = 115_200;
+        Uart::new_blocking(peripherals.USART3, uart3_rx, uart3_tx, config)
+    };
 
-    // UART5
-    // SERIAL_TX 5 C12
-    // SERIAL_RX 5 D02
-    let uart5_tx = peripherals.PC12;
-    let uart5_rx = peripherals.PD2;
+    // UART6
+    // UART6_TX PC6
+    // UART6_RX PC7
+    //let uart6_tx = peripherals.PC6;
+    //let uart6_rx = peripherals.PC7;
 
     let spi1 = {
         let mut config = SpiConfig::default();
@@ -122,47 +106,51 @@ pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInit
         ExclusiveDevice::new(spi_bus, cs_output, Delay).unwrap()
     };
 
-    let mut imu: BoardImu = Imu426xx::new(ImuSpiBus::new(spi1), axis_order);
+    let mut imu: BoardImu = Mpu6050::new(ImuSpiBus::new(spi1), axis_order);
 
-    let m1 = peripherals.PC6;
-    let m2 = peripherals.PC7;
-    let m3 = peripherals.PC9;
-    let m4 = peripherals.PC8;
-    let m5 = peripherals.PB6;
-    let m6 = peripherals.PB7;
-    let m7 = peripherals.PB1;
-    let m8 = peripherals.PB0;
+    /*timer B14 AF9
+    # pin B14: TIM12 CH1 (AF9)
+    # pin B15: TIM12 CH2 (AF9)
+    # pin C06: TIM8 CH1 (AF3)
+    # pin C07: TIM8 CH2 (AF3)
+    # pin C08: TIM8 CH3 (AF3)
+    # pin C09: TIM8 CH4 (AF3)
+    # pin B00: TIM3 CH3 (AF2)
+    # pin B01: TIM3 CH4 (AF2)
+    # pin A03: TIM2 CH4 (AF1)
+    # pin A02: TIM2 CH3 (AF1)
+    # pin A01: TIM5 CH2 (AF2)
+    # pin A08: TIM1 CH1 (AF1)
+    # pin A09: TIM1 CH2 (AF1)
+    # pin A10: TIM1 CH3 (AF1)
+    */
+    let pwm1 = peripherals.PB14; // TIM12 CH1 (AF2)
+    let pwm2 = peripherals.PB15; // TIM12 CH2 (AF2)
+    let pwm3 = peripherals.PC6; // TIM8 CH1 (AF1)
+    let pwm4 = peripherals.PC7; // TIM8 CH2 (AF1)
+    let pwm5 = peripherals.PC8; // TIM8 CH3 (AF2)
+    let pwm6 = peripherals.PC9; // TIM8 CH4 (AF1)
 
-    let pwm_m1_m2_m3_m4 = SimplePwm::new(
+    let pwm_m1_m2 = SimplePwm::new(
+        peripherals.TIM12,
+        Some(PwmPin::new(pwm1, PushPull)),
+        Some(PwmPin::new(pwm2, PushPull)),
+        None,
+        None,
+        Hertz(400),
+        CountingMode::EdgeAlignedUp,
+    );
+    let pwm_m3_m4_m5_m6 = SimplePwm::new(
         peripherals.TIM8,
-        Some(PwmPin::new(m1, PushPull)),
-        Some(PwmPin::new(m2, PushPull)),
-        Some(PwmPin::new(m4, PushPull)),
-        Some(PwmPin::new(m3, PushPull)),
-        Hertz(400),
-        CountingMode::EdgeAlignedUp,
-    );
-    let pwm_m5_m6 = SimplePwm::new(
-        peripherals.TIM4,
-        Some(PwmPin::new(m5, PushPull)),
-        Some(PwmPin::new(m6, PushPull)),
-        None,
-        None,
+        Some(PwmPin::new(pwm3, PushPull)),
+        Some(PwmPin::new(pwm4, PushPull)),
+        Some(PwmPin::new(pwm5, PushPull)),
+        Some(PwmPin::new(pwm6, PushPull)),
         Hertz(400),
         CountingMode::EdgeAlignedUp,
     );
 
-    let pwm_m7_m8 = SimplePwm::new(
-        peripherals.TIM3,
-        None,
-        None,
-        Some(PwmPin::new(m8, PushPull)),
-        Some(PwmPin::new(m7, PushPull)),
-        Hertz(400),
-        CountingMode::EdgeAlignedUp,
-    );
-
-    let motor_driver_quad_pwm = MotorDriverQuadPwm::new(pwm_m1_m2_m3_m4);
+    let motor_driver_quad_pwm = MotorDriverQuadPwm::new(pwm_m3_m4_m5_m6);
     //let motor_driver_quad_dshot = MotorDriverQuadDshot::new();
     let motor_driver = MotorDriver::QuadPwm(motor_driver_quad_pwm);
 

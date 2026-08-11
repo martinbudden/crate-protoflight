@@ -92,8 +92,10 @@ impl SetpointMessage {
     pub const MAX_SUPPORTED_MOTOR_COUNT: usize = 8;
     #[cfg(not(feature = "eight_motors"))]
     pub const MAX_SUPPORTED_MOTOR_COUNT: usize = 4;
+
+    // ailerons, elevator, rudder, throttle (which may be controlled by a servo, if the motor is an internal combustion engine)
     #[cfg(feature = "servos")]
-    pub const MAX_SUPPORTED_SERVO_COUNT: usize = 8; // ailerons, elevator, rudder, throttle (which may be controlled by a servo, if the motor is an internal combustion engine)
+    pub const MAX_SUPPORTED_SERVO_COUNT: usize = 8;
 }
 
 impl SetpointMessage {

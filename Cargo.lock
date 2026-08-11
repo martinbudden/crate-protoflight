@@ -1049,7 +1049,7 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 [[package]]
 name = "imu-sensors"
 version = "0.1.3"
-source = "git+https://github.com/martinbudden/crate-imu-sensors#93c70359d241b65eabfa9e1e8573c06511813597"
+source = "git+https://github.com/martinbudden/crate-imu-sensors#dfb61275744ad78fbd2cdb7d5afe366f4d19cf8b"
 dependencies = [
  "cfg-if",
  "embassy-sync",
@@ -1205,7 +1205,7 @@ dependencies = [
 [[package]]
 name = "motor-mixers"
 version = "0.1.5"
-source = "git+https://github.com/martinbudden/crate-motor-mixers#8bb6ab599869fcdc1b7424f61aaf01910b0324e4"
+source = "git+https://github.com/martinbudden/crate-motor-mixers#51c989b18fa200e4acae1bcf6e422320e2810269"
 dependencies = [
  "embassy-executor",
  "embassy-futures",

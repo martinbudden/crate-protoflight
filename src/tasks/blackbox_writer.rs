@@ -38,13 +38,12 @@ impl BlackboxWriterContext {
 }
 /// System execution context for the background storage worker pipeline.
 #[cfg(feature = "stm32")]
-pub struct BlackboxWriterContext {
-}
+pub struct BlackboxWriterContext {}
 
 #[cfg(feature = "stm32")]
 impl BlackboxWriterContext {
     pub fn new() -> Self {
-        Self {  }
+        Self {}
     }
 }
 
