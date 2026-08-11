@@ -1,9 +1,11 @@
-//#![cfg(all(feature = "stm32f405", feature = "speedybee_f405_v4"))]
-#![cfg(feature = "stm32f405")]
+#![cfg(all(feature = "stm32f405", feature = "speedybee_f405_v4"))]
+//#![cfg(feature = "stm32f405")]
 #![allow(unused)]
 #![allow(clippy::similar_names)]
 
-// See <https://github.com/betaflight/config/blob/master/configs/SPBE/SPEEDYBEEF405V4/config.h> for Betaflight configuration file
+// For Betaflight configuration files:
+// see <https://github.com/betaflight/config/blob/master/configs/SPBE/SPEEDYBEEF405V4/config.h>
+// and <https://github.com/betaflight/unified-targets/blob/master/configs/default/SPBE-SPEEDYBEEF405V4.config>.
 
 use crate::boards::{
     ImuContext,
@@ -15,7 +17,7 @@ use motor_mixers::{MotorDriver, MotorDriverQuadDshot, MotorDriverQuadPwm};
 
 use embassy_stm32::{
     bind_interrupts, dma,
-    gpio::{Input, Level, Output, OutputType, Pull, Speed},
+    gpio::{Input, Level, Output, OutputType::PushPull, Pull, Speed},
     i2c::{Config as I2cConfig, I2c},
     mode::Async,
     peripherals,
@@ -41,34 +43,14 @@ pub fn imu_context(imu: BoardImu) -> ImuContext<BoardImu> {
 
 pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInitError> {
     // NOTE: stm32 numbers peripheral start at 1, eg SPI1, SPI1, I2C1, I2C2 etc
-
-    let peripherals = embassy_stm32::init(Default::default());
-
     /*
     Using Betaflight naming convention. For an STM32 SPI master:
     SDO = MCU → peripheral = MOSI = TX DMA
     SDI = peripheral → MCU = MISO = RX DMA
     */
-    /*
-                SpeedyBee F405 V4
-                        │
-        ┌───────────────┼────────────────┐
-        │               │                │
-        DMA             DMA              DMA
-        │               │                │
-    SPI1 gyro       SPI3 SD          USART2 RX/TX
-        │               │                │
-    DMA2 S2/S3      DMA1 S2/S7       DMA1 S5/S6
-        │
-        └──── UART5 ESC RX
-                    DMA1 S0
 
+    let peripherals = embassy_stm32::init(Default::default());
 
-    Blocking peripherals:
-        SPI2  → MAX7456
-        UART4 → MSP
-        I2C1  → gyro/barometer sensors
-    */
     // SPI1 - Gyroscope
     let spi1_sck = peripherals.PA5;
     let spi1_sdi = peripherals.PA6;
@@ -192,43 +174,43 @@ pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInit
 
     let i2c1 = I2c::new_blocking(peripherals.I2C1, i2c1_scl, i2c1_sda, embassy_stm32::i2c::Config::default());
 
-    let motor1 = peripherals.PB6;
-    let motor2 = peripherals.PB7;
-    let motor3 = peripherals.PB0;
-    let motor4 = peripherals.PB1;
-    let motor5 = peripherals.PC8;
-    let motor6 = peripherals.PC9;
-    let motor7 = peripherals.PB10;
-    let motor8 = peripherals.PA15;
+    let m1 = peripherals.PB6;
+    let m2 = peripherals.PB7;
+    let m3 = peripherals.PB0;
+    let m4 = peripherals.PB1;
+    let m5 = peripherals.PC8;
+    let m6 = peripherals.PC9;
+    let m7 = peripherals.PB10;
+    let m8 = peripherals.PA15;
 
-    let motor_pwm_tim4 = SimplePwm::new(
+    let pwm_m1_m2 = SimplePwm::new(
         peripherals.TIM4,
-        Some(PwmPin::new(motor1, OutputType::PushPull)),
-        Some(PwmPin::new(motor2, OutputType::PushPull)),
+        Some(PwmPin::new(m1, PushPull)),
+        Some(PwmPin::new(m2, PushPull)),
         None,
         None,
         Hertz(400),
         CountingMode::EdgeAlignedUp,
     );
 
-    let motor_pwm_tim3 = SimplePwm::new(
+    let pwm_m3_m4 = SimplePwm::new(
         peripherals.TIM3,
         None,
         None,
-        Some(PwmPin::new(motor3, OutputType::PushPull)),
-        Some(PwmPin::new(motor4, OutputType::PushPull)),
+        Some(PwmPin::new(m3, PushPull)),
+        Some(PwmPin::new(m4, PushPull)),
         Hertz(400),
         CountingMode::EdgeAlignedUp,
     );
 
-    let motor_driver_quad_pwm = MotorDriverQuadPwm::new(motor_pwm_tim4, motor_pwm_tim3);
+    let motor_driver_quad_pwm = MotorDriverQuadPwm::new2(pwm_m1_m2, pwm_m3_m4);
     //let motor_driver_quad_dshot = MotorDriverQuadDshot::new();
     let motor_driver = MotorDriver::QuadPwm(motor_driver_quad_pwm);
 
     // Map physical device names to logical device names and return.
     Ok(Board {
         imu,
-        serial_rx_uart: uart2.map_err(|_| BoardInitError::SerialRxUartError)?,
+        serial_rx_uart: Some(uart2.map_err(|_| BoardInitError::SerialRxUartError)?),
         sdcard_spi: Some(spi3.map_err(|_| BoardInitError::SdCardError)?),
         max7456_spi: Some(spi2.map_err(|_| BoardInitError::Max7456NotAvailable)?),
         msp_uart: None,
@@ -237,6 +219,27 @@ pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInit
         motor_driver,
     })
 }
+
+/*
+            SpeedyBee F405 V4
+                    │
+    ┌───────────────┼────────────────┐
+    │               │                │
+    DMA             DMA              DMA
+    │               │                │
+SPI1 gyro       SPI3 SD          USART2 RX/TX
+    │               │                │
+DMA2 S2/S3      DMA1 S2/S7       DMA1 S5/S6
+    │
+    └──── UART5 ESC RX
+                DMA1 S0
+
+
+Blocking peripherals:
+    SPI2  → MAX7456
+    UART4 → MSP
+    I2C1  → gyro/barometer sensors
+*/
 
 // Binds the global hardware DMA vectors.
 // This creates the type validation struct "Irqs" required by Spi::new.

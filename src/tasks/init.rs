@@ -114,9 +114,7 @@ pub async fn init(spawner: Spawner) {
     // TODO: Initialize the blackbox task context with the ... provided by the Board Support Package.
     #[cfg(feature = "blackbox")]
     let blackbox_ctx = tasks::blackbox::init(config.blackbox);
-    #[cfg(all(feature = "blackbox", feature = "rp2350"))]
-    let blackbox_writer_ctx = { BLACKBOX_WRITER_CTX.init(BlackboxWriterContext::new(board.sdcard_spi.unwrap())) };
-    #[cfg(all(feature = "blackbox", feature = "std"))]
+    #[cfg(feature = "blackbox")]
     let blackbox_writer_ctx = tasks::blackbox_writer::init();
 
     #[cfg(feature = "autopilot")]

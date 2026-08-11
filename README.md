@@ -38,7 +38,7 @@ I've called it Protoflight because:
 6. [motor-mixers](https://crates.io/crates/motor-mixers) - converts desired throttle and roll, pitch, yaw torques into motor commands.
    Supports PWM and bidirectional `Dshot` protocols. Also includes RPM filters and dynamic idle control.
 7. [radio-controllers](https://crates.io/crates/radio-controllers) - Drivers for SBUS, IBUS, Crossfire/ExpressLRS receivers..
-8. [blackbox-logger](https://crates.io/crates/blackbox-logger) - based [implementation](https://github.com/thenickdude/blackbox) by Nicholas Sherlock (aka thenickdude).
+8. [blackbox-logger](https://crates.io/crates/blackbox-logger) - based on [implementation](https://github.com/thenickdude/blackbox) by Nicholas Sherlock (aka thenickdude).
 9. [stream-buf](https://crates.io/crates/stream-buf) - simple serializer/deserializer.
 
 ## Steps required to reach "First Flight"

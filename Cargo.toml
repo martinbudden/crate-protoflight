@@ -30,13 +30,14 @@ default = ["libm",
     "std",
     #"rp2350",
     #"speedybee_f405_v4",
+    #"sp_racing_f4_evo",
     #"matek_f405_wte",
     #"rpi_pico2",
-    #"madflight_fc3", // rp235xb board
+    #"madflight_fc3", # rp235xb board
     "autopilot",
     "barometer",
     "battery",
-    "blackbox",
+    #"blackbox",
     "debug",
     "dshot_telemetry",
     #"eight_motors",
@@ -81,12 +82,17 @@ rangefinder = ["blackbox-logger/rangefinder"]
 rpm_filters = []
 servos = ["blackbox-logger/servos"]
 vtx = []
+# stm32 motor timers
+motors_t8 = [ "motor-mixers/motors_t8"]
+motors_t4_t3 = [ "motor-mixers/motors_t4_t3"]
+
 
 # Boards supported
-rpi_pico2 = ["rp2350"] #, "multicore"]
-madflight_fc3 = ["rp235xb"] #, "multicore"]
-matek_f405_wte = ["stm32","stm32f405"]
-speedybee_f405_v4 = ["stm32","stm32f405"]
+rpi_pico2 = ["rp2350", "rp235xa"] #, "multicore"]
+madflight_fc3 = ["rp2350", "rp235xb"] #, "multicore"]
+matek_f405_wte = ["stm32", "stm32f405", "motors_t4_t3"]
+speedybee_f405_v4 = ["stm32", "stm32f405", "motors_t4_t3"]
+sp_racing_f4_evo = ["stm32", "stm32f405", "motors_t8"]
 
 
 # Core backend features declared explicitly
@@ -121,7 +127,6 @@ rp2350 = [
     "dep:embassy-rp",
     "dep:cyw43-pio",
     "dep:cortex-m-rt",
-    "embassy-rp/rp235xa",
     "embassy-rp/rt",
     "embassy-rp/time-driver",
     "embassy-rp/critical-section-impl",
@@ -130,6 +135,10 @@ rp2350 = [
     "embassy-executor/platform-cortex-m",   # <-- Explicitly satisfies the executor's platform check
     "embassy-executor/executor-thread",
     "motor-mixers/rp2350",
+]
+
+rp235xa =[
+    "embassy-rp/rp235xa",
 ]
 
 rp235xb =[

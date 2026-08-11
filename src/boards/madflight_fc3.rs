@@ -3,10 +3,11 @@
 #![allow(clippy::similar_names)]
 
 // RPI PICO RP2350
-// see https://madflight.com/Board-FC3/
-// pins: https://github.com/qqqlab/madflight/blob/main/src/brd/madflight_FC3.h
-// schematic: https://madflight.com/img/madflight-FC3.pdf
-
+// see <https://madflight.com/Board-FC3/>
+// pins: <https://github.com/qqqlab/madflight/blob/main/src/brd/madflight_FC3.h>
+// schematic: <https://madflight.com/img/madflight-FC3.pdf>
+// For Betaflight configuration files:
+// see <https://github.com/betaflight/config/blob/749fff19942fd7b44fa8020a086e1b566054cae9/configs/MADF/MADFLIGHT_FC3/config.h>
 use crate::boards::{
     ImuContext,
     board::{Board, BoardInitError},
@@ -38,7 +39,7 @@ pub fn imu_context(imu: BoardImu) -> ImuContext<BoardImu> {
     ImuContext::new(imu)
 }
 
-pub fn board_init(_axis_order: ImuAxisOrder) -> Board<BoardImu> {
+pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInitError> {
     // NOTE: rp2350 numbers peripheral starting at 0, eg SPI0, SPI0, I2C0, I2C0 etc
 
     // Take ownership of the raw RP2350 hardware peripherals block
@@ -55,8 +56,6 @@ pub fn board_init(_axis_order: ImuAxisOrder) -> Board<BoardImu> {
     let spi0_rx_dma = peripherals.DMA_CH1;
     // Physical pin assigned to capture the gyroscope's INT1 signal wire
     let spi0_interrupt_pin = peripherals.PIN_27;
-
-    let mut imu: BoardImu = Imu426xx::new(ImuSpiBus::new(spi0), axis_order);
 
     // SPI1
     // #define SD_MMC_PINS                 mmc_pins_t{.dat=36,.clk=34,.cmd=35}
@@ -92,6 +91,14 @@ pub fn board_init(_axis_order: ImuAxisOrder) -> Board<BoardImu> {
     let i2c1_sda = peripherals.PIN_2;
 
     // #define MOTOR_PINS                  motor_pins_t{.m0=6,.m1=7,.m2=8,.m3=9} // BR, TR, BL, TL
+    let m1 = peripherals.PIN_6;
+    let m2 = peripherals.PIN_7;
+    let m3 = peripherals.PIN_8;
+    let m4 = peripherals.PIN_9;
+    let m5 = peripherals.PIN_16;
+    let m6 = peripherals.PIN_17;
+    let m7 = peripherals.PIN_18;
+    let m8 = peripherals.PIN_19;
 
     let spi0 = {
         let mut spi_config = SpiConfig::default();
@@ -105,7 +112,8 @@ pub fn board_init(_axis_order: ImuAxisOrder) -> Board<BoardImu> {
     //let spi1_type: () = spi1;
 
     let spi0_interrupt = Input::new(spi0_interrupt_pin, embassy_rp::gpio::Pull::Up);
-    let mut imu: BoardImu = Imu426xx::new(ImuSpiBus::new(spi0), ImuAxisOrder::XPOS_YPOS_ZPOS);
+    let mut imu: BoardImu = Imu426xx::new(ImuSpiBus::new(spi0), axis_order);
+
 
     let spi1 = {
         let mut spi_config = SpiConfig::default();
@@ -185,14 +193,13 @@ pub fn board_init(_axis_order: ImuAxisOrder) -> Board<BoardImu> {
     let motor_driver = MotorDriver::QuadDshot(motor_driver_quad_dshot);
 
     // Map physical device names to logical device names and return.
-    Board {
+    Ok(Board {
         imu,
-        serial_rx_uart: Ok(uart0),
         motor_driver,
+        serial_rx_uart: uart0,
         sdcard_spi: None,
         // osd_spi: aux_pio_spi,
         msp_uart: Some(uart1),
         sensors_i2c: Some(i2c0),
-        flash: peripherals.FLASH,
-    }
+    })
 }

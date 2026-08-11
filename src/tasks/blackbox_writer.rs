@@ -24,7 +24,29 @@ impl embedded_sdmmc::TimeSource for VehicleTimeSource {
     }
 }
 
-static BLACKBOX_WRITER_CTX: StaticCell<BlackboxWriterContext> = StaticCell::new();
+/// System execution context for the background storage worker pipeline.
+#[cfg(feature = "std")]
+pub struct BlackboxWriterContext {
+    pub sd_card: MockSdCard,
+}
+
+#[cfg(feature = "std")]
+impl BlackboxWriterContext {
+    pub fn new() -> Self {
+        Self { sd_card: MockSdCard::new("blackbox_log.bbl") }
+    }
+}
+/// System execution context for the background storage worker pipeline.
+#[cfg(feature = "stm32")]
+pub struct BlackboxWriterContext {
+}
+
+#[cfg(feature = "stm32")]
+impl BlackboxWriterContext {
+    pub fn new() -> Self {
+        Self {  }
+    }
+}
 
 /// System execution context for the background storage worker pipeline.
 #[cfg(feature = "rp2350")]
@@ -44,19 +66,21 @@ impl BlackboxWriterContext {
     }
 }
 
-#[cfg(feature = "std")]
-pub struct BlackboxWriterContext {
-    pub sd_card: MockSdCard,
-}
+static BLACKBOX_WRITER_CTX: StaticCell<BlackboxWriterContext> = StaticCell::new();
 
 #[cfg(feature = "std")]
-impl BlackboxWriterContext {
-    pub fn new() -> Self {
-        Self { sd_card: MockSdCard::new("blackbox_log.bbl") }
-    }
-}
 pub fn init() -> &'static mut BlackboxWriterContext {
     BLACKBOX_WRITER_CTX.init(BlackboxWriterContext::new())
+}
+
+#[cfg(feature = "stm32")]
+pub fn init() -> &'static mut BlackboxWriterContext {
+    BLACKBOX_WRITER_CTX.init(BlackboxWriterContext::new())
+}
+
+#[cfg(feature = "rp2350")]
+pub fn init() -> &'static mut BlackboxWriterContext {
+    BLACKBOX_WRITER_CTX.init(BlackboxWriterContext::new(board.sdcard_spi.unwrap()));
 }
 
 #[cfg(feature = "std")]
@@ -70,6 +94,12 @@ pub async fn run(ctx: &'static mut BlackboxWriterContext) {
         // On desktop, directly await the full file flash operation
         _ = ctx.sd_card.write_all(chunk).await;
     }
+}
+
+#[cfg(feature = "stm32")]
+#[embassy_executor::task]
+pub async fn run(_ctx: &'static mut BlackboxWriterContext) {
+    log::info!("BLACKBOX SD WRITER: task started");
 }
 
 /// Blackbox writer background processing task loop using embedded-sdmmc 0.9.0.
@@ -126,7 +156,7 @@ pub async fn run(ctx: &'static mut BlackboxWriterContext) {
 }
 
 /// Scans the root directory by inspecting raw filename bytes directly.
-#[cfg(not(feature = "std"))]
+#[cfg(feature = "rp2350")]
 pub fn find_next_log_index<D, T, const DIR: usize, const FILE: usize, const VOL: usize>(
     root_dir: &mut Directory<'_, D, T, DIR, FILE, VOL>,
 ) -> u16

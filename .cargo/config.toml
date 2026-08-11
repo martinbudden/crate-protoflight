@@ -84,7 +84,16 @@ check-rp2350 = [
     "--no-default-features",
     "--features",
     #"rp2350,libm,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug"
-    "libm,rp2350,rpi_pico2"
+    "libm,rpi_pico2"
+]
+
+check-rp2350-m = [
+    "check",
+    "--target", "thumbv8m.main-none-eabihf",
+    "--no-default-features",
+    "--features",
+    #"rp2350,libm,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug"
+    "libm,madflight_fc3"
 ]
 
 build-rp2350 = [
@@ -115,6 +124,13 @@ check-stm32f405-m = [
     "--target", "thumbv7em-none-eabihf",
     "--no-default-features",
     "--features", "libm,stm32,stm32f405,matek_f405_wte"
+]
+
+check-stm32f405-s = [
+    "check",
+    "--target", "thumbv7em-none-eabihf",
+    "--no-default-features",
+    "--features", "libm,stm32,stm32f405,sp_racing_f4_evo"
 ]
 
 build-stm32f405 = [

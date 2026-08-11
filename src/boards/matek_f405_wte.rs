@@ -95,7 +95,7 @@ pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInit
     // Map physical device names to logical device names and return.
     Ok(Board {
         imu,
-        serial_rx_uart: uart2.map_err(|_| BoardInitError::SerialRxUartError)?,
+        serial_rx_uart: Some(uart2.map_err(|_| BoardInitError::SerialRxUartError)?),
         motor_driver,
         max7456_spi: None,
         sdcard_spi: None,
