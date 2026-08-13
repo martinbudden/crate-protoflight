@@ -33,11 +33,13 @@ static mut CORE1_STACK: Stack<4096> = Stack::new();
 
 /// Protoflight initialization, called directly from main.
 /// Does the following:
-/// 1. Loads the global configuration `GLOBAL_CONFIG`.
-/// 2. Initializes the board hardware `board_init`.
-/// 3. Initializes all the task contexts using values from `GLOBAL_CONFIG`.
-/// 4. Drops `GLOBAL_CONFIG`.
-/// 5. spawns all the tasks.
+/// 1. Loads the global configuration `GLOBAL_CONFIG` from non-volatile-storage.
+/// 2. Locks `GLOBAL_CONFIG`.
+/// 3. Initializes the board hardware `board_init`.
+/// 5. Initializes all the task contexts using values from `GLOBAL_CONFIG`.
+/// 6. Unlocks `GLOBAL_CONFIG`.
+/// 7. Spawns the mandatory tasks.
+/// 8. Spawns the optional tasks if they have been configured to run.
 ///
 /// `panic()`, `.unwrap()` and `.expect()` are allowed during initialization
 /// since if anything fails during initialization there is no possibility of recovery
@@ -45,8 +47,12 @@ static mut CORE1_STACK: Stack<4096> = Stack::new();
 ///
 /// Once initialization is complete `panic()`, `.unwrap()` and `.expect()` are NOT allowed.
 ///
+/// This function is quite long, but it is long for a good reason, and its organization is clear.
+///
+/// Replacing this one understandable 200-line function with (say) five 40-line functions would mean
+/// you'd have to jump around to understand startup and it would reduce clarity.
+///
 #[allow(clippy::too_many_lines)]
-#[allow(clippy::expect_used)]
 pub async fn init(spawner: Spawner) {
     use crate::tasks;
 
@@ -63,11 +69,15 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "std")]
     env_logger::init();
 
-    // **** Load and lock the GLOBAL_CONFIGs
+    // **** Load the GLOBAL_CONFIGs from non-volatile storage.
     #[cfg(all(feature = "serde", feature = "rp2350"))]
     load_global_configs(board_flash()).await;
     #[cfg(all(feature = "serde", feature = "std"))]
     load_global_configs().await;
+
+    // *** Lock the GLOBAL_CONFIGs.
+    // The lock is held for until all the task context have been initialized.
+    // This is perfectly fine since do tasks have been spawned yet, so nothing will be blocked.
     let config = GLOBAL_CONFIG.lock().await;
 
     // **** GET THE DEVICES FROM THE BOARD SUPPORT PACKAGE
@@ -131,36 +141,29 @@ pub async fn init(spawner: Spawner) {
         #[cfg(feature = "rpm_filters")] 0.001
     );
 
-    // TODO: Initialize the receiver task context with the UART provided by the Board Support Package.
     let rx_ctx = tasks::rx::init(board.radio, config.rates);
 
     // TODO: Initialize the MSP task context with the UART provided by the Board Support Package.
     #[cfg(feature = "msp")]
-    let msp_ctx = tasks::msp::init();
+    let msp_ctx = Some(tasks::msp::init());
 
     // TODO: Initialize the blackbox task context with the ... provided by the Board Support Package.
     #[cfg(feature = "blackbox")]
-    let blackbox_ctx = tasks::blackbox::init(config.blackbox);
-    #[cfg(feature = "blackbox")]
-    let blackbox_writer_ctx = Some(tasks::blackbox_writer::init());
+    let (blackbox_ctx, blackbox_writer_ctx) =
+        (tasks::blackbox::init(config.blackbox), Some(tasks::blackbox_writer::init()));
 
+    // TODO: replace `Some` with `board.autopilot.map` or similar.
     #[cfg(feature = "autopilot")]
-    let autopilot_ctx = tasks::autopilot::init();
+    let autopilot_ctx = Some(tasks::autopilot::init());
 
     #[cfg(feature = "barometer")]
     let barometer_ctx = board.barometer.map(tasks::barometer::init);
 
-    /*
-    Alternatively
-    #[cfg(feature = "barometer")]
-    let barometer_ctx = match board.barometer {
-        Some(barometer) => Some(tasks::barometer::init(barometer)),
-        None => None,
-    };*/
-
+    // TODO: replace `Some` with `board.battery.map` or similar.
     #[cfg(feature = "battery")]
-    let battery_ctx = tasks::battery::init();
+    let battery_ctx = Some(tasks::battery::init());
 
+    // TODO: replace `Some` with `board.gps.map` or similar.
     #[cfg(feature = "gps")]
     let gps_ctx = Some(tasks::gps::init());
 
@@ -170,6 +173,7 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "optical_flow")]
     let optical_flow_ctx = board.optical_flow.map(tasks::optical_flow::init);
 
+    // TODO: replace `Some` with `board.osd.map` or similar.
     #[cfg(feature = "osd")]
     let osd_ctx = {
         let display_supports_background_layer = true;
@@ -197,48 +201,85 @@ pub async fn init(spawner: Spawner) {
     // ****
 
     // The four mandatory tasks.
-    spawner.spawn(tasks::gyro_pid::run(gyro_pid_ctx).expect("Failed to create GYRO PID task"));
-    spawner.spawn(tasks::imu::run(imu_ctx).expect("Failed to create IMU task"));
-    spawner.spawn(tasks::motor_mixer::run(motor_mixer_ctx).expect("Failed to create MOTOR MIXER task"));
-    spawner.spawn(tasks::rx::run(rx_ctx).expect("Failed to create RX task"));
-
+    // If any of these fail, then the application cannot run.
+    #[allow(clippy::expect_used)]
+    {
+        spawner.spawn(tasks::gyro_pid::run(gyro_pid_ctx).expect("Failed to create GYRO PID task"));
+        spawner.spawn(tasks::imu::run(imu_ctx).expect("Failed to create IMU task"));
+        spawner.spawn(tasks::motor_mixer::run(motor_mixer_ctx).expect("Failed to create MOTOR MIXER task"));
+        spawner.spawn(tasks::rx::run(rx_ctx).expect("Failed to create RX task"));
+    }
     // The optional tasks.
     #[cfg(feature = "autopilot")]
-    spawner.spawn(tasks::autopilot::run(autopilot_ctx).expect("Failed to create AUTOPILOT task"));
+    if let Some(autopilot_ctx) = autopilot_ctx
+        && let Ok(autopilot_task) = tasks::autopilot::run(autopilot_ctx)
+    {
+        spawner.spawn(autopilot_task);
+    }
 
     #[cfg(feature = "barometer")]
-    if let Some(barometer_ctx) = barometer_ctx {
-        spawner.spawn(tasks::barometer::run(barometer_ctx).expect("Failed to create BAROMETER task"));
+    if let Some(barometer_ctx) = barometer_ctx
+        && let Ok(barometer_task) = tasks::barometer::run(barometer_ctx)
+    {
+        spawner.spawn(barometer_task);
     }
 
     #[cfg(feature = "battery")]
-    spawner.spawn(tasks::battery::run(battery_ctx).expect("Failed to create BATTERY task"));
-    #[cfg(feature = "blackbox")]
-    spawner.spawn(tasks::blackbox::run(blackbox_ctx).expect("Failed to create BLACKBOX task"));
-    #[cfg(feature = "blackbox")]
-    if let Some(blackbox_writer_ctx) = blackbox_writer_ctx {
-        spawner.spawn(tasks::blackbox_writer::run(blackbox_writer_ctx).expect("Failed to create BLACKBOX_WRITER task"));
+    if let Some(battery_ctx) = battery_ctx
+        && let Ok(battery_task) = tasks::battery::run(battery_ctx)
+    {
+        spawner.spawn(battery_task);
     }
+
+    #[cfg(feature = "blackbox")]
+    {
+        if let Some(blackbox_writer_ctx) = blackbox_writer_ctx
+            && let Ok(blackbox_writer_task) = tasks::blackbox_writer::run(blackbox_writer_ctx)
+            && let Ok(blackbox_task) = tasks::blackbox::run(blackbox_ctx)
+        {
+            spawner.spawn(blackbox_writer_task);
+            spawner.spawn(blackbox_task);
+        }
+    }
+
     #[cfg(feature = "gps")]
-    if let Some(gps_ctx) = gps_ctx {
-        spawner.spawn(tasks::gps::run(gps_ctx).expect("Failed to create GPS task"));
+    if let Some(gps_ctx) = gps_ctx
+        && let Ok(gps_task) = tasks::gps::run(gps_ctx)
+    {
+        spawner.spawn(gps_task);
     }
+
     #[cfg(feature = "magnetometer")]
-    if let Some(magnetometer_ctx) = magnetometer_ctx {
-        spawner.spawn(tasks::magnetometer::run(magnetometer_ctx).expect("Failed to create MAGNETOMETER task"));
+    if let Some(magnetometer_ctx) = magnetometer_ctx
+        && let Ok(magnetometer_task) = tasks::magnetometer::run(magnetometer_ctx)
+    {
+        spawner.spawn(magnetometer_task);
     }
+
     #[cfg(feature = "msp")]
-    spawner.spawn(tasks::msp::run(msp_ctx).expect("Failed to create MSP task"));
+    if let Some(msp_ctx) = msp_ctx
+        && let Ok(msp_task) = tasks::msp::run(msp_ctx)
+    {
+        spawner.spawn(msp_task);
+    }
     #[cfg(feature = "optical_flow")]
-    if let Some(optical_flow_ctx) = optical_flow_ctx {
-        spawner.spawn(tasks::optical_flow::run(optical_flow_ctx).expect("Failed to create OSD task"));
+    if let Some(optical_flow_ctx) = optical_flow_ctx
+        && let Ok(optical_flow_task) = tasks::optical_flow::run(optical_flow_ctx)
+    {
+        spawner.spawn(optical_flow_task);
     }
+
     #[cfg(feature = "osd")]
-    if let Some(osd_ctx) = osd_ctx {
-        spawner.spawn(tasks::osd::run(osd_ctx, display_ref).expect("Failed to create OSD task"));
+    if let Some(osd_ctx) = osd_ctx
+        && let Ok(osd_task) = tasks::osd::run(osd_ctx, display_ref)
+    {
+        spawner.spawn(osd_task);
     }
+
     #[cfg(feature = "rangefinder")]
-    if let Some(rangefinder_ctx) = rangefinder_ctx {
-        spawner.spawn(tasks::rangefinder::run(rangefinder_ctx).expect("Failed to create RANGEFINDER task"));
+    if let Some(rangefinder_ctx) = rangefinder_ctx
+        && let Ok(rangefinder_task) = tasks::rangefinder::run(rangefinder_ctx)
+    {
+        spawner.spawn(rangefinder_task);
     }
 }

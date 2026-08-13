@@ -69,13 +69,20 @@ pub fn init(barometer: Barometer) -> &'static mut BarometerContext {
 /// Barometer Task Placeholder.
 #[embassy_executor::task]
 pub async fn run(ctx: &'static mut BarometerContext) {
-    let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(40));
+    // If initialization fails, then we just return.
+    log::info!("   BAROMETER: task started");
+    let Ok(sample_rate_hz) = ctx.barometer.init().await else {
+        return;
+    };
+
+    let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(u64::from(sample_rate_hz)));
     let mut loop_count: u32 = 0;
 
-    log::info!("   BAROMETER: task started");
+    log::info!("   BAROMETER: loop started");
     loop {
         // Wait for the next tick.
         ticker.next().await;
+        ctx.barometer.make_reading().await;
         let barometer_message = ctx.barometer.message();
         // Publish a message, but if the queue is full, just kick out the oldest message.
         // This may cause some subscribers to miss a message

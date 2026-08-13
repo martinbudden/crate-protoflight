@@ -7,7 +7,7 @@ mod geodetic;
 mod gps_data;
 mod gps_solution_data;
 
-pub use config::{GpsConfig, GpsRescueConfig};
+pub use config::{GpsConfig, GpsProvider, GpsRescueConfig, SbasMode};
 
 pub use geodetic::{Geodetic, GeographicCoordinate};
 pub use gps_data::{GpsData, GpsMessage, GpsPositionLongLatAlt, GpsPositionMeters, GpsYawHeadingMessage};

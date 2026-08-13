@@ -9,18 +9,18 @@ use {
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct GpsConfig {
-    pub provider: u8,
-    pub sbas_mode: u8,
+    pub provider: GpsProvider,
+    pub sbas_mode: SbasMode,
     pub auto_config: u8,
     pub auto_baud: u8,
-    pub gps_ublox_acquire_model: u8,
-    pub gps_ublox_flight_model: u8,
+    pub gps_ublox_acquire_model: GpsModel,
+    pub gps_ublox_flight_model: GpsModel,
     pub gps_update_rate_hz: u8,
     pub gps_ublox_use_galileo: u8,
     pub gps_set_home_point_once: u8,
     pub gps_use_3d_speed: u8,
     pub sbas_integrity: u8,
-    pub gps_ublox_utc_standard: u8,
+    pub gps_ublox_utc_standard: UtcStandard,
 }
 
 #[cfg(feature = "serde")]
@@ -29,18 +29,18 @@ impl PostcardValue<'_> for GpsConfig {}
 impl GpsConfig {
     pub const fn new() -> Self {
         Self {
-            provider: Gps::GPS_UBLOX,
-            sbas_mode: Gps::SBAS_NONE,
+            provider: GpsProvider::Ublox,
+            sbas_mode: SbasMode::None,
             auto_config: Gps::AUTO_CONFIG_ON,
             auto_baud: Gps::AUTO_BAUD_OFF,
-            gps_ublox_acquire_model: Gps::MODEL_STATIONARY,
-            gps_ublox_flight_model: Gps::MODEL_AIRBORNE_4G,
+            gps_ublox_acquire_model: GpsModel::Stationary,
+            gps_ublox_flight_model: GpsModel::Airborne4G,
             gps_update_rate_hz: 10,
             gps_ublox_use_galileo: 0,
             gps_set_home_point_once: 0,
             gps_use_3d_speed: 0,
             sbas_integrity: 0,
-            gps_ublox_utc_standard: Gps::UTC_STANDARD_AUTO,
+            gps_ublox_utc_standard: UtcStandard::Auto,
         }
     }
 }
@@ -122,6 +122,129 @@ impl Default for GpsRescueConfig {
     }
 }
 
+#[allow(missing_docs)]
+#[allow(unused)]
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum GpsProvider {
+    #[default]
+    Nmea = 0,
+    Ublox = 1,
+    Msp = 2,
+    Mock = 3,
+    None = 255,
+}
+
+#[allow(unused)]
+impl GpsProvider {
+    pub const COUNT: u8 = 13;
+
+    #[must_use]
+    pub fn from_u8(value: u8) -> Self {
+        match value {
+            0 => Self::Nmea,
+            1 => Self::Ublox,
+            2 => Self::Msp,
+            3 => Self::Mock,
+            255 => Self::None,
+            _ => Self::default(),
+        }
+    }
+}
+
+#[allow(missing_docs)]
+#[allow(unused)]
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum GpsModel {
+    #[default]
+    Portable = 0,
+    Stationary = 1,
+    Pedestrian = 2,
+    Automotive = 3,
+    AtSea = 4,
+    Airborne1G = 5,
+    Airborne2G = 6,
+    Airborne4G = 7,
+}
+
+#[allow(unused)]
+impl GpsModel {
+    #[must_use]
+    pub fn from_u8(value: u8) -> Self {
+        match value {
+            0 => Self::Portable,
+            1 => Self::Stationary,
+            2 => Self::Pedestrian,
+            3 => Self::Automotive,
+            4 => Self::AtSea,
+            5 => Self::Airborne1G,
+            6 => Self::Airborne2G,
+            7 => Self::Airborne4G,
+            _ => Self::default(),
+        }
+    }
+}
+
+#[allow(missing_docs)]
+#[allow(unused)]
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum UtcStandard {
+    #[default]
+    Auto = 0,
+    Usno = 3,
+    Eu = 5,
+    Su = 6,
+    Ntsc = 7,
+}
+
+#[allow(unused)]
+impl UtcStandard {
+    #[must_use]
+    pub fn from_u8(value: u8) -> Self {
+        match value {
+            0 => Self::Auto,
+            3 => Self::Usno,
+            5 => Self::Eu,
+            6 => Self::Su,
+            7 => Self::Ntsc,
+            _ => Self::default(),
+        }
+    }
+}
+
+#[allow(missing_docs)]
+#[allow(unused)]
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum SbasMode {
+    #[default]
+    Auto = 0,
+    Egnos = 1,
+    Waas = 2,
+    Msas = 3,
+    Gagan = 4,
+    None = 5,
+}
+
+#[allow(unused)]
+impl SbasMode {
+    pub const COUNT: u8 = 13;
+
+    #[must_use]
+    pub fn from_u8(value: u8) -> Self {
+        match value {
+            0 => Self::Auto,
+            1 => Self::Egnos,
+            2 => Self::Waas,
+            3 => Self::Gagan,
+            4 => Self::None,
+            _ => Self::default(),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct Gps {}
 
@@ -139,36 +262,10 @@ impl Default for Gps {
 
 #[allow(unused)]
 impl Gps {
-    const MODEL_PORTABLE: u8 = 0;
-    const MODEL_STATIONARY: u8 = 1;
-    const MODEL_PEDESTRIAN: u8 = 2;
-    const MODEL_AUTOMOTIVE: u8 = 3;
-    const MODEL_AT_SEA: u8 = 4;
-    const MODEL_AIRBORNE_1G: u8 = 5;
-    const MODEL_AIRBORNE_2G: u8 = 6;
-    const MODEL_AIRBORNE_4G: u8 = 7;
-    const UTC_STANDARD_AUTO: u8 = 0;
-    const UTC_STANDARD_USNO: u8 = 3;
-    const UTC_STANDARD_EU: u8 = 5;
-    const UTC_STANDARD_SU: u8 = 6;
-    const UTC_STANDARD_NTSC: u8 = 7;
-
-    const SBAS_AUTO: u8 = 0;
-    const SBAS_EGNOS: u8 = 1;
-    const SBAS_WAAS: u8 = 2;
-    const SBAS_MSAS: u8 = 3;
-    const SBAS_GAGAN: u8 = 4;
-    const SBAS_NONE: u8 = 5;
-
     const AUTO_CONFIG_OFF: u8 = 0;
     const AUTO_CONFIG_ON: u8 = 1;
     const AUTO_BAUD_OFF: u8 = 0;
     const AUTO_BAUD_ON: u8 = 1;
-
-    const GPS_NMEA: u8 = 0;
-    const GPS_UBLOX: u8 = 1;
-    const GPS_MSP: u8 = 2;
-    const GPS_VIRTUAL: u8 = 3;
 }
 
 #[cfg(test)]
@@ -193,6 +290,6 @@ mod tests {
     #[test]
     fn test_new() {
         let config = GpsConfig::new();
-        assert_eq!(1, config.provider);
+        assert_eq!(GpsProvider::Ublox, config.provider);
     }
 }

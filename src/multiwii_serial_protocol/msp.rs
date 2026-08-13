@@ -1232,8 +1232,8 @@ impl Msp {
             let global_config = GLOBAL_CONFIG.lock().await;
             global_config.gps
         };
-        dst.write_u8(config.provider);
-        dst.write_u8(config.sbas_mode);
+        dst.write_u8(config.provider as u8);
+        dst.write_u8(config.sbas_mode as u8);
         dst.write_u8(config.auto_config);
         dst.write_u8(config.auto_baud);
         // Added in API version 1.43
@@ -1244,14 +1244,16 @@ impl Msp {
     }
     #[cfg(feature = "gps")]
     async fn set_gps_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
+        use crate::gps::GpsProvider;
+
         if src.bytes_remaining() < 4 {
             return MspResult::Error;
         }
         let mut global_config = GLOBAL_CONFIG.lock().await;
         let mut config = global_config.gps;
 
-        config.provider = src.read_u8();
-        config.sbas_mode = src.read_u8();
+        config.provider = GpsProvider::from_u8(src.read_u8());
+        config.sbas_mode = crate::gps::SbasMode::from_u8(src.read_u8());
         config.auto_config = src.read_u8();
         config.auto_baud = src.read_u8();
         if src.bytes_remaining() >= 2 {

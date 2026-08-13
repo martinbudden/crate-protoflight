@@ -1,4 +1,5 @@
 #![cfg(feature = "blackbox")]
+#![allow(unused)]
 
 use blackbox_logger::{
     Blackbox, BlackboxConfig, BlackboxDateTime, BlackboxMainData, BlackboxSlowData, BlackboxSysInfo, FieldSelect,
@@ -35,6 +36,7 @@ use {
 
 static BLACKBOX_CTX: StaticCell<BlackboxContext> = StaticCell::new();
 
+#[allow(unused)]
 #[rustfmt::skip]
 pub struct BlackboxContext {
     pub gyro_pid_receiver: GyroPidReceiver,
