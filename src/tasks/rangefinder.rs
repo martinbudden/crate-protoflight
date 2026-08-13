@@ -6,7 +6,7 @@ use embassy_sync::{
 };
 use static_cell::StaticCell;
 
-use crate::rangefinder_sensors::{Rangefinder, RangefinderMessage, RxRangefinder};
+use crate::rangefinder_sensors::{Rangefinder, RangefinderDevice, RangefinderMessage};
 
 const MAX_RANGEFINDER_SUBSCRIBER_COUNT: usize = 4;
 const RANGEFINDER_PUBLISHER_COUNT: usize = 1;

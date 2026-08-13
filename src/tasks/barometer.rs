@@ -6,7 +6,7 @@ use embassy_sync::{
 };
 use static_cell::StaticCell;
 
-use crate::barometer_sensors::{Barometer, BarometerMessage, RxBarometer};
+use crate::barometer_sensors::{Barometer, BarometerDevice, BarometerMessage};
 
 static BAROMETER_CTX: StaticCell<BarometerContext> = StaticCell::new();
 

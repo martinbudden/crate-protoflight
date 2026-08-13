@@ -81,7 +81,7 @@ impl Default for RangefinderMessage {
 }
 
 /// The common interface for rangefinder.
-pub trait RxRangefinder {
+pub trait RangefinderDevice {
     fn message(&self) -> RangefinderMessage;
 }
 
@@ -104,7 +104,7 @@ impl Rangefinder {
     }
 }
 
-impl RxRangefinder for Rangefinder {
+impl RangefinderDevice for Rangefinder {
     fn message(&self) -> RangefinderMessage {
         match self {
             Self::Mock(rangefinder) => rangefinder.message(),

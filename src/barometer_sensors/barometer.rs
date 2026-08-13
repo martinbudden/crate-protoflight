@@ -78,7 +78,7 @@ impl BarometerMessage {
 }
 
 /// The common interface for barometer.
-pub trait RxBarometer {
+pub trait BarometerDevice {
     fn message(&self) -> BarometerMessage;
 }
 
@@ -100,7 +100,7 @@ impl Barometer {
         }
     }
 }
-impl RxBarometer for Barometer {
+impl BarometerDevice for Barometer {
     fn message(&self) -> BarometerMessage {
         match self {
             Self::Mock(barometer) => barometer.message(),

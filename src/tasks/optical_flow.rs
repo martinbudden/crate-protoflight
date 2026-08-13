@@ -6,7 +6,7 @@ use embassy_sync::{
 };
 use static_cell::StaticCell;
 
-use crate::optical_flow_sensors::{OpticalFlow, OpticalFlowMessage, RxOpticalFlow};
+use crate::optical_flow_sensors::{OpticalFlow, OpticalFlowDevice, OpticalFlowMessage};
 
 const MAX_OPTICAL_FLOW_SUBSCRIBER_COUNT: usize = 4;
 const OPTICAL_FLOW_PUBLISHER_COUNT: usize = 1;

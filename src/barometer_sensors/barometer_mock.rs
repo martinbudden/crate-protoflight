@@ -1,4 +1,4 @@
-use crate::barometer_sensors::{BarometerMessage, barometer::RxBarometer};
+use crate::barometer_sensors::{BarometerMessage, barometer::BarometerDevice};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BarometerMock {}
@@ -15,7 +15,7 @@ impl BarometerMock {
     }
 }
 
-impl RxBarometer for BarometerMock {
+impl BarometerDevice for BarometerMock {
     fn message(&self) -> BarometerMessage {
         BarometerMessage::default()
     }

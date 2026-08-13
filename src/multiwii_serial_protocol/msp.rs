@@ -4,11 +4,9 @@ use serde::{Deserialize, Serialize};
 use stream_buf::{StreamBufReader, StreamBufWriter};
 use vqm::Quaternion;
 
-use crate::{
-    config::{ConfigItem, ConfigPublisher, FastConfigItem, FastConfigPublisher, GLOBAL_CONFIG},
-};
+use crate::config::{ConfigItem, ConfigPublisher, FastConfigItem, FastConfigPublisher, GLOBAL_CONFIG};
 
-#[cfg(feature ="barometer")]
+#[cfg(feature = "barometer")]
 use crate::barometer_sensors::BarometerType;
 
 #[cfg(feature = "debug")]
@@ -17,10 +15,10 @@ use crate::tasks::global_debug::GlobalDebug;
 #[cfg(feature = "gps")]
 use crate::gps::GpsSolutionDataAbridged;
 
-#[cfg(feature ="optical_flow")]
+#[cfg(feature = "optical_flow")]
 use crate::optical_flow_sensors::OpticalFlowType;
 
-#[cfg(feature ="rangefinder")]
+#[cfg(feature = "rangefinder")]
 use crate::rangefinder_sensors::RangefinderType;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

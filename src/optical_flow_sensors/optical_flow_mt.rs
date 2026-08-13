@@ -1,6 +1,6 @@
 #![cfg(feature = "optical_flow")]
 
-use crate::optical_flow_sensors::{OpticalFlowMessage, optical_flow::RxOpticalFlow};
+use crate::optical_flow_sensors::{OpticalFlowMessage, optical_flow::OpticalFlowDevice};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct OpticalFlowMt {}
@@ -17,7 +17,7 @@ impl OpticalFlowMt {
     }
 }
 
-impl RxOpticalFlow for OpticalFlowMt {
+impl OpticalFlowDevice for OpticalFlowMt {
     fn message(&self) -> OpticalFlowMessage {
         OpticalFlowMessage::default()
     }

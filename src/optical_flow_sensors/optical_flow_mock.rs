@@ -1,4 +1,4 @@
-use crate::optical_flow_sensors::{OpticalFlowMessage, optical_flow::RxOpticalFlow};
+use crate::optical_flow_sensors::{OpticalFlowMessage, optical_flow::OpticalFlowDevice};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct OpticalFlowMock {}
@@ -15,7 +15,7 @@ impl OpticalFlowMock {
     }
 }
 
-impl RxOpticalFlow for OpticalFlowMock {
+impl OpticalFlowDevice for OpticalFlowMock {
     fn message(&self) -> OpticalFlowMessage {
         OpticalFlowMessage::default()
     }

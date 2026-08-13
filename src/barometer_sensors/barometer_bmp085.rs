@@ -1,6 +1,6 @@
 #![cfg(feature = "barometer")]
 
-use crate::barometer_sensors::{BarometerMessage, barometer::RxBarometer};
+use crate::barometer_sensors::{BarometerMessage, barometer::BarometerDevice};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BarometerBmp085 {}
@@ -17,7 +17,7 @@ impl BarometerBmp085 {
     }
 }
 
-impl RxBarometer for BarometerBmp085 {
+impl BarometerDevice for BarometerBmp085 {
     fn message(&self) -> BarometerMessage {
         BarometerMessage::default()
     }

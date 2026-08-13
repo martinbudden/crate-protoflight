@@ -1,4 +1,4 @@
-use crate::rangefinder_sensors::{RangefinderMessage, rangefinder::RxRangefinder};
+use crate::rangefinder_sensors::{RangefinderMessage, rangefinder::RangefinderDevice};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RangefinderMock {}
@@ -15,7 +15,7 @@ impl RangefinderMock {
     }
 }
 
-impl RxRangefinder for RangefinderMock {
+impl RangefinderDevice for RangefinderMock {
     fn message(&self) -> RangefinderMessage {
         RangefinderMessage::default()
     }

@@ -7,4 +7,4 @@ mod optical_flow_mock;
 mod optical_flow_mt;
 
 pub use config::OpticalFlowConfig;
-pub use optical_flow::{OpticalFlow, OpticalFlowMessage, OpticalFlowType, RxOpticalFlow};
+pub use optical_flow::{OpticalFlow, OpticalFlowDevice, OpticalFlowMessage, OpticalFlowType};

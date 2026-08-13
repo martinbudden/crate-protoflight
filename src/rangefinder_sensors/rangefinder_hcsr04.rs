@@ -1,6 +1,6 @@
 #![cfg(feature = "rangefinder")]
 
-use crate::rangefinder_sensors::{RangefinderMessage, rangefinder::RxRangefinder};
+use crate::rangefinder_sensors::{RangefinderMessage, rangefinder::RangefinderDevice};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RangefinderHcsr04 {}
@@ -17,7 +17,7 @@ impl RangefinderHcsr04 {
     }
 }
 
-impl RxRangefinder for RangefinderHcsr04 {
+impl RangefinderDevice for RangefinderHcsr04 {
     fn message(&self) -> RangefinderMessage {
         RangefinderMessage::default()
     }

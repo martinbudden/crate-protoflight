@@ -7,4 +7,4 @@ mod rangefinder_hcsr04;
 mod rangefinder_mock;
 
 pub use config::RangefinderConfig;
-pub use rangefinder::{Rangefinder, RangefinderMessage, RangefinderType, RxRangefinder};
+pub use rangefinder::{Rangefinder, RangefinderDevice, RangefinderMessage, RangefinderType};

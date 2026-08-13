@@ -59,7 +59,7 @@ impl Default for OpticalFlowMessage {
 }
 
 /// The common interface for optical flow.
-pub trait RxOpticalFlow {
+pub trait OpticalFlowDevice {
     fn message(&self) -> OpticalFlowMessage;
 }
 
@@ -81,7 +81,7 @@ impl OpticalFlow {
         }
     }
 }
-impl RxOpticalFlow for OpticalFlow {
+impl OpticalFlowDevice for OpticalFlow {
     fn message(&self) -> OpticalFlowMessage {
         match self {
             Self::Mock(optical_flow) => optical_flow.message(),
