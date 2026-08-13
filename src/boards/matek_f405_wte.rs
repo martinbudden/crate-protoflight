@@ -5,6 +5,7 @@
 use crate::{
     barometer_sensors::Barometer,
     boards::board::{Board, BoardInit, BoardInitError, ImuContext},
+    magnetometer_sensors::Magnetometer,
 };
 
 use embassy_stm32::{
@@ -95,7 +96,8 @@ pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
 
     let radio = Radio::new(radio_controllers::RadioType::Mock);
 
-    let barometer = Barometer::new(crate::barometer_sensors::BarometerType::Mock);
+    let barometer = Barometer::new(init.barometer_type);
+    let magnetometer = Magnetometer::new(init.magnetometer_type);
 
     // Map physical device names to logical device names and return.
     Ok(Board {
@@ -109,6 +111,7 @@ pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
         esc_sensor_uart: None,
         sensors_i2c: None,
         barometer,
+        magnetometer,
     })
 }
 

@@ -12,7 +12,12 @@
 use crate::{
     barometer_sensors::Barometer,
     boards::board::{Board, BoardInit, BoardInitError, ImuContext},
+    magnetometer_sensors::Magnetometer,
 };
+
+use imu_sensors::{Imu426xx, ImuAxisOrder, ImuSpiBus};
+use motor_mixers::{MotorDriver, MotorDriverQuadDshot, MotorDriverQuadPwm};
+use radio_controllers::Radio;
 
 use cyw43_pio::PioSpi;
 use embassy_rp::{
@@ -28,8 +33,6 @@ use embassy_rp::{
 };
 use embassy_time::Delay;
 use embedded_hal_bus::spi::ExclusiveDevice;
-use imu_sensors::{Imu426xx, ImuAxisOrder, ImuSpiBus};
-use motor_mixers::{MotorDriver, MotorDriverQuadDshot, MotorDriverQuadPwm};
 
 type BoardSpi =
     ExclusiveDevice<embassy_rp::spi::Spi<'static, peripherals::SPI0, embassy_rp::spi::Async>, Output<'static>, Delay>;
@@ -194,7 +197,8 @@ pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
 
     let radio = Radio::new(radio_controllers::RadioType::Mock);
 
-    let barometer = Barometer::new(crate::barometer_sensors::BarometerType::Mock);
+    let barometer = Barometer::new(init.barometer_type);
+    let magnetometer = Magnetometer::new(init.magnetometer_type);
 
     // Map physical device names to logical device names and return.
     Ok(Board {
@@ -206,5 +210,6 @@ pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
         msp_uart: Some(uart1),
         sensors_i2c: Some(i2c0),
         barometer,
+        magnetometer,
     })
 }

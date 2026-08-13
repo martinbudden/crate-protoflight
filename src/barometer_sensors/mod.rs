@@ -1,4 +1,5 @@
 #![doc = include_str!("README.md")]
+#![allow(unused)]
 
 mod barometer;
 mod barometer_bmp085;

@@ -5,7 +5,8 @@ use imu_sensors::{ImuAxisOrder, ImuDevice};
 use motor_mixers::MotorDriver;
 use radio_controllers::{Radio, RadioType};
 
-use crate::barometer_sensors::Barometer;
+use crate::barometer_sensors::{Barometer, BarometerType};
+use crate::magnetometer_sensors::{Magnetometer, MagnetometerType};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum BoardInitError {
@@ -34,6 +35,8 @@ pub enum BoardInitError {
 pub struct BoardInit {
     pub axis_order: ImuAxisOrder,
     pub radio_type: RadioType,
+    pub barometer_type: BarometerType,
+    pub magnetometer_type: MagnetometerType,
 }
 
 /// Context for IMU task.
@@ -64,6 +67,7 @@ pub struct Board<I: ImuDevice> {
 
     pub sensors_i2c: Option<I2cDeviceBlocking>,
     pub barometer: Option<Barometer>,
+    pub magnetometer: Option<Magnetometer>,
 }
 
 // Bus = raw hardware peripheral
@@ -100,6 +104,7 @@ pub struct Board<I: ImuDevice> {
     pub msp_uart: Option<UartDevice>,
     pub sensors_i2c: Option<I2cDevice>,
     pub barometer: Option<Barometer>,
+    pub magnetometer: Option<Magnetometer>,
 }
 
 // Bus = raw hardware peripheral
@@ -149,6 +154,7 @@ pub struct Board<I: ImuDevice> {
     pub motor_driver: MotorDriver,
     pub radio: Radio,
     pub barometer: Option<Barometer>,
+    pub magnetometer: Option<Magnetometer>,
 }
 
 }}

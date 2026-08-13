@@ -6,7 +6,7 @@ use embassy_sync::{
 };
 use static_cell::StaticCell;
 
-use crate::sensors::MagnetometerMessage;
+use crate::magnetometer_sensors::{Magnetometer, MagnetometerMessage, RxMagnetometer};
 
 static MAGNETOMETER_CTX: StaticCell<MagnetometerContext> = StaticCell::new();
 
@@ -41,27 +41,29 @@ pub type MagnetometerSubscriber = Subscriber<
     MAGNETOMETER_PUBLISHER_COUNT,
 >;
 
-#[allow(clippy::expect_used)]
+#[allow(unused, clippy::expect_used)]
 pub fn magnetometer_subscriber() -> MagnetometerSubscriber {
     MAGNETOMETER_PUB_SUB_CHANNEL.subscriber().expect("magnetometer_subscriber failed")
 }
 
 /// Context for Magnetometer task.
 pub struct MagnetometerContext {
+    pub magnetometer: Magnetometer,
     pub magnetometer_publisher: MagnetometerPublisher,
 }
 
 impl MagnetometerContext {
-    pub fn new() -> Self {
+    pub fn new(magnetometer: Magnetometer) -> Self {
         #[allow(clippy::expect_used)]
         Self {
+            magnetometer,
             magnetometer_publisher: MAGNETOMETER_PUB_SUB_CHANNEL.publisher().expect("magnetometer_publisher failed"),
         }
     }
 }
 
-pub fn init() -> &'static mut MagnetometerContext {
-    MAGNETOMETER_CTX.init(MagnetometerContext::new())
+pub fn init(magnetometer: Magnetometer) -> &'static mut MagnetometerContext {
+    MAGNETOMETER_CTX.init(MagnetometerContext::new(magnetometer))
 }
 
 /// Magnetometer Task Placeholder.
@@ -74,7 +76,7 @@ pub async fn run(ctx: &'static mut MagnetometerContext) {
     loop {
         // Wait for the next tick.
         ticker.next().await;
-        let magnetometer_message = MagnetometerMessage::default();
+        let magnetometer_message = ctx.magnetometer.message();
         // Publish a message, but if the queue is full, just kick out the oldest message.
         // This may cause some subscribers to miss a message
         ctx.magnetometer_publisher.publish_immediate(magnetometer_message);

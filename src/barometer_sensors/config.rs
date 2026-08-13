@@ -1,5 +1,3 @@
-#![cfg(feature = "barometer")]
-
 use crate::barometer_sensors::barometer::BarometerType;
 
 #[cfg(feature = "serde")]

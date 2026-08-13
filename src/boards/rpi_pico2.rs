@@ -5,6 +5,7 @@
 use crate::{
     barometer_sensors::Barometer,
     boards::board::{Board, BoardInit, BoardInitError, ImuContext},
+    magnetometer_sensors::Magnetometer,
 };
 
 use imu_sensors::{Imu426xx, ImuAxisOrder, ImuSpiBus};
@@ -129,7 +130,8 @@ pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
 
     let radio = Radio::new(radio_controllers::RadioType::Mock);
 
-    let barometer = Barometer::new(crate::barometer_sensors::BarometerType::Mock);
+    let barometer = Barometer::new(init.barometer_type);
+    let magnetometer = Magnetometer::new(init.magnetometer_type);
 
     // Map physical device names to logical device names and return.
     Ok(Board {
@@ -142,6 +144,7 @@ pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
         msp_uart: Some(uart1),
         sensors_i2c: Some(i2c0),
         barometer,
+        magnetometer,
         // pub flash: Peri<'static, peripherals::FLASH>,
         // flash: peripherals.FLASH, //
     })

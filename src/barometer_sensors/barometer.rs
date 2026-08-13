@@ -1,6 +1,7 @@
-#![cfg(feature = "barometer")]
+#[cfg(feature = "barometer")]
+use crate::barometer_sensors::barometer_bmp085::BarometerBmp085;
+use crate::barometer_sensors::barometer_mock::BarometerMock;
 
-use crate::barometer_sensors::{barometer_bmp085::BarometerBmp085, barometer_mock::BarometerMock};
 #[cfg(feature = "serde")]
 use {
     sequential_storage::map::PostcardValue,
@@ -31,7 +32,7 @@ pub enum BarometerType {
 
 #[allow(unused)]
 impl BarometerType {
-    pub const COUNT: u8 = 27;
+    pub const COUNT: u8 = 13;
 
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
@@ -84,6 +85,7 @@ pub trait RxBarometer {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Barometer {
     Mock(BarometerMock),
+    #[cfg(feature = "barometer")]
     Bmp085(BarometerBmp085),
 }
 
@@ -91,8 +93,9 @@ impl Barometer {
     #[must_use]
     pub const fn new(barometer_type: BarometerType) -> Option<Barometer> {
         match barometer_type {
-            BarometerType::Bmp085 => Some(Self::Bmp085(BarometerBmp085::new())),
             BarometerType::Mock => Some(Self::Mock(BarometerMock::new())),
+            #[cfg(feature = "barometer")]
+            BarometerType::Bmp085 => Some(Self::Bmp085(BarometerBmp085::new())),
             _ => None,
         }
     }
@@ -101,6 +104,7 @@ impl RxBarometer for Barometer {
     fn message(&self) -> BarometerMessage {
         match self {
             Self::Mock(barometer) => barometer.message(),
+            #[cfg(feature = "barometer")]
             Self::Bmp085(barometer) => barometer.message(),
         }
     }

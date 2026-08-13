@@ -73,9 +73,19 @@ pub async fn init(spawner: Spawner) {
     // **** GET THE DEVICES FROM THE BOARD SUPPORT PACKAGE
 
     #[allow(clippy::panic)]
-    let Ok(board) =
-        board_init(BoardInit { axis_order: config.imu_device.axis_order, radio_type: config.rx.serial_rx_provider })
-    else {
+    let Ok(board) = board_init(BoardInit {
+        axis_order: config.imu_device.axis_order,
+        radio_type: config.rx.serial_rx_provider,
+        #[cfg(feature = "barometer")]
+        barometer_type: config.barometer.hardware,
+        #[cfg(not(feature = "barometer"))]
+        barometer_type: crate::barometer_sensors::BarometerType::None,
+
+        #[cfg(feature = "magnetometer")]
+        magnetometer_type: config.magnetometer.hardware,
+        #[cfg(not(feature = "magnetometer"))]
+        magnetometer_type: crate::magnetometer_sensors::MagnetometerType::None,
+    }) else {
         panic!("board_init failed");
     };
 
@@ -144,7 +154,7 @@ pub async fn init(spawner: Spawner) {
     let gps_ctx = Some(tasks::gps::init());
 
     #[cfg(feature = "magnetometer")]
-    let magnetometer_ctx = Some(tasks::magnetometer::init());
+    let magnetometer_ctx = board.magnetometer.map(tasks::magnetometer::init);
 
     #[cfg(feature = "optical_flow")]
     let optical_flow_ctx = Some(tasks::optical::init());

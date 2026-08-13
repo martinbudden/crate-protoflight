@@ -393,6 +393,7 @@ impl OsdElements {
         for element in OSD_ELEMENT_DISPLAY_ORDER {
             self.add_active_element(*element);
         }
+        _ = sensors;
         #[cfg(feature = "gps")]
         if sensors.is_set(SensorFlags::GPS) {
             self.add_active_element(OsdElementId::GpsSats);

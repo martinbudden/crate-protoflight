@@ -2,7 +2,6 @@
 
 mod battery;
 mod current_sensor;
-mod magnetometer;
 mod messages;
 mod optical_flow;
 mod rangefinder;
@@ -14,8 +13,6 @@ pub use sensor_flags::SensorFlags;
 
 #[cfg(feature = "battery")]
 pub use battery::{BatteryConfig, BatteryMessage, BatteryProfiles, CurrentMeterReading, VoltageMeterReading};
-#[cfg(feature = "magnetometer")]
-pub use magnetometer::{MagnetometerConfig, MagnetometerMessage};
 #[cfg(feature = "optical_flow")]
 pub use optical_flow::{OpticalFlowConfig, OpticalFlowMessage};
 #[cfg(feature = "rangefinder")]

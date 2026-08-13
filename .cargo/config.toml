@@ -116,7 +116,7 @@ check-stm32f405 = [
     "check",
     "--target", "thumbv7em-none-eabihf",
     "--no-default-features",
-    "--features", "libm,stm32,stm32f405,speedybee_f405_v4"
+    "--features", "libm,stm32,stm32f405,speedybee_f405_v4,autopilot,barometer,magnetometer,osd,rangefinder"
 ]
 
 check-stm32f405-m = [

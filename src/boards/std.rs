@@ -3,6 +3,7 @@
 use crate::{
     barometer_sensors::{Barometer, BarometerType},
     boards::board::{Board, BoardInit, BoardInitError, ImuContext},
+    magnetometer_sensors::{Magnetometer, MagnetometerType},
 };
 
 use imu_sensors::{ImuMock, MockImuBus};
@@ -27,5 +28,7 @@ pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
 
     let barometer = Barometer::new(BarometerType::Mock);
 
-    Ok(Board { imu, motor_driver, radio, barometer })
+    let magnetometer = Magnetometer::new(MagnetometerType::Mock);
+
+    Ok(Board { imu, motor_driver, radio, barometer, magnetometer })
 }

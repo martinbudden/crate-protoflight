@@ -16,8 +16,8 @@ mod config;
 mod display;
 mod drivers;
 mod flight;
-#[cfg(feature = "gps")]
 mod gps;
+mod magnetometer_sensors;
 mod multiwii_serial_protocol;
 mod osd;
 mod sensors;

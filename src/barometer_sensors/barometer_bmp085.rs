@@ -1,3 +1,5 @@
+#![cfg(feature = "barometer")]
+
 use crate::barometer_sensors::{BarometerMessage, barometer::RxBarometer};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
