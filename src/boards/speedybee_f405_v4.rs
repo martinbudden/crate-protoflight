@@ -7,7 +7,10 @@
 // see <https://github.com/betaflight/config/blob/master/configs/SPBE/SPEEDYBEEF405V4/config.h>
 // and <https://github.com/betaflight/unified-targets/blob/master/configs/default/SPBE-SPEEDYBEEF405V4.config>.
 
-use crate::boards::board::{Board, BoardInit, BoardInitError, ImuContext};
+use crate::{
+    barometer_sensors::Barometer,
+    boards::board::{Board, BoardInit, BoardInitError, ImuContext},
+};
 
 use imu_sensors::{Imu426xx, ImuAxisOrder, ImuSpiBus};
 use motor_mixers::{MotorDriver, MotorDriverQuadDshot, MotorDriverQuadPwm};
@@ -207,6 +210,8 @@ pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
 
     let radio = Radio::new(radio_controllers::RadioType::Mock);
 
+    let barometer = Barometer::new(crate::barometer_sensors::BarometerType::Mock);
+
     // Map physical device names to logical device names and return.
     Ok(Board {
         imu,
@@ -218,6 +223,7 @@ pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
         msp_uart: None,
         esc_sensor_uart: None,
         sensors_i2c: Some(i2c1),
+        barometer,
     })
 }
 

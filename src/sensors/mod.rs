@@ -1,6 +1,5 @@
 #![doc = include_str!("README.md")]
 
-mod barometer;
 mod battery;
 mod current_sensor;
 mod magnetometer;
@@ -13,8 +12,6 @@ pub use current_sensor::{CurrentSensorAdcConfig, CurrentSensorVirtualConfig};
 pub use messages::{GyroPidMessage, SetpointMessage};
 pub use sensor_flags::SensorFlags;
 
-#[cfg(feature = "barometer")]
-pub use barometer::{BarometerConfig, BarometerMessage};
 #[cfg(feature = "battery")]
 pub use battery::{BatteryConfig, BatteryMessage, BatteryProfiles, CurrentMeterReading, VoltageMeterReading};
 #[cfg(feature = "magnetometer")]

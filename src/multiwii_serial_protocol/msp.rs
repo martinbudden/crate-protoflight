@@ -720,7 +720,7 @@ impl Msp {
         let global_config = GLOBAL_CONFIG.lock().await;
         dst.write_u8(0); // acc hardware
         #[cfg(feature = "barometer")]
-        dst.write_u8(global_config.barometer.hardware);
+        dst.write_u8(global_config.barometer.hardware as u8);
         #[cfg(not(feature = "barometer"))]
         dst.write_u8(0);
 

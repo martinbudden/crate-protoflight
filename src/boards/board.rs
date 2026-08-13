@@ -5,6 +5,8 @@ use imu_sensors::{ImuAxisOrder, ImuDevice};
 use motor_mixers::MotorDriver;
 use radio_controllers::{Radio, RadioType};
 
+use crate::barometer_sensors::Barometer;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum BoardInitError {
     ImuNotAvailable,
@@ -61,6 +63,7 @@ pub struct Board<I: ImuDevice> {
     pub esc_sensor_uart: Option<UartDevice>,
 
     pub sensors_i2c: Option<I2cDeviceBlocking>,
+    pub barometer: Option<Barometer>,
 }
 
 // Bus = raw hardware peripheral
@@ -96,6 +99,7 @@ pub struct Board<I: ImuDevice> {
 
     pub msp_uart: Option<UartDevice>,
     pub sensors_i2c: Option<I2cDevice>,
+    pub barometer: Option<Barometer>,
 }
 
 // Bus = raw hardware peripheral
@@ -144,6 +148,7 @@ pub struct Board<I: ImuDevice> {
     pub imu: I,
     pub motor_driver: MotorDriver,
     pub radio: Radio,
+    pub barometer: Option<Barometer>,
 }
 
 }}

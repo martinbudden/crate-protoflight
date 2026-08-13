@@ -10,7 +10,10 @@
 // This board has onboard flash and no SD card slot.
 // The Omnibus F4 SD has an SD card slot, but no MAX7465 chip.
 
-use crate::boards::board::{Board, BoardInit, BoardInitError, ImuContext};
+use crate::{
+    barometer_sensors::Barometer,
+    boards::board::{Board, BoardInit, BoardInitError, ImuContext},
+};
 
 use imu_sensors::{ImuAxisOrder, ImuSpiBus, Mpu6050}; // TODO: this is placeholder, change to Mpu6000 when driver is available
 use motor_mixers::{MotorDriver, MotorDriverQuadDshot, MotorDriverQuadPwm};
@@ -155,6 +158,8 @@ pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
 
     let radio = Radio::new(radio_controllers::RadioType::Mock);
 
+    let barometer = Barometer::new(crate::barometer_sensors::BarometerType::Mock);
+
     // Map physical device names to logical device names and return.
     Ok(Board {
         imu,
@@ -166,6 +171,7 @@ pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
         msp_uart: None,
         esc_sensor_uart: None,
         sensors_i2c: None,
+        barometer,
     })
 }
 

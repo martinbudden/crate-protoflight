@@ -45,6 +45,7 @@ static mut CORE1_STACK: Stack<4096> = Stack::new();
 ///
 /// Once initialization is complete `panic()`, `.unwrap()` and `.expect()` are NOT allowed.
 ///
+#[allow(clippy::too_many_lines)]
 #[allow(clippy::expect_used)]
 pub async fn init(spawner: Spawner) {
     use crate::tasks;
@@ -125,30 +126,37 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "autopilot")]
     let autopilot_ctx = tasks::autopilot::init();
 
-    // TODO: Initialize the barometer task context with the barometer driver provided by the Board Support Package.
     #[cfg(feature = "barometer")]
-    let barometer_ctx = tasks::barometer::init();
+    let barometer_ctx = board.barometer.map(tasks::barometer::init);
+
+    /*
+    Alternatively
+    #[cfg(feature = "barometer")]
+    let barometer_ctx = match board.barometer {
+        Some(barometer) => Some(tasks::barometer::init(barometer)),
+        None => None,
+    };*/
 
     #[cfg(feature = "battery")]
     let battery_ctx = tasks::battery::init();
 
     #[cfg(feature = "gps")]
-    let gps_ctx = tasks::gps::init();
+    let gps_ctx = Some(tasks::gps::init());
 
     #[cfg(feature = "magnetometer")]
-    let magnetometer_ctx = tasks::magnetometer::init();
+    let magnetometer_ctx = Some(tasks::magnetometer::init());
 
     #[cfg(feature = "optical_flow")]
-    let optical_flow_ctx = tasks::optical::init();
+    let optical_flow_ctx = Some(tasks::optical::init());
 
     #[cfg(feature = "osd")]
     let osd_ctx = {
         let display_supports_background_layer = true;
-        tasks::osd::init(display_supports_background_layer)
+        Some(tasks::osd::init(display_supports_background_layer))
     };
 
     #[cfg(feature = "rangefinder")]
-    let rangefinder_ctx = tasks::rangefinder::init();
+    let rangefinder_ctx = Some(tasks::rangefinder::init());
 
     // **** UnLock the GLOBAL_CONFIGs
     drop(config);
@@ -176,8 +184,12 @@ pub async fn init(spawner: Spawner) {
     // The optional tasks.
     #[cfg(feature = "autopilot")]
     spawner.spawn(tasks::autopilot::run(autopilot_ctx).expect("Failed to create AUTOPILOT task"));
+
     #[cfg(feature = "barometer")]
-    spawner.spawn(tasks::barometer::run(barometer_ctx).expect("Failed to create BAROMETER task"));
+    if let Some(barometer_ctx) = barometer_ctx {
+        spawner.spawn(tasks::barometer::run(barometer_ctx).expect("Failed to create BAROMETER task"));
+    }
+
     #[cfg(feature = "battery")]
     spawner.spawn(tasks::battery::run(battery_ctx).expect("Failed to create BATTERY task"));
     #[cfg(feature = "blackbox")]
@@ -185,15 +197,25 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "blackbox")]
     spawner.spawn(tasks::blackbox_writer::run(blackbox_writer_ctx).expect("Failed to create BLACKBOX_WRITER task"));
     #[cfg(feature = "gps")]
-    spawner.spawn(tasks::gps::run(gps_ctx).expect("Failed to create GPS task"));
+    if let Some(gps_ctx) = gps_ctx {
+        spawner.spawn(tasks::gps::run(gps_ctx).expect("Failed to create GPS task"));
+    }
     #[cfg(feature = "magnetometer")]
-    spawner.spawn(tasks::magnetometer::run(magnetometer_ctx).expect("Failed to create MAGNETOMETER task"));
+    if let Some(magnetometer_ctx) = magnetometer_ctx {
+        spawner.spawn(tasks::magnetometer::run(magnetometer_ctx).expect("Failed to create MAGNETOMETER task"));
+    }
     #[cfg(feature = "msp")]
     spawner.spawn(tasks::msp::run(msp_ctx).expect("Failed to create MSP task"));
     #[cfg(feature = "optical_flow")]
-    spawner.spawn(tasks::optical::run(optical_flow_ctx).expect("Failed to create OSD task"));
+    if let Some(optical_flow_ctx) = optical_flow_ctx {
+        spawner.spawn(tasks::optical::run(optical_flow_ctx).expect("Failed to create OSD task"));
+    }
     #[cfg(feature = "osd")]
-    spawner.spawn(tasks::osd::run(osd_ctx, display_ref).expect("Failed to create OSD task"));
+    if let Some(osd_ctx) = osd_ctx {
+        spawner.spawn(tasks::osd::run(osd_ctx, display_ref).expect("Failed to create OSD task"));
+    }
     #[cfg(feature = "rangefinder")]
-    spawner.spawn(tasks::rangefinder::run(rangefinder_ctx).expect("Failed to create RANGEFINDER task"));
+    if let Some(rangefinder_ctx) = rangefinder_ctx {
+        spawner.spawn(tasks::rangefinder::run(rangefinder_ctx).expect("Failed to create RANGEFINDER task"));
+    }
 }

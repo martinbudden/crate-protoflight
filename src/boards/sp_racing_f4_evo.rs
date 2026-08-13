@@ -7,7 +7,10 @@
 // see <https://github.com/betaflight/unified-targets/blob/master/configs/default/SPRO-SPRACINGF4EVO.config>,
 // and <https://github.com/betaflight/config/blob/master/configs/SPRO/SPRACINGF4EVO/config.h>.
 
-use crate::boards::board::{Board, BoardInit, BoardInitError, ImuContext};
+use crate::{
+    barometer_sensors::Barometer,
+    boards::board::{Board, BoardInit, BoardInitError, ImuContext},
+};
 
 use imu_sensors::{Imu426xx, ImuAxisOrder, ImuSpiBus};
 use motor_mixers::{MotorDriver, MotorDriverQuadDshot, MotorDriverQuadPwm};
@@ -166,6 +169,8 @@ pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
     let motor_driver = MotorDriver::QuadPwm(motor_driver_quad_pwm);
 
     let radio = Radio::new(radio_controllers::RadioType::Mock);
+
+    let barometer = Barometer::new(crate::barometer_sensors::BarometerType::Mock);
 
     // Map physical device names to logical device names and return.
     Ok(Board {

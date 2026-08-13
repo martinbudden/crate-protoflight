@@ -2,7 +2,10 @@
 #![allow(unused)]
 #![allow(clippy::similar_names)]
 
-use crate::boards::board::{Board, BoardInit, BoardInitError, ImuContext};
+use crate::{
+    barometer_sensors::Barometer,
+    boards::board::{Board, BoardInit, BoardInitError, ImuContext},
+};
 
 use embassy_stm32::{
     bind_interrupts, dma,
@@ -92,6 +95,8 @@ pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
 
     let radio = Radio::new(radio_controllers::RadioType::Mock);
 
+    let barometer = Barometer::new(crate::barometer_sensors::BarometerType::Mock);
+
     // Map physical device names to logical device names and return.
     Ok(Board {
         imu,
@@ -103,6 +108,7 @@ pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
         msp_uart: None,
         esc_sensor_uart: None,
         sensors_i2c: None,
+        barometer,
     })
 }
 

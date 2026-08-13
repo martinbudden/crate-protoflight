@@ -1,6 +1,9 @@
 #![cfg(feature = "std")]
 
-use crate::boards::board::{Board, BoardInit, BoardInitError, ImuContext};
+use crate::{
+    barometer_sensors::{Barometer, BarometerType},
+    boards::board::{Board, BoardInit, BoardInitError, ImuContext},
+};
 
 use imu_sensors::{ImuMock, MockImuBus};
 use motor_mixers::{MotorDriver, MotorDriverQuadPwm};
@@ -17,8 +20,12 @@ pub fn imu_context(imu: BoardImu) -> ImuContext<BoardImu> {
 pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
     let motor_driver_pwm = MotorDriverQuadPwm::new();
     let motor_driver = MotorDriver::QuadPwm(motor_driver_pwm);
+
     let imu = ImuMock::new(MockImuBus::new(), init.axis_order);
+
     let radio = Radio::new(RadioType::Mock);
 
-    Ok(Board { imu, motor_driver, radio })
+    let barometer = Barometer::new(BarometerType::Mock);
+
+    Ok(Board { imu, motor_driver, radio, barometer })
 }

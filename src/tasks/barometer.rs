@@ -6,7 +6,7 @@ use embassy_sync::{
 };
 use static_cell::StaticCell;
 
-use crate::sensors::BarometerMessage;
+use crate::barometer_sensors::{Barometer, BarometerMessage, RxBarometer};
 
 static BAROMETER_CTX: StaticCell<BarometerContext> = StaticCell::new();
 
@@ -48,18 +48,22 @@ pub fn barometer_subscriber() -> BarometerSubscriber {
 
 /// Context for Barometer task.
 pub struct BarometerContext {
+    pub barometer: Barometer,
     pub barometer_publisher: BarometerPublisher,
 }
 
 impl BarometerContext {
-    pub fn new() -> Self {
+    pub fn new(barometer: Barometer) -> Self {
         #[allow(clippy::expect_used)]
-        Self { barometer_publisher: BAROMETER_PUB_SUB_CHANNEL.publisher().expect("barometer_publisher failed") }
+        Self {
+            barometer,
+            barometer_publisher: BAROMETER_PUB_SUB_CHANNEL.publisher().expect("barometer_publisher failed"),
+        }
     }
 }
 
-pub fn init() -> &'static mut BarometerContext {
-    BAROMETER_CTX.init(BarometerContext::new())
+pub fn init(barometer: Barometer) -> &'static mut BarometerContext {
+    BAROMETER_CTX.init(BarometerContext::new(barometer))
 }
 
 /// Barometer Task Placeholder.
@@ -72,7 +76,7 @@ pub async fn run(ctx: &'static mut BarometerContext) {
     loop {
         // Wait for the next tick.
         ticker.next().await;
-        let barometer_message = BarometerMessage::default();
+        let barometer_message = ctx.barometer.message();
         // Publish a message, but if the queue is full, just kick out the oldest message.
         // This may cause some subscribers to miss a message
         ctx.barometer_publisher.publish_immediate(barometer_message);

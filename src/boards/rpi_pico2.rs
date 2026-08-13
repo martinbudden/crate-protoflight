@@ -2,7 +2,10 @@
 #![allow(unused)]
 #![allow(clippy::similar_names)]
 
-use crate::boards::board::{Board, BoardInit, BoardInitError, ImuContext};
+use crate::{
+    barometer_sensors::Barometer,
+    boards::board::{Board, BoardInit, BoardInitError, ImuContext},
+};
 
 use imu_sensors::{Imu426xx, ImuAxisOrder, ImuSpiBus};
 use motor_mixers::{MotorDriver, MotorDriverQuadDshot, MotorDriverQuadPwm};
@@ -126,6 +129,8 @@ pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
 
     let radio = Radio::new(radio_controllers::RadioType::Mock);
 
+    let barometer = Barometer::new(crate::barometer_sensors::BarometerType::Mock);
+
     // Map physical device names to logical device names and return.
     Ok(Board {
         imu,
@@ -136,6 +141,7 @@ pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
         // osd_spi: aux_pio_spi,
         msp_uart: Some(uart1),
         sensors_i2c: Some(i2c0),
+        barometer,
         // pub flash: Peri<'static, peripherals::FLASH>,
         // flash: peripherals.FLASH, //
     })
