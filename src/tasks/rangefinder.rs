@@ -6,7 +6,7 @@ use embassy_sync::{
 };
 use static_cell::StaticCell;
 
-use crate::sensors::RangefinderMessage;
+use crate::rangefinder_sensors::{Rangefinder, RangefinderMessage, RxRangefinder};
 
 const MAX_RANGEFINDER_SUBSCRIBER_COUNT: usize = 4;
 const RANGEFINDER_PUBLISHER_COUNT: usize = 1;
@@ -48,18 +48,22 @@ static RANGEFINDER_CTX: StaticCell<RangefinderContext> = StaticCell::new();
 
 /// Context for Rangefinder task.
 pub struct RangefinderContext {
+    pub rangefinder: Rangefinder,
     pub rangefinder_publisher: RangefinderPublisher,
 }
 
 impl RangefinderContext {
-    pub fn new() -> Self {
+    pub fn new(rangefinder: Rangefinder) -> Self {
         #[allow(clippy::expect_used)]
-        Self { rangefinder_publisher: RANGEFINDER_PUB_SUB_CHANNEL.publisher().expect("rangefinder_publisher failed") }
+        Self {
+            rangefinder,
+            rangefinder_publisher: RANGEFINDER_PUB_SUB_CHANNEL.publisher().expect("rangefinder_publisher failed"),
+        }
     }
 }
 
-pub fn init() -> &'static mut RangefinderContext {
-    RANGEFINDER_CTX.init(RangefinderContext::new())
+pub fn init(rangefinder: Rangefinder) -> &'static mut RangefinderContext {
+    RANGEFINDER_CTX.init(RangefinderContext::new(rangefinder))
 }
 
 /// Rangefinder Task Placeholder.
@@ -72,7 +76,7 @@ pub async fn run(ctx: &'static mut RangefinderContext) {
     loop {
         // Wait for the next tick.
         ticker.next().await;
-        let rangefinder_message = RangefinderMessage::default();
+        let rangefinder_message = ctx.rangefinder.message();
         // Publish a message, but if the queue is full, just kick out the oldest message.
         // This may cause some subscribers to miss a message
         ctx.rangefinder_publisher.publish_immediate(rangefinder_message);

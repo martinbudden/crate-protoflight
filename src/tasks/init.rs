@@ -76,6 +76,7 @@ pub async fn init(spawner: Spawner) {
     let Ok(board) = board_init(BoardInit {
         axis_order: config.imu_device.axis_order,
         radio_type: config.rx.serial_rx_provider,
+
         #[cfg(feature = "barometer")]
         barometer_type: config.barometer.hardware,
         #[cfg(not(feature = "barometer"))]
@@ -85,6 +86,16 @@ pub async fn init(spawner: Spawner) {
         magnetometer_type: config.magnetometer.hardware,
         #[cfg(not(feature = "magnetometer"))]
         magnetometer_type: crate::magnetometer_sensors::MagnetometerType::None,
+
+        #[cfg(feature = "rangefinder")]
+        rangefinder_type: config.rangefinder.hardware,
+        #[cfg(not(feature = "rangefinder"))]
+        rangefinder_type: crate::rangefinder_sensors::RangefinderType::None,
+
+        #[cfg(feature = "optical_flow")]
+        optical_flow_type: config.optical_flow.hardware,
+        #[cfg(not(feature = "optical_flow"))]
+        optical_flow_type: crate::optical_flow_sensors::OpticalFlowType::None,
     }) else {
         panic!("board_init failed");
     };
@@ -131,7 +142,7 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "blackbox")]
     let blackbox_ctx = tasks::blackbox::init(config.blackbox);
     #[cfg(feature = "blackbox")]
-    let blackbox_writer_ctx = tasks::blackbox_writer::init();
+    let blackbox_writer_ctx = Some(tasks::blackbox_writer::init());
 
     #[cfg(feature = "autopilot")]
     let autopilot_ctx = tasks::autopilot::init();
@@ -157,7 +168,7 @@ pub async fn init(spawner: Spawner) {
     let magnetometer_ctx = board.magnetometer.map(tasks::magnetometer::init);
 
     #[cfg(feature = "optical_flow")]
-    let optical_flow_ctx = Some(tasks::optical::init());
+    let optical_flow_ctx = board.optical_flow.map(tasks::optical_flow::init);
 
     #[cfg(feature = "osd")]
     let osd_ctx = {
@@ -166,7 +177,7 @@ pub async fn init(spawner: Spawner) {
     };
 
     #[cfg(feature = "rangefinder")]
-    let rangefinder_ctx = Some(tasks::rangefinder::init());
+    let rangefinder_ctx = board.rangefinder.map(tasks::rangefinder::init);
 
     // **** UnLock the GLOBAL_CONFIGs
     drop(config);
@@ -205,7 +216,9 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "blackbox")]
     spawner.spawn(tasks::blackbox::run(blackbox_ctx).expect("Failed to create BLACKBOX task"));
     #[cfg(feature = "blackbox")]
-    spawner.spawn(tasks::blackbox_writer::run(blackbox_writer_ctx).expect("Failed to create BLACKBOX_WRITER task"));
+    if let Some(blackbox_writer_ctx) = blackbox_writer_ctx {
+        spawner.spawn(tasks::blackbox_writer::run(blackbox_writer_ctx).expect("Failed to create BLACKBOX_WRITER task"));
+    }
     #[cfg(feature = "gps")]
     if let Some(gps_ctx) = gps_ctx {
         spawner.spawn(tasks::gps::run(gps_ctx).expect("Failed to create GPS task"));
@@ -218,7 +231,7 @@ pub async fn init(spawner: Spawner) {
     spawner.spawn(tasks::msp::run(msp_ctx).expect("Failed to create MSP task"));
     #[cfg(feature = "optical_flow")]
     if let Some(optical_flow_ctx) = optical_flow_ctx {
-        spawner.spawn(tasks::optical::run(optical_flow_ctx).expect("Failed to create OSD task"));
+        spawner.spawn(tasks::optical_flow::run(optical_flow_ctx).expect("Failed to create OSD task"));
     }
     #[cfg(feature = "osd")]
     if let Some(osd_ctx) = osd_ctx {

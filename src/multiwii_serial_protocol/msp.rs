@@ -4,13 +4,24 @@ use serde::{Deserialize, Serialize};
 use stream_buf::{StreamBufReader, StreamBufWriter};
 use vqm::Quaternion;
 
-use crate::config::{ConfigItem, ConfigPublisher, FastConfigItem, FastConfigPublisher, GLOBAL_CONFIG};
+use crate::{
+    config::{ConfigItem, ConfigPublisher, FastConfigItem, FastConfigPublisher, GLOBAL_CONFIG},
+};
+
+#[cfg(feature ="barometer")]
+use crate::barometer_sensors::BarometerType;
 
 #[cfg(feature = "debug")]
 use crate::tasks::global_debug::GlobalDebug;
 
 #[cfg(feature = "gps")]
 use crate::gps::GpsSolutionDataAbridged;
+
+#[cfg(feature ="optical_flow")]
+use crate::optical_flow_sensors::OpticalFlowType;
+
+#[cfg(feature ="rangefinder")]
+use crate::rangefinder_sensors::RangefinderType;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum MspResult {
@@ -204,6 +215,7 @@ impl Msp {
             Msp::SET_FAILSAFE_CONFIG => Self::set_failsafe_config(src, config_publisher).await,
             Msp::SET_ADVANCED_CONFIG => Self::set_advanced_config(src, config_publisher).await,
             Msp::SET_FILTER_CONFIG => Self::set_filter_config(src, config_publisher).await,
+            Msp::SET_SENSOR_CONFIG => Self::set_sensor_config(src, config_publisher).await,
             Msp::RC_DEADBAND => Self::set_rc_controls_config(src, config_publisher).await,
             Msp::SET_RC_TUNING => Self::set_rc_tuning(src, config_publisher).await,
             Msp::SET_PID => Self::set_pid(src, fast_config_publisher).await,
@@ -726,13 +738,61 @@ impl Msp {
 
         // Added in MSP API 1.46
         #[cfg(feature = "rangefinder")]
-        dst.write_u8(global_config.rangefinder.hardware);
+        dst.write_u8(global_config.rangefinder.hardware as u8);
         #[cfg(not(feature = "rangefinder"))]
         dst.write_u8(0);
         #[cfg(feature = "optical_flow")]
-        dst.write_u8(global_config.optical_flow.hardware);
+        dst.write_u8(global_config.optical_flow.hardware as u8);
         #[cfg(not(feature = "optical_flow"))]
         dst.write_u8(0);
+
+        MspResult::Ack
+    }
+    #[allow(unused)]
+    async fn set_sensor_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
+        // Check if enough data is even present before locking anything
+        if src.bytes_remaining() < 1 {
+            return MspResult::Error;
+        }
+        _ = src.read_u8(); // acc hardware
+
+        if src.bytes_remaining() < 3 {
+            return MspResult::Error;
+        }
+        let mut global_config = GLOBAL_CONFIG.lock().await;
+
+        let barometer_type = src.read_u8();
+        #[cfg(feature = "barometer")]
+        {
+            let mut barometer = global_config.barometer;
+            barometer.hardware = BarometerType::from_u8(barometer_type);
+            if barometer != global_config.barometer {
+                global_config.barometer = barometer;
+                publisher.publish(ConfigItem::Barometer(barometer)).await;
+            }
+        }
+
+        let rangefinder_type = src.read_u8();
+        #[cfg(feature = "rangefinder")]
+        {
+            let mut rangefinder = global_config.rangefinder;
+            rangefinder.hardware = RangefinderType::from_u8(rangefinder_type);
+            if rangefinder != global_config.rangefinder {
+                global_config.rangefinder = rangefinder;
+                publisher.publish(ConfigItem::Rangefinder(rangefinder)).await;
+            }
+        }
+
+        let optical_flow_type = src.read_u8();
+        #[cfg(feature = "optical_flow")]
+        {
+            let mut optical_flow = global_config.optical_flow;
+            optical_flow.hardware = OpticalFlowType::from_u8(optical_flow_type);
+            if optical_flow != global_config.optical_flow {
+                global_config.optical_flow = optical_flow;
+                publisher.publish(ConfigItem::OpticalFlow(optical_flow)).await;
+            }
+        }
 
         MspResult::Ack
     }

@@ -3,6 +3,7 @@
 #[cfg(feature = "magnetometer")]
 use crate::magnetometer_sensors::magnetometer_hmc5883::MagnetometerHmc5883;
 use crate::magnetometer_sensors::magnetometer_mock::MagnetometerMock;
+
 #[cfg(feature = "serde")]
 use {
     sequential_storage::map::PostcardValue,
@@ -93,11 +94,12 @@ impl Magnetometer {
         }
     }
 }
+
 impl RxMagnetometer for Magnetometer {
     fn message(&self) -> MagnetometerMessage {
         match self {
             Self::Mock(magnetometer) => magnetometer.message(),
-    #[cfg(feature = "magnetometer")]
+            #[cfg(feature = "magnetometer")]
             Self::Hmc5883(magnetometer) => magnetometer.message(),
         }
     }

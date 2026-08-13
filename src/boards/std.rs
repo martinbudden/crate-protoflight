@@ -4,6 +4,8 @@ use crate::{
     barometer_sensors::{Barometer, BarometerType},
     boards::board::{Board, BoardInit, BoardInitError, ImuContext},
     magnetometer_sensors::{Magnetometer, MagnetometerType},
+    optical_flow_sensors::{OpticalFlow, OpticalFlowType},
+    rangefinder_sensors::{Rangefinder, RangefinderType},
 };
 
 use imu_sensors::{ImuMock, MockImuBus};
@@ -30,5 +32,9 @@ pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
 
     let magnetometer = Magnetometer::new(MagnetometerType::Mock);
 
-    Ok(Board { imu, motor_driver, radio, barometer, magnetometer })
+    let rangefinder = Rangefinder::new(RangefinderType::Mock);
+
+    let optical_flow = OpticalFlow::new(OpticalFlowType::Mock);
+
+    Ok(Board { imu, motor_driver, radio, barometer, magnetometer, rangefinder, optical_flow })
 }

@@ -6,7 +6,7 @@ use embassy_sync::{
 };
 use static_cell::StaticCell;
 
-use crate::sensors::OpticalFlowMessage;
+use crate::optical_flow_sensors::{OpticalFlow, OpticalFlowMessage, RxOpticalFlow};
 
 const MAX_OPTICAL_FLOW_SUBSCRIBER_COUNT: usize = 4;
 const OPTICAL_FLOW_PUBLISHER_COUNT: usize = 1;
@@ -47,20 +47,22 @@ pub fn optical_flow_subscriber() -> OpticalFlowSubscriber {
 static OPTICAL_FLOW_CTX: StaticCell<OpticalFlowContext> = StaticCell::new();
 /// Context for optical flow task.
 pub struct OpticalFlowContext {
+    pub optical_flow: OpticalFlow,
     pub optical_flow_publisher: OpticalFlowPublisher,
 }
 
 impl OpticalFlowContext {
-    pub fn new() -> Self {
+    pub fn new(optical_flow: OpticalFlow) -> Self {
         #[allow(clippy::expect_used)]
         Self {
+            optical_flow,
             optical_flow_publisher: OPTICAL_FLOW_PUB_SUB_CHANNEL.publisher().expect("optical_flow_publisher failed"),
         }
     }
 }
 
-pub fn init() -> &'static mut OpticalFlowContext {
-    OPTICAL_FLOW_CTX.init(OpticalFlowContext::new())
+pub fn init(optical_flow: OpticalFlow) -> &'static mut OpticalFlowContext {
+    OPTICAL_FLOW_CTX.init(OpticalFlowContext::new(optical_flow))
 }
 
 /// Optical flow Task Placeholder.
@@ -74,8 +76,7 @@ pub async fn run(ctx: &'static mut OpticalFlowContext) {
         // Wait for the next 50Hz tick.
         ticker.next().await;
 
-        // TODO: get the battery data by reading the battery.
-        let optical_flow_message = OpticalFlowMessage::default();
+        let optical_flow_message = ctx.optical_flow.message();
         ctx.optical_flow_publisher.publish_immediate(optical_flow_message);
 
         if loop_count.is_multiple_of(10) {

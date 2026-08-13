@@ -26,7 +26,7 @@ use crate::{
 use crate::tasks::magnetometer::{MagnetometerSubscriber, magnetometer_subscriber};
 
 #[cfg(feature = "optical_flow")]
-use crate::tasks::optical::{OpticalFlowSubscriber, optical_flow_subscriber};
+use crate::tasks::optical_flow::{OpticalFlowSubscriber, optical_flow_subscriber};
 
 #[cfg(feature = "rangefinder")]
 use crate::tasks::rangefinder::{RangefinderSubscriber, rangefinder_subscriber};

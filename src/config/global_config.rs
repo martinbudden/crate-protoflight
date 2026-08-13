@@ -34,13 +34,13 @@ use crate::gps::{GpsConfig, GpsRescueConfig};
 use crate::magnetometer_sensors::MagnetometerConfig;
 
 #[cfg(feature = "optical_flow")]
-use crate::sensors::OpticalFlowConfig;
+use crate::optical_flow_sensors::OpticalFlowConfig;
 
 #[cfg(feature = "osd")]
 use crate::osd::{OsdConfig, OsdElementsConfig, OsdStatsConfig, PilotConfig};
 
 #[cfg(feature = "rangefinder")]
-use crate::sensors::RangefinderConfig;
+use crate::rangefinder_sensors::RangefinderConfig;
 
 #[cfg(feature = "rpm_filters")]
 use motor_mixers::RpmNotchFilterBankConfig;

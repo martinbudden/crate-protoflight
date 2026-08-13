@@ -17,7 +17,7 @@ mod magnetometer;
 mod motor_mixer;
 mod msp;
 mod non_volatile_storage;
-mod optical;
+mod optical_flow;
 mod osd;
 mod rangefinder;
 mod rx;

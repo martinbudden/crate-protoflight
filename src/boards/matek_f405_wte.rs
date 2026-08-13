@@ -6,6 +6,8 @@ use crate::{
     barometer_sensors::Barometer,
     boards::board::{Board, BoardInit, BoardInitError, ImuContext},
     magnetometer_sensors::Magnetometer,
+    optical_flow_sensors::OpticalFlow,
+    rangefinder_sensors::Rangefinder,
 };
 
 use embassy_stm32::{
@@ -98,6 +100,8 @@ pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
 
     let barometer = Barometer::new(init.barometer_type);
     let magnetometer = Magnetometer::new(init.magnetometer_type);
+    let rangefinder = Rangefinder::new(init.rangefinder_type);
+    let optical_flow = OpticalFlow::new(init.optical_flow_type);
 
     // Map physical device names to logical device names and return.
     Ok(Board {
@@ -112,6 +116,8 @@ pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
         sensors_i2c: None,
         barometer,
         magnetometer,
+        rangefinder,
+        optical_flow,
     })
 }
 
