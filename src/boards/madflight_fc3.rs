@@ -8,10 +8,7 @@
 // schematic: <https://madflight.com/img/madflight-FC3.pdf>
 // For Betaflight configuration files:
 // see <https://github.com/betaflight/config/blob/749fff19942fd7b44fa8020a086e1b566054cae9/configs/MADF/MADFLIGHT_FC3/config.h>
-use crate::boards::{
-    ImuContext,
-    board::{Board, BoardInitError},
-};
+use crate::boards::board::{Board, BoardInit, BoardInitError, ImuContext};
 
 use cyw43_pio::PioSpi;
 use embassy_rp::{
@@ -39,7 +36,7 @@ pub fn imu_context(imu: BoardImu) -> ImuContext<BoardImu> {
     ImuContext::new(imu)
 }
 
-pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInitError> {
+pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
     // NOTE: rp2350 numbers peripheral starting at 0, eg SPI0, SPI0, I2C0, I2C0 etc
 
     // Take ownership of the raw RP2350 hardware peripherals block
@@ -112,7 +109,7 @@ pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInit
     //let spi1_type: () = spi1;
 
     let spi0_interrupt = Input::new(spi0_interrupt_pin, embassy_rp::gpio::Pull::Up);
-    let mut imu: BoardImu = Imu426xx::new(ImuSpiBus::new(spi0), axis_order);
+    let mut imu: BoardImu = Imu426xx::new(ImuSpiBus::new(spi0), init.axis_order);
 
     let spi1 = {
         let mut spi_config = SpiConfig::default();
@@ -191,11 +188,13 @@ pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInit
     let motor_driver_quad_dshot = MotorDriverQuadDshot::new();
     let motor_driver = MotorDriver::QuadDshot(motor_driver_quad_dshot);
 
+    let radio = Radio::new(radio_controllers::RadioType::Mock);
+
     // Map physical device names to logical device names and return.
     Ok(Board {
         imu,
         motor_driver,
-        serial_rx_uart: uart0,
+        radio,
         sdcard_spi: None,
         // osd_spi: aux_pio_spi,
         msp_uart: Some(uart1),

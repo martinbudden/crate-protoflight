@@ -1,8 +1,9 @@
 #![allow(unused)]
 use cfg_if::cfg_if;
 
-use imu_sensors::ImuDevice;
+use imu_sensors::{ImuAxisOrder, ImuDevice};
 use motor_mixers::MotorDriver;
+use radio_controllers::{Radio, RadioType};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum BoardInitError {
@@ -26,6 +27,13 @@ pub enum BoardInitError {
     MotorDriverError,
 }
 
+/// Parameters for `board_init`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BoardInit {
+    pub axis_order: ImuAxisOrder,
+    pub radio_type: RadioType,
+}
+
 /// Context for IMU task.
 pub struct ImuContext<I: ImuDevice> {
     pub imu: I,
@@ -43,7 +51,8 @@ if #[cfg(feature = "stm32f405")] {
 pub struct Board<I: ImuDevice> {
     pub imu: I,
     pub motor_driver: MotorDriver,
-    pub serial_rx_uart: Option<UartDevice>,
+    //pub serial_rx_uart: Option<UartDevice>,
+    pub radio: Radio,
 
     pub max7456_spi: Option<SpiDeviceBlocking>,
     pub sdcard_spi: Option<SpiDeviceAsync>,
@@ -79,7 +88,8 @@ pub type MotorOutput = Output<'static>;
 pub struct Board<I: ImuDevice> {
     pub imu: I,
     pub motor_driver: MotorDriver,
-    pub serial_rx_uart: UartDevice,
+    //pub serial_rx_uart: UartDevice,
+    pub radio: Radio,
 
     pub sdcard_spi: Option<SdSpiDevice>,
     //pub osd_spi: AuxiliaryPioSpiDevice,
@@ -133,6 +143,7 @@ use embassy_rp::{
 pub struct Board<I: ImuDevice> {
     pub imu: I,
     pub motor_driver: MotorDriver,
+    pub radio: Radio,
 }
 
 }}

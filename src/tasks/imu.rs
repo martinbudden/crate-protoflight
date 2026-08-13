@@ -1,8 +1,8 @@
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal};
 
-use imu_sensors::{AccFullScale, AccUnits, GyroFullScale, GyroUnits};
+use imu_sensors::{AccFullScale, AccUnits, GyroFullScale, GyroUnits, Imu};
 use static_cell::StaticCell;
-use vqm::{Vector3, Vector3f32};
+use vqm::Vector3f32;
 
 use crate::boards::{BoardImu, ImuContext};
 
@@ -75,10 +75,14 @@ pub async fn run(ctx: &'static mut ImuContext<BoardImu>) {
             Ok(acc) => acc,
             Err(e) => (Vector3f32::default(),Vector3f32::default()),
         };*/
-        //let (acc, gyro_rps) = ctx.imu.read_acc_gyro_rps().await.unwrap_or_default();
+        let acc_gyro = ctx.imu.read_acc_gyro().await;
+        let imu_data = match acc_gyro {
+            Ok(acc_gyro) => ImuData { acc: acc_gyro.0, gyro_rps: acc_gyro.1, delta_t },
+            Err(_acc_gyro) => ImuData { acc: Vector3f32::default(), gyro_rps: Vector3f32::default(), delta_t },
+        };
 
         // Signal the gyro_pid task that there is new ImuData available.
-        let imu_data = ImuData { acc: Vector3::default(), gyro_rps: Vector3::default(), delta_t };
+        //let imu_data = ImuData { acc: Vector3::default(), gyro_rps: Vector3::default(), delta_t };
         IMU_SIGNAL.signal(imu_data);
 
         if loop_count.is_multiple_of(1000) {

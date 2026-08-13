@@ -12,7 +12,7 @@ use crate::{
     tasks::{
         gyro_pid::{GyroPidReceiver, SetpointReceiver, gyro_pid_receiver, setpoint_receiver},
         init::DisplayPortMutex,
-        rx::{RxReceiver, rx_receiver},
+        rx::{RxMessageReceiver, rx_message_receiver},
     },
 };
 
@@ -40,7 +40,7 @@ static OSD_CTX: StaticCell<OsdContext> = StaticCell::new();
 pub struct OsdContext {
     pub gyro_pid_receiver: GyroPidReceiver,
     pub setpoint_receiver: SetpointReceiver,
-    pub rx_receiver: RxReceiver,
+    pub rx_receiver: RxMessageReceiver,
     #[cfg(feature = "barometer")]
     pub barometer_subscriber: BarometerSubscriber,
     #[cfg(feature = "battery")]
@@ -66,7 +66,7 @@ impl OsdContext {
         Self {
             gyro_pid_receiver:gyro_pid_receiver(),
             setpoint_receiver:setpoint_receiver(),
-            rx_receiver:rx_receiver(),
+            rx_receiver:rx_message_receiver(),
             #[cfg(feature = "barometer")] barometer_subscriber:barometer_subscriber(),
             #[cfg(feature = "battery")] battery_subscriber:battery_subscriber(),
             #[cfg(feature = "gps")] gps_subscriber:gps_subscriber(),

@@ -7,10 +7,7 @@
 // see <https://github.com/betaflight/config/blob/master/configs/SPBE/SPEEDYBEEF405V4/config.h>
 // and <https://github.com/betaflight/unified-targets/blob/master/configs/default/SPBE-SPEEDYBEEF405V4.config>.
 
-use crate::boards::{
-    ImuContext,
-    board::{Board, BoardInitError},
-};
+use crate::boards::board::{Board, BoardInit, BoardInitError, ImuContext};
 
 use imu_sensors::{Imu426xx, ImuAxisOrder, ImuSpiBus};
 use motor_mixers::{MotorDriver, MotorDriverQuadDshot, MotorDriverQuadPwm};
@@ -31,6 +28,7 @@ use embassy_stm32::{
 };
 use embassy_time::Delay;
 use embedded_hal_bus::spi::ExclusiveDevice;
+use radio_controllers::Radio;
 
 type BoardSpi =
     ExclusiveDevice<Spi<'static, embassy_stm32::mode::Async, embassy_stm32::spi::mode::Master>, Output<'static>, Delay>;
@@ -41,7 +39,7 @@ pub fn imu_context(imu: BoardImu) -> ImuContext<BoardImu> {
     ImuContext::new(imu)
 }
 
-pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInitError> {
+pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
     // NOTE: stm32 numbers peripheral start at 1, eg SPI1, SPI1, I2C1, I2C2 etc
     /*
     Using Betaflight naming convention. For an STM32 SPI master:
@@ -114,7 +112,7 @@ pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInit
         ExclusiveDevice::new(spi_bus, cs_output, Delay).unwrap()
     };
 
-    let mut imu: BoardImu = Imu426xx::new(ImuSpiBus::new(spi1), axis_order);
+    let mut imu: BoardImu = Imu426xx::new(ImuSpiBus::new(spi1), init.axis_order);
 
     let spi2 = {
         let mut config = SpiConfig::default();
@@ -207,16 +205,19 @@ pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInit
     //let motor_driver_quad_dshot = MotorDriverQuadDshot::new();
     let motor_driver = MotorDriver::QuadPwm(motor_driver_quad_pwm);
 
+    let radio = Radio::new(radio_controllers::RadioType::Mock);
+
     // Map physical device names to logical device names and return.
     Ok(Board {
         imu,
-        serial_rx_uart: Some(uart2.map_err(|_| BoardInitError::SerialRxUartError)?),
+        motor_driver,
+        //serial_rx_uart: Some(uart2.map_err(|_| BoardInitError::SerialRxUartError)?),
+        radio,
         sdcard_spi: Some(spi3.map_err(|_| BoardInitError::SdCardError)?),
         max7456_spi: Some(spi2.map_err(|_| BoardInitError::Max7456NotAvailable)?),
         msp_uart: None,
         esc_sensor_uart: None,
         sensors_i2c: Some(i2c1),
-        motor_driver,
     })
 }
 

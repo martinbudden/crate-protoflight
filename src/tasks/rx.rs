@@ -5,7 +5,7 @@ use embassy_sync::{
 
 #[cfg(feature = "autopilot")]
 use radio_controllers::RcMode;
-use radio_controllers::{Rates, RatesConfig, RcModes, RxChannel, RxFrame};
+use radio_controllers::{Radio, Rates, RatesConfig, RcModes, RxChannel, RxRadio};
 use static_cell::StaticCell;
 
 use crate::{
@@ -22,15 +22,15 @@ static RX_CTX: StaticCell<RxContext> = StaticCell::new();
 const RX_WATCH_COUNT: usize = 3;
 static RX_WATCH: Watch<CriticalSectionRawMutex, RxMessage, RX_WATCH_COUNT> = Watch::new();
 
-type RxSender = Sender<'static, CriticalSectionRawMutex, RxMessage, RX_WATCH_COUNT>;
-pub fn rx_sender() -> RxSender {
+type RxMessageSender = Sender<'static, CriticalSectionRawMutex, RxMessage, RX_WATCH_COUNT>;
+fn rx_message_sender() -> RxMessageSender {
     RX_WATCH.sender()
 }
 
-pub type RxReceiver = Receiver<'static, CriticalSectionRawMutex, RxMessage, RX_WATCH_COUNT>;
+pub type RxMessageReceiver = Receiver<'static, CriticalSectionRawMutex, RxMessage, RX_WATCH_COUNT>;
 
 #[allow(clippy::expect_used)]
-pub fn rx_receiver() -> RxReceiver {
+pub fn rx_message_receiver() -> RxMessageReceiver {
     RX_WATCH.receiver().expect("rx_receiver failed")
 }
 
@@ -39,7 +39,8 @@ use crate::tasks::autopilot::{AutopilotReceiver, autopilot_receiver};
 
 /// Context for the receiver task.
 pub struct RxContext {
-    pub rx_sender: RxSender,
+    pub radio: Radio,
+    pub rx_message_sender: RxMessageSender,
     pub config_subscriber: ConfigSubscriber,
     /// To publish in-flight adjustments.
     pub config_publisher: ConfigPublisher,
@@ -55,10 +56,12 @@ pub struct RxContext {
 impl RxContext {
     #[rustfmt::skip]
     pub fn new(
+        radio: Radio,
         rates_config: RatesConfig,
     ) -> Self {
         Self {
-            rx_sender:rx_sender(),
+            radio,
+            rx_message_sender:rx_message_sender(),
             config_subscriber:config_subscriber(),
             config_publisher:config_publisher(),
             fast_config_publisher:fast_config_publisher(),
@@ -70,8 +73,8 @@ impl RxContext {
     }
 }
 
-pub fn init(rates: RatesConfig) -> &'static mut RxContext {
-    RX_CTX.init(RxContext::new(rates))
+pub fn init(radio: Radio, rates: RatesConfig) -> &'static mut RxContext {
+    RX_CTX.init(RxContext::new(radio, rates))
 }
 
 /// The rx task waits (with a timeout) for a packet from the radio and when one arrives it:
@@ -90,20 +93,20 @@ pub async fn run(ctx: &'static mut RxContext) {
     log::info!("          RX: task started");
 
     loop {
-        // TODO: rx_frame should be obtained on an interrupt form the radio receiver (UART).
-        // TODO: we need to do some failsafe checking here.
-        // For now we just wait for the next tick and create a dummy rx_frame.
+        // TODO: rx_frame should be obtained on an interrupt form the radio receiver (UART). For now we just wait for the next tick.
         ticker.next().await;
-        let mut rx_frame = RxFrame::new();
+        let mut rx_frame = ctx.radio.rx_frame();
 
         // Simulate the user changing the arming channel.
         rx_frame.channels[RxChannel::AUX1] = match loop_count {
             0..100 | 200..400 => RxChannel::MID_HIGH,
             _ => RxChannel::LOW,
         };
+
+        // TODO: we need to do some failsafe checking here.
         let failsafe = 0;
 
-        // check if there has been in-flight adjustment of the rates, if so apply them.
+        // check if there has been in-flight adjustment of the rates, if so apply them. This is a very infrequent event.
         if let Some(wait_result) = ctx.config_subscriber.try_next_message()
             && let embassy_sync::pubsub::WaitResult::Message(ConfigItem::Rates(rates_config)) = wait_result
         {
@@ -132,7 +135,7 @@ pub async fn run(ctx: &'static mut RxContext) {
         }
 
         // Send the rx message. This will be picked by the gyro_pid task.
-        ctx.rx_sender.send(rx_message);
+        ctx.rx_message_sender.send(rx_message);
 
         if loop_count.is_multiple_of(10) {
             log::info!("            RX:       loop {loop_count}");

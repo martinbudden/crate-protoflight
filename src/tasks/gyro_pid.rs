@@ -17,7 +17,7 @@ use crate::{
     tasks::{
         imu::IMU_SIGNAL,
         motor_mixer::MOTOR_MIXER_SIGNAL,
-        rx::{RxReceiver, rx_receiver},
+        rx::{RxMessageReceiver, rx_message_receiver},
     },
 };
 
@@ -78,7 +78,7 @@ static GYRO_PID_CTX: StaticCell<GyroPidContext> = StaticCell::new();
 /// Context for `gyro_pid` task.
 #[allow(unused)]
 pub struct GyroPidContext {
-    pub rx_receiver: RxReceiver,
+    pub rx_receiver: RxMessageReceiver,
     pub gyro_pid_sender: GyroPidSender,
     pub setpoint_sender: SetpointSender,
     pub fast_config_subscriber: FastConfigSubscriber,
@@ -96,7 +96,7 @@ impl GyroPidContext {
         #[cfg(feature = "rpm_filters")] looptime_seconds: f32,
     ) -> Self {
         Self {
-            rx_receiver: rx_receiver(),
+            rx_receiver: rx_message_receiver(),
             gyro_pid_sender: gyro_pid_sender(),
             setpoint_sender: setpoint_sender(),
             fast_config_subscriber: fast_config_subscriber(),

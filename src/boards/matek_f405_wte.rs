@@ -2,10 +2,7 @@
 #![allow(unused)]
 #![allow(clippy::similar_names)]
 
-use crate::boards::{
-    ImuContext,
-    board::{Board, BoardInitError},
-};
+use crate::boards::board::{Board, BoardInit, BoardInitError, ImuContext};
 
 use embassy_stm32::{
     bind_interrupts, dma,
@@ -20,6 +17,7 @@ use embassy_time::Delay;
 use embedded_hal_bus::spi::ExclusiveDevice;
 use imu_sensors::{Imu426xx, ImuAxisOrder, ImuSpiBus};
 use motor_mixers::{MotorDriver, MotorDriverQuadDshot, MotorDriverQuadPwm};
+use radio_controllers::Radio;
 
 type BoardSpi =
     ExclusiveDevice<Spi<'static, embassy_stm32::mode::Async, embassy_stm32::spi::mode::Master>, Output<'static>, Delay>;
@@ -29,7 +27,7 @@ pub fn imu_context(imu: BoardImu) -> ImuContext<BoardImu> {
     ImuContext::new(imu)
 }
 
-pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInitError> {
+pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
     // NOTE: stm32 numbers peripheral starting at 1, eg SPI1, SPI1, I2C1, I2C2 etc
 
     let peripherals = embassy_stm32::init(Default::default());
@@ -67,7 +65,7 @@ pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInit
         ExclusiveDevice::new(spi_bus, cs_output, Delay).unwrap()
     };
 
-    let mut imu: BoardImu = Imu426xx::new(ImuSpiBus::new(spi1), axis_order);
+    let mut imu: BoardImu = Imu426xx::new(ImuSpiBus::new(spi1), init.axis_order);
 
     let spi2 = {
         let mut config = SpiConfig::default();
@@ -92,11 +90,14 @@ pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInit
     let motor_driver_quad_dshot = MotorDriverQuadDshot::new();
     let motor_driver = MotorDriver::QuadDshot(motor_driver_quad_dshot);
 
+    let radio = Radio::new(radio_controllers::RadioType::Mock);
+
     // Map physical device names to logical device names and return.
     Ok(Board {
         imu,
-        serial_rx_uart: Some(uart2.map_err(|_| BoardInitError::SerialRxUartError)?),
         motor_driver,
+        radio,
+        //serial_rx_uart: Some(uart2.map_err(|_| BoardInitError::SerialRxUartError)?),
         max7456_spi: None,
         sdcard_spi: None,
         msp_uart: None,

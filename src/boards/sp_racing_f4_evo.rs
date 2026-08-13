@@ -7,10 +7,8 @@
 // see <https://github.com/betaflight/unified-targets/blob/master/configs/default/SPRO-SPRACINGF4EVO.config>,
 // and <https://github.com/betaflight/config/blob/master/configs/SPRO/SPRACINGF4EVO/config.h>.
 
-use crate::boards::{
-    ImuContext,
-    board::{Board, BoardInitError},
-};
+use crate::boards::board::{Board, BoardInit, BoardInitError, ImuContext};
+
 use imu_sensors::{Imu426xx, ImuAxisOrder, ImuSpiBus};
 use motor_mixers::{MotorDriver, MotorDriverQuadDshot, MotorDriverQuadPwm};
 
@@ -30,6 +28,7 @@ use embassy_stm32::{
 };
 use embassy_time::Delay;
 use embedded_hal_bus::spi::ExclusiveDevice;
+use radio_controllers::Radio;
 
 type BoardSpi =
     ExclusiveDevice<Spi<'static, embassy_stm32::mode::Async, embassy_stm32::spi::mode::Master>, Output<'static>, Delay>;
@@ -40,7 +39,7 @@ pub fn imu_context(imu: BoardImu) -> ImuContext<BoardImu> {
     ImuContext::new(imu)
 }
 
-pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInitError> {
+pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
     // NOTE: stm32 numbers peripheral start at 1, eg SPI1, SPI1, I2C1, I2C2 etc
 
     let peripherals = embassy_stm32::init(Default::default());
@@ -122,7 +121,7 @@ pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInit
         ExclusiveDevice::new(spi_bus, cs_output, Delay).unwrap()
     };
 
-    let mut imu: BoardImu = Imu426xx::new(ImuSpiBus::new(spi1), axis_order);
+    let mut imu: BoardImu = Imu426xx::new(ImuSpiBus::new(spi1), init.axis_order);
 
     let m1 = peripherals.PC6;
     let m2 = peripherals.PC7;
@@ -166,11 +165,14 @@ pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInit
     //let motor_driver_quad_dshot = MotorDriverQuadDshot::new();
     let motor_driver = MotorDriver::QuadPwm(motor_driver_quad_pwm);
 
+    let radio = Radio::new(radio_controllers::RadioType::Mock);
+
     // Map physical device names to logical device names and return.
     Ok(Board {
         imu,
         motor_driver,
-        serial_rx_uart: None,
+        //serial_rx_uart: None,
+        radio,
         sdcard_spi: None,
         max7456_spi: None,
         msp_uart: None,

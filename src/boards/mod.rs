@@ -9,7 +9,7 @@ pub mod sp_racing_f4_evo;
 pub mod speedybee_f405_v4;
 pub mod std;
 
-pub use board::ImuContext;
+pub use board::{BoardInit, ImuContext};
 
 #[cfg(feature = "std")]
 pub use crate::boards::std::{BoardImu, board_init};

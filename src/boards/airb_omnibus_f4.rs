@@ -10,10 +10,8 @@
 // This board has onboard flash and no SD card slot.
 // The Omnibus F4 SD has an SD card slot, but no MAX7465 chip.
 
-use crate::boards::{
-    ImuContext,
-    board::{Board, BoardInitError},
-};
+use crate::boards::board::{Board, BoardInit, BoardInitError, ImuContext};
+
 use imu_sensors::{ImuAxisOrder, ImuSpiBus, Mpu6050}; // TODO: this is placeholder, change to Mpu6000 when driver is available
 use motor_mixers::{MotorDriver, MotorDriverQuadDshot, MotorDriverQuadPwm};
 
@@ -33,6 +31,7 @@ use embassy_stm32::{
 };
 use embassy_time::Delay;
 use embedded_hal_bus::spi::ExclusiveDevice;
+use radio_controllers::Radio;
 
 type BoardSpi =
     ExclusiveDevice<Spi<'static, embassy_stm32::mode::Async, embassy_stm32::spi::mode::Master>, Output<'static>, Delay>;
@@ -43,7 +42,7 @@ pub fn imu_context(imu: BoardImu) -> ImuContext<BoardImu> {
     ImuContext::new(imu)
 }
 
-pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInitError> {
+pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
     // NOTE: stm32 numbers peripheral start at 1, eg SPI1, SPI1, I2C1, I2C2 etc
 
     let peripherals = embassy_stm32::init(Default::default());
@@ -106,7 +105,7 @@ pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInit
         ExclusiveDevice::new(spi_bus, cs_output, Delay).unwrap()
     };
 
-    let mut imu: BoardImu = Mpu6050::new(ImuSpiBus::new(spi1), axis_order);
+    let mut imu: BoardImu = Mpu6050::new(ImuSpiBus::new(spi1), init.axis_order);
 
     /*timer B14 AF9
     # pin B14: TIM12 CH1 (AF9)
@@ -154,11 +153,14 @@ pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInit
     //let motor_driver_quad_dshot = MotorDriverQuadDshot::new();
     let motor_driver = MotorDriver::QuadPwm(motor_driver_quad_pwm);
 
+    let radio = Radio::new(radio_controllers::RadioType::Mock);
+
     // Map physical device names to logical device names and return.
     Ok(Board {
         imu,
         motor_driver,
-        serial_rx_uart: None,
+        //serial_rx_uart: None,
+        radio,
         sdcard_spi: None,
         max7456_spi: None,
         msp_uart: None,

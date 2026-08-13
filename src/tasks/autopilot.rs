@@ -11,7 +11,7 @@ use crate::{
     flight::RxMessage,
     tasks::{
         gyro_pid::{GyroPidReceiver, gyro_pid_receiver},
-        rx::{RxReceiver, rx_receiver},
+        rx::{RxMessageReceiver, rx_message_receiver},
     },
 };
 
@@ -54,7 +54,7 @@ pub fn autopilot_receiver() -> AutopilotReceiver {
 #[allow(unused)]
 pub struct AutopilotContext {
     pub gyro_pid_receiver: GyroPidReceiver,
-    pub rx_receiver: RxReceiver,
+    pub rx_receiver: RxMessageReceiver,
     pub autopilot_sender: AutopilotSender,
     pub autopilot: Autopilot,
     #[cfg(feature = "barometer")]
@@ -74,7 +74,7 @@ impl AutopilotContext {
     ) -> Self {
         Self {
             gyro_pid_receiver :gyro_pid_receiver(),
-            rx_receiver:rx_receiver(),
+            rx_receiver:rx_message_receiver(),
             autopilot_sender:autopilot_sender(),
             autopilot: Autopilot::new(),
             #[cfg(feature = "barometer")] barometer_subscriber:barometer_subscriber(),

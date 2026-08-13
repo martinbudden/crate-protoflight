@@ -1,11 +1,10 @@
 #![cfg(feature = "std")]
 
-use crate::boards::{
-    ImuContext,
-    board::{Board, BoardInitError},
-};
-use imu_sensors::{ImuAxisOrder, ImuMock, MockImuBus};
+use crate::boards::board::{Board, BoardInit, BoardInitError, ImuContext};
+
+use imu_sensors::{ImuMock, MockImuBus};
 use motor_mixers::{MotorDriver, MotorDriverQuadPwm};
+use radio_controllers::{Radio, RadioType};
 
 pub type BoardImu = ImuMock<MockImuBus>;
 
@@ -15,10 +14,11 @@ pub fn imu_context(imu: BoardImu) -> ImuContext<BoardImu> {
 }
 
 #[allow(clippy::unnecessary_wraps)]
-pub fn board_init(axis_order: ImuAxisOrder) -> Result<Board<BoardImu>, BoardInitError> {
+pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
     let motor_driver_pwm = MotorDriverQuadPwm::new();
     let motor_driver = MotorDriver::QuadPwm(motor_driver_pwm);
-    let imu = ImuMock::new(MockImuBus::new(), axis_order);
+    let imu = ImuMock::new(MockImuBus::new(), init.axis_order);
+    let radio = Radio::new(RadioType::Mock);
 
-    Ok(Board { imu, motor_driver })
+    Ok(Board { imu, motor_driver, radio })
 }

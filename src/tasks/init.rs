@@ -3,7 +3,10 @@ use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 
 use static_cell::StaticCell;
 
-use crate::{boards::board_init, config::GLOBAL_CONFIG};
+use crate::{
+    boards::{BoardInit, board_init},
+    config::GLOBAL_CONFIG,
+};
 
 #[cfg(feature = "serde")]
 use crate::tasks::non_volatile_storage::load_global_configs;
@@ -69,7 +72,9 @@ pub async fn init(spawner: Spawner) {
     // **** GET THE DEVICES FROM THE BOARD SUPPORT PACKAGE
 
     #[allow(clippy::panic)]
-    let Ok(board) = board_init(config.imu_device.axis_order) else {
+    let Ok(board) =
+        board_init(BoardInit { axis_order: config.imu_device.axis_order, radio_type: config.rx.serial_rx_provider })
+    else {
         panic!("board_init failed");
     };
 
@@ -105,7 +110,7 @@ pub async fn init(spawner: Spawner) {
     );
 
     // TODO: Initialize the receiver task context with the UART provided by the Board Support Package.
-    let rx_ctx = tasks::rx::init(config.rates);
+    let rx_ctx = tasks::rx::init(board.radio, config.rates);
 
     // TODO: Initialize the MSP task context with the UART provided by the Board Support Package.
     #[cfg(feature = "msp")]

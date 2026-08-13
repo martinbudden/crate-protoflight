@@ -1,4 +1,4 @@
-use radio_controllers::{Rates, RatesConfig, RcMode, RcModes};
+use radio_controllers::{RadioType, Rates, RatesConfig, RcMode, RcModes};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use stream_buf::{StreamBufReader, StreamBufWriter};
@@ -537,7 +537,7 @@ impl Msp {
             let global_config = GLOBAL_CONFIG.lock().await;
             global_config.rx
         };
-        dst.write_u8(rx.serial_rx_provider);
+        dst.write_u8(rx.serial_rx_provider as u8);
         dst.write_u16(rx.max_check);
         dst.write_u16(rx.mid_rc);
         dst.write_u16(rx.min_check);
@@ -568,7 +568,7 @@ impl Msp {
         let mut global_config = GLOBAL_CONFIG.lock().await;
         let mut rx = global_config.rx;
 
-        rx.serial_rx_provider = src.read_u8();
+        rx.serial_rx_provider = RadioType::from_u8(src.read_u8());
         rx.max_check = src.read_u16();
         rx.mid_rc = src.read_u16();
         rx.min_check = src.read_u16();
