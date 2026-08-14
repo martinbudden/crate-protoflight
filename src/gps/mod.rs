@@ -7,6 +7,8 @@ mod geodetic;
 mod gps_data;
 mod gps_parser;
 mod gps_solution_data;
+mod nmea_parser;
+mod ublox_parser;
 
 pub use config::{GpsConfig, GpsOffOn, GpsProvider, GpsRescueConfig, SbasMode};
 pub use geodetic::{Geodetic, GeographicCoordinate};
