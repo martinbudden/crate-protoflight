@@ -1,3 +1,4 @@
+use num_traits::Float;
 /// The common interface for barometer.
 pub trait BarometerDevice {
     /// Returns sample rate or error.

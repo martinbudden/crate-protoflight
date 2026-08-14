@@ -30,9 +30,10 @@ const _REG_TEMPERATURE_XLSB: u8 = 0xFC;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BarometerBmp085 {
-    calibration: CalibrationData,
+    temperature_calibration: TemperatureCalibration,
     temperature_fine: i32,
     temperature_celsius: f32,
+    pressure_calibration: PressureCalibration,
     pressure_pascals: f32,
     pressure_at_reference_altitude: f32,
 }
@@ -51,9 +52,10 @@ impl BarometerBmp085 {
 
     pub const fn new() -> Self {
         Self {
-            calibration: CalibrationData::new(),
+            temperature_calibration: TemperatureCalibration::new(),
             temperature_fine: 0,
             temperature_celsius: 0.0,
+            pressure_calibration: PressureCalibration::new(),
             pressure_pascals: 0.0,
             pressure_at_reference_altitude: 0.0,
         }
@@ -61,24 +63,25 @@ impl BarometerBmp085 {
 }
 
 impl BarometerBmp085 {
-    fn calculate_temperature_and_pressure(&mut self, temperature: MsbLsbXlsb, pressure: MsbLsbXlsb) {
+    fn calculate_temperature(&mut self, temperature: MsbLsbXlsb, calibration: TemperatureCalibration) {
         let adc_t: i32 =
             ((((temperature.msb) << 16) | ((temperature.lsb) << 8) | (temperature.xlsb)) >> 4).cast_signed();
-        let vt1 = ((adc_t >> 3) - (self.calibration.t1 << 1)) * self.calibration.t2;
-        let vt2 =
-            ((((adc_t >> 4) - self.calibration.t1) * ((adc_t >> 4) - self.calibration.t1)) >> 12) * self.calibration.t3;
+        let vt1 = ((adc_t >> 3) - (calibration.t1 << 1)) * calibration.t2;
+        let vt2 = ((((adc_t >> 4) - calibration.t1) * ((adc_t >> 4) - calibration.t1)) >> 12) * calibration.t3;
         self.temperature_fine = (vt1 >> 11) + (vt2 >> 14);
         #[allow(clippy::cast_precision_loss)]
         {
             self.temperature_celsius = ((self.temperature_fine * 5 + 128) >> 8) as f32 / 100.0;
         }
+    }
 
+    fn calculate_pressure(&mut self, pressure: MsbLsbXlsb, calibration: PressureCalibration) {
         let mut vp1 = i64::from(self.temperature_fine) - 128_000;
-        let mut vp2 = vp1 * vp1 * i64::from(self.calibration.p6);
-        vp2 += (vp1 * i64::from(self.calibration.p5)) << 17;
-        vp2 += i64::from(self.calibration.p4) << 35;
-        vp1 = ((vp1 * vp1 * i64::from(self.calibration.p3)) >> 8) + ((vp1 * i64::from(self.calibration.p2)) << 12);
-        vp1 = (((1i64 << 47) + vp1) * i64::from(self.calibration.p1)) >> 33;
+        let mut vp2 = vp1 * vp1 * i64::from(calibration.p6);
+        vp2 += (vp1 * i64::from(calibration.p5)) << 17;
+        vp2 += i64::from(calibration.p4) << 35;
+        vp1 = ((vp1 * vp1 * i64::from(calibration.p3)) >> 8) + ((vp1 * i64::from(calibration.p2)) << 12);
+        vp1 = (((1i64 << 47) + vp1) * i64::from(calibration.p1)) >> 33;
 
         if (vp1 == 0) {
             return; // avoid division by zero
@@ -87,10 +90,10 @@ impl BarometerBmp085 {
 
         let mut p: i64 = 1_048_576 - i64::from(adc_p);
         p = (((p << 31) - vp2) * 3125) / vp1;
-        let vp1 = (i64::from(self.calibration.p9) * (p >> 13) * (p >> 13)) >> 25;
-        let vp2 = (i64::from(self.calibration.p8) * p) >> 19;
+        let vp1 = (i64::from(calibration.p9) * (p >> 13) * (p >> 13)) >> 25;
+        let vp2 = (i64::from(calibration.p8) * p) >> 19;
 
-        p = ((p + vp1 + vp2) >> 8) + (i64::from(self.calibration.p7) << 4);
+        p = ((p + vp1 + vp2) >> 8) + (i64::from(calibration.p7) << 4);
         #[allow(clippy::cast_precision_loss)]
         {
             self.pressure_pascals = p as f32 / 256.0;
@@ -99,10 +102,25 @@ impl BarometerBmp085 {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-struct CalibrationData {
+struct TemperatureCalibration {
     pub t1: i32,
     pub t2: i32,
     pub t3: i32,
+}
+
+impl Default for TemperatureCalibration {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl TemperatureCalibration {
+    pub const fn new() -> Self {
+        Self { t1: 0, t2: 0, t3: 0 }
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct PressureCalibration {
     pub p1: u16,
     pub p2: i16,
     pub p3: i16,
@@ -114,15 +132,15 @@ struct CalibrationData {
     pub p9: i16,
 }
 
-impl Default for CalibrationData {
+impl Default for PressureCalibration {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl CalibrationData {
+impl PressureCalibration {
     pub const fn new() -> Self {
-        Self { t1: 0, t2: 0, t3: 0, p1: 0, p2: 0, p3: 0, p4: 0, p5: 0, p6: 0, p7: 0, p8: 0, p9: 0 }
+        Self { p1: 0, p2: 0, p3: 0, p4: 0, p5: 0, p6: 0, p7: 0, p8: 0, p9: 0 }
     }
 }
 
@@ -163,7 +181,8 @@ impl BarometerDevice for BarometerBmp085 {
 
         let temperature = MsbLsbXlsb::default();
         let pressure = MsbLsbXlsb::default();
-        self.calculate_temperature_and_pressure(temperature, pressure);
+        self.calculate_temperature(temperature, self.temperature_calibration);
+        self.calculate_pressure(pressure, self.pressure_calibration);
     }
 
     fn message(&self) -> BarometerMessage {
