@@ -1,8 +1,11 @@
 use num_traits::Float;
+
+use crate::barometer_sensors::{barometer::BarometerError, i2c::I2cError};
 /// The common interface for barometer.
 pub trait BarometerDevice {
     /// Returns sample rate or error.
-    async fn init(&mut self) -> Result<u32, ()>;
+    //pub async fn init(&self) -> Result<u32, BarometerError<I2cError>> {
+    async fn init(&mut self) -> Result<u32, BarometerError<I2cError>>;
 
     async fn make_reading(&mut self);
     fn message(&self) -> BarometerMessage;

@@ -1,6 +1,13 @@
 #![cfg(feature = "barometer")]
 
-use crate::barometer_sensors::{BarometerDevice, BarometerMessage};
+use crate::{
+    barometer_sensors::{
+        BarometerDevice, BarometerMessage,
+        barometer::BarometerError,
+        i2c::{I2cError, SharedI2cExt},
+    },
+    boards::board::{I2cDeviceBlocking, SharedI2cBus},
+};
 
 const _REG_DIG_T1: u8 = 0x88;
 const _REG_DIG_T2: u8 = 0x8A;
@@ -28,8 +35,10 @@ const _REG_TEMPERATURE_MSB: u8 = 0xFA;
 const _REG_TEMPERATURE_LSB: u8 = 0xFB;
 const _REG_TEMPERATURE_XLSB: u8 = 0xFC;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+pub type Bmp085Error = BarometerError<<I2cDeviceBlocking as embedded_hal::i2c::ErrorType>::Error>;
+
 pub struct BarometerBmp085 {
+    pub i2c_bus: &'static SharedI2cBus,
     temperature_calibration: TemperatureCalibration,
     temperature_fine: i32,
     temperature_celsius: f32,
@@ -38,20 +47,15 @@ pub struct BarometerBmp085 {
     pressure_at_reference_altitude: f32,
 }
 
-impl Default for BarometerBmp085 {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl BarometerBmp085 {
     const I2C_ADDRESS: u8 = 0x76;
     const I2C_ADDRESS_ALTERNATIVE: u8 = 0x77;
     const CHIP_ID: u8 = 0x58;
     const MAX_SPI_FREQUENCY_HZ: u32 = 10_000_000;
 
-    pub const fn new() -> Self {
+    pub const fn new(i2c_bus: &'static SharedI2cBus) -> Self {
         Self {
+            i2c_bus,
             temperature_calibration: TemperatureCalibration::new(),
             temperature_fine: 0,
             temperature_celsius: 0.0,
@@ -162,15 +166,17 @@ impl MsbLsbXlsb {
     }
 }
 
-impl BarometerDevice for BarometerBmp085 {
-    async fn init(&mut self) -> Result<u32, ()> {
+//impl BarometerDevice for BarometerBmp085 {
+impl BarometerBmp085 {
+    pub async fn init(&self) -> Result<u32, BarometerError<I2cError>> {
+        //async fn init(&mut self) -> Result<u32, ()> {
         // Placeholder: explicitly await an immediately ready inline future
         core::future::poll_fn(|_| core::task::Poll::Ready(())).await;
 
         Ok(40)
     }
 
-    async fn make_reading(&mut self) {
+    pub async fn make_reading(&mut self) {
         // Placeholder: explicitly await an immediately ready inline future
         core::future::poll_fn(|_| core::task::Poll::Ready(())).await;
 
@@ -185,7 +191,7 @@ impl BarometerDevice for BarometerBmp085 {
         self.calculate_pressure(pressure, self.pressure_calibration);
     }
 
-    fn message(&self) -> BarometerMessage {
+    pub fn message(&self) -> BarometerMessage {
         let altitude_m =
             BarometerMessage::calculate_altitude_meters(self.pressure_pascals, self.pressure_at_reference_altitude);
         #[allow(clippy::cast_possible_truncation)]

@@ -126,6 +126,9 @@ std = [
     "dep:env_filter"
 ]
 
+
+
+
 rp2350 = [
     "dep:embassy-rp",
     "dep:cyw43-pio",
@@ -151,9 +154,13 @@ rp235xb =[
 stm32 = [
     "dep:embassy-stm32",
     "dep:cortex-m-rt",
+    "embassy-stm32/rt",
     "embassy-stm32/time-driver-tim2",
+    "embassy-stm32/executor-thread",
+    "embassy-stm32/executor-interrupt",
     "embassy-executor/platform-cortex-m",   # <-- Explicitly satisfies the executor's platform check
     "embassy-executor/executor-thread",
+    "embassy-executor/executor-interrupt",
     "motor-mixers/stm32",
 ]
 
@@ -171,10 +178,12 @@ embassy-time = { version = "0.5.1", default-features = false }
 embassy-sync = { version = "0.8.0", default-features = false }
 embedded-hal-async = { version = "1.0.0", default-features = false }
 embassy-embedded-hal = "0.6.0"
+embedded-io-async = "0.7.0"
 static_cell = "2.1.1"
 critical-section = { version = "1.2.0" }
 # Hardware-specific Embassy HAL
 cortex-m-rt = { version = "0.7.5", optional = true }
+embedded-hal = { version = "1.0" }
 embedded-hal-bus = { version = "0.3.0", features = ["async"] }
 embedded-sdmmc = { version = "0.9.0", default-features = false, features = ["log"], optional = true }
 # Raspberry Pi Pico specific
@@ -217,9 +226,9 @@ blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger
 #motor-mixers = { version = "0.1.5", default-features = false }
 motor-mixers = { git = "https://github.com/martinbudden/crate-motor-mixers", default-features = false }
 #motor-mixers = { path = "../motor-mixers", default-features = false }
-#radio-controllers = { version = "0.1.6" }
-radio-controllers = { git = "https://github.com/martinbudden/crate-radio-controllers" }
-#radio-controllers = { path = "../radio-controllers" }
+#radio-controllers = { version = "0.1.6", default-features = false }
+#radio-controllers = { git = "https://github.com/martinbudden/crate-radio-controllers", default-features = false}
+radio-controllers = { path = "../radio-controllers", default-features = false }
 #imu-sensors = { version = "0.1.3" }
 imu-sensors = { git = "https://github.com/martinbudden/crate-imu-sensors" }
 #imu-sensors = { path = "../imu-sensors" }

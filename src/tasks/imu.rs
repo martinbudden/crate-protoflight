@@ -37,7 +37,7 @@ impl Default for ImuData {
 
 pub static IMU_SIGNAL: Signal<CriticalSectionRawMutex, ImuData> = Signal::new();
 
-static IMU_CTX: StaticCell<ImuContext<crate::boards::BoardImu>> = StaticCell::new();
+static IMU_CTX: StaticCell<ImuContext<BoardImu>> = StaticCell::new();
 
 pub fn init(imu: BoardImu) -> &'static mut ImuContext<BoardImu> {
     IMU_CTX.init(ImuContext::<BoardImu>::new(imu))

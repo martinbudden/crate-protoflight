@@ -1,4 +1,4 @@
-use crate::barometer_sensors::{BarometerDevice, BarometerMessage};
+use crate::barometer_sensors::{BarometerDevice, BarometerMessage, barometer::BarometerError, i2c::I2cError};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BarometerMock {}
@@ -15,20 +15,25 @@ impl BarometerMock {
     }
 }
 
-impl BarometerDevice for BarometerMock {
-    async fn init(&mut self) -> Result<u32, ()> {
+//impl BarometerDevice for BarometerMock {
+impl BarometerMock {
+    pub async fn init(&self) -> Result<u32, BarometerError<I2cError>> {
+        //async fn init(&mut self) -> Result<u32, ()> {
         // Placeholder: explicitly await an immediately ready inline future
         core::future::poll_fn(|_| core::task::Poll::Ready(())).await;
 
         Ok(40)
     }
 
-    async fn make_reading(&mut self) {
+    pub async fn make_reading(&mut self) {
         // Placeholder: explicitly await an immediately ready inline future
         core::future::poll_fn(|_| core::task::Poll::Ready(())).await;
         _ = self;
     }
-    fn message(&self) -> BarometerMessage {
+
+    #[allow(clippy::trivially_copy_pass_by_ref)]
+    pub fn message(&self) -> BarometerMessage {
+        _ = self;
         BarometerMessage::default()
     }
 }

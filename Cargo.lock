@@ -161,9 +161,9 @@ checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "cc"
-version = "1.4.2"
+version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d262e149917187838d5b42777c8253bcb64500067342904e7d429499a6f277e"
+checksum = "509591b7bcd67f4ef775afad7662703b4935daaa6ec0e5605cfb1090b32a2b6d"
 dependencies = [
  "find-msvc-tools",
  "shlex",
@@ -174,6 +174,15 @@ name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
+
+[[package]]
+name = "chrono"
+version = "0.4.45"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1aa79e62e7697b8e29b513a68abacf485adcd1fe8284a4316c5ae868e6633327"
+dependencies = [
+ "num-traits",
+]
 
 [[package]]
 name = "cobs"
@@ -560,11 +569,13 @@ dependencies = [
  "bitflags",
  "block-device-driver",
  "cfg-if",
+ "chrono",
  "cortex-m",
  "cortex-m-rt",
  "critical-section",
  "document-features",
  "embassy-embedded-hal",
+ "embassy-executor",
  "embassy-futures",
  "embassy-hal-internal 0.5.0",
  "embassy-net-driver",
@@ -840,9 +851,9 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 
 [[package]]
 name = "find-msvc-tools"
-version = "0.1.10"
+version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26b73573e6edcd2af0cdf47bd6cb58f0b3839491263c314eaad1ccf24430e1de"
+checksum = "d45db016d36b838f563236e9193d0ee6ce38f3f68b6c94e914b4929c96bbb890"
 
 [[package]]
 name = "fixed"
@@ -1205,7 +1216,7 @@ dependencies = [
 [[package]]
 name = "motor-mixers"
 version = "0.1.5"
-source = "git+https://github.com/martinbudden/crate-motor-mixers#51c989b18fa200e4acae1bcf6e422320e2810269"
+source = "git+https://github.com/martinbudden/crate-motor-mixers#9cbefa35d2354deca0614059dc5dcf0a5e388f5d"
 dependencies = [
  "embassy-executor",
  "embassy-futures",
@@ -1480,8 +1491,10 @@ dependencies = [
  "embassy-stm32",
  "embassy-sync",
  "embassy-time",
+ "embedded-hal 1.0.0",
  "embedded-hal-async",
  "embedded-hal-bus",
+ "embedded-io-async 0.7.0",
  "embedded-sdmmc",
  "embedded-storage-async",
  "embedded-storage-file",
@@ -1522,7 +1535,6 @@ dependencies = [
 [[package]]
 name = "radio-controllers"
 version = "0.1.6"
-source = "git+https://github.com/martinbudden/crate-radio-controllers#cead3114fc43d49a585f84ee10212c340e26c046"
 dependencies = [
  "embedded-hal 1.0.0",
  "embedded-hal-nb",
@@ -1877,6 +1889,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e74b78632cea498cfb28386a29f8bfae7476d6570a78733eb5fecbee66c2f4ce"
 dependencies = [
  "cortex-m",
+ "cortex-m-rt",
 ]
 
 [[package]]

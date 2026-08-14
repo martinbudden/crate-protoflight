@@ -1,6 +1,11 @@
-use crate::barometer_sensors::{BarometerDevice, BarometerMessage, barometer_mock::BarometerMock};
 #[cfg(feature = "barometer")]
-use crate::barometer_sensors::{barometer_bmp085::BarometerBmp085, barometer_dps310::BarometerDps310};
+use crate::{
+    barometer_sensors::{
+        BarometerDevice, BarometerMessage, barometer_bmp085::BarometerBmp085, barometer_dps310::BarometerDps310,
+        barometer_mock::BarometerMock, i2c::I2cError,
+    },
+    boards::board::SharedI2cBus,
+};
 
 #[cfg(feature = "serde")]
 use {
@@ -55,7 +60,14 @@ impl BarometerType {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Debug)]
+pub enum BarometerError<E> {
+    I2c(E),
+    InvalidChipId { expected: u8, actual: u8 },
+    InvalidCalibration,
+    InvalidData,
+}
+
 pub enum Barometer {
     Mock(BarometerMock),
     #[cfg(feature = "barometer")]
@@ -66,21 +78,22 @@ pub enum Barometer {
 
 impl Barometer {
     #[must_use]
-    pub const fn new(barometer_type: BarometerType) -> Option<Barometer> {
+    pub const fn new(barometer_type: BarometerType, i2c_bus: &'static SharedI2cBus) -> Option<Barometer> {
         match barometer_type {
             BarometerType::Mock => Some(Self::Mock(BarometerMock::new())),
             //#[cfg(feature = "barometer")]
-            //BarometerType::Default => Some(Self::Mock(BarometerMock::new())),
+            //BarometerType::Default => Some(Self::Mock(BarometerMock::new(i2c_bus))),
             #[cfg(feature = "barometer")]
-            BarometerType::Bmp085 => Some(Self::Bmp085(BarometerBmp085::new())),
+            BarometerType::Bmp085 => Some(Self::Bmp085(BarometerBmp085::new(i2c_bus))),
             #[cfg(feature = "barometer")]
-            BarometerType::Dsp310 => Some(Self::Dps310(BarometerDps310::new())),
+            BarometerType::Dsp310 => Some(Self::Dps310(BarometerDps310::new(i2c_bus))),
             _ => None,
         }
     }
 }
+
 impl BarometerDevice for Barometer {
-    async fn init(&mut self) -> Result<u32, ()> {
+    async fn init(&mut self) -> Result<u32, BarometerError<I2cError>> {
         match self {
             Self::Mock(barometer) => barometer.init().await,
             #[cfg(feature = "barometer")]

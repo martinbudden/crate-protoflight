@@ -2,7 +2,7 @@
 
 #[cfg(feature = "magnetometer")]
 use crate::magnetometer_sensors::magnetometer_hmc5883::MagnetometerHmc5883;
-use crate::magnetometer_sensors::magnetometer_mock::MagnetometerMock;
+use crate::{boards::board::SharedI2cBus, magnetometer_sensors::magnetometer_mock::MagnetometerMock};
 
 #[cfg(feature = "serde")]
 use {
@@ -76,7 +76,6 @@ pub trait RxMagnetometer {
     fn message(&self) -> MagnetometerMessage;
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Magnetometer {
     Mock(MagnetometerMock),
     #[cfg(feature = "magnetometer")]
@@ -85,10 +84,10 @@ pub enum Magnetometer {
 
 impl Magnetometer {
     #[must_use]
-    pub const fn new(magnetometer_type: MagnetometerType) -> Option<Magnetometer> {
+    pub const fn new(magnetometer_type: MagnetometerType, i2c_bus: &'static SharedI2cBus) -> Option<Magnetometer> {
         match magnetometer_type {
             #[cfg(feature = "magnetometer")]
-            MagnetometerType::Hmc5883 => Some(Self::Hmc5883(MagnetometerHmc5883::new())),
+            MagnetometerType::Hmc5883 => Some(Self::Hmc5883(MagnetometerHmc5883::new(i2c_bus))),
             MagnetometerType::Mock => Some(Self::Mock(MagnetometerMock::new())),
             _ => None,
         }

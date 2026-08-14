@@ -9,20 +9,41 @@
 
 use crate::{
     barometer_sensors::Barometer,
-    boards::board::{Board, BoardInit, BoardInitError, ImuContext},
+    boards::board::{Board, BoardInit, BoardInitError, GpsHardware, ImuContext, SharedI2cBus},
     gps::GpsParser,
     magnetometer_sensors::Magnetometer,
     optical_flow_sensors::OpticalFlow,
     rangefinder_sensors::Rangefinder,
 };
+use embassy_executor::InterruptExecutor;
 
 use imu_sensors::{Imu426xx, ImuAxisOrder, ImuSpiBus};
 use motor_mixers::{MotorDriver, MotorDriverQuadDshot, MotorDriverQuadPwm};
 
+static REALTIME_EXECUTOR: InterruptExecutor = InterruptExecutor::new();
+
+// SAFETY: TIM6_DAC is exclusively reserved for the RealtimeExecutor.
+// This handler is the only caller of `on_interrupt()`, and the executor
+// has been started before the interrupt is enabled.
+#[allow(non_snake_case)]
+#[interrupt]
+unsafe fn TIM6_DAC() {
+    unsafe {
+        REALTIME_EXECUTOR.on_interrupt();
+    }
+}
+
+pub fn start_realtime_executor() -> embassy_executor::SendSpawner {
+    interrupt::TIM6_DAC.set_priority(Priority::P1);
+    REALTIME_EXECUTOR.start(interrupt::TIM6_DAC)
+}
+
 use embassy_stm32::{
     bind_interrupts, dma,
     gpio::{Input, Level, Output, OutputType::PushPull, Pull, Speed},
-    i2c::{Config as I2cConfig, I2c},
+    i2c::{self, Config as I2cConfig, I2c},
+    interrupt,
+    interrupt::{InterruptExt, Priority},
     mode::Async,
     peripherals,
     spi::{Config as SpiConfig, Spi, mode::Master},
@@ -36,6 +57,7 @@ use embassy_stm32::{
 use embassy_time::Delay;
 use embedded_hal_bus::spi::ExclusiveDevice;
 use radio_controllers::Radio;
+use static_cell::StaticCell;
 
 type BoardSpi =
     ExclusiveDevice<Spi<'static, embassy_stm32::mode::Async, embassy_stm32::spi::mode::Master>, Output<'static>, Delay>;
@@ -46,7 +68,9 @@ pub fn imu_context(imu: BoardImu) -> ImuContext<BoardImu> {
     ImuContext::new(imu)
 }
 
-pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
+pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
+    static I2C_BUS: StaticCell<SharedI2cBus> = StaticCell::new();
+
     // NOTE: stm32 numbers peripheral start at 1, eg SPI1, SPI1, I2C1, I2C2 etc
     /*
     Using Betaflight naming convention. For an STM32 SPI master:
@@ -103,7 +127,6 @@ pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
 
     // UART5 — ESC sensor (RX only)
     let uart5_rx = peripherals.PD2;
-    let uart5_rx_dma = peripherals.DMA1_CH0;
 
     // UART6
     let uart6_tx = peripherals.PC6;
@@ -144,40 +167,44 @@ pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
     let uart1 = {
         let mut config = UsartConfig::default();
         config.baudrate = 115_200;
-        Uart::new_blocking(peripherals.USART1, uart1_rx, uart1_tx, config)
+        Uart::new_blocking(peripherals.USART1, uart1_rx, uart1_tx, config).map_err(|_| BoardInitError::UartError)?
     };
 
     let uart2 = {
         let mut config = UsartConfig::default();
         config.baudrate = 115_200;
         Uart::new(peripherals.USART2, uart2_rx, uart2_tx, uart2_tx_dma, uart2_rx_dma, Irqs, config)
+            //Uart::new_blocking(peripherals.USART2, uart2_rx, uart2_tx, config)
+            .map_err(|_| BoardInitError::UartError)?
     };
 
     let uart3 = {
         let mut config = embassy_stm32::usart::Config::default();
         config.baudrate = 115_200;
-        Uart::new_blocking(peripherals.USART3, uart3_rx, uart3_tx, config)
+        Uart::new_blocking(peripherals.USART3, uart3_rx, uart3_tx, config).map_err(|_| BoardInitError::UartError)?
     };
 
     let uart4 = {
         let mut config = embassy_stm32::usart::Config::default();
         config.baudrate = 115_200;
-        Uart::new_blocking(peripherals.UART4, uart4_rx, uart4_tx, config)
+        Uart::new_blocking(peripherals.UART4, uart4_rx, uart4_tx, config).map_err(|_| BoardInitError::UartError)?
     };
 
     let uart5 = {
         let mut config = embassy_stm32::usart::Config::default();
         config.baudrate = 115_200;
-        UartRx::new(peripherals.UART5, uart5_rx, uart5_rx_dma, Irqs, config)
+        UartRx::new_blocking(peripherals.UART5, uart5_rx, config).map_err(|_| BoardInitError::UartError)?
     };
 
     let uart6 = {
         let mut config = embassy_stm32::usart::Config::default();
         config.baudrate = 115_200;
-        Uart::new_blocking(peripherals.USART6, uart6_rx, uart6_tx, config)
+        Uart::new(peripherals.USART6, uart6_rx, uart6_tx, uart6_tx_dma, uart6_rx_dma, Irqs, config)
+            .map_err(|_| BoardInitError::UartError)?
     };
 
     let i2c1 = I2c::new_blocking(peripherals.I2C1, i2c1_scl, i2c1_sda, embassy_stm32::i2c::Config::default());
+    //let i2c1 = I2c::(peripherals.I2C1, i2c1_scl, i2c1_sda, i2c1_tx_dma, i2c1_rx_dma, Irqs, embassy_stm32::i2c::Config::default());
 
     let m1 = peripherals.PB6;
     let m2 = peripherals.PB7;
@@ -214,29 +241,24 @@ pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
 
     let radio = Radio::new(radio_controllers::RadioType::Mock);
 
-    let barometer = Barometer::new(init.barometer_type);
-    let magnetometer = Magnetometer::new(init.magnetometer_type);
-    let gps_parser = GpsParser::new(init.gps_provider);
+    let shared_i2c = I2C_BUS.init(SharedI2cBus::new(i2c1));
+
+    let barometer = Barometer::new(init.barometer_type, shared_i2c);
+    let magnetometer = Magnetometer::new(init.magnetometer_type, shared_i2c);
+
+    let gps = match GpsParser::new(init.gps_provider) {
+        Some(parser) => {
+            let (gps_tx, gps_rx) = uart6.split();
+
+            Some(GpsHardware { uart_rx: gps_rx, uart_tx: gps_tx, parser })
+        }
+        None => None,
+    };
     let rangefinder = Rangefinder::new(init.rangefinder_type);
     let optical_flow = OpticalFlow::new(init.optical_flow_type);
 
     // Map physical device names to logical device names and return.
-    Ok(Board {
-        imu,
-        motor_driver,
-        //serial_rx_uart: Some(uart2.map_err(|_| BoardInitError::SerialRxUartError)?),
-        radio,
-        sdcard_spi: Some(spi3.map_err(|_| BoardInitError::SdCardError)?),
-        max7456_spi: Some(spi2.map_err(|_| BoardInitError::Max7456NotAvailable)?),
-        msp_uart: None,
-        esc_sensor_uart: None,
-        sensors_i2c: Some(i2c1),
-        barometer,
-        magnetometer,
-        gps_parser,
-        rangefinder,
-        optical_flow,
-    })
+    Ok(Board { imu, motor_driver, radio, barometer, magnetometer, gps, rangefinder, optical_flow })
 }
 
 /*
@@ -263,6 +285,7 @@ Blocking peripherals:
 // Binds the global hardware DMA vectors.
 // This creates the type validation struct "Irqs" required by Spi::new.
 bind_interrupts!(struct Irqs {
+
     // -----------------------------------------------------------------------
     // SPI1 — Gyroscope
     // -----------------------------------------------------------------------
@@ -283,8 +306,10 @@ bind_interrupts!(struct Irqs {
     USART2 => usart::InterruptHandler<peripherals::USART2>;
 
     // -----------------------------------------------------------------------
-    // UART5 — ESC sensor
+    // USART6 — GPS
     // -----------------------------------------------------------------------
-    DMA1_STREAM0 => dma::InterruptHandler<peripherals::DMA1_CH0>;
-    UART5 => usart::InterruptHandler<peripherals::UART5>;
+    DMA2_STREAM1 => dma::InterruptHandler<peripherals::DMA2_CH1>;
+    DMA2_STREAM6 => dma::InterruptHandler<peripherals::DMA2_CH6>;
+    USART6 => usart::InterruptHandler<peripherals::USART6>;
+
 });

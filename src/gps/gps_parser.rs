@@ -18,6 +18,13 @@ impl GpsParser {
         }
     }
 
+    pub const fn new_unwrapped(gps_provider: GpsProvider) -> Self {
+        match gps_provider {
+            GpsProvider::Ublox => GpsParser::Ublox(UbloxParser::new()),
+            _ => GpsParser::Nmea(NmeaParser::new()),
+        }
+    }
+
     pub fn on_data_received(&mut self, data: u8) -> bool {
         match self {
             Self::Nmea(parser) => parser.on_data_received(data),
@@ -26,4 +33,3 @@ impl GpsParser {
         }
     }
 }
-

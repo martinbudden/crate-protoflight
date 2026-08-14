@@ -38,7 +38,7 @@ pub fn imu_context(imu: BoardImu) -> ImuContext<BoardImu> {
     ImuContext::new(imu)
 }
 
-pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
+pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
     // NOTE: rp2350 numbers peripheral starting at 0, eg SPI0, SPI0, I2C0, I2C0 etc
 
     // Take ownership of the raw RP2350 hardware peripherals block

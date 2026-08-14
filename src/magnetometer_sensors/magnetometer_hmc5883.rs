@@ -1,19 +1,25 @@
 #![cfg(feature = "magnetometer")]
 
-use crate::magnetometer_sensors::{MagnetometerMessage, magnetometer::RxMagnetometer};
+use crate::{
+    boards::board::SharedI2cBus,
+    magnetometer_sensors::{MagnetometerMessage, magnetometer::RxMagnetometer},
+};
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct MagnetometerHmc5883 {}
+const _REG_CONFA: u8 = 0x00;
+const _REG_CONFB: u8 = 0x01;
+const _REG_MODE: u8 = 0x02;
+const _REG_DATA: u8 = 0x03;
+const _REG_IDA: u8 = 0x0A;
 
-impl Default for MagnetometerHmc5883 {
-    fn default() -> Self {
-        Self::new()
-    }
+pub struct MagnetometerHmc5883 {
+    pub i2c_bus: &'static SharedI2cBus,
 }
-
 impl MagnetometerHmc5883 {
-    pub const fn new() -> Self {
-        Self {}
+    const I2C_ADDRESS: u8 = 0x1E;
+    const CHIP_ID: u8 = 0x48;
+
+    pub const fn new(i2c_bus: &'static SharedI2cBus) -> Self {
+        Self { i2c_bus }
     }
 }
 

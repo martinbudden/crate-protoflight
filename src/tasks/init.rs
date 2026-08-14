@@ -1,12 +1,16 @@
 use embassy_executor::Spawner;
+
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 
 use static_cell::StaticCell;
 
 use crate::{
-    boards::{BoardInit, board_init},
+    boards::{BoardInit, board_hardware},
     config::GLOBAL_CONFIG,
 };
+
+#[cfg(feature = "speedybee_f405_v4")]
+use crate::boards::speedybee_f405_v4::start_realtime_executor;
 
 #[cfg(feature = "serde")]
 use crate::tasks::non_volatile_storage::load_global_configs;
@@ -35,11 +39,11 @@ static mut CORE1_STACK: Stack<4096> = Stack::new();
 /// Does the following:
 /// 1. Loads the global configuration `GLOBAL_CONFIG` from non-volatile-storage.
 /// 2. Locks `GLOBAL_CONFIG`.
-/// 3. Initializes the board hardware `board_init`.
+/// 3. Construct the board hardware given the board type and the configuration `board_hardware`.
 /// 5. Initializes all the task contexts using values from `GLOBAL_CONFIG`.
 /// 6. Unlocks `GLOBAL_CONFIG`.
-/// 7. Spawns the mandatory tasks.
-/// 8. Spawns the optional tasks if they have been configured to run.
+/// 7. Spawns the realtime tasks.
+/// 8. Spawns any background tasks that have been configured to run.
 ///
 /// `panic()`, `.unwrap()` and `.expect()` are allowed during initialization
 /// since if anything fails during initialization there is no possibility of recovery
@@ -91,7 +95,7 @@ pub async fn init(spawner: Spawner) {
     // ==================================================
 
     #[allow(clippy::panic)]
-    let Ok(board) = board_init(BoardInit {
+    let Ok(hardware) = board_hardware(BoardInit {
         axis_order: config.imu_device.axis_order,
         radio_type: config.rx.serial_rx_provider,
 
@@ -122,7 +126,6 @@ pub async fn init(spawner: Spawner) {
     }) else {
         panic!("board_init failed");
     };
-
     // `display_port_mutex` guards shared access to the display port.
     // Currently only used by the OSD, but will be shared with the Context Menu System (CMS) when it is implemented
     #[cfg(feature = "osd")]
@@ -147,19 +150,19 @@ pub async fn init(spawner: Spawner) {
     );
 
     // Initialize the IMU task context with the IMU provided by the Board Support Package.
-    let imu_ctx = tasks::imu::init(board.imu);
+    let imu_ctx = tasks::imu::init(hardware.imu);
 
     // Initialize the motor mixer task context with the motor driver provided by the Board Support Package.
     #[rustfmt::skip]
     let motor_mixer_ctx = tasks::motor_mixer::init(
         config.mixer,
         config.motor,
-        board.motor_driver,
+        hardware.motor_driver,
         #[cfg(feature = "rpm_filters")] config.rpm_notch_filter_bank,
         #[cfg(feature = "rpm_filters")] 0.001
     );
 
-    let rx_ctx = tasks::rx::init(board.radio, config.rates);
+    let rx_ctx = tasks::rx::init(hardware.radio, config.rates);
 
     // TODO: Initialize the MSP task context with the UART provided by the Board Support Package.
     #[cfg(feature = "msp")]
@@ -174,27 +177,28 @@ pub async fn init(spawner: Spawner) {
     let autopilot_ctx = tasks::autopilot::init();
 
     #[cfg(feature = "barometer")]
-    let barometer_ctx = board.barometer.map(tasks::barometer::init);
+    let barometer_ctx = hardware.barometer.map(tasks::barometer::init);
+    //let barometer_ctx = board.barometer.map(tasks::barometer::init);
 
     // TODO: replace `Some` with `board.battery.map` or similar.
     #[cfg(feature = "battery")]
     let battery_ctx = Some(tasks::battery::init());
 
     #[cfg(feature = "gps")]
-    let gps_ctx = board.gps_parser.map(tasks::gps::init);
+    //let gps_ctx = board.take_gps().map(tasks::gps::init);
+    let gps_ctx = hardware.gps.map(|gps| tasks::gps::init(gps.uart_rx, gps.uart_tx, gps.parser));
 
     #[cfg(feature = "magnetometer")]
-    let magnetometer_ctx = board.magnetometer.map(tasks::magnetometer::init);
+    let magnetometer_ctx = hardware.magnetometer.map(tasks::magnetometer::init);
 
     #[cfg(feature = "optical_flow")]
-    let optical_flow_ctx = board.optical_flow.map(tasks::optical_flow::init);
+    let optical_flow_ctx = hardware.optical_flow.map(tasks::optical_flow::init);
 
-    // TODO: replace `Some` with `board.osd.map` or similar.
     #[cfg(feature = "osd")]
     let osd_ctx = Some(tasks::osd::init(display_port_mutex).await);
 
     #[cfg(feature = "rangefinder")]
-    let rangefinder_ctx = board.rangefinder.map(tasks::rangefinder::init);
+    let rangefinder_ctx = hardware.rangefinder.map(tasks::rangefinder::init);
 
     // **** UnLock the GLOBAL_CONFIGs
     drop(config);
@@ -210,21 +214,24 @@ pub async fn init(spawner: Spawner) {
     */
 
     // ==================================================
-    // Spawn the mandatory tasks.
+    // Spawn the realtime tasks.
     // ==================================================
 
-    // The four mandatory tasks.
-    // If any of these fail, then the application cannot run.
+    #[rustfmt::skip]
+    let realtime_spawner = {
+        #[cfg(feature = "speedybee_f405_v4")] { start_realtime_executor() }
+        #[cfg(not(feature = "speedybee_f405_v4"))] { spawner.make_send() }
+    };
     #[allow(clippy::expect_used)]
     {
-        spawner.spawn(tasks::gyro_pid::run(gyro_pid_ctx).expect("Failed to create GYRO PID task"));
-        spawner.spawn(tasks::imu::run(imu_ctx).expect("Failed to create IMU task"));
-        spawner.spawn(tasks::motor_mixer::run(motor_mixer_ctx).expect("Failed to create MOTOR MIXER task"));
-        spawner.spawn(tasks::rx::run(rx_ctx).expect("Failed to create RX task"));
+        realtime_spawner.spawn(tasks::gyro_pid::run(gyro_pid_ctx).expect("Failed to create GYRO PID task"));
+        realtime_spawner.spawn(tasks::imu::run(imu_ctx).expect("Failed to create IMU task"));
+        realtime_spawner.spawn(tasks::motor_mixer::run(motor_mixer_ctx).expect("Failed to create MOTOR MIXER task"));
+        realtime_spawner.spawn(tasks::rx::run(rx_ctx).expect("Failed to create RX task"));
     }
 
     // ==================================================
-    // Spawn the optional tasks.
+    // Spawn the background tasks.
     // ==================================================
 
     // Always try and spawn the Autopilot, since if we have any sensors at all enabled it can probably

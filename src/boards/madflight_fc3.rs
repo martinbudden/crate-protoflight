@@ -46,7 +46,7 @@ pub fn imu_context(imu: BoardImu) -> ImuContext<BoardImu> {
     ImuContext::new(imu)
 }
 
-pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
+pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
     // NOTE: rp2350 numbers peripheral starting at 0, eg SPI0, SPI0, I2C0, I2C0 etc
 
     // Take ownership of the raw RP2350 hardware peripherals block
@@ -149,12 +149,14 @@ pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
         let mut uart_config = UartConfig::default();
         uart_config.baudrate = 115_200; // Standard telemetry link velocity [INDEX]
         Uart::new(peripherals.UART0, uart0_tx, uart0_rx, Irqs, uart0_tx_dma, uart0_rx_dma, uart_config)
+            .map_err(|_| BoardInitError::UartError)?
     };
 
     let uart1 = {
         let mut uart_config = UartConfig::default();
         uart_config.baudrate = 115_200;
         Uart::new(peripherals.UART1, uart1_tx, uart1_rx, Irqs, uart1_tx_dma, uart1_rx_dma, uart_config)
+            .map_err(|_| BoardInitError::UartError)?
     };
 
     let i2c0 = {
@@ -162,63 +164,31 @@ pub fn board_init(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
         i2c_config.frequency = 400_000; // Standard Fast-Mode I2C frequency (400 kHz)
         I2c::new_async(peripherals.I2C0, i2c0_scl, i2c0_sda, Irqs, i2c_config)
     };
-    /*
-    #define NEO_PIXEL_PIN               46
-    #define USE_BAROMETER_BMP580
-    #define BAROMETER_I2C_INDEX         0
-    #define BAROMETER_I2C_ADDRESS       0x47
-
-    #define USE_MAGNETOMETER_QMC5883
-    #define MAGNETOMETER_I2C_INDEX      0
-    #define MAGNETOMETER_I2C_ADDRESS    0x2C
-
-    #define USE_BATTERY_MONITOR_INA226
-    #define BATTERY_MONITOR_I2C_INDEX   0
-    #define BATTERY_MONITOR_I2C_ADDRESS 0x40
-
-    #define USE_GPS_NONE
-    #define GPS_UART_INDEX              1
-    #define GPS_PINS                    UART_1_PINS
-    */
-    /*
-       #define BOARD_IDENTIFIER    "235A"
-
-
-
-       #define IMU_AXIS_ORDER              ImuBase::XNEG_YNEG_ZPOS
-       #define USE_IMU_ICM426XX
-       #define IMU_SPI_INDEX               BUS_INDEX_1
-       #define IMU_SPI_PINS                SPI_1_PINS
-
-       #define RECEIVER_UART_INDEX         0
-       #define RECEIVER_PINS               UART_0_PINS
-
-
-    */
     let motor_driver_quad_dshot = MotorDriverQuadDshot::new();
     let motor_driver = MotorDriver::QuadDshot(motor_driver_quad_dshot);
 
     let radio = Radio::new(radio_controllers::RadioType::Mock);
 
-    let barometer = Barometer::new(init.barometer_type);
-    let magnetometer = Magnetometer::new(init.magnetometer_type);
-    let gps_parser = GpsParser::new(init.gps_provider);
+    static I2C_BUS: StaticCell<SharedI2cBus> = StaticCell::new();
+
+    let i2c = I2c::new_async(peripherals.I2C0, i2c0_sda, i2c0_scl, Irqs, config);
+
+    let shared_i2c = I2C_BUS.init(Mutex::new(i2c));
+    let barometer = Barometer::new(init.barometer_type, shared_i2c);
+    let magnetometer = Magnetometer::new(init.magnetometer_type, shared_i2c);
+
+    /*let gps = match GpsParser::new(init.gps_provider) {
+        Some(parser) => {
+            Some(GpsHardware {
+                ...
+            })
+        }
+        None => None,
+    };*/
+    gps = None;
     let rangefinder = Rangefinder::new(init.rangefinder_type);
     let optical_flow = OpticalFlow::new(init.optical_flow_type);
 
     // Map physical device names to logical device names and return.
-    Ok(Board {
-        imu,
-        motor_driver,
-        radio,
-        sdcard_spi: None,
-        // osd_spi: aux_pio_spi,
-        msp_uart: Some(uart1),
-        sensors_i2c: Some(i2c0),
-        barometer,
-        magnetometer,
-        gps_parser,
-        rangefinder,
-        optical_flow,
-    })
+    Ok(Board { imu, motor_driver, radio, barometer, magnetometer, gps, rangefinder, optical_flow })
 }

@@ -4,11 +4,15 @@ use embassy_sync::{
     pubsub::{PubSubChannel, Publisher, Subscriber},
     {blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal},
 };
+
 use static_cell::StaticCell;
 
-use crate::gps::{
-    Geodetic, GeographicCoordinate, GpsData, GpsMessage, GpsParser, GpsPositionMeters, GpsSolutionData,
-    GpsYawHeadingMessage,
+use crate::{
+    boards::board::{GpsUartRx, GpsUartTx},
+    gps::{
+        Geodetic, GeographicCoordinate, GpsData, GpsMessage, GpsParser, GpsPositionMeters, GpsSolutionData,
+        GpsYawHeadingMessage,
+    },
 };
 
 #[allow(unused)]
@@ -53,7 +57,10 @@ pub fn gps_subscriber() -> GpsSubscriber {
 pub static GPS_YAW_HEADING_SIGNAL: Signal<CriticalSectionRawMutex, GpsYawHeadingMessage> = Signal::new();
 
 /// Context for GPS task.
+#[allow(unused)]
 pub struct GpsContext {
+    pub uart_rx: GpsUartRx,
+    pub uart_tx: GpsUartTx,
     pub gps_parser: GpsParser,
     pub gps_publisher: GpsPublisher,
     pub home: Geodetic,
@@ -61,9 +68,11 @@ pub struct GpsContext {
 
 impl GpsContext {
     #[allow(unused)]
-    pub fn new(gps_parser: GpsParser) -> Self {
+    pub fn new(uart_rx: GpsUartRx, uart_tx: GpsUartTx, gps_parser: GpsParser) -> Self {
         #[allow(clippy::expect_used)]
         Self {
+            uart_rx,
+            uart_tx,
             gps_parser,
             gps_publisher: GPS_PUB_SUB_CHANNEL.publisher().expect("gps_publisher failed"),
             home: Geodetic::new(),
@@ -72,8 +81,8 @@ impl GpsContext {
 }
 
 #[allow(unused)]
-pub fn init(gps_parser: GpsParser) -> &'static mut GpsContext {
-    GPS_CTX.init(GpsContext::new(gps_parser))
+pub fn init(uart_rx: GpsUartRx, uart_tx: GpsUartTx, gps_parser: GpsParser) -> &'static mut GpsContext {
+    GPS_CTX.init(GpsContext::new(uart_rx, uart_tx, gps_parser))
 }
 
 /// GPS Task Placeholder.
@@ -81,13 +90,24 @@ pub fn init(gps_parser: GpsParser) -> &'static mut GpsContext {
 pub async fn run(ctx: &'static mut GpsContext) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(10));
     let mut loop_count: u32 = 0;
+    let mut buf = [0u8; 128];
 
     log::info!("         GPS: task started");
     loop {
         // Wait for the next tick.
         ticker.next().await;
-        // Placeholder.
-        _ = ctx.gps_parser.on_data_received(0u8);
+        core::future::poll_fn(|_| core::task::Poll::Ready(())).await;
+
+        // Read a single byte directly from whichever hardware interface is active.
+        // This blocks efficiently without wasting CPU cycles.
+        let _res = ctx.uart_rx.read(&mut buf);
+
+        /*for byte in &buf[..n] {
+            let is_frame_complete = ctx.gps_parser.on_data_received(byte);
+            if is_frame_complete {
+                    // Dispatch message or flag completed state
+            }
+        }*/
 
         // TODO: this should get the data from the actual GPS sensor.
         let gps_data = GpsData::default();
