@@ -7,6 +7,7 @@ use radio_controllers::{Radio, RadioType};
 
 use crate::{
     barometer_sensors::{Barometer, BarometerType},
+    gps::{GpsParser, GpsProvider},
     magnetometer_sensors::{Magnetometer, MagnetometerType},
     optical_flow_sensors::{OpticalFlow, OpticalFlowType},
     rangefinder_sensors::{Rangefinder, RangefinderType},
@@ -41,6 +42,7 @@ pub struct BoardInit {
     pub radio_type: RadioType,
     pub barometer_type: BarometerType,
     pub magnetometer_type: MagnetometerType,
+    pub gps_provider: GpsProvider,
     pub rangefinder_type: RangefinderType,
     pub optical_flow_type: OpticalFlowType,
 }
@@ -74,6 +76,7 @@ pub struct Board<I: ImuDevice> {
     pub sensors_i2c: Option<I2cDeviceBlocking>,
     pub barometer: Option<Barometer>,
     pub magnetometer: Option<Magnetometer>,
+    pub gps_parser: Option<GpsParser>,
     pub rangefinder: Option<Rangefinder>,
     pub optical_flow: Option<OpticalFlow>,
 }
@@ -113,6 +116,7 @@ pub struct Board<I: ImuDevice> {
     pub sensors_i2c: Option<I2cDevice>,
     pub barometer: Option<Barometer>,
     pub magnetometer: Option<Magnetometer>,
+    pub gps_parser: Option<GpsParser>,
     pub rangefinder: Option<Rangefinder>,
     pub optical_flow: Option<OpticalFlow>,
 }
@@ -165,6 +169,7 @@ pub struct Board<I: ImuDevice> {
     pub radio: Radio,
     pub barometer: Option<Barometer>,
     pub magnetometer: Option<Magnetometer>,
+    pub gps_parser: Option<GpsParser>,
     pub rangefinder: Option<Rangefinder>,
     pub optical_flow: Option<OpticalFlow>,
 }

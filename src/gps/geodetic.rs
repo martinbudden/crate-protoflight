@@ -1,4 +1,3 @@
-#![cfg(feature = "gps")]
 use vqm::Vector3f32;
 
 #[allow(unused)]
@@ -13,15 +12,15 @@ pub struct GeographicCoordinate {
     pub altitude_meters: f32,
 }
 
-impl GeographicCoordinate {
-    pub const fn new(longitude_degrees: f32, latitude_degrees: f32, altitude_meters: f32) -> Self {
-        Self { longitude_degrees, latitude_degrees, altitude_meters }
-    }
-}
-
 impl Default for GeographicCoordinate {
     fn default() -> Self {
         Self::new(0.0, 0.0, 0.0)
+    }
+}
+
+impl GeographicCoordinate {
+    pub const fn new(longitude_degrees: f32, latitude_degrees: f32, altitude_meters: f32) -> Self {
+        Self { longitude_degrees, latitude_degrees, altitude_meters }
     }
 }
 

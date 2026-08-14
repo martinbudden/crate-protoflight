@@ -6,13 +6,12 @@ use embassy_sync::{
 };
 use static_cell::StaticCell;
 
-use crate::{
-    gps::{Geodetic, GeographicCoordinate, GpsSolutionData},
-    gps::{
-        GpsMessage, {GpsData, GpsPositionMeters, GpsYawHeadingMessage},
-    },
+use crate::gps::{
+    Geodetic, GeographicCoordinate, GpsData, GpsMessage, GpsParser, GpsPositionMeters, GpsSolutionData,
+    GpsYawHeadingMessage,
 };
 
+#[allow(unused)]
 static GPS_CTX: StaticCell<GpsContext> = StaticCell::new();
 
 const MAX_GPS_SUBSCRIBER_COUNT: usize = 4;
@@ -28,7 +27,7 @@ static GPS_PUB_SUB_CHANNEL: PubSubChannel<
     GPS_PUBLISHER_COUNT,
 > = PubSubChannel::new();
 
-pub type GpsPublisher = Publisher<
+type GpsPublisher = Publisher<
     'static,
     CriticalSectionRawMutex,
     GpsMessage,
@@ -55,19 +54,26 @@ pub static GPS_YAW_HEADING_SIGNAL: Signal<CriticalSectionRawMutex, GpsYawHeading
 
 /// Context for GPS task.
 pub struct GpsContext {
+    pub gps_parser: GpsParser,
     pub gps_publisher: GpsPublisher,
     pub home: Geodetic,
 }
 
 impl GpsContext {
-    pub fn new() -> Self {
+    #[allow(unused)]
+    pub fn new(gps_parser: GpsParser) -> Self {
         #[allow(clippy::expect_used)]
-        Self { gps_publisher: GPS_PUB_SUB_CHANNEL.publisher().expect("gps_publisher failed"), home: Geodetic::new() }
+        Self {
+            gps_parser,
+            gps_publisher: GPS_PUB_SUB_CHANNEL.publisher().expect("gps_publisher failed"),
+            home: Geodetic::new(),
+        }
     }
 }
 
-pub fn init() -> &'static mut GpsContext {
-    GPS_CTX.init(GpsContext::new())
+#[allow(unused)]
+pub fn init(gps_parser: GpsParser) -> &'static mut GpsContext {
+    GPS_CTX.init(GpsContext::new(gps_parser))
 }
 
 /// GPS Task Placeholder.
@@ -80,6 +86,8 @@ pub async fn run(ctx: &'static mut GpsContext) {
     loop {
         // Wait for the next tick.
         ticker.next().await;
+        // Placeholder.
+        _ = ctx.gps_parser.on_data_received(0u8);
 
         // TODO: this should get the data from the actual GPS sensor.
         let gps_data = GpsData::default();

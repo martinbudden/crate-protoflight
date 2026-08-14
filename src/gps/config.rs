@@ -1,5 +1,3 @@
-#![cfg(feature = "gps")]
-
 #[cfg(feature = "serde")]
 use {
     sequential_storage::map::PostcardValue,
@@ -11,8 +9,8 @@ use {
 pub struct GpsConfig {
     pub provider: GpsProvider,
     pub sbas_mode: SbasMode,
-    pub auto_config: u8,
-    pub auto_baud: u8,
+    pub auto_config: GpsOffOn,
+    pub auto_baud: GpsOffOn,
     pub gps_ublox_acquire_model: GpsModel,
     pub gps_ublox_flight_model: GpsModel,
     pub gps_update_rate_hz: u8,
@@ -31,8 +29,8 @@ impl GpsConfig {
         Self {
             provider: GpsProvider::Ublox,
             sbas_mode: SbasMode::None,
-            auto_config: Gps::AUTO_CONFIG_ON,
-            auto_baud: Gps::AUTO_BAUD_OFF,
+            auto_config: GpsOffOn::On,
+            auto_baud: GpsOffOn::Off,
             gps_ublox_acquire_model: GpsModel::Stationary,
             gps_ublox_flight_model: GpsModel::Airborne4G,
             gps_update_rate_hz: 10,
@@ -245,27 +243,28 @@ impl SbasMode {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-struct Gps {}
-
-impl Gps {
-    pub const fn new() -> Self {
-        Self {}
-    }
-}
-
-impl Default for Gps {
-    fn default() -> Self {
-        Self::new()
-    }
+#[allow(missing_docs)]
+#[allow(unused)]
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum GpsOffOn {
+    #[default]
+    Off = 0,
+    On = 1,
 }
 
 #[allow(unused)]
-impl Gps {
-    const AUTO_CONFIG_OFF: u8 = 0;
-    const AUTO_CONFIG_ON: u8 = 1;
-    const AUTO_BAUD_OFF: u8 = 0;
-    const AUTO_BAUD_ON: u8 = 1;
+impl GpsOffOn {
+    pub const COUNT: u8 = 2;
+
+    #[must_use]
+    pub fn from_u8(value: u8) -> Self {
+        match value {
+            0 => Self::Off,
+            1 => Self::On,
+            _ => Self::default(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -285,7 +284,7 @@ mod tests {
         is_full::<GpsRescueConfig>();
         #[cfg(feature = "serde")]
         is_config::<GpsRescueConfig>();
-        is_full::<Gps>();
+        is_full::<GpsOffOn>();
     }
     #[test]
     fn test_new() {

@@ -1234,8 +1234,8 @@ impl Msp {
         };
         dst.write_u8(config.provider as u8);
         dst.write_u8(config.sbas_mode as u8);
-        dst.write_u8(config.auto_config);
-        dst.write_u8(config.auto_baud);
+        dst.write_u8(config.auto_config as u8);
+        dst.write_u8(config.auto_baud as u8);
         // Added in API version 1.43
         dst.write_u8(config.gps_set_home_point_once);
         dst.write_u8(config.gps_ublox_use_galileo);
@@ -1244,7 +1244,7 @@ impl Msp {
     }
     #[cfg(feature = "gps")]
     async fn set_gps_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
-        use crate::gps::GpsProvider;
+        use crate::gps::{GpsOffOn, GpsProvider, SbasMode};
 
         if src.bytes_remaining() < 4 {
             return MspResult::Error;
@@ -1253,9 +1253,9 @@ impl Msp {
         let mut config = global_config.gps;
 
         config.provider = GpsProvider::from_u8(src.read_u8());
-        config.sbas_mode = crate::gps::SbasMode::from_u8(src.read_u8());
-        config.auto_config = src.read_u8();
-        config.auto_baud = src.read_u8();
+        config.sbas_mode = SbasMode::from_u8(src.read_u8());
+        config.auto_config = GpsOffOn::from_u8(src.read_u8());
+        config.auto_baud = GpsOffOn::from_u8(src.read_u8());
         if src.bytes_remaining() >= 2 {
             // Added in API version 1.43
             config.gps_set_home_point_once = src.read_u8();

@@ -69,18 +69,26 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "std")]
     env_logger::init();
 
-    // **** Load the GLOBAL_CONFIGs from non-volatile storage.
+    // ==================================================
+    // Load the GLOBAL_CONFIGs from non-volatile storage.
+    // ==================================================
+
     #[cfg(all(feature = "serde", feature = "rp2350"))]
     load_global_configs(board_flash()).await;
     #[cfg(all(feature = "serde", feature = "std"))]
     load_global_configs().await;
 
-    // *** Lock the GLOBAL_CONFIGs.
+    // ==================================================
+    // Lock the GLOBAL_CONFIGs.
+    // ==================================================
+
     // The lock is held for until all the task context have been initialized.
     // This is perfectly fine since do tasks have been spawned yet, so nothing will be blocked.
     let config = GLOBAL_CONFIG.lock().await;
 
-    // **** GET THE DEVICES FROM THE BOARD SUPPORT PACKAGE
+    // ==================================================
+    // Get the devices from the board support package
+    // ==================================================
 
     #[allow(clippy::panic)]
     let Ok(board) = board_init(BoardInit {
@@ -97,6 +105,11 @@ pub async fn init(spawner: Spawner) {
         #[cfg(not(feature = "magnetometer"))]
         magnetometer_type: crate::magnetometer_sensors::MagnetometerType::None,
 
+        #[cfg(feature = "gps")]
+        gps_provider: config.gps.provider,
+        #[cfg(not(feature = "gps"))]
+        gps_provider: crate::gps::GpsProvider::None,
+
         #[cfg(feature = "rangefinder")]
         rangefinder_type: config.rangefinder.hardware,
         #[cfg(not(feature = "rangefinder"))]
@@ -110,16 +123,21 @@ pub async fn init(spawner: Spawner) {
         panic!("board_init failed");
     };
 
-    #[rustfmt::skip]
+    // `display_port_mutex` guards shared access to the display port.
+    // Currently only used by the OSD, but will be shared with the Context Menu System (CMS) when it is implemented
     #[cfg(feature = "osd")]
-    let display_ref = {
-        #[cfg(feature = "max7456")] { DISPLAY_PORT_MUTEX_CELL.init(Mutex::new(DisplayPortMax7456Spi::new(aux_pio_spi))) }
-        #[cfg(not(feature = "max7456"))] { DISPLAY_PORT_MUTEX_CELL.init(Mutex::new(DisplayPortMock::default())) }
+    let display_port_mutex = {
+        #[rustfmt::skip]
+        let display_port = {
+            #[cfg(feature = "max7456")] { DisplayPortMax7456Spi::new(aux_pio_spi) }
+            #[cfg(not(feature = "max7456"))] { DisplayPortMock::default() }
+        };
+        DISPLAY_PORT_MUTEX_CELL.init(Mutex::new(display_port))
     };
 
-    // ****
+    // ==================================================
     // Initialize the task contexts.
-    // ****
+    // ==================================================
 
     #[rustfmt::skip]
     let gyro_pid_ctx = tasks::gyro_pid::init(
@@ -152,9 +170,8 @@ pub async fn init(spawner: Spawner) {
     let (blackbox_ctx, blackbox_writer_ctx) =
         (tasks::blackbox::init(config.blackbox), Some(tasks::blackbox_writer::init()));
 
-    // TODO: replace `Some` with `board.autopilot.map` or similar.
     #[cfg(feature = "autopilot")]
-    let autopilot_ctx = Some(tasks::autopilot::init());
+    let autopilot_ctx = tasks::autopilot::init();
 
     #[cfg(feature = "barometer")]
     let barometer_ctx = board.barometer.map(tasks::barometer::init);
@@ -163,9 +180,8 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "battery")]
     let battery_ctx = Some(tasks::battery::init());
 
-    // TODO: replace `Some` with `board.gps.map` or similar.
     #[cfg(feature = "gps")]
-    let gps_ctx = Some(tasks::gps::init());
+    let gps_ctx = board.gps_parser.map(tasks::gps::init);
 
     #[cfg(feature = "magnetometer")]
     let magnetometer_ctx = board.magnetometer.map(tasks::magnetometer::init);
@@ -175,10 +191,7 @@ pub async fn init(spawner: Spawner) {
 
     // TODO: replace `Some` with `board.osd.map` or similar.
     #[cfg(feature = "osd")]
-    let osd_ctx = {
-        let display_supports_background_layer = true;
-        Some(tasks::osd::init(display_supports_background_layer))
-    };
+    let osd_ctx = Some(tasks::osd::init(display_port_mutex).await);
 
     #[cfg(feature = "rangefinder")]
     let rangefinder_ctx = board.rangefinder.map(tasks::rangefinder::init);
@@ -196,9 +209,9 @@ pub async fn init(spawner: Spawner) {
         high_spawner.spawn(rx(rx_ctx).expect("Failed to create radio task"));
     */
 
-    // ****
-    // Spawn the tasks.
-    // ****
+    // ==================================================
+    // Spawn the mandatory tasks.
+    // ==================================================
 
     // The four mandatory tasks.
     // If any of these fail, then the application cannot run.
@@ -209,11 +222,15 @@ pub async fn init(spawner: Spawner) {
         spawner.spawn(tasks::motor_mixer::run(motor_mixer_ctx).expect("Failed to create MOTOR MIXER task"));
         spawner.spawn(tasks::rx::run(rx_ctx).expect("Failed to create RX task"));
     }
-    // The optional tasks.
+
+    // ==================================================
+    // Spawn the optional tasks.
+    // ==================================================
+
+    // Always try and spawn the Autopilot, since if we have any sensors at all enabled it can probably
+    // perform some sort of assistance.
     #[cfg(feature = "autopilot")]
-    if let Some(autopilot_ctx) = autopilot_ctx
-        && let Ok(autopilot_task) = tasks::autopilot::run(autopilot_ctx)
-    {
+    if let Ok(autopilot_task) = tasks::autopilot::run(autopilot_ctx) {
         spawner.spawn(autopilot_task);
     }
 
@@ -271,7 +288,7 @@ pub async fn init(spawner: Spawner) {
 
     #[cfg(feature = "osd")]
     if let Some(osd_ctx) = osd_ctx
-        && let Ok(osd_task) = tasks::osd::run(osd_ctx, display_ref)
+        && let Ok(osd_task) = tasks::osd::run(osd_ctx, display_port_mutex)
     {
         spawner.spawn(osd_task);
     }

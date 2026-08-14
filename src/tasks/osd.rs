@@ -7,6 +7,7 @@ use vqm::Quaternionf32;
 
 use crate::{
     config::GLOBAL_CONFIG,
+    display::{Display, DisplayPortLayer},
     flight::{ArmingFlags, RxMessage},
     osd::{Osd, OsdDrawContext, OsdElements, OsdState},
     tasks::{
@@ -79,8 +80,10 @@ impl OsdContext {
     }
 }
 
-pub fn init(display_supports_background_layer: bool) -> &'static mut OsdContext {
-    OSD_CTX.init(OsdContext::new(display_supports_background_layer))
+pub async fn init(display_port_mutex: &'static DisplayPortMutex) -> &'static mut OsdContext {
+    let display_port = display_port_mutex.lock().await;
+
+    OSD_CTX.init(OsdContext::new(display_port.layer_supported(DisplayPortLayer::Background)))
 }
 
 /// OSD Task Placeholder.

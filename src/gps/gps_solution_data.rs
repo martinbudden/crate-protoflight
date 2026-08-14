@@ -1,5 +1,3 @@
-#![cfg(feature = "gps")]
-
 use crate::gps::GpsPositionLongLatAlt;
 
 /// A value below 100 means great accuracy is possible with the GPS satellite constellation.
