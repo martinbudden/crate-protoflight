@@ -2,10 +2,10 @@
 
 use crate::{
     barometer_sensors::Barometer,
-    boards::board::{
-        Board, BoardInit, BoardInitError, GpsHardware, GpsUartRx, GpsUartTx, ImuContext, RawI2c, SharedI2cBus,
-    },
+    boards::board::{Board, BoardInit, BoardInitError, GpsHardware, ImuContext},
+    boards::platform::{GpsUartRx, GpsUartTx},
     gps::GpsParser,
+    i2c_bus::{MockI2c, SharedI2cBus},
     magnetometer_sensors::Magnetometer,
     optical_flow_sensors::OpticalFlow,
     rangefinder_sensors::Rangefinder,
@@ -34,8 +34,7 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
 
     let radio = Radio::new(RadioType::Mock);
 
-    let raw_i2c = RawI2c::new();
-    let shared_i2c = I2C_BUS.init(SharedI2cBus::new(raw_i2c));
+    let shared_i2c = I2C_BUS.init(SharedI2cBus::new(MockI2c::new()));
 
     let barometer = Barometer::new(init.barometer_type, shared_i2c);
     let magnetometer = Magnetometer::new(init.magnetometer_type, shared_i2c);

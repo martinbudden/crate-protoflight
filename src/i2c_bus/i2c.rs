@@ -1,8 +1,16 @@
+use embassy_sync::{blocking_mutex::raw::NoopRawMutex, mutex::Mutex};
 use embedded_hal::i2c::{ErrorType, I2c};
 
-use crate::boards::board::{I2cDeviceBlocking, SharedI2cBus};
+use crate::boards::I2cDeviceBlocking;
+
+pub type SharedI2cBus = Mutex<NoopRawMutex, I2cDeviceBlocking>;
+
 pub type I2cError = <I2cDeviceBlocking as embedded_hal::i2c::ErrorType>::Error;
 
+// `Ext` means "extension trait"
+// The `Ext` suffix conventionally means:
+// "This trait adds convenient methods to an existing type."
+/// Extension methods for the shared I2C bus.
 pub trait SharedI2cExt {
     type Error;
 

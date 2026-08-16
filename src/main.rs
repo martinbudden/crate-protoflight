@@ -17,6 +17,7 @@ mod display;
 mod drivers;
 mod flight;
 mod gps;
+mod i2c_bus;
 mod magnetometer_sensors;
 mod multiwii_serial_protocol;
 mod optical_flow_sensors;

@@ -4,14 +4,15 @@ pub mod airb_omnibus_f4;
 pub mod board;
 pub mod madflight_fc3;
 pub mod matek_f405_wte;
-pub mod mock_i2c;
 pub mod mock_uart;
+pub mod platform;
 pub mod rpi_pico2;
 pub mod sp_racing_f4_evo;
 pub mod speedybee_f405_v4;
 pub mod std;
 
 pub use board::{BoardInit, ImuContext};
+pub use platform::I2cDeviceBlocking;
 
 #[cfg(feature = "std")]
 pub use crate::boards::std::{BoardImu, board_hardware};

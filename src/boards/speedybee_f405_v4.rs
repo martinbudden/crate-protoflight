@@ -9,7 +9,8 @@
 
 use crate::{
     barometer_sensors::Barometer,
-    boards::board::{Board, BoardInit, BoardInitError, GpsHardware, ImuContext, SharedI2cBus},
+    boards::board::{Board, BoardInit, BoardInitError, GpsHardware, ImuContext},
+    boards::platform::SharedI2cBus,
     gps::GpsParser,
     magnetometer_sensors::Magnetometer,
     optical_flow_sensors::OpticalFlow,

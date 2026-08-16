@@ -1,12 +1,8 @@
-#![cfg(feature = "barometer")]
+//#![cfg(feature = "barometer")]
 
 use crate::{
-    barometer_sensors::{
-        BarometerDevice, BarometerMessage,
-        barometer::BarometerError,
-        i2c::{I2cError, SharedI2cExt},
-    },
-    boards::board::{I2cDeviceBlocking, SharedI2cBus},
+    barometer_sensors::{BarometerI2cError, BarometerMessage},
+    i2c_bus::SharedI2cBus,
 };
 
 const _REG_DIG_T1: u8 = 0x88;
@@ -35,9 +31,8 @@ const _REG_TEMPERATURE_MSB: u8 = 0xFA;
 const _REG_TEMPERATURE_LSB: u8 = 0xFB;
 const _REG_TEMPERATURE_XLSB: u8 = 0xFC;
 
-pub type Bmp085Error = BarometerError<<I2cDeviceBlocking as embedded_hal::i2c::ErrorType>::Error>;
-
 pub struct BarometerBmp085 {
+    #[allow(unused)]
     pub i2c_bus: &'static SharedI2cBus,
     temperature_calibration: TemperatureCalibration,
     temperature_fine: i32,
@@ -47,6 +42,7 @@ pub struct BarometerBmp085 {
     pressure_at_reference_altitude: f32,
 }
 
+#[allow(unused)]
 impl BarometerBmp085 {
     const I2C_ADDRESS: u8 = 0x76;
     const I2C_ADDRESS_ALTERNATIVE: u8 = 0x77;
@@ -87,7 +83,7 @@ impl BarometerBmp085 {
         vp1 = ((vp1 * vp1 * i64::from(calibration.p3)) >> 8) + ((vp1 * i64::from(calibration.p2)) << 12);
         vp1 = (((1i64 << 47) + vp1) * i64::from(calibration.p1)) >> 33;
 
-        if (vp1 == 0) {
+        if vp1 == 0 {
             return; // avoid division by zero
         }
         let adc_p: i32 = ((((pressure.msb) << 16) | ((pressure.lsb) << 8) | (pressure.xlsb)) >> 4).cast_signed();
@@ -168,7 +164,7 @@ impl MsbLsbXlsb {
 
 //impl BarometerDevice for BarometerBmp085 {
 impl BarometerBmp085 {
-    pub async fn init(&self) -> Result<u32, BarometerError<I2cError>> {
+    pub async fn init(&self) -> Result<u32, BarometerI2cError> {
         //async fn init(&mut self) -> Result<u32, ()> {
         // Placeholder: explicitly await an immediately ready inline future
         core::future::poll_fn(|_| core::task::Poll::Ready(())).await;

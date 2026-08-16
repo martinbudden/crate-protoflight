@@ -8,7 +8,7 @@ use embassy_sync::{
 use static_cell::StaticCell;
 
 use crate::{
-    boards::board::{GpsUartRx, GpsUartTx},
+    boards::platform::{GpsUartRx, GpsUartTx},
     gps::{
         Geodetic, GeographicCoordinate, GpsData, GpsMessage, GpsParser, GpsPositionMeters, GpsSolutionData,
         GpsYawHeadingMessage,

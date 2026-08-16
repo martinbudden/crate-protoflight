@@ -1,5 +1,5 @@
 #![cfg(feature = "madflight_fc3")]
-#![allow(unused)]
+//#![allow(unused)]
 #![allow(clippy::similar_names)]
 
 // RPI PICO RP2350
@@ -11,7 +11,8 @@
 
 use crate::{
     barometer_sensors::Barometer,
-    boards::board::{Board, BoardInit, BoardInitError, ImuContext},
+    boards::board::{Board, BoardInit, BoardInitError, GpsHardware, ImuContext},
+    boards::platform::SharedI2cBus,
     gps::GpsParser,
     magnetometer_sensors::Magnetometer,
     optical_flow_sensors::OpticalFlow,
@@ -36,6 +37,7 @@ use embassy_rp::{
 };
 use embassy_time::Delay;
 use embedded_hal_bus::spi::ExclusiveDevice;
+use static_cell::StaticCell;
 
 type BoardSpi =
     ExclusiveDevice<embassy_rp::spi::Spi<'static, peripherals::SPI0, embassy_rp::spi::Async>, Output<'static>, Delay>;
@@ -47,6 +49,7 @@ pub fn imu_context(imu: BoardImu) -> ImuContext<BoardImu> {
 }
 
 pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
+    static I2C_BUS: StaticCell<SharedI2cBus> = StaticCell::new();
     // NOTE: rp2350 numbers peripheral starting at 0, eg SPI0, SPI0, I2C0, I2C0 etc
 
     // Take ownership of the raw RP2350 hardware peripherals block
@@ -170,10 +173,9 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
     let radio = Radio::new(radio_controllers::RadioType::Mock);
 
     static I2C_BUS: StaticCell<SharedI2cBus> = StaticCell::new();
-
     let i2c = I2c::new_async(peripherals.I2C0, i2c0_sda, i2c0_scl, Irqs, config);
-
     let shared_i2c = I2C_BUS.init(Mutex::new(i2c));
+
     let barometer = Barometer::new(init.barometer_type, shared_i2c);
     let magnetometer = Magnetometer::new(init.magnetometer_type, shared_i2c);
 

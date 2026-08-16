@@ -2,7 +2,7 @@
 
 #[cfg(feature = "magnetometer")]
 use crate::magnetometer_sensors::magnetometer_hmc5883::MagnetometerHmc5883;
-use crate::{boards::board::SharedI2cBus, magnetometer_sensors::magnetometer_mock::MagnetometerMock};
+use crate::{i2c_bus::SharedI2cBus, magnetometer_sensors::magnetometer_mock::MagnetometerMock};
 
 #[cfg(feature = "serde")]
 use {
@@ -30,6 +30,7 @@ pub enum MagnetometerType {
     Mmc560x = 10,
     Mock = 11,
 }
+
 #[allow(unused)]
 impl MagnetometerType {
     pub const COUNT: u8 = 11;

@@ -1,7 +1,7 @@
 #![cfg(feature = "magnetometer")]
 
 use crate::{
-    boards::board::SharedI2cBus,
+    i2c_bus::SharedI2cBus,
     magnetometer_sensors::{MagnetometerMessage, magnetometer::RxMagnetometer},
 };
 

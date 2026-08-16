@@ -4,7 +4,8 @@
 
 use crate::{
     barometer_sensors::Barometer,
-    boards::board::{Board, BoardInit, BoardInitError, ImuContext},
+    boards::board::{Board, BoardInit, BoardInitError, GpsHardware, ImuContext},
+    boards::platform::SharedI2cBus,
     gps::GpsParser,
     magnetometer_sensors::Magnetometer,
     optical_flow_sensors::OpticalFlow,
@@ -28,6 +29,7 @@ use embassy_rp::{
 };
 use embassy_time::Delay;
 use embedded_hal_bus::spi::ExclusiveDevice;
+use static_cell::StaticCell;
 
 type BoardSpi =
     ExclusiveDevice<embassy_rp::spi::Spi<'static, peripherals::SPI0, embassy_rp::spi::Async>, Output<'static>, Delay>;
@@ -39,6 +41,7 @@ pub fn imu_context(imu: BoardImu) -> ImuContext<BoardImu> {
 }
 
 pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
+    static I2C_BUS: StaticCell<SharedI2cBus> = StaticCell::new();
     // NOTE: rp2350 numbers peripheral starting at 0, eg SPI0, SPI0, I2C0, I2C0 etc
 
     // Take ownership of the raw RP2350 hardware peripherals block
@@ -126,16 +129,19 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
     let i2c0 = {
         let mut i2c_config = I2cConfig::default();
         i2c_config.frequency = 400_000; // Standard Fast-Mode I2C frequency (400 kHz)
-        I2c::new_async(peripherals.I2C0, i2c0_scl, i2c0_sda, Irqs, i2c_config)
+        //I2c::new_async(peripherals.I2C0, i2c0_scl, i2c0_sda, Irqs, i2c_config)
+        I2c::new_blocking(peripherals.I2C0, i2c0_scl, i2c0_sda, i2c_config)
     };
     let motor_driver_quad_dshot = MotorDriverQuadDshot::new();
     let motor_driver = MotorDriver::QuadDshot(motor_driver_quad_dshot);
 
     let radio = Radio::new(radio_controllers::RadioType::Mock);
 
-    let barometer = Barometer::new(init.barometer_type);
-    let magnetometer = Magnetometer::new(init.magnetometer_type);
-    let gps_parser = GpsParser::new(init.gps_provider);
+    let shared_i2c = I2C_BUS.init(SharedI2cBus::new(i2c0));
+
+    let barometer = Barometer::new(init.barometer_type, shared_i2c);
+    let magnetometer = Magnetometer::new(init.magnetometer_type, shared_i2c);
+    let gps = None; //GpsParser::new(init.gps_provider);
     let rangefinder = Rangefinder::new(init.rangefinder_type);
     let optical_flow = OpticalFlow::new(init.optical_flow_type);
 
@@ -145,13 +151,13 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
         motor_driver,
         radio,
 
-        sdcard_spi: None,
+        //sdcard_spi: None,
         // osd_spi: aux_pio_spi,
-        msp_uart: Some(uart1),
-        sensors_i2c: Some(i2c0),
+        //msp_uart: Some(uart1),
+        //sensors_i2c: Some(i2c0),
         barometer,
         magnetometer,
-        gps_parser,
+        gps,
         rangefinder,
         optical_flow,
         // pub flash: Peri<'static, peripherals::FLASH>,

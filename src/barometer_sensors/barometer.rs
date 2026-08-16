@@ -1,11 +1,10 @@
-#[cfg(feature = "barometer")]
-use crate::{
-    barometer_sensors::{
-        BarometerDevice, BarometerMessage, barometer_bmp085::BarometerBmp085, barometer_dps310::BarometerDps310,
-        barometer_mock::BarometerMock, i2c::I2cError,
-    },
-    boards::board::SharedI2cBus,
+//#[cfg(feature = "barometer")]
+#[allow(unused)]
+use crate::barometer_sensors::{
+    BarometerDevice, BarometerMessage, barometer_bmp085::BarometerBmp085, barometer_dps310::BarometerDps310,
+    barometer_mock::BarometerMock,
 };
+use crate::i2c_bus::{I2cError, SharedI2cBus};
 
 #[cfg(feature = "serde")]
 use {
@@ -60,6 +59,7 @@ impl BarometerType {
     }
 }
 
+#[allow(unused)]
 #[derive(Debug)]
 pub enum BarometerError<E> {
     I2c(E),
@@ -67,6 +67,11 @@ pub enum BarometerError<E> {
     InvalidCalibration,
     InvalidData,
 }
+
+//pub type Dps310Error = BarometerError<<I2cDeviceBlocking as embedded_hal::i2c::ErrorType>::Error>;
+//pub type Bmp085Error = BarometerError<<I2cDeviceBlocking as embedded_hal::i2c::ErrorType>::Error>;
+
+pub type BarometerI2cError = BarometerError<I2cError>;
 
 pub enum Barometer {
     Mock(BarometerMock),
@@ -93,7 +98,7 @@ impl Barometer {
 }
 
 impl BarometerDevice for Barometer {
-    async fn init(&mut self) -> Result<u32, BarometerError<I2cError>> {
+    async fn init(&mut self) -> Result<u32, BarometerI2cError> {
         match self {
             Self::Mock(barometer) => barometer.init().await,
             #[cfg(feature = "barometer")]

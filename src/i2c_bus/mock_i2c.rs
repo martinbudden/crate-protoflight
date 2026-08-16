@@ -1,5 +1,3 @@
-#![cfg(feature = "std")]
-
 #[allow(unused)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MockI2cError {
