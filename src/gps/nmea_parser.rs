@@ -15,28 +15,26 @@ pub enum NmeaState {
     WaitingForStart,
     InPayload {
         calculated_checksum: u8,
-        output_index: usize,
     },
     WaitingForCkSum1 {
         calculated_checksum: u8,
-        output_index: usize,
     },
     WaitingForCkSum2 {
         calculated_checksum: u8,
-        output_index: usize,
         received_checksum_high: u8,
     },
-    WaitingForCr,
-    WaitingForLf,
-    Complete,
+    WaitingForCr
+    ,
+    WaitingForLf ,
+    Complete ,
 }
 
 impl NmeaState {
     /// Mutates the state based on the incoming byte.
-    /// Writes characters into the provided payload buffer when appropriate.
+    /// Writes characters into the provided output buffer when appropriate.
     /// Returns `true` if a full sentence was successfully verified.
     /// All transmitted data are printable ASCII characters between 0x20 (space) to 0x7e (~).
-    pub fn on_data_received(&mut self, data: u8, output_buf: &mut [u8; NmeaParser::BUFFER_SIZE]) -> bool {
+    pub fn on_data_received(&mut self, data: u8, output_buf: &mut [u8; NmeaParser::BUFFER_SIZE], output_index: &mut usize) -> bool {
         if data.is_ascii_control() || !data.is_ascii() {
             *self = Self::WaitingForStart;
             return false;
@@ -46,31 +44,32 @@ impl NmeaState {
         *self = match core::mem::take(self) {
             Self::WaitingForStart | Self::Complete => {
                 if data == b'$' {
-                    Self::InPayload { calculated_checksum: 0, output_index: 0 }
+                    *output_index = 0;
+                    Self::InPayload { calculated_checksum: 0 }
                 } else {
                     Self::WaitingForStart
                 }
             }
-            Self::InPayload { mut calculated_checksum, mut output_index } => {
+            Self::InPayload { mut calculated_checksum } => {
                 if data == b'*' {
-                    Self::WaitingForCkSum1 { calculated_checksum, output_index }
-                } else if data == b'\r' || data == b'\n' || output_index >= output_buf.len() {
+                    Self::WaitingForCkSum1 { calculated_checksum,  }
+                } else if data == b'\r' || data == b'\n' || *output_index >= output_buf.len() {
                     Self::WaitingForStart
                 } else {
                     calculated_checksum ^= data;
-                    output_buf[output_index] = data;
-                    output_index += 1;
-                    Self::InPayload { calculated_checksum, output_index }
+                    output_buf[*output_index] = data;
+                    *output_index += 1;
+                    Self::InPayload { calculated_checksum }
                 }
             }
-            Self::WaitingForCkSum1 { calculated_checksum, output_index } => {
+            Self::WaitingForCkSum1 { calculated_checksum } => {
                 if let Some(val) = Self::parse_hex_digit(data) {
-                    Self::WaitingForCkSum2 { calculated_checksum, output_index, received_checksum_high: val }
+                    Self::WaitingForCkSum2 { calculated_checksum, received_checksum_high: val }
                 } else {
                     Self::WaitingForStart
                 }
             }
-            Self::WaitingForCkSum2 { calculated_checksum, output_index, received_checksum_high } => {
+            Self::WaitingForCkSum2 { calculated_checksum, received_checksum_high } => {
                 if let Some(val) = Self::parse_hex_digit(data)
                     && calculated_checksum == ((received_checksum_high << 4) | val)
                 {
@@ -94,7 +93,9 @@ impl NmeaState {
                 }
             }
         };
-        *self == Self::Complete
+
+        Self::Complete == *self
+        
     }
 
     const fn parse_hex_digit(byte: u8) -> Option<u8> {
@@ -113,6 +114,7 @@ pub struct NmeaParser {
     // The fixed-size payload storage buffer shared across states
     // 82 characters is the maximum legal NMEA sentence length
     payload_buf: [u8; Self::BUFFER_SIZE],
+    payload_index: usize,
 }
 
 impl Default for NmeaParser {
@@ -124,27 +126,18 @@ impl Default for NmeaParser {
 impl NmeaParser {
     const BUFFER_SIZE: usize = 85;
     pub const fn new() -> Self {
-        Self { state: NmeaState::WaitingForStart, payload_buf: [0u8; Self::BUFFER_SIZE] }
+        Self { state: NmeaState::WaitingForStart, payload_buf: [0u8; Self::BUFFER_SIZE], payload_index: 0 }
     }
 
     pub fn on_data_received(&mut self, data: u8) -> bool {
         // Forward implementation responsibility straight down into the state variant
-        self.state.on_data_received(data, &mut self.payload_buf)
+        self.state.on_data_received(data, &mut self.payload_buf, &mut self.payload_index)
     }
 
-    /*/// Safely access the current payload if the parser is in a tracking state.
-    #[allow(clippy::match_same_arms)]
+    /// Safely access the current payload if the parser is in a tracking state.
     pub fn payload(&self) -> &[u8] {
-        let len = match self.state {
-            NmeaState::InPayload { output_index, .. } => output_index,
-            NmeaState::WaitingForCkSum1 { output_index, .. } => output_index,
-            NmeaState::WaitingForCkSum2 { output_index, .. } => output_index,
-            NmeaState::WaitingForCr { output_index } => output_index,
-            NmeaState::WaitingForLf { output_index } => output_index,
-            NmeaState::WaitingForStart => 0,
-        };
-        &self.payload_buf[..len]
-    }*/
+        &self.payload_buf[..self.payload_index]
+    }
 }
 
 #[allow(unused)]
