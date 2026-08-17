@@ -30,6 +30,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "arbitrary-int"
+version = "2.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "993a810118f8f37e9c4411c86f1c4c940a09a7ab34b7bf2d88d06f50c553fab7"
+
+[[package]]
 name = "arrayvec"
 version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -105,6 +111,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e4b40c7323adcfc0a41c4b88143ed58346ff65a288fc144329c5c45e05d70c6"
 
 [[package]]
+name = "bitbybit"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf218b839af0730012cc21856c4149789afde9ae6dc3078c7adaf311e8b76854"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
+
+[[package]]
 name = "bitfield"
 version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -119,12 +136,11 @@ checksum = "b588b76d00fde79687d7646a9b5bdf3cc0f655e0bbd080335a95d7e96f3587da"
 [[package]]
 name = "blackbox-logger"
 version = "0.1.9"
-source = "git+https://github.com/martinbudden/crate-blackbox-logger#904f70484b0088889544a1a5b8f2d2da83439108"
 dependencies = [
  "embassy-futures",
  "postcard",
  "rustc_version 0.4.1",
- "sequential-storage",
+ "sequential-storage 8.0.1",
  "serde",
  "simple-bitset",
 ]
@@ -777,15 +793,33 @@ dependencies = [
 
 [[package]]
 name = "embedded-sdmmc"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce3c7f9ea039eeafc4a49597b7bd5ae3a1c8e51b2803a381cb0f29ce90fe1ec6"
+checksum = "3fc3ac32bcb461732f1cbc1f199ae3c09f150b18ac6f48a560bef91e0d73ca30"
 dependencies = [
+ "arbitrary-int",
+ "bitbybit",
+ "bitflags",
  "byteorder",
  "embedded-hal 1.0.0",
- "embedded-io 0.6.1",
- "heapless 0.8.0",
+ "embedded-io 0.7.1",
+ "embedded-sdmmc-types",
+ "heapless 0.9.3",
+ "hex-literal",
  "log",
+ "thiserror",
+]
+
+[[package]]
+name = "embedded-sdmmc-types"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4234384920317421a61a221dd06dda643ee13d95d4a95532a6294b4d01a8852f"
+dependencies = [
+ "arbitrary-int",
+ "bitbybit",
+ "bitflags",
+ "thiserror",
 ]
 
 [[package]]
@@ -1027,16 +1061,6 @@ dependencies = [
 
 [[package]]
 name = "heapless"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0bfb9eb618601c89945a70e254898da93b13be0388091d42117462b265bb3fad"
-dependencies = [
- "hash32 0.3.1",
- "stable_deref_trait",
-]
-
-[[package]]
-name = "heapless"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "25ba4bd83f9415b58b4ed8dc5714c76e626a105be4646c02630ad730ad3b5aa4"
@@ -1052,6 +1076,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
+name = "hex-literal"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e712f64ec3850b98572bffac52e2c6f282b29fe6c5fa6d42334b30be438d95c1"
+
+[[package]]
 name = "ident_case"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1060,7 +1090,6 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 [[package]]
 name = "imu-sensors"
 version = "0.1.3"
-source = "git+https://github.com/martinbudden/crate-imu-sensors#ae9529ce8d1a274216b3efb90f1ae5f78d534476"
 dependencies = [
  "cfg-if",
  "embassy-sync",
@@ -1071,7 +1100,7 @@ dependencies = [
  "num_enum",
  "postcard",
  "rustc_version 0.4.1",
- "sequential-storage",
+ "sequential-storage 8.0.1",
  "serde",
  "strum",
  "vqm",
@@ -1216,7 +1245,6 @@ dependencies = [
 [[package]]
 name = "motor-mixers"
 version = "0.1.5"
-source = "git+https://github.com/martinbudden/crate-motor-mixers#9cbefa35d2354deca0614059dc5dcf0a5e388f5d"
 dependencies = [
  "embassy-executor",
  "embassy-futures",
@@ -1227,7 +1255,7 @@ dependencies = [
  "pidsk-controller",
  "postcard",
  "rustc_version 0.4.1",
- "sequential-storage",
+ "sequential-storage 8.0.1",
  "serde",
  "signal-filters",
  "vqm",
@@ -1357,8 +1385,7 @@ checksum = "5be167a7af36ee22fe3115051bc51f6e6c7054c9348e28deb4f49bd6f705a315"
 [[package]]
 name = "pidsk-controller"
 version = "0.1.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62679938b4845356d3213ff7754a3441b417ef0f1e0b5de966d1aeb2945530ae"
+source = "git+https://github.com/martinbudden/crate-pid-controller#33c89ef9e0903d27f2b5a52b9a00f02de033b9bd"
 dependencies = [
  "num-traits",
  "rustc_version 0.4.1",
@@ -1512,7 +1539,7 @@ dependencies = [
  "rtt-target",
  "rustc_version 0.4.1",
  "sensor-fusion",
- "sequential-storage",
+ "sequential-storage 8.0.1",
  "serde",
  "signal-filters",
  "simple-bitset",
@@ -1542,7 +1569,7 @@ dependencies = [
  "nb 1.1.0",
  "postcard",
  "rustc_version 0.4.1",
- "sequential-storage",
+ "sequential-storage 8.0.1",
  "serde",
  "simple-bitset",
 ]
@@ -1708,8 +1735,7 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 [[package]]
 name = "sensor-fusion"
 version = "0.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4db5aaa279bb24a56816d221be936a932d01ea539d31526cca721cb5a6acb74"
+source = "git+https://github.com/martinbudden/crate-sensor-fusion#5eb5071f4bbf4eda59eb605867e645ccb44d1908"
 dependencies = [
  "libm",
  "num-traits",
@@ -1722,6 +1748,17 @@ name = "sequential-storage"
 version = "7.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "574e5a379bf43653079b34cb4cf32958404b5f42e0ed5b5adcdff02c2de04d4d"
+dependencies = [
+ "embedded-storage-async",
+ "postcard",
+ "serde",
+]
+
+[[package]]
+name = "sequential-storage"
+version = "8.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e750f14f4f6e5a81277c66311713a56106c8df0196df62a634d1fc806556832b"
 dependencies = [
  "embedded-storage-async",
  "postcard",
@@ -1792,8 +1829,7 @@ checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 [[package]]
 name = "signal-filters"
 version = "0.1.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6dba5c9059a54860fb0063f335fa01a4688544fd49013399ec1af4513efdebc"
+source = "git+https://github.com/martinbudden/crate-signal-filters#fafba8d74dff85e8a5fdd7c2bc0a1e41841f736b"
 dependencies = [
  "libm",
  "num-traits",
@@ -1804,12 +1840,11 @@ dependencies = [
 [[package]]
 name = "simple-bitset"
 version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24a6c2af8d7ea1cd4ed20233979c41ef4d498be74b691d12d9feac00b25ce283"
+source = "git+https://github.com/martinbudden/crate-simple-bitset#38928f8458a9d75b94dd53b1ce7f092799a681e7"
 dependencies = [
  "postcard",
  "rustc_version 0.4.1",
- "sequential-storage",
+ "sequential-storage 7.2.0",
  "serde",
 ]
 
@@ -2167,8 +2202,7 @@ dependencies = [
 [[package]]
 name = "vqm"
 version = "0.1.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61d4359d462dc797246e2dc959bd78c2db051a051776e20a522a86353a8241b0"
+source = "git+https://github.com/martinbudden/crate-vector-quaternion-matrix#99e82ef190fd8495d2cf9beb9a800efc33b35f3d"
 dependencies = [
  "cfg-if",
  "derive_more",
@@ -2176,7 +2210,7 @@ dependencies = [
  "num-traits",
  "postcard",
  "rustc_version 0.4.1",
- "sequential-storage",
+ "sequential-storage 8.0.1",
  "serde",
 ]
 

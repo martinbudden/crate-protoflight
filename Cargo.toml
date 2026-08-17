@@ -184,7 +184,7 @@ critical-section = { version = "1.2.0" }
 cortex-m-rt = { version = "0.7.5", optional = true }
 embedded-hal = { version = "1.0" }
 embedded-hal-bus = { version = "0.3.0", features = ["async"] }
-embedded-sdmmc = { version = "0.9.0", default-features = false, features = ["log"], optional = true }
+embedded-sdmmc = { version = "0.10.0", default-features = false, features = ["log"], optional = true }
 # Raspberry Pi Pico specific
 embassy-rp = { version = "0.10.0", default-features = false, optional = true }
 # stm32f4 specific
@@ -197,40 +197,41 @@ libm = { version = "0.2.16", optional = true }
 
 serde = { version = "1.0.228", default-features = false, features = ["derive"], optional = true }
 postcard = { version = "1.1.3", default-features = false, features = ["embedded-io"], optional = true }
-sequential-storage = { version = "7.2.0", default-features = false, features = ["postcard"] }
+sequential-storage = { version = "8.0.1", default-features = false, features = ["postcard"] }
 embedded-storage-async = { version = "0.4.1", default-features = false }
 # In-memory storage simulator
 embedded-storage-file = { version = "0.2.0", default-features = false, optional = true }
 
-simple-bitset = "0.1.5"
-#simple-bitset = { git = "https://github.com/martinbudden/crate-simple-bitset" }
+#simple-bitset = "0.1.5"
+simple-bitset = { git = "https://github.com/martinbudden/crate-simple-bitset" }
+#simple-bitset = { path = "../simple-bitset" }
 stream-buf = "0.1.2"
 #stream-buf = { git = "https://github.com/martinbudden/crate-stream-buf" }
-vqm = { version = "0.1.14" }
-#vqm = { git = "https://github.com/martinbudden/crate-vector-quaternion-matrix" }
+#vqm = { version = "0.1.14" }
+vqm = { git = "https://github.com/martinbudden/crate-vector-quaternion-matrix" }
 #vqm = { path = "../vqm" }
-signal-filters = "0.1.10"
-#signal-filters = { git = "https://github.com/martinbudden/crate-signal-filters" }
+#signal-filters = "0.1.10"
+signal-filters = { git = "https://github.com/martinbudden/crate-signal-filters" }
 #signal-filters = { path = "../signal-filters" }
-pidsk-controller = "0.1.8"
-#pidsk-controller = { git = "https://github.com/martinbudden/crate-pid-controller" }
+#pidsk-controller = "0.1.8"
+pidsk-controller = { git = "https://github.com/martinbudden/crate-pid-controller" }
 #pidsk-controller = { path = "../pidsk-controller" }
-sensor-fusion = "0.1.9"
-#sensor-fusion = { git = "https://github.com/martinbudden/crate-sensor-fusion" }
+#sensor-fusion = "0.1.9"
+sensor-fusion = { git = "https://github.com/martinbudden/crate-sensor-fusion" }
 #sensor-fusion = { path = "../sensor-fusion" }
 #blackbox-logger = { version = "0.1.9", default-features = false, optional = true }
-blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger", default-features = false, optional = true }
-#blackbox-logger = { path = "../blackbox-logger", default-features = false, optional = true }
+#blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger", default-features = false, optional = true }
+blackbox-logger = { path = "../blackbox-logger", default-features = false, optional = true }
 
 #motor-mixers = { version = "0.1.5", default-features = false }
-motor-mixers = { git = "https://github.com/martinbudden/crate-motor-mixers", default-features = false }
-#motor-mixers = { path = "../motor-mixers", default-features = false }
+#motor-mixers = { git = "https://github.com/martinbudden/crate-motor-mixers", default-features = false }
+motor-mixers = { path = "../motor-mixers", default-features = false }
 #radio-controllers = { version = "0.1.6", default-features = false }
 #radio-controllers = { git = "https://github.com/martinbudden/crate-radio-controllers", default-features = false}
 radio-controllers = { path = "../radio-controllers", default-features = false }
 #imu-sensors = { version = "0.1.3", default-features = false }
-imu-sensors = { git = "https://github.com/martinbudden/crate-imu-sensors", default-features = false }
-#imu-sensors = { path = "../imu-sensors", default-features = false }
+#imu-sensors = { git = "https://github.com/martinbudden/crate-imu-sensors", default-features = false }
+imu-sensors = { path = "../imu-sensors", default-features = false }
 
 paste = { version = "1.0.15", default-features = false }
 
