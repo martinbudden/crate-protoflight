@@ -3,7 +3,7 @@
 use crate::{
     barometer_sensors::Barometer,
     boards::board::{Board, BoardInit, BoardInitError, GpsHardware, ImuContext},
-    boards::platform::{GpsUartRx, GpsUartTx},
+    boards::{GpsUartRx, GpsUartTx},
     gps::GpsParser,
     i2c_bus::{MockI2c, SharedI2cBus},
     magnetometer_sensors::Magnetometer,

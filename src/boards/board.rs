@@ -12,7 +12,7 @@ use crate::{
 
 #[cfg(not(feature = "rp2350"))]
 use crate::{
-    boards::platform::{GpsUartRx, GpsUartTx},
+    boards::{GpsUartRx, GpsUartTx},
     gps::GpsParser,
 };
 
