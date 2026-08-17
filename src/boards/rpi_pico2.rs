@@ -39,6 +39,16 @@ pub type BoardImu = Imu426xx<ImuSpiBus<BoardSpi>>;
 pub fn imu_context(imu: BoardImu) -> ImuContext<BoardImu> {
     ImuContext::new(imu)
 }
+#[cfg(feature = "multicore")]
+static EXECUTOR_CORE1: embassy_executor::InterruptExecutor = InterruptExecutor::new();
+//static EXECUTOR_CORE1: StaticCell<Executor> = StaticCell::new();
+
+// Core 1 needs its own stack space in RAM
+#[cfg(feature = "multicore")]
+static mut CORE1_STACK: Stack<4096> = Stack::new();
+
+#[cfg(feature = "multicore")]
+pub fn start_core1_executor() -> embassy_executor::SendSpawner {}
 
 pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
     static I2C_BUS: StaticCell<SharedI2cBus> = StaticCell::new();

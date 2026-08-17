@@ -24,20 +24,6 @@ use crate::{
 #[cfg(feature = "gps")]
 use crate::tasks::gps::GPS_YAW_HEADING_SIGNAL;
 
-/// Spawns `gyro_pid` task to core1 if we are using a dual-core processor.
-#[cfg(feature = "multicore")]
-fn core1_entry(ctx_ptr: usize) -> ! {
-    // 1. Retrieve the context pointer passed from Core 0
-    let ctx = unsafe { &mut *(ctx_ptr as *mut GyroPidContext) };
-
-    let spawner = EXECUTOR_CORE1.start(interrupt::IO_IRQ_BANK0);
-    spawner.spawn(run(ctx)).unwrap();
-
-    loop {
-        cortex_m::asm::wfi();
-    }
-}
-
 // The gyro_pid watch has three clients: the blackbox, the autopilot, and the OSD.
 const GYRO_PID_WATCH_COUNT: usize = 3;
 // Watch<Mutex, DataType, MaxReceivers>

@@ -15,6 +15,7 @@ use {
 #[allow(unused)]
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum MagnetometerType {
     #[default]
     Default = 0,
@@ -30,6 +31,9 @@ pub enum MagnetometerType {
     Mmc560x = 10,
     Mock = 11,
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for MagnetometerType {}
 
 #[allow(unused)]
 impl MagnetometerType {
@@ -118,5 +122,8 @@ mod tests {
     #[test]
     fn normal_types() {
         is_full::<MagnetometerMessage>();
+        is_full::<MagnetometerType>();
+        #[cfg(feature = "serde")]
+        is_config::<MagnetometerType>();
     }
 }

@@ -6,6 +6,7 @@ use std::{fs::File, io::Write};
 #[allow(async_fn_in_trait)]
 pub trait SdStorage {
     async fn write_all(&mut self, data: &[u8]) -> Result<(), ()>;
+    async fn flush(&mut self);
 }
 
 pub struct MockSdCard {
@@ -29,5 +30,10 @@ impl SdStorage for MockSdCard {
         _ = self.file.flush().ok();
         yield_now().await;
         Ok(())
+    }
+
+    async fn flush(&mut self) {
+        _ = self.file.flush().ok();
+        yield_now().await;
     }
 }

@@ -15,6 +15,7 @@ use {
 #[allow(unused)]
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum RangefinderType {
     #[default]
     None = 0,
@@ -34,6 +35,10 @@ pub enum RangefinderType {
     NoopLoopF2mini = 14,
     Mock = 255,
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for RangefinderType {}
+
 #[allow(unused)]
 impl RangefinderType {
     pub const COUNT: u8 = 14;
@@ -127,5 +132,8 @@ mod tests {
     #[test]
     fn normal_types() {
         is_full::<RangefinderMessage>();
+        is_full::<RangefinderType>();
+        #[cfg(feature = "serde")]
+        is_full::<RangefinderType>();
     }
 }

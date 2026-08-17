@@ -6,9 +6,9 @@ use crate::{
     display::{
         Display, DisplayPort, DisplayPortDeviceType,
         DisplayPortLayer::{self, Background},
+        DisplayPortMutex,
     },
     osd::{OsdConfig, OsdDrawContext, elements::OsdElements},
-    tasks::init::DisplayPortMutex,
 };
 
 /*

@@ -16,6 +16,7 @@ use {
 #[allow(unused)]
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum BarometerType {
     #[default]
     Default = 0,
@@ -33,6 +34,9 @@ pub enum BarometerType {
     Bmp581 = 12,
     Mock = 13,
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for BarometerType {}
 
 #[allow(unused)]
 impl BarometerType {
@@ -139,6 +143,8 @@ mod tests {
 
     #[test]
     fn normal_types() {
-        is_full::<BarometerMessage>();
+        is_full::<BarometerType>();
+        #[cfg(feature = "serde")]
+        is_config::<BarometerType>();
     }
 }

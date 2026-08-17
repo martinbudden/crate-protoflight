@@ -1,16 +1,17 @@
 #![cfg(feature = "blackbox")]
 
-#[allow(unused)]
-use crate::tasks::blackbox::BLACKBOX_WRITE_QUEUE;
+use static_cell::StaticCell;
+
+use crate::tasks::blackbox_encoder::{BLACKBOX_WRITE_QUEUE, BlackboxWriteItem};
 
 #[cfg(feature = "rp2350")]
-use crate::boards::rp2350::BlackboxSpiDevice;
+use {
+    //crate::boards::rp2350::BlackboxSpiDevice,
+    embedded_sdmmc::{Directory, Mode, SdCard, VolumeIdx, VolumeManager},
+};
 
 #[cfg(feature = "std")]
 use crate::drivers::sd_card::{MockSdCard, SdStorage};
-#[cfg(feature = "rp2350")]
-use embedded_sdmmc::{Directory, Mode, SdCard, VolumeIdx, VolumeManager};
-use static_cell::StaticCell;
 
 /// Dummy time source required by the embedded-sdmmc library
 #[cfg(not(feature = "std"))]
@@ -23,94 +24,110 @@ impl embedded_sdmmc::TimeSource for VehicleTimeSource {
         embedded_sdmmc::Timestamp::from_fat(0, 0)
     }
 }
-
 /// System execution context for the background storage worker pipeline.
-#[cfg(feature = "std")]
 pub struct BlackboxWriterContext {
+    #[cfg(feature = "std")]
     pub sd_card: MockSdCard,
-}
-
-#[cfg(feature = "std")]
-impl BlackboxWriterContext {
-    pub fn new() -> Self {
-        Self { sd_card: MockSdCard::new("blackbox_log.bbl") }
-    }
-}
-/// System execution context for the background storage worker pipeline.
-#[cfg(feature = "stm32")]
-pub struct BlackboxWriterContext {}
-
-#[cfg(feature = "stm32")]
-impl BlackboxWriterContext {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-/// System execution context for the background storage worker pipeline.
-#[cfg(feature = "rp2350")]
-pub struct BlackboxWriterContext {
-    /// Concrete async SPI bus instance assigned to the card subsystem
+    #[cfg(feature = "rp2350")]
     pub spi_device: BlackboxSpiDevice,
-    /// 512-byte block cache matching the target SD physical sector boundaries
-    pub sector_buffer: [u8; Self::BUFFER_SIZE],
-    pub buffer_idx: usize,
+    /// 512-byte cache matching SD physical sector boundaries.
+    pub sector_buffer: [u8; Self::SECTOR_SIZE],
+    pub sector_idx: usize,
 }
 
-#[cfg(feature = "rp2350")]
+// A single BlackboxWriteBlock must always fit within one SD sector.
+const _: () =
+    assert!(crate::tasks::blackbox_encoder::BlackboxWriteBlock::CAPACITY <= BlackboxWriterContext::SECTOR_SIZE);
+
 impl BlackboxWriterContext {
-    const BUFFER_SIZE: usize = 512;
-    pub fn new(spi_device: BlackboxSpiDevice) -> Self {
-        Self { spi_device, sector_buffer: [0u8; Self::BUFFER_SIZE], buffer_idx: 0 }
+    const SECTOR_SIZE: usize = 512;
+
+    #[cfg(feature = "std")]
+    pub fn new() -> Self {
+        Self { sd_card: MockSdCard::new("blackbox_log.bbl"), sector_buffer: [0u8; Self::SECTOR_SIZE], sector_idx: 0 }
+    }
+    #[cfg(feature = "rp2350")]
+    pub fn new() -> Self {
+        Self { spi_device, sector_buffer: [0u8; Self::SECTOR_SIZE], sector_idx: 0 }
+    }
+    #[cfg(feature = "stm32")]
+    pub fn new() -> Self {
+        Self { sector_buffer: [0u8; Self::SECTOR_SIZE], sector_idx: 0 }
     }
 }
 
 static BLACKBOX_WRITER_CTX: StaticCell<BlackboxWriterContext> = StaticCell::new();
 
-#[cfg(feature = "std")]
 pub fn init() -> &'static mut BlackboxWriterContext {
     BLACKBOX_WRITER_CTX.init(BlackboxWriterContext::new())
 }
 
-#[cfg(feature = "stm32")]
-pub fn init() -> &'static mut BlackboxWriterContext {
-    BLACKBOX_WRITER_CTX.init(BlackboxWriterContext::new())
-}
-
-#[cfg(feature = "rp2350")]
-pub fn init() -> &'static mut BlackboxWriterContext {
-    BLACKBOX_WRITER_CTX.init(BlackboxWriterContext::new(board.sdcard_spi.unwrap()));
-}
-
-#[cfg(feature = "std")]
 #[embassy_executor::task]
 pub async fn run(ctx: &'static mut BlackboxWriterContext) {
-    log::info!("BLACKBOX SD WRITER: task started");
+    log::info!("BLACKBOX WRITER: task started");
+
+    open_storage();
+
     loop {
-        // Asynchronously wait until blackbox task sends a new serialized block chunk
-        let block = BLACKBOX_WRITE_QUEUE.receive().await;
-        let chunk = &block.data[..block.len];
-        // On desktop, directly await the full file flash operation
-        _ = ctx.sd_card.write_all(chunk).await;
+        match BLACKBOX_WRITE_QUEUE.receive().await {
+            BlackboxWriteItem::Data(block) => {
+                let chunk = &block.data[..block.len];
+                append_to_sector_buffer(ctx, chunk).await;
+            }
+            BlackboxWriteItem::Flush => {
+                flush_sector_buffer(ctx).await;
+                break;
+            }
+        }
     }
 }
 
-#[cfg(feature = "stm32")]
-#[embassy_executor::task]
-pub async fn run(_ctx: &'static mut BlackboxWriterContext) {
-    log::info!("BLACKBOX SD WRITER: task started");
+async fn append_to_sector_buffer(ctx: &mut BlackboxWriterContext, chunk: &[u8]) {
+    let space_remaining = BlackboxWriterContext::SECTOR_SIZE - ctx.sector_idx;
+
+    if chunk.len() <= space_remaining {
+        // Entire chunk fits in the current sector.
+        let end = ctx.sector_idx + chunk.len();
+        ctx.sector_buffer[ctx.sector_idx..end].copy_from_slice(chunk);
+        ctx.sector_idx = end;
+        // If exactly full, write the sector.
+        if ctx.sector_idx == BlackboxWriterContext::SECTOR_SIZE {
+            let _ = ctx.sd_card.write_all(&ctx.sector_buffer).await;
+            ctx.sector_idx = 0;
+        }
+    } else {
+        // Chunk crosses the sector boundary.
+        // Fill the remainder of the current sector.
+        ctx.sector_buffer[ctx.sector_idx..].copy_from_slice(&chunk[..space_remaining]);
+        let _ = ctx.sd_card.write_all(&ctx.sector_buffer).await;
+        // Copy the remainder of the chunk into the new sector.
+        let remainder = &chunk[space_remaining..];
+        ctx.sector_buffer[..remainder.len()].copy_from_slice(remainder);
+        ctx.sector_idx = remainder.len();
+    }
 }
 
-/// Blackbox writer background processing task loop using embedded-sdmmc 0.9.0.
-#[cfg(feature = "rp2350")]
-#[embassy_executor::task]
-pub async fn run(ctx: &'static mut BlackboxWriterContext) {
-    log::info!("BLACKBOX SD WRITER: task started");
+async fn flush_sector_buffer(ctx: &mut BlackboxWriterContext) {
+    if ctx.sector_idx != 0 {
+        // Pad the rest of the sector with zeros.
+        ctx.sector_buffer[ctx.sector_idx..].fill(0);
+        _ = ctx.sd_card.write_all(&ctx.sector_buffer).await;
+        ctx.sector_idx = 0;
+    }
 
+    ctx.sd_card.flush().await;
+}
+
+#[cfg(not(feature = "rp2350"))]
+fn open_storage() {}
+
+#[cfg(feature = "rp2350")]
+fn open_storage() {
+    // TODO: add spi_device parameter to open_storage
     // LOW-SPEED BOOT HARDWARE HANDSHAKE ---
     {
         // Mount the card container at the mandatory safe boot speed (400 kHz)
-        let sd_card = SdCard::new(&mut ctx.spi_device, embassy_time::Delay);
+        let sd_card = SdCard::new(&mut spi_device, embassy_time::Delay);
         let volume_mgr = VolumeManager::new(sd_card, VehicleTimeSource);
 
         // Open the volume. This underlying library call executes the low-speed
@@ -119,10 +136,10 @@ pub async fn run(ctx: &'static mut BlackboxWriterContext) {
     }
 
     log::info!("SD CARD: Handshake verified. Shifting master clock registers to 20 MHz...");
-    ctx.spi_device.bus_mut().set_frequency(20_000_000);
+    spi_device.bus_mut().set_frequency(20_000_000);
 
     // Re-mount the entire framework. Everything from here forward runs at full 20 MHz data rates.
-    let sd_card = SdCard::new(&mut ctx.spi_device, embassy_time::Delay);
+    let sd_card = SdCard::new(&mut spi_device, embassy_time::Delay);
     let volume_mgr = VolumeManager::new(sd_card, VehicleTimeSource);
     let volume = volume_mgr.open_volume(VolumeIdx(0)).unwrap();
     let mut root_dir = volume.open_root_dir().unwrap();
@@ -133,25 +150,6 @@ pub async fn run(ctx: &'static mut BlackboxWriterContext) {
     let filename_str = format_log_filename(next_index, &mut filename_buf);
 
     let log_file = root_dir.open_file_in_dir(filename_str, Mode::ReadWriteCreateOrAppend).unwrap();
-
-    loop {
-        // Asynchronously wait until blackbox task sends a new serialized block chunk
-        let block = BLACKBOX_WRITE_QUEUE.receive().await;
-        let chunk = &block.data[..block.len];
-
-        // Sector-alignment analysis: Flush working cache to disk if it overflows 512 bytes
-        if ctx.buffer_idx + chunk.len() > BlackboxWriterContext::BUFFER_SIZE {
-            // Cooperative yield checkpoint: Ensure high-speed control loop runs before physical write
-            embassy_time::Timer::after_micros(0).await;
-
-            // Flushes data down at full 20 MHz speed via DMA channels!
-            _ = log_file.write(&ctx.sector_buffer[..ctx.buffer_idx]).unwrap();
-            ctx.buffer_idx = 0;
-        }
-
-        ctx.sector_buffer[ctx.buffer_idx..ctx.buffer_idx + chunk.len()].copy_from_slice(chunk);
-        ctx.buffer_idx += chunk.len();
-    }
 }
 
 /// Scans the root directory by inspecting raw filename bytes directly.

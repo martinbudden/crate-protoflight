@@ -83,7 +83,7 @@ check-rp2350 = [
     "--target", "thumbv8m.main-none-eabihf",
     "--no-default-features",
     "--features",
-    "libm,rpi_pico2,autopilot,barometer,magnetometer,osd,rangefinder"
+    "libm,rpi_pico2,autopilot,barometer,magnetometer,msp,osd,rangefinder,rpm_filters"
     #"rp2350,libm,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug"
 ]
 

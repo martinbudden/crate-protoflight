@@ -187,12 +187,12 @@ pub struct OsdElements {
     background_rendered: bool,
     display_pending_foreground: bool,
     display_pending_background: bool,
-    display_supports_background_layer: bool,
+    background_layer_supported: bool,
     cache: OsdElementsCache,
 }
 
 impl OsdElements {
-    pub const fn new(display_supports_background_layer: bool) -> Self {
+    pub const fn new(background_layer_supported: bool) -> Self {
         Self {
             positions: [0u16; OsdElements::COUNT],
             current_element: OsdElement::new(),
@@ -202,7 +202,7 @@ impl OsdElements {
             background_rendered: false,
             display_pending_foreground: false,
             display_pending_background: false,
-            display_supports_background_layer,
+            background_layer_supported,
             cache: OsdElementsCache::new(),
         }
     }
@@ -305,7 +305,7 @@ impl OsdElements {
         //let start_element_time = Self::time_us();
 
         // Draw the background before the foreground.
-        if !self.display_supports_background_layer && !self.background_rendered {
+        if !self.background_layer_supported && !self.background_rendered {
             // If the display doesn't support a background layer then we need to draw the element background now.
             self.current_element.rendered = true;
             let (drawn, rendered) =
@@ -372,7 +372,7 @@ impl OsdElements {
         display_port: &mut D,
         osd_config: &OsdConfig,
     ) {
-        if self.display_supports_background_layer {
+        if self.background_layer_supported {
             // If the display supports a background layer then we can all the background now
             // and we don't need to draw the background for each individual element.
             display_port.layer_select(DisplayPortLayer::Background);

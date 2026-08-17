@@ -34,11 +34,11 @@ use {
     blackbox_logger::{BlackboxGpsData, BlackboxGpsPosition},
 };
 
-static BLACKBOX_CTX: StaticCell<BlackboxContext> = StaticCell::new();
+static BLACKBOX_ENCODER_CTX: StaticCell<BlackboxEncoderContext> = StaticCell::new();
 
 #[allow(unused)]
 #[rustfmt::skip]
-pub struct BlackboxContext {
+pub struct BlackboxEncoderContext {
     pub gyro_pid_receiver: GyroPidReceiver,
     pub setpoint_receiver: SetpointReceiver,
     pub setpoint_message: SetpointMessage,
@@ -51,11 +51,11 @@ pub struct BlackboxContext {
     #[cfg(feature = "battery")] pub battery_subscriber: BatterySubscriber,
     #[cfg(feature = "gps")] pub gps_subscriber: GpsSubscriber,
     pub blackbox: Blackbox,
-    pub buffer: [u8; BlackboxContext::BUFFER_CAPACITY],
+    pub buffer: [u8; BlackboxEncoderContext::BUFFER_CAPACITY],
     pub overflow_counter: u32,
 }
 
-impl BlackboxContext {
+impl BlackboxEncoderContext {
     const BUFFER_CAPACITY: usize = 1024;
 
     #[rustfmt::skip]
@@ -149,6 +149,7 @@ impl BlackboxWriteBlock {
     pub const fn new(len: usize) -> Self {
         Self { data: [0u8; Self::CAPACITY], len }
     }
+
     #[inline]
     pub fn from_chunk(slice: &[u8]) -> Self {
         // Enforce the size boundary strictly using compile-time constants
@@ -157,56 +158,102 @@ impl BlackboxWriteBlock {
         block.data[..copy_len].copy_from_slice(&slice[..copy_len]);
         block
     }
-    pub fn send_data_to_blackbox_writer_task(data: &[u8], overflow_counter: &mut u32) {
+
+    #[inline]
+    pub fn send_data_to_blackbox_writer_task(data: &[u8], overflow_counter: &mut u32) -> bool {
+        let mut ret = false;
+        let overflow_counter_in = *overflow_counter;
         // Loop through the slice in chunks matching BlackboxWriteBlock capacity
         for chunk in data.chunks(Self::CAPACITY) {
             let block = Self::from_chunk(chunk);
-            // Non-blocking try_send ensures high-speed loop deadlines are protected
-            if let Err(_overflow) = BLACKBOX_WRITE_QUEUE.try_send(block) {
+            let block_item = BlackboxWriteItem::Data(block);
+
+            // We use non-blocking `try_send` here.
+            // So if the `BLACKBOX_WRITE_QUEUE` is full the task won't stall,
+            // Instead the chunk is just dropped.
+            if let Err(_overflow) = BLACKBOX_WRITE_QUEUE.try_send(block_item) {
+                ret = true;
                 *overflow_counter = overflow_counter.wrapping_add(1);
-                log::error!("BLACKBOX: FIFO queue full! Dropped a log chunk.");
+                log::error!("BLACKBOX: FIFO queue full! Dropped a logging chunk.");
             }
         }
+        ret
     }
 }
 
-const BLACKBOX_WRITE_QUEUE_COUNT: usize = 256;
-pub static BLACKBOX_WRITE_QUEUE: Channel<CriticalSectionRawMutex, BlackboxWriteBlock, BLACKBOX_WRITE_QUEUE_COUNT> =
-    Channel::new();
-
-pub fn init(config: BlackboxConfig) -> &'static mut BlackboxContext {
-    BLACKBOX_CTX.init(BlackboxContext::new(config))
+pub enum BlackboxWriteItem {
+    Data(BlackboxWriteBlock),
+    Flush,
 }
 
-/// Blackbox task.
+const BLACKBOX_WRITE_QUEUE_COUNT: usize = 256;
+pub static BLACKBOX_WRITE_QUEUE: Channel<CriticalSectionRawMutex, BlackboxWriteItem, BLACKBOX_WRITE_QUEUE_COUNT> =
+    Channel::new();
+
+pub fn init(config: BlackboxConfig) -> &'static mut BlackboxEncoderContext {
+    BLACKBOX_ENCODER_CTX.init(BlackboxEncoderContext::new(config))
+}
+
+/// Blackbox encoder task.
+///
+/// REALTIME PRIORITY                         BACKGROUND PRIORITY
+///
+/// blackbox encoder task
+///    │
+///    │ produces ~40 bytes
+///    ▼
+/// `BlackboxWriteBlock`
+///    │
+///    │ copy/move into Channel
+///    ▼
+/// ┌─────────────────────────────────────────────┐
+/// │ Embassy Channel:                            │
+/// | 256 × `BlackboxWriteBlock`                  │
+/// │                                             │
+/// │ [40] [40] [40] [40] [40] ...                │
+/// │                                             │
+/// └──────────────────────────────────────────┬──┘
+///                                            │
+///                                            ▼
+///                                        blackbox writer task
+///                                            │
+///                                            ▼
+///                                        batch records
+///                                            │
+///                                            ▼
+///                                        512-byte buffer
+///                                            │
+///                                            ▼
+///                                         SD card
 #[embassy_executor::task]
-pub async fn run(ctx: &'static mut BlackboxContext) {
+pub async fn run(ctx: &'static mut BlackboxEncoderContext) {
     log::info!("    BLACKBOX: task started");
     let mut loop_count: u32 = 0;
 
-    // Write the Blackbox log file header by using blackbox.update to step through the blackbox state machine
-    // until the state is LoggerState::HeaderWritten.
+    // Write the Blackbox log file header by using `blackbox.update` to step through the blackbox state machine
+    // until the state is `LoggerState::HeaderWritten`.
     #[cfg(feature = "debug")]
     ctx.blackbox.start(u16::from(GLOBAL_DEBUG.mode()));
     #[cfg(not(feature = "debug"))]
     ctx.blackbox.start(0);
     while ctx.blackbox.state() != LoggerState::HeaderWritten {
         let time_us = 0;
-        let len = ctx.blackbox.update(&mut SliceEncoder::new(&mut ctx.buffer), time_us);
-        BlackboxWriteBlock::send_data_to_blackbox_writer_task(&ctx.buffer[..len], &mut ctx.overflow_counter);
+        let len = ctx.blackbox.update(&mut SliceEncoder::new(&mut ctx.buffer), time_us, false);
+        _ = BlackboxWriteBlock::send_data_to_blackbox_writer_task(&ctx.buffer[..len], &mut ctx.overflow_counter);
         //log::info!("BLACKBOX:  hdr {loop_count},{len}");
         loop_count = loop_count.wrapping_add(1);
     }
     log::info!("    BLACKBOX: header written {loop_count}");
 
     loop_count = 0;
+    let mut force_i_frame = false;
     loop {
         // blocking
         let gyro_pid_msg = ctx.gyro_pid_receiver.changed().await;
         let time_us = gyro_pid_msg.time_us;
         // non-blocking
         if let Some(setpoint_message) = ctx.setpoint_receiver.try_get() {
-            // if we have a new setpoint message then update ctx.setpoint_message so that the most up to date setpoint_message is used.
+            // if we have a new `setpoint_message` then update `ctx.setpoint_message` so that the most up to date `setpoint_message` is used.
             ctx.setpoint_message = setpoint_message;
             let mut slow_data = slow_data_from(ctx.setpoint_message);
             if setpoint_message.rc_modes.test(RcMode::ARM) {
@@ -214,6 +261,7 @@ pub async fn run(ctx: &'static mut BlackboxContext) {
             }
             ctx.blackbox.set_slow_data(slow_data);
         }
+
         #[cfg(feature = "barometer")]
         if let Some(wait_result) = ctx.barometer_subscriber.try_next_message()
             && let embassy_sync::pubsub::WaitResult::Message(event) = wait_result
@@ -221,6 +269,7 @@ pub async fn run(ctx: &'static mut BlackboxContext) {
         {
             ctx.barometer_altitude = barometer_message.altitude_m_i32;
         }
+
         #[allow(clippy::cast_possible_truncation)]
         #[cfg(feature = "battery")]
         if let Some(wait_result) = ctx.battery_subscriber.try_next_message()
@@ -230,7 +279,8 @@ pub async fn run(ctx: &'static mut BlackboxContext) {
             ctx.battery_voltage = battery_message.voltage.unfiltered_x100;
             ctx.battery_current = battery_message.current.amperage_latest_x100 as i16;
         }
-        // set_main_data always uses the most up to date setpoint message.
+
+        // `set_main_data` always uses the most up to date `setpoint_message`.
         ctx.blackbox.set_main_data(main_data_from(
             gyro_pid_msg,
             ctx.setpoint_message,
@@ -247,52 +297,19 @@ pub async fn run(ctx: &'static mut BlackboxContext) {
             && let GpsMessage::GpsSolution(gps_solution_data) = event
         {
             let gps_data = gps_data_from(gps_solution_data);
-            //let satellite_count = gps_data.satellite_count;
-            //log::info!("    BLACKBOX: sat count {satellite_count}");
             ctx.blackbox.set_gps_data(gps_data);
         }
 
-        /*#[cfg(feature = "std")]
-        if loop_count == 512 {
-            // write End of log
-            let len = ctx.blackbox.logger.log_e_frame(&mut SliceEncoder::new(&mut ctx.buffer), BlackboxEvent::LogEnd);
+        let len = ctx.blackbox.update(&mut SliceEncoder::new(&mut ctx.buffer), time_us, force_i_frame);
+        // Force the blackbox logger to write an I Frame (keyframe) the next time around if there was an overflow.
+        force_i_frame =
             BlackboxWriteBlock::send_data_to_blackbox_writer_task(&ctx.buffer[..len], &mut ctx.overflow_counter);
-            log::info!("**** BLACKBOX: END OF LOG");
-        }*/
-        let len = ctx.blackbox.update(&mut SliceEncoder::new(&mut ctx.buffer), time_us);
-        BlackboxWriteBlock::send_data_to_blackbox_writer_task(&ctx.buffer[..len], &mut ctx.overflow_counter);
+
         if ctx.blackbox.is_active() && loop_count.is_multiple_of(10) {
-            let overflow = ctx.overflow_counter;
-            log::info!("      BLACKBOX: loop {loop_count},{len},{overflow}");
+            log::info!("BLACKBOX: loop {loop_count},{len},{0}", ctx.overflow_counter);
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }
-
-    /*loop {
-        // Wait until the sender updates the value.
-        // The primary client of the ahrs_receiver is the motor_mixer
-        let gyro_pid_msg = ctx.gyro_pid_receiver.changed().await;
-        ctx.blackbox.load_telemetry(time_us, gyro_pid_msg, setpoint_msg);
-
-        log::info!("BLACKBOX: Received time_us {}", gyro_pid_msg.time_us);
-        let len = 0;
-        log::info!(
-            "BLACKBOX: Encoded frame in {} bytes. (x: {}, y: {}, z: {}),(x: {}, y: {}, z: {})",
-            len,
-            gyro_pid_msg.gyro_rps.x,
-            gyro_pid_msg.gyro_rps.y,
-            gyro_pid_msg.gyro_rps.z,
-            gyro_pid_msg.gyro_rps_unfiltered.x,
-            gyro_pid_msg.gyro_rps_unfiltered.y,
-            gyro_pid_msg.gyro_rps_unfiltered.z
-        );
-        // Process logging.
-        /*let buf = [b'a', b'b', b'c', b'd', b'e', b'f'];
-        let len = 6;
-        ctx.sd_card.write_all(&buf[..len]).await;*/
-        // 3. Increment fake time (e.g., 1000us per sample for 1kHz)
-        time_us = time_us.wrapping_add(1000); // use wrapping_add to handle when time rolls over at max u32.
-    }*/
 }
 
 #[inline]
@@ -306,9 +323,6 @@ pub fn main_data_from(
     rssi: u16,
 ) -> BlackboxMainData {
     const TO_I16: f32 = 32_757.0;
-
-    #[cfg(feature = "debug")]
-    crate::tasks::GLOBAL_DEBUG.set(DebugMode::BlackboxOutput, 0, 0);
 
     // let motor_commands = gyro_pid_msg.motor_commands * 2.0;
     let setpoints = setpoint_message.setpoints;
@@ -357,10 +371,11 @@ pub fn main_data_from(
                 (-gyro_pid_msg.orientation.z * TO_I16) as i16,
             ]
         },
+
         motor: [1100i16; BlackboxMainData::MAX_SUPPORTED_MOTOR_COUNT],
         #[cfg(feature = "dshot_telemetry")]
         erpm_d2: setpoint_message.motor_rpm_d2,
-        //erpm_d2: [5000i16;BlackboxMainData::MAX_SUPPORTED_MOTOR_COUNT],
+
         #[cfg(feature = "debug")]
         debug: crate::tasks::GLOBAL_DEBUG.values(),
 

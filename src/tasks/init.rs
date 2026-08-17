@@ -1,39 +1,9 @@
 use embassy_executor::Spawner;
 
-use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
-
-use static_cell::StaticCell;
-
 use crate::{
     boards::{BoardInit, board_hardware},
     config::GLOBAL_CONFIG,
 };
-
-#[cfg(feature = "speedybee_f405_v4")]
-use crate::boards::speedybee_f405_v4::start_realtime_executor;
-
-#[cfg(feature = "serde")]
-use crate::tasks::non_volatile_storage::load_global_configs;
-
-#[cfg(feature = "max7456")]
-use crate::display::DisplayPortMax7456;
-
-#[cfg(feature = "max7456")]
-pub type DisplayPortMax7456Spi = DisplayPortMax7456<DisplaySpi>;
-#[cfg(feature = "max7456")]
-pub type DisplayPortMutex = Mutex<CriticalSectionRawMutex, DisplayPortMax7456Spi>;
-
-#[cfg(not(feature = "max7456"))]
-use crate::display::DisplayPortMock;
-
-// --- 2. HOST ARCHITECTURE TESTING / MOCK CONFIGURATION ---
-#[allow(unused)]
-#[cfg(not(feature = "max7456"))]
-pub type DisplayPortMutex = Mutex<CriticalSectionRawMutex, DisplayPortMock>;
-
-// Core 1 needs its own stack space in RAM
-#[cfg(feature = "multicore")]
-static mut CORE1_STACK: Stack<4096> = Stack::new();
 
 /// Protoflight initialization, called directly from main.
 /// Does the following:
@@ -53,20 +23,12 @@ static mut CORE1_STACK: Stack<4096> = Stack::new();
 ///
 /// This function is quite long, but it is long for a good reason, and its organization is clear.
 ///
-/// Replacing this one understandable 200-line function with (say) five 40-line functions would mean
+/// Replacing this one understandable 250-line function with (say) five 50-line functions would mean
 /// you'd have to jump around to understand startup and it would reduce clarity.
 ///
 #[allow(clippy::too_many_lines)]
 pub async fn init(spawner: Spawner) {
     use crate::tasks;
-
-    // TODO: put EXECUTOR_CORE1 in a static cell
-    #[cfg(feature = "multicore")]
-    static EXECUTOR_CORE1: embassy_executor::InterruptExecutor = InterruptExecutor::new();
-    //static EXECUTOR_CORE1: StaticCell<Executor> = StaticCell::new();
-
-    #[allow(unused)]
-    static DISPLAY_PORT_MUTEX_CELL: StaticCell<DisplayPortMutex> = StaticCell::new();
 
     // Initialize env_logger for logging to stdout on desktop platforms.
     // This connects the logger to the terminal and polls the environment variables.
@@ -78,24 +40,23 @@ pub async fn init(spawner: Spawner) {
     // ==================================================
 
     #[cfg(all(feature = "serde", feature = "rp2350"))]
-    load_global_configs(board_flash()).await;
+    tasks::non_volatile_storage::load_global_configs(board_flash()).await;
     #[cfg(all(feature = "serde", feature = "std"))]
-    load_global_configs().await;
+    tasks::non_volatile_storage::load_global_configs().await;
 
     // ==================================================
     // Lock the GLOBAL_CONFIGs.
     // ==================================================
 
-    // The lock is held for until all the task context have been initialized.
-    // This is perfectly fine since do tasks have been spawned yet, so nothing will be blocked.
+    // The lock is held until all the task context have been initialized.
+    // This is perfectly fine since no tasks have been spawned yet, so nothing will be blocked.
     let config = GLOBAL_CONFIG.lock().await;
 
     // ==================================================
     // Get the devices from the board support package
     // ==================================================
 
-    #[allow(clippy::panic)]
-    let Ok(hardware) = board_hardware(BoardInit {
+    let board_init = BoardInit {
         axis_order: config.imu_device.axis_order,
         radio_type: config.rx.serial_rx_provider,
 
@@ -123,20 +84,21 @@ pub async fn init(spawner: Spawner) {
         optical_flow_type: config.optical_flow.hardware,
         #[cfg(not(feature = "optical_flow"))]
         optical_flow_type: crate::optical_flow_sensors::OpticalFlowType::None,
-    }) else {
+    };
+
+    #[allow(clippy::panic)]
+    let Ok(hardware) = board_hardware(board_init) else {
         panic!("board_init failed");
     };
-    // `display_port_mutex` guards shared access to the display port.
-    // Currently only used by the OSD, but will be shared with the Context Menu System (CMS) when it is implemented
-    #[cfg(feature = "osd")]
-    let display_port_mutex = {
-        #[rustfmt::skip]
-        let display_port = {
-            #[cfg(feature = "max7456")] { DisplayPortMax7456Spi::new(aux_pio_spi) }
-            #[cfg(not(feature = "max7456"))] { DisplayPortMock::default() }
-        };
-        DISPLAY_PORT_MUTEX_CELL.init(Mutex::new(display_port))
-    };
+
+    // ==================================================
+    // Initialize the display port mutex.
+    // ==================================================
+
+    // The display port mutex guards shared access to the display port.
+    // It is currently only used by the OSD, but will also be used with the Context Menu System (CMS) when it is implemented.
+    #[cfg(any(feature = "osd", feature = "cms"))]
+    let display_port_mutex = crate::display::display_port_mutex_init();
 
     // ==================================================
     // Initialize the task contexts.
@@ -168,24 +130,24 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "msp")]
     let msp_ctx = Some(tasks::msp::init());
 
-    // TODO: Initialize the blackbox task context with the ... provided by the Board Support Package.
     #[cfg(feature = "blackbox")]
-    let (blackbox_ctx, blackbox_writer_ctx) =
-        (tasks::blackbox::init(config.blackbox), Some(tasks::blackbox_writer::init()));
+    let blackbox_encoder_ctx = tasks::blackbox_encoder::init(config.blackbox);
+
+    // TODO: Initialize the blackbox writer context with the storage provided by the Board Support Package.
+    #[cfg(feature = "blackbox")]
+    let blackbox_writer_ctx = Some(tasks::blackbox_writer::init());
 
     #[cfg(feature = "autopilot")]
     let autopilot_ctx = tasks::autopilot::init();
 
     #[cfg(feature = "barometer")]
     let barometer_ctx = hardware.barometer.map(tasks::barometer::init);
-    //let barometer_ctx = board.barometer.map(tasks::barometer::init);
 
     // TODO: replace `Some` with `board.battery.map` or similar.
     #[cfg(feature = "battery")]
     let battery_ctx = Some(tasks::battery::init());
 
     #[cfg(feature = "gps")]
-    //let gps_ctx = board.take_gps().map(tasks::gps::init);
     let gps_ctx = hardware.gps.map(|gps| tasks::gps::init(gps.uart_rx, gps.uart_tx, gps.parser));
 
     #[cfg(feature = "magnetometer")]
@@ -200,18 +162,11 @@ pub async fn init(spawner: Spawner) {
     #[cfg(feature = "rangefinder")]
     let rangefinder_ctx = hardware.rangefinder.map(tasks::rangefinder::init);
 
-    // **** UnLock the GLOBAL_CONFIGs
-    drop(config);
+    // ==================================================
+    // UnLock the GLOBAL_CONFIGs.
+    // ==================================================
 
-    /*
-    TODO: for raspberry pi pico put gyro_pid on core1 and motor_mixer and radio on high priority interrupt driven spawner
-        // 1. Launch Core 1
-        unsafe { spawn_core1(p.CORE1, &mut CORE1_STACK, core1_entry); }
-        // 2. Start an InterruptExecutor on Core 0 for the 1kHz tasks, ie the motor_mixer and rx tasks.
-        let high_spawner = EXECUTOR_HIGH.start(interrupt::SWI_IRQ_0);
-        high_spawner.spawn(motor_mixer(motor_mixer_ctx).expect("Failed to create motor mixer task")); // No receiver needed, since it uses a SIGNAL
-        high_spawner.spawn(rx(rx_ctx).expect("Failed to create radio task"));
-    */
+    drop(config);
 
     // ==================================================
     // Spawn the realtime tasks.
@@ -219,15 +174,35 @@ pub async fn init(spawner: Spawner) {
 
     #[rustfmt::skip]
     let realtime_spawner = {
-        #[cfg(feature = "speedybee_f405_v4")] { start_realtime_executor() }
-        #[cfg(not(feature = "speedybee_f405_v4"))] { spawner.make_send() }
+        #[cfg(feature = "realtime_executor")] { crate::boards::start_realtime_executor() }
+        #[cfg(not(feature = "realtime_executor"))] { spawner.make_send() }
     };
+
+    // If the processor is multicore, then the gyro_pid task gets core1 all to itself.
+    #[rustfmt::skip]
+    let gyro_pid_spawner = {
+        #[cfg(feature = "multicore")] { crate::boards::start_core1_executor() }
+        #[cfg(not(feature = "multicore"))] { realtime_spawner }
+    };
+
     #[allow(clippy::expect_used)]
     {
-        realtime_spawner.spawn(tasks::gyro_pid::run(gyro_pid_ctx).expect("Failed to create GYRO PID task"));
+        gyro_pid_spawner.spawn(tasks::gyro_pid::run(gyro_pid_ctx).expect("Failed to create GYRO PID task"));
+        // TODO: The IMU task is just used during development. It will at some point be removed.
         realtime_spawner.spawn(tasks::imu::run(imu_ctx).expect("Failed to create IMU task"));
         realtime_spawner.spawn(tasks::motor_mixer::run(motor_mixer_ctx).expect("Failed to create MOTOR MIXER task"));
         realtime_spawner.spawn(tasks::rx::run(rx_ctx).expect("Failed to create RX task"));
+    }
+    #[cfg(feature = "blackbox")]
+    {
+        // The blackbox_encoder runs on the realtime executor, the blackbox_writer runs on the background executor.
+        if let Some(blackbox_writer_ctx) = blackbox_writer_ctx
+            && let Ok(blackbox_encoder_task) = tasks::blackbox_encoder::run(blackbox_encoder_ctx)
+            && let Ok(blackbox_writer_task) = tasks::blackbox_writer::run(blackbox_writer_ctx)
+        {
+            realtime_spawner.spawn(blackbox_encoder_task);
+            spawner.spawn(blackbox_writer_task);
+        }
     }
 
     // ==================================================
@@ -255,17 +230,6 @@ pub async fn init(spawner: Spawner) {
         spawner.spawn(battery_task);
     }
 
-    #[cfg(feature = "blackbox")]
-    {
-        if let Some(blackbox_writer_ctx) = blackbox_writer_ctx
-            && let Ok(blackbox_writer_task) = tasks::blackbox_writer::run(blackbox_writer_ctx)
-            && let Ok(blackbox_task) = tasks::blackbox::run(blackbox_ctx)
-        {
-            spawner.spawn(blackbox_writer_task);
-            spawner.spawn(blackbox_task);
-        }
-    }
-
     #[cfg(feature = "gps")]
     if let Some(gps_ctx) = gps_ctx
         && let Ok(gps_task) = tasks::gps::run(gps_ctx)
@@ -286,6 +250,7 @@ pub async fn init(spawner: Spawner) {
     {
         spawner.spawn(msp_task);
     }
+
     #[cfg(feature = "optical_flow")]
     if let Some(optical_flow_ctx) = optical_flow_ctx
         && let Ok(optical_flow_task) = tasks::optical_flow::run(optical_flow_ctx)
@@ -295,7 +260,7 @@ pub async fn init(spawner: Spawner) {
 
     #[cfg(feature = "osd")]
     if let Some(osd_ctx) = osd_ctx
-        && let Ok(osd_task) = tasks::osd::run(osd_ctx, display_port_mutex)
+        && let Ok(osd_task) = tasks::osd::run(osd_ctx)
     {
         spawner.spawn(osd_task);
     }

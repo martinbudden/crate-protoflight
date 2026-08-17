@@ -5,6 +5,7 @@ mod display_port_layers;
 mod display_port_max7456;
 mod display_port_mock;
 mod display_port_msp;
+mod display_port_mutex;
 
 pub use display_port::Display;
 #[allow(unused)]
@@ -13,6 +14,8 @@ pub use display_port::{
     DisplayPortSeverity,
 };
 pub use display_port_layers::DisplayPortLayers;
+
+pub use display_port_mutex::{DisplayPortMutex, display_port_mutex_init};
 
 #[allow(unused)]
 pub use display_port_max7456::DisplayPortMax7456;

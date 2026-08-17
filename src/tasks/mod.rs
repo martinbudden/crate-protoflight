@@ -7,7 +7,7 @@ pub mod global_debug;
 mod autopilot;
 mod barometer;
 mod battery;
-mod blackbox;
+mod blackbox_encoder;
 mod blackbox_writer;
 mod gps;
 mod gyro_pid;

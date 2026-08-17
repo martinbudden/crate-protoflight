@@ -15,6 +15,7 @@ use {
 #[allow(unused)]
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum OpticalFlowType {
     #[default]
     Default = 0,
@@ -39,6 +40,9 @@ impl OpticalFlowType {
         }
     }
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for OpticalFlowType {}
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "std", derive(derive_more::Display))]

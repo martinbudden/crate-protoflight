@@ -38,3 +38,15 @@ impl BarometerMessage {
         44330.0 * (1.0 - (pressure / pressure_at_reference_altitude).powf(0.1903))
     }
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
+    fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+
+    #[test]
+    fn normal_types() {
+        is_full::<BarometerMessage>();
+    }
+}

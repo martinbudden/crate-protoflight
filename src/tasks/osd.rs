@@ -7,12 +7,11 @@ use vqm::Quaternionf32;
 
 use crate::{
     config::GLOBAL_CONFIG,
-    display::{Display, DisplayPortLayer},
+    display::{Display, DisplayPortLayer, DisplayPortMutex},
     flight::{ArmingFlags, RxMessage},
     osd::{Osd, OsdDrawContext, OsdElements, OsdState},
     tasks::{
         gyro_pid::{GyroPidReceiver, SetpointReceiver, gyro_pid_receiver, setpoint_receiver},
-        init::DisplayPortMutex,
         rx::{RxMessageReceiver, rx_message_receiver},
     },
 };
@@ -56,13 +55,14 @@ pub struct OsdContext {
     pub osd_state: OsdState,
     /// Subsystem handling layout, tracking, and rendering of individual OSD items.
     pub osd_elements: OsdElements,
+    pub display_port_mutex: &'static DisplayPortMutex,
 }
 
 impl OsdContext {
     #[rustfmt::skip]
     #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        display_supports_background_layer: bool,
+    pub fn new(display_port_mutex: &'static DisplayPortMutex,
+        background_layer_supported: bool,
     ) -> Self {
         Self {
             gyro_pid_receiver:gyro_pid_receiver(),
@@ -75,20 +75,22 @@ impl OsdContext {
             #[cfg(feature = "rangefinder")] rangefinder_subscriber:rangefinder_subscriber(),
             osd: Osd::new(),
             osd_state: OsdState::default(),
-            osd_elements: OsdElements::new(display_supports_background_layer),
+            osd_elements: OsdElements::new(background_layer_supported),
+            display_port_mutex,
         }
     }
 }
 
 pub async fn init(display_port_mutex: &'static DisplayPortMutex) -> &'static mut OsdContext {
     let display_port = display_port_mutex.lock().await;
+    let background_layer_supported = display_port.layer_supported(DisplayPortLayer::Background);
 
-    OSD_CTX.init(OsdContext::new(display_port.layer_supported(DisplayPortLayer::Background)))
+    OSD_CTX.init(OsdContext::new(display_port_mutex, background_layer_supported))
 }
 
 /// OSD Task Placeholder.
 #[embassy_executor::task]
-pub async fn run(ctx: &'static mut OsdContext, display_port_mutex: &'static DisplayPortMutex) {
+pub async fn run(ctx: &'static mut OsdContext) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(50));
     let mut loop_count: u32 = 0;
 
@@ -149,7 +151,7 @@ pub async fn run(ctx: &'static mut OsdContext, display_port_mutex: &'static Disp
                         .update_display_iteration(
                             &mut ctx.osd_elements,
                             &draw_context,
-                            display_port_mutex,
+                            ctx.display_port_mutex,
                             &osd_config,
                             time_us,
                         )

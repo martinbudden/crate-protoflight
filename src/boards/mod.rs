@@ -24,7 +24,7 @@ pub use crate::boards::rpi_pico2::{BoardImu, board_hardware};
 pub use crate::boards::madflight_fc3::{BoardImu, board_hardware};
 
 #[cfg(feature = "speedybee_f405_v4")]
-pub use crate::boards::speedybee_f405_v4::{BoardImu, board_hardware};
+pub use crate::boards::speedybee_f405_v4::{BoardImu, board_hardware, start_realtime_executor};
 
 #[cfg(feature = "sp_racing_f4_evo")]
 pub use crate::boards::sp_racing_f4_evo::{BoardImu, board_hardware};

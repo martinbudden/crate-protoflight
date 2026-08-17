@@ -1,5 +1,11 @@
 use crate::rangefinder_sensors::RangefinderType;
 
+#[cfg(feature = "serde")]
+use {
+    sequential_storage::map::PostcardValue,
+    serde::{Deserialize, Serialize},
+};
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct RangefinderConfig {

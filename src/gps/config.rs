@@ -124,6 +124,7 @@ impl Default for GpsRescueConfig {
 #[allow(unused)]
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum GpsProvider {
     #[default]
     Nmea = 0,
@@ -154,6 +155,7 @@ impl GpsProvider {
 #[allow(unused)]
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum GpsModel {
     #[default]
     Portable = 0,
@@ -165,6 +167,9 @@ pub enum GpsModel {
     Airborne2G = 6,
     Airborne4G = 7,
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for GpsModel {}
 
 #[allow(unused)]
 impl GpsModel {
@@ -188,6 +193,7 @@ impl GpsModel {
 #[allow(unused)]
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum UtcStandard {
     #[default]
     Auto = 0,
@@ -196,6 +202,9 @@ pub enum UtcStandard {
     Su = 6,
     Ntsc = 7,
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for UtcStandard {}
 
 #[allow(unused)]
 impl UtcStandard {
@@ -216,6 +225,7 @@ impl UtcStandard {
 #[allow(unused)]
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum SbasMode {
     #[default]
     Auto = 0,
@@ -247,6 +257,7 @@ impl SbasMode {
 #[allow(unused)]
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum GpsOffOn {
     #[default]
     Off = 0,

@@ -119,7 +119,7 @@ checksum = "b588b76d00fde79687d7646a9b5bdf3cc0f655e0bbd080335a95d7e96f3587da"
 [[package]]
 name = "blackbox-logger"
 version = "0.1.9"
-source = "git+https://github.com/martinbudden/crate-blackbox-logger#2803e7e73e3c213d1a4b3690794482c0f6aeefbf"
+source = "git+https://github.com/martinbudden/crate-blackbox-logger#904f70484b0088889544a1a5b8f2d2da83439108"
 dependencies = [
  "embassy-futures",
  "postcard",
@@ -1060,7 +1060,7 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 [[package]]
 name = "imu-sensors"
 version = "0.1.3"
-source = "git+https://github.com/martinbudden/crate-imu-sensors#dfb61275744ad78fbd2cdb7d5afe366f4d19cf8b"
+source = "git+https://github.com/martinbudden/crate-imu-sensors#ae9529ce8d1a274216b3efb90f1ae5f78d534476"
 dependencies = [
  "cfg-if",
  "embassy-sync",
