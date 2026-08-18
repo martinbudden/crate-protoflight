@@ -5,31 +5,36 @@ use crate::{
     i2c_bus::SharedI2cBus,
 };
 
-const _REG_DIG_T1: u8 = 0x88;
-const _REG_DIG_T2: u8 = 0x8A;
-const _REG_DIG_T3: u8 = 0x8C;
-const _REG_DIG_P1: u8 = 0x8E;
-const _REG_DIG_P2: u8 = 0x90;
-const _REG_DIG_P3: u8 = 0x92;
-const _REG_DIG_P4: u8 = 0x94;
-const _REG_DIG_P5: u8 = 0x96;
-const _REG_DIG_P6: u8 = 0x98;
-const _REG_DIG_P7: u8 = 0x9A;
-const _REG_DIG_P8: u8 = 0x9C;
-const _REG_DIG_P9: u8 = 0x9E;
-const _REG_CHIPID: u8 = 0xD0;
-const _REG_VERSION: u8 = 0xD1;
-const _REG_SOFTRESET: u8 = 0xE0;
-const _REG_CAL26: u8 = 0xE1; // R calibration:u8 = 0xE1-0xF0
-const _REG_STATUS: u8 = 0xF3;
-const _REG_CONTROL: u8 = 0xF4;
-const _REG_CONFIG: u8 = 0xF5;
-const _REG_PRESSURE_MSB: u8 = 0xF7;
-const _REG_PRESSURE_LSB: u8 = 0xF8;
-const _REG_PRESSURE_XLSB: u8 = 0xF9;
-const _REG_TEMPERATURE_MSB: u8 = 0xFA;
-const _REG_TEMPERATURE_LSB: u8 = 0xFB;
-const _REG_TEMPERATURE_XLSB: u8 = 0xFC;
+#[allow(unused)]
+struct Reg;
+
+impl Reg {
+    const _DIG_T1: u8 = 0x88;
+    const _DIG_T2: u8 = 0x8A;
+    const _DIG_T3: u8 = 0x8C;
+    const _DIG_P1: u8 = 0x8E;
+    const _DIG_P2: u8 = 0x90;
+    const _DIG_P3: u8 = 0x92;
+    const _DIG_P4: u8 = 0x94;
+    const _DIG_P5: u8 = 0x96;
+    const _DIG_P6: u8 = 0x98;
+    const _DIG_P7: u8 = 0x9A;
+    const _DIG_P8: u8 = 0x9C;
+    const _DIG_P9: u8 = 0x9E;
+    const _CHIPID: u8 = 0xD0;
+    const _VERSION: u8 = 0xD1;
+    const _SOFTRESET: u8 = 0xE0;
+    const _CAL26: u8 = 0xE1; // R calibration:u8 = 0xE1-0xF0
+    const _STATUS: u8 = 0xF3;
+    const _CONTROL: u8 = 0xF4;
+    const _CONFIG: u8 = 0xF5;
+    const _PRESSURE_MSB: u8 = 0xF7;
+    const _PRESSURE_LSB: u8 = 0xF8;
+    const _PRESSURE_XLSB: u8 = 0xF9;
+    const _TEMPERATURE_MSB: u8 = 0xFA;
+    const _TEMPERATURE_LSB: u8 = 0xFB;
+    const _TEMPERATURE_XLSB: u8 = 0xFC;
+}
 
 pub struct BarometerBmp085 {
     #[allow(unused)]
@@ -176,10 +181,10 @@ impl BarometerBmp085 {
         // Placeholder: explicitly await an immediately ready inline future
         core::future::poll_fn(|_| core::task::Poll::Ready(())).await;
 
-        //self.bus.write_register(REG_CONTROL, MEASUREMENT_MODE);
+        //self.bus.write_register(CONTROL, MEASUREMENT_MODE);
         // read together in burst so data is consistent, as specified in datasheet
         // pressure_temperature_data_u pt;
-        // self.bus.read_register(REG_PRESSURE_MSB, &pt.data[0], sizeof(pt));
+        // self.bus.read_register(PRESSURE_MSB, &pt.data[0], sizeof(pt));
 
         let temperature = MsbLsbXlsb::default();
         let pressure = MsbLsbXlsb::default();

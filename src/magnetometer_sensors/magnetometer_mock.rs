@@ -1,7 +1,7 @@
 use crate::magnetometer_sensors::{MagnetometerMessage, magnetometer::RxMagnetometer};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct MagnetometerMock {}
+pub struct MagnetometerMock;
 
 impl Default for MagnetometerMock {
     fn default() -> Self {

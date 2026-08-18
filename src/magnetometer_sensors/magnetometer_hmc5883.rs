@@ -5,15 +5,20 @@ use crate::{
     magnetometer_sensors::{MagnetometerMessage, magnetometer::RxMagnetometer},
 };
 
-const _REG_CONFA: u8 = 0x00;
-const _REG_CONFB: u8 = 0x01;
-const _REG_MODE: u8 = 0x02;
-const _REG_DATA: u8 = 0x03;
-const _REG_IDA: u8 = 0x0A;
+struct Reg;
+
+impl Reg {
+    const _CONFA: u8 = 0x00;
+    const _CONFB: u8 = 0x01;
+    const _MODE: u8 = 0x02;
+    const _DATA: u8 = 0x03;
+    const _IDA: u8 = 0x0A;
+}
 
 pub struct MagnetometerHmc5883 {
     pub i2c_bus: &'static SharedI2cBus,
 }
+
 impl MagnetometerHmc5883 {
     const I2C_ADDRESS: u8 = 0x1E;
     const CHIP_ID: u8 = 0x48;

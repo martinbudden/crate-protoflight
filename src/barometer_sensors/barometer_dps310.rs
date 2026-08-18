@@ -5,23 +5,27 @@ use crate::{
     i2c_bus::{SharedI2cBus, SharedI2cExt},
 };
 
-const REG_PRS_B2: u8 = 0x00;
-//const REG_PRS_B2
-const _REG_PSR_B1: u8 = 0x01;
-const _REG_PSR_B0: u8 = 0x02;
-const REG_TMP_B2: u8 = 0x03;
-const _REG_TMP_B1: u8 = 0x04;
-const _REG_TMP_B0: u8 = 0x05;
-const _REG_PRS_CFG: u8 = 0x06;
-const _REG_TMP_CFG: u8 = 0x07;
-const _REG_MEAS_CFG: u8 = 0x08;
-const _REG_CFG_REG: u8 = 0x09;
+struct Reg;
 
-const REG_RESET: u8 = 0x0C;
-const REG_ID: u8 = 0x0D;
+impl Reg {
+    const PRS_B2: u8 = 0x00;
+    //const PRS_B2
+    const _PSR_B1: u8 = 0x01;
+    const _PSR_B0: u8 = 0x02;
+    const TMP_B2: u8 = 0x03;
+    const _TMP_B1: u8 = 0x04;
+    const _TMP_B0: u8 = 0x05;
+    const _PRS_CFG: u8 = 0x06;
+    const _TMP_CFG: u8 = 0x07;
+    const _MEAS_CFG: u8 = 0x08;
+    const _CFG_REG: u8 = 0x09;
 
-const _REG_COEF: u8 = 0x10;
-const _REG_COEF_SRCE: u8 = 0x28;
+    const RESET: u8 = 0x0C;
+    const ID: u8 = 0x0D;
+
+    const _COEF: u8 = 0x10;
+    const _COEF_SRCE: u8 = 0x28;
+}
 
 pub struct BarometerDps310 {
     pub i2c_bus: &'static SharedI2cBus,
@@ -94,14 +98,14 @@ impl BarometerDps310 {
     }
 
     pub async fn init(&self) -> Result<u32, BarometerI2cError> {
-        let chip_id = self.read_register(REG_ID).await?;
+        let chip_id = self.read_register(Reg::ID).await?;
 
         if chip_id != Self::CHIP_ID {
             return Err(BarometerError::InvalidChipId { expected: Self::CHIP_ID, actual: chip_id });
         }
 
         // Reset the DPS310.
-        self.write_register(REG_RESET, 0x89).await?;
+        self.write_register(Reg::RESET, 0x89).await?;
 
         // TODO: wait for the device to complete its reset.
 
@@ -116,13 +120,13 @@ impl BarometerDps310 {
     }
 
     pub async fn read_raw_pressure(&self) -> Result<i32, BarometerI2cError> {
-        let data = self.read_registers::<3>(REG_PRS_B2).await?;
+        let data = self.read_registers::<3>(Reg::PRS_B2).await?;
         let raw = (i32::from(data[0]) << 16) | (i32::from(data[1]) << 8) | i32::from(data[2]);
         Ok(if raw & 0x80_0000 != 0 { raw | !0xFF_FFFF } else { raw })
     }
 
     pub async fn read_raw_temperature(&self) -> Result<i32, BarometerI2cError> {
-        let data = self.read_registers::<3>(REG_TMP_B2).await?;
+        let data = self.read_registers::<3>(Reg::TMP_B2).await?;
         let raw = (i32::from(data[0]) << 16) | (i32::from(data[1]) << 8) | i32::from(data[2]);
         // Signed 24-bit value.
         Ok(if raw & 0x80_0000 != 0 { raw | !0xFF_FFFF } else { raw })

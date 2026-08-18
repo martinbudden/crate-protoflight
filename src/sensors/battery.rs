@@ -128,6 +128,12 @@ pub struct BatteryConfig {
 #[cfg(feature = "serde")]
 impl PostcardValue<'_> for BatteryConfig {}
 
+impl Default for BatteryConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BatteryConfig {
     pub const fn new() -> Self {
         Self {
@@ -147,12 +153,6 @@ impl BatteryConfig {
             vbat_duration_for_warning: 0,
             vbat_duration_for_critical: 0,
         }
-    }
-}
-
-impl Default for BatteryConfig {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
