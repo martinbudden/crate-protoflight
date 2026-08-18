@@ -53,10 +53,11 @@ impl From<GpsPositionLongLatAlt> for GeographicCoordinate {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GpsData {
     pub position: GpsPositionLongLatAlt,
+    pub geoid_separation_cm: i32,
     pub distance_to_home_meters: f32,
     pub bearing_to_home_degrees: f32,
     pub distance_flown_meters: f32,
-    pub time_of_week_ms: u32,
+    pub time_of_day_ms: u32,
     pub velocity_north_cmps: i16,
     pub velocity_east_cmps: i16,
     pub velocity_down_cmps: i16,
@@ -79,10 +80,11 @@ impl GpsData {
     pub const fn new() -> Self {
         Self {
             position: GpsPositionLongLatAlt::new(),
+            geoid_separation_cm: 0,
             distance_to_home_meters: 0.0,
             bearing_to_home_degrees: 0.0,
             distance_flown_meters: 0.0,
-            time_of_week_ms: 0,
+            time_of_day_ms: 0,
             velocity_north_cmps: 0,
             velocity_east_cmps: 0,
             velocity_down_cmps: 0,
