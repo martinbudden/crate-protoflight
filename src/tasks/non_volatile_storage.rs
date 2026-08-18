@@ -1,117 +1,138 @@
 #![cfg(feature = "serde")]
-#![allow(unused)]
 
 use embedded_storage_async::nor_flash::{ErrorType, NorFlash};
+
+#[allow(unused)]
 use sequential_storage::{
-    cache::NoCache,
-    map::{MapConfig, MapStorage, PostcardValue},
+    cache::{Cache, CacheImpl},
+    map::{MapConfig, MapStorage},
 };
 
 #[cfg(feature = "std")]
 use embedded_storage_file::{NorMemoryAsync, NorMemoryInFile};
 
 #[cfg(feature = "rp2350")]
-use embassy_embedded_hal::adapter::BlockingAsync;
-
-#[cfg(feature = "rp2350")]
-use embassy_rp::{
-    Peri,
-    flash::{Blocking, Flash},
-    peripherals::FLASH,
+use {
+    embassy_embedded_hal::adapter::BlockingAsync,
+    embassy_rp::{
+        Peri,
+        flash::{Blocking, Flash},
+        peripherals::FLASH,
+    },
 };
 
+#[allow(unused)]
 #[cfg(feature = "rp2350")]
 const FLASH_SIZE_BYTES: usize = 4 * 1024 * 1024;
+#[allow(unused)]
+#[cfg(not(feature = "rp2350"))]
+const FLASH_SIZE_BYTES: u32 = 4 * 1024 * 1024;
 
-use radio_controllers::RatesConfig;
 extern crate paste;
 
-use crate::{config::GLOBAL_CONFIG, flight::ImuFilterBankConfig, tasks::non_volatile_storage as nvs};
+struct Key {}
 
-#[cfg(feature = "osd")]
-use crate::osd::OsdConfig;
-#[cfg(feature = "battery")]
-use crate::sensors::BatteryConfig;
-#[cfg(feature = "blackbox")]
-use blackbox_logger::BlackboxConfig;
+#[allow(unused)]
+impl Key {
+    const PID_PROFILE_INDEX: u16 = 0x0001;
+    const RATE_PROFILE_INDEX: u16 = 0x0002;
+    const ACC_CALIBRATION_STATE: u16 = 0x0003;
+    const GYRO_CALIBRATION_STATE: u16 = 0x0004;
 
-const PID_PROFILE_INDEX_KEY: u16 = 0x0001;
-const RATE_PROFILE_INDEX_KEY: u16 = 0x0002;
-const ACC_CALIBRATION_STATE_KEY: u16 = 0x0003;
-const GYRO_CALIBRATION_STATE_KEY: u16 = 0x0004;
+    const MOTOR_MIXER_TYPE: u16 = 0x0005;
 
-const MOTOR_MIXER_TYPE_KEY: u16 = 0x0005;
+    const ACC_OFFSET: u16 = 0x0200;
+    const GYRO_OFFSET: u16 = 0x0201;
+    const MAC_ADDRESS: u16 = 0x0202;
 
-const ACC_OFFSET_KEY: u16 = 0x0200;
-const GYRO_OFFSET_KEY: u16 = 0x0201;
-const MAC_ADDRESS_KEY: u16 = 0x0202;
+    const DYNAMIC_NOTCH_FILTER_CONFIG: u16 = 0x0300;
 
-const DYNAMIC_NOTCH_FILTER_CONFIG_KEY: u16 = 0x0300;
+    // Part of PID profile
+    // Note that keys of items in PID profile must go up in jumps of 4, since 1 key is used for each profile
+    const FLIGHT_CONTROLLER_FILTERS_CONFIG: u16 = 0x0400;
+    const DYNAMIC_IDLE_CONTROLLER_CONFIG: u16 = 0x0404;
+    const FLIGHT_CONTROLLER_FLIGHTMODE_CONFIG: u16 = 0x408;
+    const FLIGHT_CONTROLLER_TPA_CONFIG: u16 = 0x40C;
+    const FLIGHT_CONTROLLER_ANTI_GRAVITY_CONFIG: u16 = 0x0410;
+    const FLIGHT_CONTROLLER_DMAX_CONFIG: u16 = 0x0414;
+    const FLIGHT_CONTROLLER_ITERM_RELAX_CONFIG: u16 = 0x0418;
+    const FLIGHT_CONTROLLER_YAW_SPIN_RECOVERY_CONFIG: u16 = 0x041C;
+    const FLIGHT_CONTROLLER_CRASH_RECOVERY_CONFIG: u16 = 0x0420;
+    const FLIGHT_CONTROLLER_SIMPLIFIED_PID_SETTINGS: u16 = 0x0424;
+    const OSD_CONFIG: u16 = 0x0428;
+    const OSD_ELEMENTS_CONFIG: u16 = 0x042C;
 
-// Part of PID profile
-// Note that keys of items in PID profile must go up in jumps of 4, since 1 key is used for each profile
-const FLIGHT_CONTROLLER_FILTERS_CONFIG_KEY: u16 = 0x0400;
-const DYNAMIC_IDLE_CONTROLLER_CONFIG_KEY: u16 = 0x0404;
-const FLIGHT_CONTROLLER_FLIGHTMODE_CONFIG_KEY: u16 = 0x408;
-const FLIGHT_CONTROLLER_TPA_CONFIG_KEY: u16 = 0x40C;
-const FLIGHT_CONTROLLER_ANTI_GRAVITY_CONFIG_KEY: u16 = 0x0410;
-const FLIGHT_CONTROLLER_DMAX_CONFIG_KEY: u16 = 0x0414;
-const FLIGHT_CONTROLLER_ITERM_RELAX_CONFIG_KEY: u16 = 0x0418;
-const FLIGHT_CONTROLLER_YAW_SPIN_RECOVERY_CONFIG_KEY: u16 = 0x041C;
-const FLIGHT_CONTROLLER_CRASH_RECOVERY_CONFIG_KEY: u16 = 0x0420;
-const FLIGHT_CONTROLLER_SIMPLIFIED_PID_SETTINGS_KEY: u16 = 0x0424;
-const OSD_CONFIG_KEY: u16 = 0x0428;
-const OSD_ELEMENTS_CONFIG_KEY: u16 = 0x042C;
+    const RATES: u16 = 0x0500; // note jump of 4 to allow storage of 4 rates profiles
 
-const RATES_KEY: u16 = 0x0500; // note jump of 4 to allow storage of 4 rates profiles
+    const IMU_FILTERS_CONFIG: u16 = 0x0600;
+    const RPM_FILTERS_CONFIG: u16 = 0x0601;
+    const FAILSAFE_CONFIG: u16 = 0x0602;
+    const RX_CONFIG: u16 = 0x0603;
+    const AUTOPILOT_CONFIG: u16 = 0x604;
+    const AUTOPILOT_POSITION_CONFIG: u16 = 0x605;
+    const ALTITUDE_HOLD_CONFIG: u16 = 0x606;
+    const MOTOR_CONFIG: u16 = 0x607;
+    const MOTOR_MIXER_CONFIG: u16 = 0x0608;
+    const VTX_CONFIG: u16 = 0x0609;
+    const GPS_CONFIG: u16 = 0x060A;
+    const FLIGHT_CONTROLLER_CRASH_FLIP: u16 = 0x060B;
+    const RC_MODES_ACTIVATION_CONDITIONS: u16 = 0x060C;
+    const RC_ADJUSTMENT_RANGES: u16 = 0x060D;
+    const FEATURES_CONFIG: u16 = 0x060E;
+    const BLACKBOX_CONFIG: u16 = 0x060F;
+    const BATTERY_CONFIG: u16 = 0x0610;
+}
+/*
+There are two layers of `Option`
 
-const IMU_FILTERS_CONFIG_KEY: u16 = 0x0600;
-const RPM_FILTERS_CONFIG_KEY: u16 = 0x0601;
-const FAILSAFE_CONFIG_KEY: u16 = 0x0602;
-const RX_CONFIG_KEY: u16 = 0x0603;
-const AUTOPILOT_CONFIG_KEY: u16 = 0x604;
-const AUTOPILOT_POSITION_CONFIG_KEY: u16 = 0x605;
-const ALTITUDE_HOLD_CONFIG_KEY: u16 = 0x606;
-const MOTOR_CONFIG_KEY: u16 = 0x607;
-const MOTOR_MIXER_CONFIG_KEY: u16 = 0x0608;
-const VTX_CONFIG_KEY: u16 = 0x0609;
-const GPS_CONFIG_KEY: u16 = 0x060A;
-const FLIGHT_CONTROLLER_CRASH_FLIP_KEY: u16 = 0x060B;
-const RC_MODES_ACTIVATION_CONDITIONS_KEY: u16 = 0x060C;
-const RC_ADJUSTMENT_RANGES_KEY: u16 = 0x060D;
-const FEATURES_CONFIG_KEY: u16 = 0x060E;
-const BLACKBOX_CONFIG_KEY: u16 = 0x060F;
-const BATTERY_CONFIG_KEY: u16 = 0x0610;
+fetch_item
+    │
+    ├── None
+    │     → key doesn't exist
+    │
+    └── Some(...)
+          │
+          ├── None
+          │     → record has been deleted
+          │
+          └── Some(BatteryConfig)
+                → actual configuration
+*/
 
 /// Macro to generate boilerplate non-volatile storage loader routines.
 macro_rules! generate_config_handlers {
-    ($prefix:ident, $key:expr, $buf_size:expr) => {
+    ($location:expr, $prefix:ident, $key:expr, $buf_size:expr) => {
         paste::paste! {
             // 1. Configure the PostcardValue macro for the Option wrap variant
             //impl<'a> PostcardValue<'a> for Option<[<$prefix Config>]> {}
 
-            // 2. Generate the LOAD function
-            pub async fn [<load_ $prefix:lower _config>]<F>(
-                config: &mut [<$prefix Config>],
-                storage: &mut MapStorage<u16, F, NoCache>
-            ) where F: NorFlash {
+            use $location::[<$prefix Config>];
+
+            // Generate the LOAD function
+            #[allow(unused)]
+            pub async fn [<load_ $prefix:lower _config>]<F, C>(config: &mut [<$prefix Config>], storage: &mut MapStorage<u16, F, C>)
+            where
+                F: NorFlash,
+                C: CacheImpl<u16>
+            {
                 let mut buffer = [0u8; $buf_size];
 
-                if let Ok(Some(Some(loaded_data))) = storage
-                    .fetch_item::<Option<[<$prefix Config>]>>(&mut buffer, &$key)
-                    .await
+                if let Ok(Some(Some(loaded_data))) =
+                    storage.fetch_item::<Option<[<$prefix Config>]>>(&mut buffer, &$key).await
                 {
                     *config = loaded_data;
                 }
             }
 
-            // 3. Generate the SAVE function
-            pub async fn [<save_ $prefix:lower _config>]<F>(
+            // Generate the SAVE function
+            #[allow(unused)]
+            pub async fn [<save_ $prefix:lower _config>]<F, C>(
                 config: &[<$prefix Config>],
-                storage: &mut MapStorage<u16, F, NoCache>
+                storage: &mut MapStorage<u16, F, C>
             ) -> Result<(), sequential_storage::Error<<F as ErrorType>::Error>>
             where
                 F: NorFlash,
+                C: CacheImpl<u16>,
                 [<$prefix Config>]: PartialEq // Enforces that the struct derives PartialEq
             {
                 let mut buffer = [0u8; $buf_size];
@@ -134,166 +155,168 @@ macro_rules! generate_config_handlers {
                 storage.store_item(&mut buffer, &$key, &data_to_save).await
             }
 
-            // 4. Generate the DELETE function
-            pub async fn [<delete_ $prefix:lower _config>]<F>(
-                storage: &mut MapStorage<u16, F, NoCache>
+            // Generate the DELETE function
+            #[allow(unused)]
+            pub async fn [<delete_ $prefix:lower _config>]<F, C>(
+                storage: &mut MapStorage<u16, F, C>
             ) -> Result<(), sequential_storage::Error<<F as ErrorType>::Error>>
-            where F: NorFlash {
+            where
+                F: NorFlash,
+                C: CacheImpl<u16>
+            {
                 let mut buffer = [0u8; $buf_size];
 
-                // 1. READ BEFORE DELETE: Check what is currently stored under this key
-                // .fetch_item returns Ok(Some(StoredValue)) if the key is found.
+                // READ BEFORE DELETE: Check what is currently stored under this key
+                // `.fetch_item` returns `Ok(Some(StoredValue))` if the key is found.
                 // StoredValue itself is an Option<Config>. If it is already `None`, it's deleted.
                 if let Ok(Some(None)) = storage
                     .fetch_item::<Option<[<$prefix Config>]>>(&mut buffer, &$key)
                     .await
                 {
-                    // 2. CHECK STATUS: If a None marker is already active, skip the write
+                    // CHECK STATUS: If a None marker is already active, skip the write
                     //#[cfg(not(target_arch = "arm"))]
                     //println!("[NVS]: Subsystem is already deleted in flash. Skipping redundant marker write.");
                     return Ok(());
                 }
 
-                // 3. WRITE ONLY IF NOT ALREADY DELETED
+                // WRITE ONLY IF NOT ALREADY DELETED
                 let delete_marker: Option<[<$prefix Config>]> = None;
                 storage.store_item(&mut buffer, &$key, &delete_marker).await
             }
         }
     };
 }
+
+generate_config_handlers!(radio_controllers, Rates, Key::RATES, 256);
+
 #[cfg(feature = "osd")]
-generate_config_handlers!(Osd, OSD_CONFIG_KEY, 128);
+generate_config_handlers!(crate::osd, Osd, Key::OSD_CONFIG, 256);
+
 #[cfg(feature = "blackbox")]
-generate_config_handlers!(Blackbox, BLACKBOX_CONFIG_KEY, 128);
-generate_config_handlers!(Rates, RATES_KEY, 128);
+generate_config_handlers!(blackbox_logger, Blackbox, Key::BLACKBOX_CONFIG, 256);
 
-// Update the functions to receive `&mut MapStorage` directly
-pub async fn load_imu_filter_bank_config<F>(config: &mut ImuFilterBankConfig, storage: &mut MapStorage<u16, F, NoCache>)
-where
-    F: NorFlash,
-{
-    let mut buffer = [0u8; 256];
-
-    // Directly execute the item lookup method on your driver storage object
-    if let Ok(Some(loaded_data)) = storage.fetch_item(&mut buffer, &IMU_FILTERS_CONFIG_KEY).await {
-        *config = loaded_data;
-    }
-}
-pub async fn save_imu_filter_bank_config<F>(
-    config: &ImuFilterBankConfig, // Passed as an immutable reference to read from
-    storage: &mut MapStorage<u16, F, NoCache>,
-) -> Result<(), sequential_storage::Error<<F as ErrorType>::Error>>
-// Returns a Result to verify success
-where
-    F: NorFlash,
-{
-    let mut buffer = [0u8; 256]; // Serialization workspace
-
-    // Appends the updated struct to flash under the unique key
-    storage.store_item(&mut buffer, &IMU_FILTERS_CONFIG_KEY, config).await
-}
-
-pub async fn delete_imu_filter_bank_config<F>(
-    storage: &mut MapStorage<u16, F, NoCache>,
-) -> Result<(), sequential_storage::Error<<F as ErrorType>::Error>>
-where
-    F: NorFlash,
-{
-    let mut buffer = [0u8; 256];
-
-    // Appends `None` to flash. This acts as a deletion marker.
-    let delete_marker: Option<ImuFilterBankConfig> = None;
-    storage.store_item(&mut buffer, &IMU_FILTERS_CONFIG_KEY, &delete_marker).await
-}
-
-// ==========================================
-// 1. LOADING PATTERN (Unwraps internal Option)
-// ==========================================
+//#[cfg(feature = "battery")]
+//generate_config_handlers!(crate::sensors, Battery, Key::BATTERY_CONFIG, 256);
 
 #[cfg(feature = "battery")]
-pub async fn load_battery_config<F>(config: &mut BatteryConfig, storage: &mut MapStorage<u16, F, NoCache>)
+use crate::sensors::BatteryConfig;
+
+/// Load from NVS (Unwraps `Option`).
+#[allow(unused)]
+#[cfg(feature = "battery")]
+pub async fn load_battery_config<F, C>(
+    config: &mut BatteryConfig,
+    storage: &mut MapStorage<u16, F, C>,
+) -> Result<(), sequential_storage::Error<F::Error>>
 where
     F: NorFlash,
+    C: CacheImpl<u16>,
 {
     let mut buffer = [0u8; 256];
 
-    // Fetch as an Option, but unwrap it back into your default struct
-    if let Ok(Some(Some(loaded_data))) =
-        storage.fetch_item::<Option<BatteryConfig>>(&mut buffer, &BATTERY_CONFIG_KEY).await
-    {
-        *config = loaded_data;
-    }
-}
+    let stored = storage.fetch_item::<Option<BatteryConfig>>(&mut buffer, &Key::BATTERY_CONFIG).await?;
 
-// ==========================================
-// 2. SAVING PATTERN (Wraps with Some right before flash write)
-// ==========================================
+    match stored {
+        Some(Some(loaded_data)) => {
+            *config = loaded_data;
+        }
+        None | Some(None) => {
+            *config = BatteryConfig::default();
+        }
+    }
+
+    Ok(())
+}
+/// Wrap with `Some` and store to NVS.
+/*
+| Existing flash    | `config`    | Action               |
+| ----------------- | ----------- | -------------------- |
+| No record         | `default()` | Nothing              |
+| `None` marker     | `default()` | Nothing              |
+| `Some(old)`       | `default()` | Store `None`         |
+| No record         | non-default | Store `Some(config)` |
+| `None` marker     | non-default | Store `Some(config)` |
+| `Some(same)`      | non-default | Nothing              |
+| `Some(different)` | non-default | Store `Some(config)` |
+
+None
+    → no record
+
+Some(None)
+    → record exists, but represents deleted/default
+
+Some(Some(config))
+    → actual stored configuration
+*/
+#[allow(unused)]
 #[cfg(feature = "battery")]
-pub async fn save_battery_config<F>(
+pub async fn save_battery_config<F, C>(
     config: &BatteryConfig,
-    storage: &mut MapStorage<u16, F, NoCache>,
-) -> Result<(), sequential_storage::Error<<F as ErrorType>::Error>>
+    storage: &mut MapStorage<u16, F, C>,
+) -> Result<(), sequential_storage::Error<F::Error>>
 where
     F: NorFlash,
+    C: CacheImpl<u16>,
 {
     let mut buffer = [0u8; 256];
+
+    let stored = storage.fetch_item::<Option<BatteryConfig>>(&mut buffer, &Key::BATTERY_CONFIG).await?;
+
     if *config == BatteryConfig::default() {
-        // Appends `None` to flash. This acts as a deletion marker.
-        let delete_marker: Option<BatteryConfig> = None;
-        storage.store_item(&mut buffer, &BATTERY_CONFIG_KEY, &delete_marker).await
+        // Default configuration means "no stored configuration".
+        // If there is an existing configuration, append a None marker
+        // to mark it deleted. If there is no record, do nothing.
+        if matches!(stored, Some(Some(_))) {
+            let delete_marker: Option<BatteryConfig> = None;
+            storage.store_item(&mut buffer, &Key::BATTERY_CONFIG, &delete_marker).await?;
+        }
     } else {
-        // Wraps raw struct into an option wrapper for the wear-level metadata tracking
-        storage.store_item(&mut buffer, &BATTERY_CONFIG_KEY, &Some(*config)).await
+        // Non-default configuration:
+        // only write it if it differs from the currently stored value.
+        if !matches!(stored, Some(Some(stored_config)) if stored_config == *config) {
+            storage.store_item(&mut buffer, &Key::BATTERY_CONFIG, &Some(*config)).await?;
+        }
     }
-}
 
-// ==========================================
-// 3. DELETION PATTERN (Appends a raw None marker to flash)
-// ==========================================
+    Ok(())
+}
+/// Delete by appending a `None` marker to NVS.
+/*
+fetch
+ │
+ ├── None           → nothing to delete
+ │
+ ├── Some(None)     → already deleted
+ │
+ └── Some(Some(_))  → append deletion marker
+
+ flash error → return error
+*/
+#[allow(unused)]
 #[cfg(feature = "battery")]
-pub async fn delete_battery_config<F>(
-    storage: &mut MapStorage<u16, F, NoCache>,
-) -> Result<(), sequential_storage::Error<<F as ErrorType>::Error>>
+pub async fn delete_battery_config<F, C>(
+    storage: &mut MapStorage<u16, F, C>,
+) -> Result<(), sequential_storage::Error<F::Error>>
 where
     F: NorFlash,
+    C: CacheImpl<u16>,
 {
     let mut buffer = [0u8; 256];
 
-    // Appends `None` to flash. This acts as a deletion marker.
-    let delete_marker: Option<BatteryConfig> = None;
-    // Note store_item writes a new item even if
-    storage.store_item(&mut buffer, &BATTERY_CONFIG_KEY, &delete_marker).await
-}
+    let stored = storage.fetch_item::<Option<BatteryConfig>>(&mut buffer, &Key::BATTERY_CONFIG).await?;
 
-/*pub async fn load_rates_config<F>(
-    config: &mut RatesConfig,
-    _storage: &mut MapStorage<u16, F, NoCache>
-) where
-    F: NorFlash
-{
-    *config = RatesConfig::default();
-    /*let mut buffer = [0u8; 64];
-    if let Ok(Some(loaded_data)) = storage.fetch_item(&mut buffer, &RATES_KEY).await {
-        *config = loaded_data;
-    }*/
-}
+    if matches!(stored, Some(Some(_))) {
+        let delete_marker: Option<BatteryConfig> = None;
 
-pub async fn load_blackbox_config<F>(
-    config: &mut BlackboxConfig,
-    _storage: &mut MapStorage<u16, F, NoCache>
-) where
-    F: NorFlash
-{
-    *config = BlackboxConfig::default();
-    /*let mut buffer = [0u8; 256];
-    if let Ok(Some(loaded_data)) = storage.fetch_item(&mut buffer, &BLACKBOX_KEY).await {
-        *config = loaded_data;
-    }*/
-}*/
+        storage.store_item(&mut buffer, &Key::BATTERY_CONFIG, &delete_marker).await?;
+    }
+
+    Ok(())
+}
 
 // PC (Host) Build Configuration --- If building on your PC (x86_64, Mac, etc.)
 #[cfg(feature = "std")]
-pub fn init_flash_driver() -> impl embedded_storage_async::nor_flash::NorFlash {
+pub fn init_flash_driver() -> impl NorFlash {
     let path = "pc_mock_flash.nor";
     let capacity_bytes = 1024 * 1024; // 1MB 
 
@@ -305,56 +328,215 @@ pub fn init_flash_driver() -> impl embedded_storage_async::nor_flash::NorFlash {
 }
 
 //#[cfg(feature = "std")]
-pub async fn load_global_configs() {
-    // Initialize Embassy peripherals.
-    let flash_driver = init_flash_driver();
-    let mut storage = MapStorage::new(flash_driver, const { MapConfig::new(0..1024 * 1024) }, NoCache::new());
+pub async fn load_global_configs<F>(flash_driver: F) -> Result<(), sequential_storage::Error<F::Error>>
+where
+    F: NorFlash,
+{
+    use crate::{config::GLOBAL_CONFIG, tasks::non_volatile_storage as nvs};
+
+    let map_config = MapConfig::new(0..FLASH_SIZE_BYTES);
+    let cache = Cache::new_uncached();
+    let mut map_storage = MapStorage::new(flash_driver, map_config, cache);
+
     let mut config = GLOBAL_CONFIG.lock().await;
 
-    nvs::load_imu_filter_bank_config(&mut config.imu_filter_bank, &mut storage).await;
-    nvs::load_rates_config(&mut config.rates, &mut storage).await;
+    #[cfg(feature = "battery")]
+    nvs::load_battery_config(&mut config.battery, &mut map_storage).await?;
+
+    Ok(())
 }
+#[cfg(all(test, feature = "std", feature = "battery"))]
+mod tests {
+    #![allow(clippy::expect_used)]
+    use super::*;
 
-#[cfg(feature = "rp2350")]
-pub fn init_flash_driver(
-    // Pass the Peri structural instance bound to the FLASH singleton type
-    flash_pin: Peri<FLASH>,
-) -> Flash<FLASH, Blocking, FLASH_SIZE_BYTES> {
-    Flash::<_, Blocking, FLASH_SIZE_BYTES>::new_blocking(flash_pin)
-}
+    #[cfg(feature = "battery")]
+    use crate::sensors::BatteryConfig;
 
-// Standard Raspberry Pi Pico 2 boards have 4MB of onboard QSPI flash memory.
-#[cfg(feature = "rp2350")]
-fn map_storage(
-    flash: Peri<'static, FLASH>,
-) -> MapStorage<u16, BlockingAsync<Flash<'static, FLASH, Blocking, FLASH_SIZE_BYTES>>, NoCache> {
-    // Instantiate your Blocking driver variant.
-    let flash_driver = init_flash_driver(flash);
+    use crate::tasks::non_volatile_storage::{load_battery_config, save_battery_config};
+    /*
+    No record
+        │
+        ├── load ──────────────► default
+        │
+        └── save(config A)
+                  │
+                  ▼
+             config A
+                  │
+                  ├── load ─────► config A
+                  │
+                  ├── save(A) ──► config A       (no change)
+                  │
+                  └── save(default)
+                             │
+                             ▼
+                          deleted
+                             │
+                             ├── load ─────► default
+                             │
+                             └── save(default) → deleted (no change)
 
-    // Wrap the blocking driver so it satisfies the async NorFlash trait boundaries.
-    let async_wrapped_driver = BlockingAsync::new(flash_driver);
+                          deleted
+                             │
+                             └── save(config B)
+                                       │
+                                       ▼
+                                    config B
+    */
+    #[test]
+    fn test_battery_config_save_and_reload() {
+        /*
+        empty flash
+            │
+            ├── load ───────────────► default
+            │
+            ├── save test_config
+            │
+            ├── load ───────────────► test_config
+            │
+            ├── save test_config again
+            │
+            └── load ───────────────► test_config
 
-    // Tail end 128KB layout calculation bounds
-    let flash_range = (4096 - 128) * 1024..4096 * 1024;
+        Some(test_config)
+               │
+               │ save(default)
+               ▼
+           Some(None)
+               │
+               │ load
+               ▼
+             default
+        */
+        futures::executor::block_on(async {
+            let path = "test_battery_config.nor";
 
-    // Construct storage cleanly via compile-time verification.
-    MapStorage::new(async_wrapped_driver, const { MapConfig::new((4096 - 128) * 1024..4096 * 1024) }, NoCache::new())
-}
+            // Start with a clean mock flash.
+            let _ = std::fs::remove_file(path);
 
-#[cfg(feature = "rp2350")]
-pub async fn load_global_configs(flash: Peri<'static, FLASH>) {
-    // Initialize Embassy peripherals.
-    let mut storage = map_storage(flash);
-    let mut config = GLOBAL_CONFIG.lock().await;
+            let capacity_bytes = 1024 * 1024;
 
-    nvs::load_imu_filter_bank_config(&mut config.imu_filter_bank, &mut storage).await;
-    nvs::load_rates_config(&mut config.rates, &mut storage).await;
-}
+            #[allow(clippy::expect_used)]
+            let inner_sync_nor =
+                NorMemoryInFile::<4, 4, 4096>::new(path, capacity_bytes).expect("Failed to create test mock flash");
 
-#[cfg(feature = "rp2350")]
-pub async fn save_global_configs(flash: Peri<'static, FLASH>) {
-    let mut storage = map_storage(flash);
-    let config = GLOBAL_CONFIG.lock().await;
+            let flash_driver = NorMemoryAsync::new(inner_sync_nor);
 
-    nvs::save_imu_filter_bank_config(&config.imu_filter_bank, &mut storage).await;
+            #[allow(clippy::cast_possible_truncation)]
+            let map_config = MapConfig::new(0..capacity_bytes as u32);
+            let cache = Cache::new_uncached();
+
+            let mut storage = MapStorage::new(flash_driver, map_config, cache);
+
+            // Initially there should be no stored configuration,
+            // so loading should produce the default.
+            let default_config = BatteryConfig::default();
+            let mut config = BatteryConfig::default();
+
+            load_battery_config(&mut config, &mut storage).await.expect("Failed to load initial battery config");
+
+            assert_eq!(config, BatteryConfig::default());
+
+            // Create a deliberately non-default configuration.
+            let test_config = BatteryConfig {
+                vbat_not_present_cell_voltage: 3500,
+                lvc_percentage: 25,
+
+                voltage_meter_source: 1,
+                current_meter_source: 2,
+
+                use_vbat_alerts: 1,
+                use_consumption_alerts: 1,
+                vbat_hysteresis: 2,
+
+                vbat_display_lpf_period: 10,
+                vbat_sag_lpf_period: 20,
+                ibat_lpf_period: 30,
+
+                vbat_duration_for_warning: 5,
+                vbat_duration_for_critical: 10,
+            };
+            assert_ne!(default_config, test_config);
+
+            // Save it.
+            save_battery_config(&test_config, &mut storage).await.expect("Failed to save battery config");
+
+            // Load it back.
+            let mut loaded_config = BatteryConfig::default();
+
+            load_battery_config(&mut loaded_config, &mut storage).await.expect("Failed to reload battery config");
+
+            // Verify the round trip.
+            assert_eq!(loaded_config, test_config);
+
+            // Save the same configuration again.
+            save_battery_config(&test_config, &mut storage).await.expect("Failed to save battery config");
+
+            // Load it again.
+            let mut loaded_config = BatteryConfig::default();
+
+            load_battery_config(&mut loaded_config, &mut storage).await.expect("Failed to reload battery config");
+
+            assert_eq!(loaded_config, test_config);
+
+            // Saving the default configuration should delete the stored configuration.
+            let default_config = BatteryConfig::default();
+
+            save_battery_config(&default_config, &mut storage).await.expect("Failed to save default battery config");
+
+            // Loading after deletion should return the default.
+            let mut loaded_config = BatteryConfig::default();
+
+            load_battery_config(&mut loaded_config, &mut storage)
+                .await
+                .expect("Failed to load battery config after deletion");
+
+            assert_eq!(loaded_config, BatteryConfig::default());
+
+            // Saving the default configuration again should do nothing.
+            save_battery_config(&default_config, &mut storage).await.expect("Failed to save default battery config");
+
+            // It should still load as the default configuration.
+            let mut loaded_config = BatteryConfig::default();
+
+            load_battery_config(&mut loaded_config, &mut storage).await.expect("Failed to load battery config");
+
+            assert_eq!(loaded_config, BatteryConfig::default());
+
+            // Saving a new non-default configuration after deletion should store it.
+            let new_test_config = BatteryConfig {
+                vbat_not_present_cell_voltage: 3600,
+                lvc_percentage: 30,
+
+                voltage_meter_source: 2,
+                current_meter_source: 1,
+
+                use_vbat_alerts: 0,
+                use_consumption_alerts: 1,
+                vbat_hysteresis: 3,
+
+                vbat_display_lpf_period: 15,
+                vbat_sag_lpf_period: 25,
+                ibat_lpf_period: 35,
+
+                vbat_duration_for_warning: 6,
+                vbat_duration_for_critical: 12,
+            };
+
+            save_battery_config(&new_test_config, &mut storage).await.expect("Failed to save new battery config");
+
+            // Loading should now return the new configuration.
+            let mut loaded_config = BatteryConfig::default();
+
+            load_battery_config(&mut loaded_config, &mut storage).await.expect("Failed to load new battery config");
+
+            assert_eq!(loaded_config, new_test_config);
+
+            // Clean up the test flash file.
+            drop(storage);
+
+            let _ = std::fs::remove_file(path);
+        });
+    }
 }

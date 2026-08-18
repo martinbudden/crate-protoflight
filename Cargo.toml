@@ -53,7 +53,7 @@ default = ["libm",
     "rpm_filters",
     "rtt-debug",
     "servos",
-    #"serde",
+    "serde",
     "vtx",
 ]
 #default = ["rp2350", "libm", "blackbox", "max7456", "osd", "rpm_filters", "barometer", "gps", "msp", "autopilot", "rangefinder"]
@@ -245,7 +245,7 @@ cyw43-pio = { version = "0.10.0", optional = true }
 
 [dev-dependencies]
 approx = { version = "0.5.1", default-features = false }
-
+futures = "0.3.34"
 
 # see https://doc.rust-lang.org/cargo/reference/profiles.html
 [profile.dev]

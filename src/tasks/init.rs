@@ -42,7 +42,7 @@ pub async fn init(spawner: Spawner) {
     #[cfg(all(feature = "serde", feature = "rp2350"))]
     tasks::non_volatile_storage::load_global_configs(board_flash()).await;
     #[cfg(all(feature = "serde", feature = "std"))]
-    tasks::non_volatile_storage::load_global_configs().await;
+    let _err = tasks::non_volatile_storage::load_global_configs(tasks::non_volatile_storage::init_flash_driver()).await;
 
     // ==================================================
     // Lock the GLOBAL_CONFIGs.
