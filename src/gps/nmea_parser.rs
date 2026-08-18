@@ -23,10 +23,9 @@ pub enum NmeaState {
         calculated_checksum: u8,
         received_checksum_high: u8,
     },
-    WaitingForCr
-    ,
-    WaitingForLf ,
-    Complete ,
+    WaitingForCr,
+    WaitingForLf,
+    Complete,
 }
 
 impl NmeaState {
@@ -34,7 +33,12 @@ impl NmeaState {
     /// Writes characters into the provided output buffer when appropriate.
     /// Returns `true` if a full sentence was successfully verified.
     /// All transmitted data are printable ASCII characters between 0x20 (space) to 0x7e (~).
-    pub fn on_data_received(&mut self, data: u8, output_buf: &mut [u8; NmeaParser::BUFFER_SIZE], output_index: &mut usize) -> bool {
+    pub fn on_data_received(
+        &mut self,
+        data: u8,
+        output_buf: &mut [u8; NmeaParser::BUFFER_SIZE],
+        output_index: &mut usize,
+    ) -> bool {
         if data.is_ascii_control() || !data.is_ascii() {
             *self = Self::WaitingForStart;
             return false;
@@ -52,7 +56,7 @@ impl NmeaState {
             }
             Self::InPayload { mut calculated_checksum } => {
                 if data == b'*' {
-                    Self::WaitingForCkSum1 { calculated_checksum,  }
+                    Self::WaitingForCkSum1 { calculated_checksum }
                 } else if data == b'\r' || data == b'\n' || *output_index >= output_buf.len() {
                     Self::WaitingForStart
                 } else {
@@ -95,7 +99,6 @@ impl NmeaState {
         };
 
         Self::Complete == *self
-        
     }
 
     const fn parse_hex_digit(byte: u8) -> Option<u8> {
