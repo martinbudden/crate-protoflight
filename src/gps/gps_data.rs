@@ -64,10 +64,15 @@ pub struct GpsData {
     pub speed3d_cmps: i16,
     pub ground_speed_cmps: i16,
     pub heading_deci_degrees: i16,
-    pub dilution_of_precision_positional: i16,
-    pub satellite_count: u8,
-    pub fix: u8,
+    pub satellite_count: u8, // GGA: satellites tracked
+    pub satellites_used: u8, // GSA: satellites used in solution
+    pub fix: u8,             // GGA fix quality
+    pub fix_type: u8,        // GSA: 1/2/3
     pub is_healthy: u8,
+
+    pub dilution_of_precision_horizontal: i16, // GGA
+    pub dilution_of_precision_position: i16,   // GSA
+    pub dilution_of_precision_vertical: i16,   // GSA
     pub update: u8,
 }
 
@@ -91,10 +96,14 @@ impl GpsData {
             speed3d_cmps: 0,
             ground_speed_cmps: 0,
             heading_deci_degrees: 0,
-            dilution_of_precision_positional: 0,
             satellite_count: 0,
+            satellites_used: 0,
             fix: 0,
+            fix_type: 0,
             is_healthy: 0,
+            dilution_of_precision_horizontal: 0,
+            dilution_of_precision_position: 0,
+            dilution_of_precision_vertical: 0,
             update: 0,
         }
     }

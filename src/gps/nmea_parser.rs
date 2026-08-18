@@ -519,7 +519,6 @@ impl<'a> Iterator for NmeaFields<'a> {
     }
 }
 
-// TODO: add parsing of RMC, GSVm and GSA frames.
 
 /// For GGA the fields are:
 /// 0.  GPGGA
@@ -584,7 +583,7 @@ pub fn parse_gga_record(record: &[u8]) -> Option<GpsData> {
     if hdop < 0 {
         return None;
     }
-    ret.dilution_of_precision_positional = i16::try_from(hdop).ok()?;
+    ret.dilution_of_precision_horizontal = i16::try_from(hdop).ok()?;
 
     // Field 9/10: Altitude and units
     let altitude = fields.next()?;
@@ -606,8 +605,229 @@ pub fn parse_gga_record(record: &[u8]) -> Option<GpsData> {
     // Not currently used.
     Some(ret)
 }
+
+/// `GPRMC,123519.00,A,4916.45,N,12311.12,W,022.4,084.4,230394,,,A`.
+///
+/// |  # | Field              | Example     | Usage            |
+/// | -: | ------------------ | ----------- | ---------------- |
+/// |  0 | Talker/type        | `GPRMC`     | validate `RMC`   |
+/// |  1 | UTC time           | `123519.00` | `time_of_day_ms` |
+/// |  2 | Status             | `A`         | `is_healthy`     |
+/// |  3 | Latitude           | `4916.45`   | latitude         |
+/// |  4 | N/S                | `N`         | latitude sign    |
+/// |  5 | Longitude          | `12311.12`  | longitude        |
+/// |  6 | E/W                | `W`         | longitude sign   |
+/// |  7 | Speed over ground  | `022.4`     | ground speed     |
+/// |  8 | Course over ground | `084.4`     | heading          |
+/// |  9 | Date               | `230394`    | currently ignore |
+/// | 10 | Magnetic variation | optional    | ignore           |
+/// | 11 | E/W                | optional    | ignore           |
+/// | 12 | Mode               | optional    | ignore           |
+pub fn parse_rmc_record(record: &[u8]) -> Option<GpsData> {
+    let mut fields = NmeaFields::new(record);
+
+    let talker_id = fields.next()?;
+
+    if talker_id.len() != 5 || &talker_id[2..] != b"RMC" {
+        return None;
+    }
+
+    let mut ret = GpsData::default();
+
+    // Field 1: UTC time
+    let time = fields.next()?;
+    ret.time_of_day_ms = parse_nmea_time(time)?;
+
+    // Field 2: Status
+    let status = fields.next()?;
+
+    if status.len() != 1 {
+        return None;
+    }
+
+    match status[0] {
+        b'A' => ret.is_healthy = 1,
+        b'V' => ret.is_healthy = 0,
+        _ => return None,
+    }
+
+    // Field 3/4: latitude and N/S
+    let latitude = fields.next()?;
+    let latitude_direction = fields.next()?;
+
+    // Field 5/6: longitude and E/W
+    let longitude = fields.next()?;
+    let longitude_direction = fields.next()?;
+
+    if latitude_direction.len() != 1 || longitude_direction.len() != 1 {
+        return None;
+    }
+
+    ret.position.latitude_degrees_x1e7 = parse_nmea_coordinate(latitude, latitude_direction[0])?;
+
+    ret.position.longitude_degrees_x1e7 = parse_nmea_coordinate(longitude, longitude_direction[0])?;
+
+    // Field 7: Speed over ground, knots
+    let speed = fields.next()?;
+    let speed_knots_x10 = parse_fixed_point(speed, 10)?;
+    // convert from knots to cm/s
+    let speed_cmps = speed_knots_x10.checked_mul(1852)?.checked_div(360)?;
+
+    // Field 8: Course over ground, degrees
+    ret.ground_speed_cmps = i16::try_from(speed_cmps).ok()?;
+    let course = fields.next()?;
+    let course = parse_fixed_point(course, 10)?;
+    ret.heading_deci_degrees = i16::try_from(course).ok()?;
+
+    // Field 9: Date
+    let _date = fields.next()?;
+
+    // Fields 10-12: Magnetic variation and mode.
+    // Not currently used.
+
+    Some(ret)
+}
+
+/// `GPGSA,A,3,04,05,09,12,24,25,29,31,,,,,1.8,1.0,1.5`.
+/// |    # | Field         | Example     | Meaning             |
+/// | ---: | ------------- | ----------- | ------------------- |
+/// |    0 | Talker/type   | `GPGSA`     | Message type        |
+/// |    1 | Mode          | `A`         | Auto/manual         |
+/// |    2 | Fix type      | `3`         | No fix / 2D / 3D    |
+/// | 3–14 | Satellite IDs | `04,05,...` | Satellites used     |
+/// |   15 | PDOP          | `1.8`       | Position dilution   |
+/// |   16 | HDOP          | `1.0`       | Horizontal dilution |
+/// |   17 | VDOP          | `1.5`       | Vertical dilution   |
+/// |   18 | System ID     | optional    | GNSS constellation  |
+pub fn parse_gsa_record(record: &[u8]) -> Option<GpsData> {
+    let mut fields = NmeaFields::new(record);
+
+    // Field 0: Talker/type
+    let talker_id = fields.next()?;
+
+    if talker_id.len() != 5 || &talker_id[2..] != b"GSA" {
+        return None;
+    }
+
+    let mut ret = GpsData::default();
+
+    // Field 1: Mode
+    let mode = fields.next()?;
+
+    if mode.len() != 1 || (mode[0] != b'A' && mode[0] != b'M') {
+        return None;
+    }
+
+    // Field 2: Fix type
+    let raw = fields.next()?;
+    let fix_type = parse_int(raw)?;
+    ret.fix_type = u8::try_from(fix_type).ok()?;
+
+    if !(1..=3).contains(&ret.fix_type) {
+        return None;
+    }
+
+    // Fields 3-14: Satellite IDs used in the solution.
+    // Even if a satellite slot is empty, NmeaFields returns Some(&[]) because the empty field is between commas.
+    // For example:
+    // GPGSA,A,3,04,05,,12,,,,,,,,,1.8,1.0,1.5
+    // will produce empty slices for the unused satellite positions, and we simply don't increment satellites_used.
+    for _ in 0..12 {
+        let satellite = fields.next()?;
+
+        if !satellite.is_empty() {
+            // Validate that the satellite ID is numeric and fits in u8.
+            let satellite_id = parse_int(satellite)?;
+            _ = u8::try_from(satellite_id).ok()?;
+
+            ret.satellites_used = ret.satellites_used.checked_add(1)?;
+        }
+    }
+
+    // Field 15: PDOP
+    let raw = fields.next()?;
+    let pdop = parse_fixed_point(raw, 10)?;
+
+    if pdop < 0 {
+        return None;
+    }
+
+    ret.dilution_of_precision_position = i16::try_from(pdop).ok()?;
+
+    // Field 16: HDOP
+    let raw = fields.next()?;
+    let hdop = parse_fixed_point(raw, 10)?;
+
+    if hdop < 0 {
+        return None;
+    }
+
+    ret.dilution_of_precision_horizontal = i16::try_from(hdop).ok()?;
+
+    // Field 17: VDOP
+    let raw = fields.next()?;
+    let vdop = parse_fixed_point(raw, 10)?;
+
+    if vdop < 0 {
+        return None;
+    }
+
+    ret.dilution_of_precision_vertical = i16::try_from(vdop).ok()?;
+
+    // Field 18: GNSS system ID, if present.
+    // Not currently used.
+
+    Some(ret)
+}
+
+
+///GSV is a little different from GGA/RMC/GSA because it describes satellites in view,
+///  and a single GSV report can span multiple sentences.
+/// A typical sequence looks like:
+/// 
+/// $GPGSV,3,1,11,...
+/// $GPGSV,3,2,11,...
+/// $GPGSV,3,3,11,...
+/// | Field | Meaning                                   |
+/// | ----: | ----------------------------------------- |
+/// |     0 | `GPGSV`                                   |
+/// |     1 | Total number of GSV messages              |
+/// |     2 | Message number                            |
+/// |     3 | Total satellites in view                  |
+/// |   4–7 | Satellite 1: PRN, elevation, azimuth, SNR |
+/// |  8–11 | Satellite 2                               |
+/// | 12–15 | Satellite 3                               |
+/// | 16–19 | Satellite 4                               |
+pub fn parse_gsv_record(record: &[u8]) -> Option<u8> {
+    let mut fields = NmeaFields::new(record);
+
+    let talker_id = fields.next()?;
+
+    if talker_id.len() != 5 || &talker_id[2..] != b"GSV" {
+        return None;
+    }
+
+    // Field 1: Number of GSV messages
+    let message_count = parse_int(fields.next()?)?;
+    if message_count == 0 || message_count > u32::from(u8::MAX) {
+        return None;
+    }
+
+    // Field 2: Message number
+    let message_number = parse_int(fields.next()?)?;
+    if message_number == 0 || message_number > message_count {
+        return None;
+    }
+
+    // Field 3: Total satellites in view
+    let satellites_in_view = parse_int(fields.next()?)?;
+
+    u8::try_from(satellites_in_view).ok()
+}
+
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::expect_used)]
     use super::*;
 
     #[test]
@@ -871,7 +1091,6 @@ mod tests {
     fn parse_gga_record_extracts_position_and_fix() {
         let record = b"GPGGA,123519.500,4916.45,N,12311.12,W,1,08,0.9,545.4,M,46.9,M,,";
 
-        #[allow(clippy::expect_used)]
         let result = parse_gga_record(record).expect("GGA record should parse");
 
         assert_eq!(result.time_of_day_ms, 45_319_500);
@@ -882,7 +1101,7 @@ mod tests {
 
         assert_eq!(result.position.altitude_cm, 54_540);
 
-        assert_eq!(result.dilution_of_precision_positional, 9);
+        assert_eq!(result.dilution_of_precision_horizontal, 9);
 
         assert_eq!(result.fix, 1);
         assert_eq!(result.satellite_count, 8);
@@ -956,5 +1175,72 @@ mod tests {
     #[test]
     fn parse_nmea_time_rejects_bad_separator() {
         assert_eq!(parse_nmea_time(b"123519X500"), None);
+    }
+
+    #[test]
+    fn parse_rmc_record_extracts_navigation_data() {
+        let record = b"GPRMC,123519.00,A,4916.45,N,12311.12,W,022.4,084.4,230394,,,";
+
+        let result = parse_rmc_record(record).expect("RMC record should parse");
+
+        assert_eq!(result.time_of_day_ms, 45_319_000);
+
+        assert_eq!(result.position.latitude_degrees_x1e7, 492_741_667);
+
+        assert_eq!(result.position.longitude_degrees_x1e7, -1_231_853_333);
+
+        assert_eq!(result.ground_speed_cmps, 1_152);
+        assert_eq!(result.heading_deci_degrees, 844);
+
+        assert_eq!(result.is_healthy, 1);
+    }
+    #[test]
+    fn parse_rmc_record_marks_invalid_fix_unhealthy() {
+        let record = b"GPRMC,123519.00,V,4916.45,N,12311.12,W,022.4,084.4,230394,,,";
+
+        let result = parse_rmc_record(record).expect("RMC record should parse");
+
+        assert_eq!(result.is_healthy, 0);
+    }
+    #[test]
+    fn parse_rmc_record_accepts_different_talker_ids() {
+        let record = b"GNRMC,123519.00,A,4916.45,N,12311.12,W,022.4,084.4,230394,,,";
+
+        assert!(parse_rmc_record(record).is_some());
+    }
+    #[test]
+    fn parse_gsa_record_extracts_fix_and_dop() {
+        let record = b"GPGSA,A,3,04,05,09,12,24,25,29,31,,,,,1.8,1.0,1.5";
+
+        let result = parse_gsa_record(record).expect("GSA record should parse");
+
+        assert_eq!(result.fix_type, 3);
+        assert_eq!(result.satellites_used, 8);
+
+        assert_eq!(result.dilution_of_precision_position, 18);
+        assert_eq!(result.dilution_of_precision_horizontal, 10);
+        assert_eq!(result.dilution_of_precision_vertical, 15);
+    }
+    #[test]
+    fn parse_gsa_record_accepts_no_fix() {
+        let record = b"GPGSA,A,1,,,,,,,,,,,,,1.8,1.0,1.5";
+
+        let result = parse_gsa_record(record).expect("GSA record should parse");
+
+        assert_eq!(result.fix_type, 1);
+        assert_eq!(result.satellites_used, 0);
+    }
+    #[test]
+    fn parse_gsa_record_rejects_invalid_fix_type() {
+        let record = b"GPGSA,A,4,04,05,,,,,,,,,,,1.8,1.0,1.5";
+
+        assert_eq!(parse_gsa_record(record), None);
+    }
+
+    #[test]
+    fn parse_gsa_record_rejects_invalid_mode() {
+        let record = b"GPGSA,X,3,04,05,,,,,,,,,,,1.8,1.0,1.5";
+
+        assert_eq!(parse_gsa_record(record), None);
     }
 }
