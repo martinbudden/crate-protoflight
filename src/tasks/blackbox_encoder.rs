@@ -402,9 +402,9 @@ pub fn gps_data_from(gps: GpsSolutionData) -> BlackboxGpsData {
         time_of_week_ms: gps.time,
         interval_ms: 0,
         position: BlackboxGpsPosition {
-            longitude_degrees_x1e7: gps.llh.longitude_degrees_x1e7,
-            latitude_degrees_x1e7: gps.llh.latitude_degrees_x1e7,
-            altitude_cm: gps.llh.altitude_cm,
+            longitude_degrees_x1e7: gps.longitude_degrees_x1e7,
+            latitude_degrees_x1e7: gps.latitude_degrees_x1e7,
+            altitude_cm: gps.altitude_cm,
         },
         velocity_north_cmps: gps.velocity_ned_cmps.north,
         velocity_east_cmps: gps.velocity_ned_cmps.east,

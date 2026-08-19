@@ -131,7 +131,7 @@ pub async fn run(ctx: &'static mut MspContext) {
             && let embassy_sync::pubsub::WaitResult::Message(event) = wait_result
             && let GpsMessage::Solution(gps_solution_data) = event
         {
-            msp_sensor_data.gps_sol.llh = gps_solution_data.llh;
+            msp_sensor_data.gps_sol.longitude_degrees_x1e7 = gps_solution_data.longitude_degrees_x1e7;
             msp_sensor_data.gps_sol.satellite_count = gps_solution_data.satellite_count;
             msp_sensor_data.gps_sol.ground_speed_cmps = gps_solution_data.ground_speed_cmps;
             msp_sensor_data.gps_sol.ground_course_degrees_x10 = gps_solution_data.ground_course_degrees_x10;

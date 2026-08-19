@@ -174,9 +174,9 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
             // TODO: choose position or altitude kalman filter based on settings
             if let GpsMessage::Position(gps_position) = event {
                 if altitude_hold {
-                    ctx.autopilot.altitude_kalman_filter.correct_altitude_using_gps(gps_position.position.z);
+                    ctx.autopilot.altitude_kalman_filter.correct_altitude_using_gps(gps_position.z);
                 } else if position_hold {
-                    ctx.autopilot.position_kalman_filter.correct_position_using_gps(gps_position.position);
+                    ctx.autopilot.position_kalman_filter.correct_position_using_gps(gps_position);
                 }
             } else {
                 // Message type of interest to other subscribers, but not to me so intentionally do nothing,

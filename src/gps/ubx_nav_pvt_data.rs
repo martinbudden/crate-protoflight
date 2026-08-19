@@ -381,9 +381,9 @@ mod tests {
         }
 
         assert_eq!(gps.time_of_week_ms, 45_296_789);
-        assert_eq!(gps.position.longitude_degrees_x1e7, -12_345_678);
-        assert_eq!(gps.position.latitude_degrees_x1e7, 512_345_678);
-        assert_eq!(gps.position.altitude_cm, 10_000);
+        assert_eq!(gps.longitude_degrees_x1e7, -12_345_678);
+        assert_eq!(gps.latitude_degrees_x1e7, 512_345_678);
+        assert_eq!(gps.altitude_cm, 10_000);
         assert_eq!(gps.geoid_separation_cm, 2_345);
 
         assert_eq!(gps.satellite_count, 12);

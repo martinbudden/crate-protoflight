@@ -220,7 +220,6 @@ impl NmeaRecordType {
         if record.len() < 6 {
             return None;
         }
-
         match &record[2..5] {
             b"GGA" => Some(Self::Gga),
             b"RMC" => Some(Self::Rmc),
@@ -563,6 +562,7 @@ mod tests_record_type {
         assert_eq!(NmeaRecordType::from_record(b"GNRMC,123519,..."), Some(NmeaRecordType::Rmc));
     }
 }
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::expect_used)]

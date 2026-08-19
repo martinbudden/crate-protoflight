@@ -3,27 +3,10 @@ use crate::gps::{
 };
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct GpsPositionLongLatAlt {
+pub struct GpsData {
     pub longitude_degrees_x1e7: i32,
     pub latitude_degrees_x1e7: i32,
     pub altitude_cm: i32,
-}
-
-impl GpsPositionLongLatAlt {
-    pub const fn new() -> Self {
-        Self { longitude_degrees_x1e7: 0, latitude_degrees_x1e7: 0, altitude_cm: 0 }
-    }
-}
-
-impl Default for GpsPositionLongLatAlt {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct GpsData {
-    pub position: GpsPositionLongLatAlt,
     pub geoid_separation_cm: i32,
     pub distance_to_home_meters: f32,
     pub bearing_to_home_degrees: f32,
@@ -60,7 +43,9 @@ impl GpsData {
 
     pub const fn new() -> Self {
         Self {
-            position: GpsPositionLongLatAlt::new(),
+            longitude_degrees_x1e7: 0,
+            latitude_degrees_x1e7: 0,
+            altitude_cm: 0,
             geoid_separation_cm: 0,
             distance_to_home_meters: 0.0,
             bearing_to_home_degrees: 0.0,
@@ -87,9 +72,9 @@ impl GpsData {
 
 impl GpsData {
     pub fn amend_with_gga(&mut self, gga: NmeaGga) {
-        self.position.latitude_degrees_x1e7 = gga.latitude_degrees_x1e7;
-        self.position.longitude_degrees_x1e7 = gga.longitude_degrees_x1e7;
-        self.position.altitude_cm = gga.altitude_cm;
+        self.latitude_degrees_x1e7 = gga.latitude_degrees_x1e7;
+        self.longitude_degrees_x1e7 = gga.longitude_degrees_x1e7;
+        self.altitude_cm = gga.altitude_cm;
         self.geoid_separation_cm = gga.geoid_separation_cm;
         self.satellite_count = gga.satellite_count;
         self.fix = gga.fix;
@@ -115,9 +100,9 @@ impl GpsData {
     }
 
     pub fn amend_with_nav_pvt_data(&mut self, nav: NavPvtData) {
-        self.position.longitude_degrees_x1e7 = nav.longitude_degrees_x1e7;
-        self.position.latitude_degrees_x1e7 = nav.latitude_degrees_x1e7;
-        self.position.altitude_cm = nav.height_msl_mm / 10;
+        self.longitude_degrees_x1e7 = nav.longitude_degrees_x1e7;
+        self.latitude_degrees_x1e7 = nav.latitude_degrees_x1e7;
+        self.altitude_cm = nav.height_msl_mm / 10;
 
         let geoid_separation_mm = nav.height_ellipsoid_mm - nav.height_msl_mm;
         self.geoid_separation_cm = geoid_separation_mm / 10;
@@ -151,7 +136,6 @@ mod tests {
 
     #[test]
     fn normal_types() {
-        is_full::<GpsPositionLongLatAlt>();
         is_full::<GpsData>();
     }
     #[test]

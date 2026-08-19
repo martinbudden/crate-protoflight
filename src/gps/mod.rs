@@ -20,8 +20,8 @@ pub use config::{GpsConfig, GpsOffOn, GpsProvider, GpsRescueConfig, SbasMode};
 
 pub use geodetic::{Geodetic, GeographicCoordinate};
 
-pub use gps_data::{GpsData, GpsPositionLongLatAlt};
-pub use gps_message::{GpsMessage, GpsPositionMeters, GpsYawHeadingMessage};
+pub use gps_data::GpsData;
+pub use gps_message::{GpsMessage, GpsYawHeadingMessage};
 pub use gps_parser::{GpsParser, GpsParserEvent};
 pub use gps_solution_data::{GpsSolutionData, GpsSolutionDataAbridged};
 

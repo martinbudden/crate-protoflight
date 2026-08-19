@@ -1,4 +1,4 @@
-use crate::gps::{GpsData, GpsPositionLongLatAlt};
+use crate::gps::GpsData;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 enum UbxState {

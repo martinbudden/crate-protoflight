@@ -10,8 +10,8 @@ use static_cell::StaticCell;
 use crate::{
     boards::{GpsUartRx, GpsUartTx},
     gps::{
-        Geodetic, GeographicCoordinate, GpsData, GpsMessage, GpsParser, GpsParserEvent, GpsPositionMeters, GpsProvider,
-        GpsSolutionData, GpsYawHeadingMessage, NavPvtData, NmeaGga, NmeaGsa, NmeaRecordType, NmeaRmc,
+        Geodetic, GeographicCoordinate, GpsData, GpsMessage, GpsParser, GpsParserEvent, GpsProvider, GpsSolutionData,
+        GpsYawHeadingMessage, NavPvtData, NmeaGga, NmeaGsa, NmeaRecordType, NmeaRmc,
     },
 };
 
@@ -113,8 +113,12 @@ pub async fn run(ctx: &'static mut GpsContext) {
         ctx.gps_publisher.publish_immediate(GpsMessage::Solution(ctx.gps_solution_data));
 
         // Convert the gps data position to a `GpsPositionMeters` use by the autopilot.
-        let geographic_coordinate = GeographicCoordinate::from(ctx.gps_data.position);
-        let gps_position = GpsPositionMeters { position: ctx.home.distance_from_home_meters(geographic_coordinate) };
+        let geographic_coordinate = GeographicCoordinate::from_long_lat_alt(
+            ctx.gps_data.longitude_degrees_x1e7,
+            ctx.gps_data.latitude_degrees_x1e7,
+            ctx.gps_data.altitude_cm,
+        );
+        let gps_position = ctx.home.distance_from_home_meters(geographic_coordinate);
         ctx.gps_publisher.publish_immediate(GpsMessage::Position(gps_position));
 
         // Only trust GPS heading if moving faster than 1.5 m/s (150 cmps, approx 3 knots)
@@ -186,9 +190,9 @@ mod tests {
         process_gps_event(&mut gps, &mut gps_solution, GpsParserEvent::NmeaComplete(record));
 
         //assert_eq!(gps.time_of_week_ms, 45_519_000);
-        assert_eq!(gps.position.latitude_degrees_x1e7, 481_173_000);
-        assert_eq!(gps.position.longitude_degrees_x1e7, 115_166_667);
-        assert_eq!(gps.position.altitude_cm, 54_540);
+        assert_eq!(gps.latitude_degrees_x1e7, 481_173_000);
+        assert_eq!(gps.longitude_degrees_x1e7, 115_166_667);
+        assert_eq!(gps.altitude_cm, 54_540);
         assert_eq!(gps.geoid_separation_cm, 4_690);
         assert_eq!(gps.fix, 1);
         assert_eq!(gps.satellite_count, 8);
@@ -205,9 +209,9 @@ mod tests {
         process_gps_event(&mut gps, &mut gps_solution, GpsParserEvent::UbxMessage(message));
 
         assert_eq!(gps.time_of_week_ms, 45_296_789);
-        assert_eq!(gps.position.longitude_degrees_x1e7, -12_345_678);
-        assert_eq!(gps.position.latitude_degrees_x1e7, 512_345_678);
-        assert_eq!(gps.position.altitude_cm, 10_000);
+        assert_eq!(gps.longitude_degrees_x1e7, -12_345_678);
+        assert_eq!(gps.latitude_degrees_x1e7, 512_345_678);
+        assert_eq!(gps.altitude_cm, 10_000);
         assert_eq!(gps.geoid_separation_cm, 2345);
         assert_eq!(gps.velocity_north_cmps, 123);
         assert_eq!(gps.velocity_east_cmps, -45);
@@ -228,8 +232,8 @@ mod tests {
         process_gps_event(&mut gps, &mut gps_solution, GpsParserEvent::NmeaComplete(record));
 
         /*assert_eq!(gps.time_of_day_ms, /* expected */);
-        assert_eq!(gps.position.latitude_degrees_x1e7, /* expected */);
-        assert_eq!(gps.position.longitude_degrees_x1e7, /* expected */);
+        assert_eq!(gps.latitude_degrees_x1e7, /* expected */);
+        assert_eq!(gps.longitude_degrees_x1e7, /* expected */);
         assert_eq!(gps.ground_speed_cmps, /* expected */);
         assert_eq!(gps.heading_deci_degrees, /* expected */);*/
     }

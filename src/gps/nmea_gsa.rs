@@ -1,7 +1,4 @@
-use crate::gps::{
-    GpsPositionLongLatAlt,
-    nmea_parser::{NmeaFields, parse_fixed_point, parse_int},
-};
+use crate::gps::nmea_parser::{NmeaFields, parse_fixed_point, parse_int};
 
 /// `GPGSA,A,3,04,05,09,12,24,25,29,31,,,,,1.8,1.0,1.5`.
 /// |    # | Field         | Example     | Meaning             |
@@ -16,7 +13,9 @@ use crate::gps::{
 /// |   18 | System ID     | optional    | GNSS constellation  |
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct NmeaGsa {
-    pub position: GpsPositionLongLatAlt,
+    pub longitude_degrees_x1e7: i32,
+    pub latitude_degrees_x1e7: i32,
+    pub altitude_cm: i32,
     pub geoid_separation_cm: i32,
     pub distance_to_home_meters: f32,
     pub bearing_to_home_degrees: f32,
@@ -49,7 +48,9 @@ impl Default for NmeaGsa {
 impl NmeaGsa {
     pub const fn new() -> Self {
         Self {
-            position: GpsPositionLongLatAlt::new(),
+            longitude_degrees_x1e7: 0,
+            latitude_degrees_x1e7: 0,
+            altitude_cm: 0,
             geoid_separation_cm: 0,
             distance_to_home_meters: 0.0,
             bearing_to_home_degrees: 0.0,

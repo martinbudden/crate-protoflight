@@ -1,4 +1,4 @@
-use crate::gps::{GpsPositionLongLatAlt, NavPvtData, NmeaGga, NmeaGsa, NmeaGsv, NmeaRmc};
+use crate::gps::{NavPvtData, NmeaGga, NmeaGsa, NmeaGsv, NmeaRmc};
 
 /// A value below 100 means great accuracy is possible with the GPS satellite constellation.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -71,7 +71,9 @@ impl GpsDateTime {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GpsSolutionData {
-    pub llh: GpsPositionLongLatAlt,
+    pub longitude_degrees_x1e7: i32,
+    pub latitude_degrees_x1e7: i32,
+    pub altitude_cm: i32,
     pub dop: GpsDilution,
     pub accuracy: GpsAccuracy,
     pub velocity_ned_cmps: GpsVelocityNedCmps,
@@ -98,7 +100,9 @@ impl Default for GpsSolutionData {
 impl GpsSolutionData {
     pub const fn new() -> Self {
         Self {
-            llh: GpsPositionLongLatAlt::new(),
+            longitude_degrees_x1e7: 0,
+            latitude_degrees_x1e7: 0,
+            altitude_cm: 0,
             dop: GpsDilution::new(),
             accuracy: GpsAccuracy::new(),
             velocity_ned_cmps: GpsVelocityNedCmps::new(),
@@ -115,9 +119,9 @@ impl GpsSolutionData {
 impl GpsSolutionData {
     // TODO: amend_with_gga
     pub fn amend_with_gga(&mut self, gga: NmeaGga) {
-        self.llh.latitude_degrees_x1e7 = gga.latitude_degrees_x1e7;
-        self.llh.longitude_degrees_x1e7 = gga.longitude_degrees_x1e7;
-        self.llh.altitude_cm = gga.altitude_cm;
+        self.latitude_degrees_x1e7 = gga.latitude_degrees_x1e7;
+        self.longitude_degrees_x1e7 = gga.longitude_degrees_x1e7;
+        self.altitude_cm = gga.altitude_cm;
         self.satellite_count = gga.satellite_count;
     }
 
@@ -140,9 +144,9 @@ impl GpsSolutionData {
     }
 
     pub fn amend_with_nav_pvt_data(&mut self, nav: NavPvtData) {
-        self.llh.longitude_degrees_x1e7 = nav.longitude_degrees_x1e7;
-        self.llh.latitude_degrees_x1e7 = nav.latitude_degrees_x1e7;
-        self.llh.altitude_cm = nav.height_msl_mm / 10;
+        self.longitude_degrees_x1e7 = nav.longitude_degrees_x1e7;
+        self.latitude_degrees_x1e7 = nav.latitude_degrees_x1e7;
+        self.altitude_cm = nav.height_msl_mm / 10;
 
         #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap, clippy::cast_sign_loss)]
         {
@@ -162,7 +166,9 @@ impl GpsSolutionData {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GpsSolutionDataAbridged {
-    pub llh: GpsPositionLongLatAlt,
+    pub longitude_degrees_x1e7: i32,
+    pub latitude_degrees_x1e7: i32,
+    pub altitude_cm: i32,
     pub satellite_count: u8,
     // speed in cm/s
     pub ground_speed_cmps: u16,
@@ -180,7 +186,9 @@ impl Default for GpsSolutionDataAbridged {
 impl GpsSolutionDataAbridged {
     pub const fn new() -> Self {
         Self {
-            llh: GpsPositionLongLatAlt::new(),
+            longitude_degrees_x1e7: 0,
+            latitude_degrees_x1e7: 0,
+            altitude_cm: 0,
             ground_speed_cmps: 0,
             ground_course_degrees_x10: 0,
             satellite_count: 0,
