@@ -136,6 +136,7 @@ checksum = "b588b76d00fde79687d7646a9b5bdf3cc0f655e0bbd080335a95d7e96f3587da"
 [[package]]
 name = "blackbox-logger"
 version = "0.1.9"
+source = "git+https://github.com/martinbudden/crate-blackbox-logger#9a3f264ec4e3d9087a7fc06b28216ef3394d5bfc"
 dependencies = [
  "embassy-futures",
  "postcard",
@@ -1106,6 +1107,7 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 [[package]]
 name = "imu-sensors"
 version = "0.1.3"
+source = "git+https://github.com/martinbudden/crate-imu-sensors#23922a7b1cc96b2e7e1a2aa3f9bd878f8e9c1cb2"
 dependencies = [
  "cfg-if",
  "embassy-sync",
@@ -1261,6 +1263,7 @@ dependencies = [
 [[package]]
 name = "motor-mixers"
 version = "0.1.5"
+source = "git+https://github.com/martinbudden/crate-motor-mixers#ebdc19670e9cf7dbe384889100d4c9d60b82ed67"
 dependencies = [
  "embassy-executor",
  "embassy-futures",
@@ -1579,6 +1582,7 @@ dependencies = [
 [[package]]
 name = "radio-controllers"
 version = "0.1.6"
+source = "git+https://github.com/martinbudden/crate-radio-controllers#f74e345acda11c289990bbc2ef3880037563ba61"
 dependencies = [
  "embedded-hal 1.0.0",
  "embedded-hal-nb",
