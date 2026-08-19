@@ -1,4 +1,5 @@
 #![cfg(feature = "stm32")]
+#![allow(unused)]
 
 use embassy_sync::{blocking_mutex::raw::NoopRawMutex, mutex::Mutex};
 

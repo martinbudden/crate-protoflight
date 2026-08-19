@@ -70,11 +70,6 @@ pub async fn init(spawner: Spawner) {
         #[cfg(not(feature = "magnetometer"))]
         magnetometer_type: crate::magnetometer_sensors::MagnetometerType::None,
 
-        #[cfg(feature = "gps")]
-        gps_provider: config.gps.provider,
-        #[cfg(not(feature = "gps"))]
-        gps_provider: crate::gps::GpsProvider::None,
-
         #[cfg(feature = "rangefinder")]
         rangefinder_type: config.rangefinder.hardware,
         #[cfg(not(feature = "rangefinder"))]
@@ -148,7 +143,7 @@ pub async fn init(spawner: Spawner) {
     let battery_ctx = Some(tasks::battery::init());
 
     #[cfg(feature = "gps")]
-    let gps_ctx = hardware.gps.map(|gps| tasks::gps::init(gps.uart_rx, gps.uart_tx, gps.parser));
+    let gps_ctx = hardware.gps.map(|gps| tasks::gps::init(gps.uart_rx, gps.uart_tx, config.gps.provider));
 
     #[cfg(feature = "magnetometer")]
     let magnetometer_ctx = hardware.magnetometer.map(tasks::magnetometer::init);

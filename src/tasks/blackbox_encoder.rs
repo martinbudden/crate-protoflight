@@ -294,7 +294,7 @@ pub async fn run(ctx: &'static mut BlackboxEncoderContext) {
         #[cfg(feature = "gps")]
         if let Some(wait_result) = ctx.gps_subscriber.try_next_message()
             && let embassy_sync::pubsub::WaitResult::Message(event) = wait_result
-            && let GpsMessage::GpsSolution(gps_solution_data) = event
+            && let GpsMessage::Solution(gps_solution_data) = event
         {
             let gps_data = gps_data_from(gps_solution_data);
             ctx.blackbox.set_gps_data(gps_data);

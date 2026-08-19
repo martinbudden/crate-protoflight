@@ -27,7 +27,7 @@ impl PostcardValue<'_> for GpsConfig {}
 impl GpsConfig {
     pub const fn new() -> Self {
         Self {
-            provider: GpsProvider::Ublox,
+            provider: GpsProvider::Ubx,
             sbas_mode: SbasMode::None,
             auto_config: GpsOffOn::On,
             auto_baud: GpsOffOn::Off,
@@ -128,7 +128,7 @@ impl Default for GpsRescueConfig {
 pub enum GpsProvider {
     #[default]
     Nmea = 0,
-    Ublox = 1,
+    Ubx = 1,
     Msp = 2,
     Mock = 3,
     None = 255,
@@ -142,7 +142,7 @@ impl GpsProvider {
     pub fn from_u8(value: u8) -> Self {
         match value {
             0 => Self::Nmea,
-            1 => Self::Ublox,
+            1 => Self::Ubx,
             2 => Self::Msp,
             3 => Self::Mock,
             255 => Self::None,
@@ -300,6 +300,6 @@ mod tests {
     #[test]
     fn test_new() {
         let config = GpsConfig::new();
-        assert_eq!(GpsProvider::Ublox, config.provider);
+        assert_eq!(GpsProvider::Ubx, config.provider);
     }
 }

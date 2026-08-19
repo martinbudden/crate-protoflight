@@ -129,7 +129,7 @@ pub async fn run(ctx: &'static mut MspContext) {
         #[cfg(feature = "gps")]
         if let Some(wait_result) = ctx.gps_subscriber.try_next_message()
             && let embassy_sync::pubsub::WaitResult::Message(event) = wait_result
-            && let GpsMessage::GpsSolution(gps_solution_data) = event
+            && let GpsMessage::Solution(gps_solution_data) = event
         {
             msp_sensor_data.gps_sol.llh = gps_solution_data.llh;
             msp_sensor_data.gps_sol.satellite_count = gps_solution_data.satellite_count;

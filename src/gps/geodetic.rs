@@ -1,8 +1,7 @@
+use crate::gps::GpsPositionLongLatAlt;
 use vqm::Vector3f32;
-
-#[allow(unused)]
+   
 use vqm::TrigonometricMethods;
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "std", derive(derive_more::Display))]
 #[cfg_attr(feature = "std", display("Gps{{long:{longitude_degrees}, lat:{latitude_degrees}, alt:{altitude_meters}}}"))]
@@ -21,6 +20,18 @@ impl Default for GeographicCoordinate {
 impl GeographicCoordinate {
     pub const fn new(longitude_degrees: f32, latitude_degrees: f32, altitude_meters: f32) -> Self {
         Self { longitude_degrees, latitude_degrees, altitude_meters }
+    }
+}
+
+impl From<GpsPositionLongLatAlt> for GeographicCoordinate {
+    #[inline]
+    #[allow(clippy::cast_precision_loss)]
+    fn from(position: GpsPositionLongLatAlt) -> Self {
+        Self {
+            longitude_degrees: (position.longitude_degrees_x1e7 as f32) * 1e-7,
+            latitude_degrees: (position.latitude_degrees_x1e7 as f32) * 1e-7,
+            altitude_meters: (position.altitude_cm as f32) * 0.1,
+        }
     }
 }
 

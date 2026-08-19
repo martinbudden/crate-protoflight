@@ -1,4 +1,4 @@
-use crate::gps::GpsPositionLongLatAlt;
+use crate::gps::{GpsPositionLongLatAlt, NavPvtData, NmeaGga, NmeaGsa, NmeaGsv, NmeaRmc};
 
 /// A value below 100 means great accuracy is possible with the GPS satellite constellation.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -89,6 +89,12 @@ pub struct GpsSolutionData {
     pub date_time: GpsDateTime,
 }
 
+impl Default for GpsSolutionData {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GpsSolutionData {
     pub const fn new() -> Self {
         Self {
@@ -106,14 +112,55 @@ impl GpsSolutionData {
         }
     }
 }
+impl GpsSolutionData {
+    // TODO: amend_with_gga
+    pub fn amend_with_gga(&mut self, gga: NmeaGga) {
+        self.llh.latitude_degrees_x1e7 = gga.latitude_degrees_x1e7;
+        self.llh.longitude_degrees_x1e7 = gga.longitude_degrees_x1e7;
+        self.llh.altitude_cm = gga.altitude_cm;
+        self.satellite_count = gga.satellite_count;
+    }
 
-impl Default for GpsSolutionData {
-    fn default() -> Self {
-        Self::new()
+    // TODO: amend_with_gsa
+    pub fn amend_with_gsa(&mut self, gsa: NmeaGsa) {
+        _ = self;
+        _ = gsa;
+    }
+
+    // TODO: amend_with_gsa
+    pub fn amend_with_gsv(&mut self, gsv: NmeaGsv) {
+        _ = self;
+        _ = gsv;
+    }
+
+    // TODO: amend_with_rmc
+    pub fn amend_with_rmc(&mut self, gsv: NmeaRmc) {
+        _ = self;
+        _ = gsv;
+    }
+
+    pub fn amend_with_nav_pvt_data(&mut self, nav: NavPvtData) {
+        self.llh.longitude_degrees_x1e7 = nav.longitude_degrees_x1e7;
+        self.llh.latitude_degrees_x1e7 = nav.latitude_degrees_x1e7;
+        self.llh.altitude_cm = nav.height_msl_mm / 10;
+
+        #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap, clippy::cast_sign_loss)]
+        {
+            self.velocity_ned_cmps.north =
+                (nav.velocity_north_mmps / 10).clamp(i32::from(i16::MIN), i32::from(i16::MAX)) as i16;
+            self.velocity_ned_cmps.east =
+                (nav.velocity_east_mmps / 10).clamp(i32::from(i16::MIN), i32::from(i16::MAX)) as i16;
+            self.velocity_ned_cmps.down =
+                (nav.velocity_down_mmps / 10).clamp(i32::from(i16::MIN), i32::from(i16::MAX)) as i16;
+            self.ground_speed_cmps =
+                (nav.ground_speed_mmps / 10).clamp(i32::from(i16::MIN), i32::from(i16::MAX)) as u16;
+        }
+
+        self.satellite_count = nav.satellite_count;
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GpsSolutionDataAbridged {
     pub llh: GpsPositionLongLatAlt,
     pub satellite_count: u8,
@@ -122,6 +169,12 @@ pub struct GpsSolutionDataAbridged {
     // degrees * 10
     pub ground_course_degrees_x10: u16,
     pub dop_positional: u16,
+}
+
+impl Default for GpsSolutionDataAbridged {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl GpsSolutionDataAbridged {

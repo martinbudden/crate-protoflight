@@ -4,7 +4,6 @@ use crate::{
     barometer_sensors::Barometer,
     boards::board::{Board, BoardInit, BoardInitError, GpsHardware, ImuContext},
     boards::{GpsUartRx, GpsUartTx},
-    gps::GpsParser,
     i2c_bus::{MockI2c, SharedI2cBus},
     magnetometer_sensors::Magnetometer,
     optical_flow_sensors::OpticalFlow,
@@ -40,8 +39,7 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
     let magnetometer = Magnetometer::new(init.magnetometer_type, shared_i2c);
     let gps_rx = GpsUartRx::default();
     let gps_tx = GpsUartTx::default();
-    let gps_parser = GpsParser::new_unwrapped(init.gps_provider);
-    let gps = Some(GpsHardware { uart_rx: gps_rx, uart_tx: gps_tx, parser: gps_parser });
+    let gps = Some(GpsHardware { uart_rx: gps_rx, uart_tx: gps_tx });
 
     let rangefinder = Rangefinder::new(init.rangefinder_type);
     let optical_flow = OpticalFlow::new(init.optical_flow_type);

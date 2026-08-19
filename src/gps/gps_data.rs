@@ -1,23 +1,6 @@
-use vqm::Vector3f32;
-
-use crate::gps::{GeographicCoordinate, GpsSolutionData};
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct GpsPositionMeters {
-    pub position: Vector3f32,
-}
-
-impl GpsPositionMeters {
-    pub const fn new() -> Self {
-        Self { position: Vector3f32 { x: 0.0, y: 0.0, z: 0.0 } }
-    }
-}
-
-impl Default for GpsPositionMeters {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+use crate::gps::{
+    GpsSolutionData, NmeaRmc, nmea_gga::NmeaGga, nmea_gsa::NmeaGsa, nmea_gsv::NmeaGsv, ubx_nav_pvt_data::NavPvtData,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GpsPositionLongLatAlt {
@@ -38,18 +21,6 @@ impl Default for GpsPositionLongLatAlt {
     }
 }
 
-impl From<GpsPositionLongLatAlt> for GeographicCoordinate {
-    #[inline]
-    #[allow(clippy::cast_precision_loss)]
-    fn from(position: GpsPositionLongLatAlt) -> Self {
-        Self {
-            longitude_degrees: (position.longitude_degrees_x1e7 as f32) * 1e-7,
-            latitude_degrees: (position.latitude_degrees_x1e7 as f32) * 1e-7,
-            altitude_meters: (position.altitude_cm as f32) * 0.1,
-        }
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GpsData {
     pub position: GpsPositionLongLatAlt,
@@ -57,11 +28,11 @@ pub struct GpsData {
     pub distance_to_home_meters: f32,
     pub bearing_to_home_degrees: f32,
     pub distance_flown_meters: f32,
-    pub time_of_day_ms: u32,
-    pub velocity_north_cmps: i16,
-    pub velocity_east_cmps: i16,
-    pub velocity_down_cmps: i16,
-    pub speed3d_cmps: i16,
+    pub time_of_week_ms: u32,
+    pub velocity_north_cmps: i32,
+    pub velocity_east_cmps: i32,
+    pub velocity_down_cmps: i32,
+    pub speed3d_cmps: i32,
     pub ground_speed_cmps: i16,
     pub heading_deci_degrees: i16,
     pub satellite_count: u8, // GGA: satellites tracked
@@ -76,6 +47,11 @@ pub struct GpsData {
     pub update: u8,
 }
 
+impl Default for GpsData {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 #[allow(unused)]
 impl GpsData {
     const FIX_HOME: u8 = 0x01;
@@ -89,7 +65,7 @@ impl GpsData {
             distance_to_home_meters: 0.0,
             bearing_to_home_degrees: 0.0,
             distance_flown_meters: 0.0,
-            time_of_day_ms: 0,
+            time_of_week_ms: 0,
             velocity_north_cmps: 0,
             velocity_east_cmps: 0,
             velocity_down_cmps: 0,
@@ -109,37 +85,60 @@ impl GpsData {
     }
 }
 
-impl Default for GpsData {
-    fn default() -> Self {
-        Self::new()
+impl GpsData {
+    pub fn amend_with_gga(&mut self, gga: NmeaGga) {
+        self.position.latitude_degrees_x1e7 = gga.latitude_degrees_x1e7;
+        self.position.longitude_degrees_x1e7 = gga.longitude_degrees_x1e7;
+        self.position.altitude_cm = gga.altitude_cm;
+        self.geoid_separation_cm = gga.geoid_separation_cm;
+        self.satellite_count = gga.satellite_count;
+        self.fix = gga.fix;
+        // ...
     }
-}
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "std", derive(derive_more::Display))]
-#[cfg_attr(feature = "std", display("Gps{{yaw_rate: {yaw_heading_radians}}}"))]
-pub struct GpsYawHeadingMessage {
-    pub yaw_heading_radians: f32,
-    pub delta_t: f32,
-}
 
-impl GpsYawHeadingMessage {
-    pub const fn new() -> Self {
-        Self { yaw_heading_radians: 0.0, delta_t: 0.1 }
+    // TODO: amend_with_gsa
+    pub fn amend_with_gsa(&mut self, gsa: NmeaGsa) {
+        _ = self;
+        _ = gsa;
     }
-}
 
-impl Default for GpsYawHeadingMessage {
-    fn default() -> Self {
-        Self::new()
+    // TODO: amend_with_gsa
+    pub fn amend_with_gsv(&mut self, gsv: NmeaGsv) {
+        _ = self;
+        _ = gsv;
     }
-}
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[non_exhaustive]
-pub enum GpsMessage {
-    Gps(GpsData),
-    GpsPositionMeters(GpsPositionMeters),
-    GpsSolution(GpsSolutionData),
+    // TODO: amend_with_rmc
+    pub fn amend_with_rmc(&mut self, gsv: NmeaRmc) {
+        _ = self;
+        _ = gsv;
+    }
+
+    pub fn amend_with_nav_pvt_data(&mut self, nav: NavPvtData) {
+        self.position.longitude_degrees_x1e7 = nav.longitude_degrees_x1e7;
+        self.position.latitude_degrees_x1e7 = nav.latitude_degrees_x1e7;
+        self.position.altitude_cm = nav.height_msl_mm / 10;
+
+        let geoid_separation_mm = nav.height_ellipsoid_mm - nav.height_msl_mm;
+        self.geoid_separation_cm = geoid_separation_mm / 10;
+
+        self.time_of_week_ms = nav.time_of_week_ms;
+
+        self.velocity_north_cmps = nav.velocity_north_mmps / 10;
+        self.velocity_east_cmps = nav.velocity_east_mmps / 10;
+        self.velocity_down_cmps = nav.velocity_down_mmps / 10;
+        #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+        {
+            self.ground_speed_cmps =
+                (nav.ground_speed_mmps / 10).clamp(i32::from(i16::MIN), i32::from(i16::MAX)) as i16;
+            self.heading_deci_degrees =
+                (nav.heading_motion_x1e5_deg as i32 / 1000).clamp(i32::from(i16::MIN), i32::from(i16::MAX)) as i16;
+        }
+
+        self.satellite_count = nav.satellite_count;
+        self.fix = nav.fix_type;
+        self.is_healthy = u8::from(nav.flags & 0x01 != 0);
+    }
 }
 
 #[cfg(test)]
@@ -152,10 +151,36 @@ mod tests {
 
     #[test]
     fn normal_types() {
-        is_full::<GpsPositionMeters>();
         is_full::<GpsPositionLongLatAlt>();
         is_full::<GpsData>();
-        is_full::<GpsYawHeadingMessage>();
-        is_full_no_default::<GpsMessage>();
+    }
+    #[test]
+    fn nav_pvt_maps_time_of_week() {
+        let nav = NavPvtData { time_of_week_ms: 123_456_789, ..NavPvtData::default() };
+
+        let mut gps = GpsData::default();
+        gps.amend_with_nav_pvt_data(nav);
+
+        assert_eq!(gps.time_of_week_ms, 123_456_789);
+    }
+    #[test]
+    fn nav_pvt_maps_fix_and_health() {
+        let nav = NavPvtData { fix_type: 3, flags: 0x01, ..NavPvtData::default() };
+
+        let mut gps = GpsData::default();
+        gps.amend_with_nav_pvt_data(nav);
+
+        assert_eq!(gps.fix, 3);
+        assert_eq!(gps.is_healthy, 1);
+    }
+    #[test]
+    fn nav_pvt_fix_is_unhealthy_when_gnss_fix_ok_is_clear() {
+        let nav = NavPvtData { fix_type: 3, flags: 0x00, ..NavPvtData::default() };
+
+        let mut gps = GpsData::default();
+        gps.amend_with_nav_pvt_data(nav);
+
+        assert_eq!(gps.fix, 3);
+        assert_eq!(gps.is_healthy, 0);
     }
 }

@@ -10,12 +10,11 @@ use static_cell::StaticCell;
 use crate::{
     boards::{GpsUartRx, GpsUartTx},
     gps::{
-        Geodetic, GeographicCoordinate, GpsData, GpsMessage, GpsParser, GpsPositionMeters, GpsSolutionData,
-        GpsYawHeadingMessage,
+        Geodetic, GeographicCoordinate, GpsData, GpsMessage, GpsParser, GpsParserEvent, GpsPositionMeters, GpsProvider,
+        GpsSolutionData, GpsYawHeadingMessage, NavPvtData, NmeaGga, NmeaGsa, NmeaRecordType, NmeaRmc,
     },
 };
 
-#[allow(unused)]
 static GPS_CTX: StaticCell<GpsContext> = StaticCell::new();
 
 const MAX_GPS_SUBSCRIBER_COUNT: usize = 4;
@@ -63,26 +62,29 @@ pub struct GpsContext {
     pub uart_tx: GpsUartTx,
     pub gps_parser: GpsParser,
     pub gps_publisher: GpsPublisher,
+    pub gps_data: GpsData,
+    pub gps_solution_data: GpsSolutionData,
     pub home: Geodetic,
 }
 
 impl GpsContext {
-    #[allow(unused)]
-    pub fn new(uart_rx: GpsUartRx, uart_tx: GpsUartTx, gps_parser: GpsParser) -> Self {
+    pub fn new(uart_rx: GpsUartRx, uart_tx: GpsUartTx, gps_provider: GpsProvider) -> Self {
         #[allow(clippy::expect_used)]
         Self {
             uart_rx,
             uart_tx,
-            gps_parser,
+            gps_parser: GpsParser::new_unwrapped(gps_provider),
             gps_publisher: GPS_PUB_SUB_CHANNEL.publisher().expect("gps_publisher failed"),
+            gps_data: GpsData::new(),
+            gps_solution_data: GpsSolutionData::new(),
             home: Geodetic::new(),
         }
     }
 }
 
 #[allow(unused)]
-pub fn init(uart_rx: GpsUartRx, uart_tx: GpsUartTx, gps_parser: GpsParser) -> &'static mut GpsContext {
-    GPS_CTX.init(GpsContext::new(uart_rx, uart_tx, gps_parser))
+pub fn init(uart_rx: GpsUartRx, uart_tx: GpsUartTx, gps_provider: GpsProvider) -> &'static mut GpsContext {
+    GPS_CTX.init(GpsContext::new(uart_rx, uart_tx, gps_provider))
 }
 
 /// GPS Task Placeholder.
@@ -94,38 +96,31 @@ pub async fn run(ctx: &'static mut GpsContext) {
 
     log::info!("         GPS: task started");
     loop {
-        // Wait for the next tick.
+        // Wait for the next tick. TODO: chang GPS task to run off interrupt
         ticker.next().await;
         core::future::poll_fn(|_| core::task::Poll::Ready(())).await;
 
-        // Read a single byte directly from whichever hardware interface is active.
-        // This blocks efficiently without wasting CPU cycles.
-        let _res = ctx.uart_rx.read(&mut buf);
-
-        /*for byte in &buf[..n] {
-            let is_frame_complete = ctx.gps_parser.on_data_received(byte);
-            if is_frame_complete {
-                    // Dispatch message or flag completed state
+        if let Ok(n) = ctx.uart_rx.read(&mut buf).await {
+            for &byte in &buf[..n] {
+                if let Some(event) = ctx.gps_parser.on_data_received(byte) {
+                    process_gps_event(&mut ctx.gps_data, &mut ctx.gps_solution_data, event);
+                }
             }
-        }*/
+        }
 
-        // TODO: this should get the data from the actual GPS sensor.
-        let gps_data = GpsData::default();
-        let gps_solution = GpsSolutionData { satellite_count: 4, ..Default::default() };
+        // Publish the gps data for use by (eg) the OSD.
+        ctx.gps_publisher.publish_immediate(GpsMessage::Data(ctx.gps_data));
+        ctx.gps_publisher.publish_immediate(GpsMessage::Solution(ctx.gps_solution_data));
 
-        // Publish the raw gps data for use by (eg) the OSD.
-        ctx.gps_publisher.publish_immediate(GpsMessage::Gps(gps_data));
-        ctx.gps_publisher.publish_immediate(GpsMessage::GpsSolution(gps_solution));
-
-        // Convert the gps_data position to a GpsPosition item (ie position in meters from home) for use by the autopilot.
-        let geographic_coordinate = GeographicCoordinate::from(gps_data.position);
+        // Convert the gps data position to a `GpsPositionMeters` use by the autopilot.
+        let geographic_coordinate = GeographicCoordinate::from(ctx.gps_data.position);
         let gps_position = GpsPositionMeters { position: ctx.home.distance_from_home_meters(geographic_coordinate) };
-        ctx.gps_publisher.publish_immediate(GpsMessage::GpsPositionMeters(gps_position));
+        ctx.gps_publisher.publish_immediate(GpsMessage::Position(gps_position));
 
         // Only trust GPS heading if moving faster than 1.5 m/s (150 cmps, approx 3 knots)
-        if gps_data.ground_speed_cmps > 150 {
+        if ctx.gps_data.ground_speed_cmps > 150 {
             let gps_yaw_heading_message = GpsYawHeadingMessage {
-                yaw_heading_radians: (f32::from(gps_data.heading_deci_degrees) * 0.1).to_radians(),
+                yaw_heading_radians: (f32::from(ctx.gps_data.heading_deci_degrees) * 0.1).to_radians(),
                 delta_t: 0.1,
             };
             // signal the yaw heading so the gyro_pid task can use it to correct yaw drift in the sensor fusion filter.
@@ -136,5 +131,140 @@ pub async fn run(ctx: &'static mut GpsContext) {
             log::info!("           GPS:      loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
+    }
+}
+
+fn process_gps_event(gps: &mut GpsData, gps_solution: &mut GpsSolutionData, event: GpsParserEvent<'_>) {
+    match event {
+        GpsParserEvent::NmeaComplete(record) => match NmeaRecordType::from_record(record) {
+            Some(NmeaRecordType::Gga) => {
+                if let Some(gga) = NmeaGga::parse(record) {
+                    gps.amend_with_gga(gga);
+                    gps_solution.amend_with_gga(gga);
+                }
+            }
+            Some(NmeaRecordType::Rmc) => {
+                if let Some(rmc) = NmeaRmc::parse(record) {
+                    gps.amend_with_rmc(rmc);
+                    gps_solution.amend_with_rmc(rmc);
+                }
+            }
+            Some(NmeaRecordType::Gsa) => {
+                if let Some(gsa) = NmeaGsa::parse(record) {
+                    gps.amend_with_gsa(gsa);
+                    gps_solution.amend_with_gsa(gsa);
+                }
+            }
+            None => {}
+        },
+        GpsParserEvent::UbxMessage(message) => {
+            if message.class == NavPvtData::CLASS
+                && message.id == NavPvtData::ID
+                && let Some(nav) = NavPvtData::parse(message.payload)
+            {
+                gps.amend_with_nav_pvt_data(nav);
+                gps_solution.amend_with_nav_pvt_data(nav);
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::expect_used)]
+    use crate::gps::{UbxMessage, make_realistic_nav_pvt_payload};
+
+    use super::*;
+
+    #[test]
+    fn process_gps_event_amends_gga() {
+        let record = b"GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,";
+
+        let mut gps = GpsData::default();
+        let mut gps_solution = GpsSolutionData::default();
+
+        process_gps_event(&mut gps, &mut gps_solution, GpsParserEvent::NmeaComplete(record));
+
+        //assert_eq!(gps.time_of_week_ms, 45_519_000);
+        assert_eq!(gps.position.latitude_degrees_x1e7, 481_173_000);
+        assert_eq!(gps.position.longitude_degrees_x1e7, 115_166_667);
+        assert_eq!(gps.position.altitude_cm, 54_540);
+        assert_eq!(gps.geoid_separation_cm, 4_690);
+        assert_eq!(gps.fix, 1);
+        assert_eq!(gps.satellite_count, 8);
+    }
+    #[test]
+    fn process_gps_event_amends_nav_pvt() {
+        let payload = make_realistic_nav_pvt_payload();
+
+        let mut gps = GpsData::default();
+        let mut gps_solution = GpsSolutionData::default();
+
+        let message = UbxMessage { class: 0x01, id: 0x07, payload: &payload };
+
+        process_gps_event(&mut gps, &mut gps_solution, GpsParserEvent::UbxMessage(message));
+
+        assert_eq!(gps.time_of_week_ms, 45_296_789);
+        assert_eq!(gps.position.longitude_degrees_x1e7, -12_345_678);
+        assert_eq!(gps.position.latitude_degrees_x1e7, 512_345_678);
+        assert_eq!(gps.position.altitude_cm, 10_000);
+        assert_eq!(gps.geoid_separation_cm, 2345);
+        assert_eq!(gps.velocity_north_cmps, 123);
+        assert_eq!(gps.velocity_east_cmps, -45);
+        assert_eq!(gps.velocity_down_cmps, 12);
+        assert_eq!(gps.ground_speed_cmps, 131);
+        assert_eq!(gps.heading_deci_degrees, 1_234);
+        assert_eq!(gps.satellite_count, 12);
+        assert_eq!(gps.fix, 3);
+        assert_eq!(gps.is_healthy, 1);
+    }
+    #[test]
+    fn process_gps_event_amends_rmc() {
+        let record = b"GPRMC,..."; // existing known-good RMC fixture
+
+        let mut gps = GpsData::default();
+        let mut gps_solution = GpsSolutionData::default();
+
+        process_gps_event(&mut gps, &mut gps_solution, GpsParserEvent::NmeaComplete(record));
+
+        /*assert_eq!(gps.time_of_day_ms, /* expected */);
+        assert_eq!(gps.position.latitude_degrees_x1e7, /* expected */);
+        assert_eq!(gps.position.longitude_degrees_x1e7, /* expected */);
+        assert_eq!(gps.ground_speed_cmps, /* expected */);
+        assert_eq!(gps.heading_deci_degrees, /* expected */);*/
+    }
+    #[test]
+    fn process_gps_event_amends_gsa() {
+        let record = b"GPGSA,..."; // existing known-good GSA fixture
+
+        let mut gps = GpsData::default();
+        let mut gps_solution = GpsSolutionData::default();
+
+        process_gps_event(&mut gps, &mut gps_solution, GpsParserEvent::NmeaComplete(record));
+
+        /*assert_eq!(
+            gps.dilution_of_precision_positional,
+            /* expected */
+        );*/
+    }
+    #[test]
+    fn process_gps_event_ignores_unknown_nmea_record() {
+        let mut gps = GpsData::default();
+        let mut gps_solution = GpsSolutionData::default();
+
+        process_gps_event(&mut gps, &mut gps_solution, GpsParserEvent::NmeaComplete(b"GPXXX,something"));
+
+        assert_eq!(gps, GpsData::default());
+    }
+    #[test]
+    fn process_gps_event_ignores_unknown_ubx_message() {
+        let mut gps = GpsData::default();
+        let mut gps_solution = GpsSolutionData::default();
+
+        let message = UbxMessage { class: 0x01, id: 0x99, payload: &[] };
+
+        process_gps_event(&mut gps, &mut gps_solution, GpsParserEvent::UbxMessage(message));
+
+        assert_eq!(gps, GpsData::default());
     }
 }

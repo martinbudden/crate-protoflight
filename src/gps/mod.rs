@@ -5,13 +5,33 @@ mod config;
 
 mod geodetic;
 mod gps_data;
+mod gps_message;
 mod gps_parser;
 mod gps_solution_data;
+mod nmea_gga;
+mod nmea_gsa;
+mod nmea_gsv;
 mod nmea_parser;
-mod ublox_parser;
+mod nmea_rmc;
+mod ubx_nav_pvt_data;
+mod ubx_parser;
 
 pub use config::{GpsConfig, GpsOffOn, GpsProvider, GpsRescueConfig, SbasMode};
+
 pub use geodetic::{Geodetic, GeographicCoordinate};
-pub use gps_data::{GpsData, GpsMessage, GpsPositionLongLatAlt, GpsPositionMeters, GpsYawHeadingMessage};
-pub use gps_parser::GpsParser;
+
+pub use gps_data::{GpsData, GpsPositionLongLatAlt};
+pub use gps_message::{GpsMessage, GpsPositionMeters, GpsYawHeadingMessage};
+pub use gps_parser::{GpsParser, GpsParserEvent};
 pub use gps_solution_data::{GpsSolutionData, GpsSolutionDataAbridged};
+
+pub use nmea_gga::NmeaGga;
+pub use nmea_gsa::NmeaGsa;
+pub use nmea_gsv::NmeaGsv;
+pub use nmea_parser::NmeaRecordType;
+pub use nmea_rmc::NmeaRmc;
+
+pub use ubx_nav_pvt_data::NavPvtData;
+pub use ubx_parser::UbxMessage;
+
+pub(crate) use ubx_nav_pvt_data::make_realistic_nav_pvt_payload;

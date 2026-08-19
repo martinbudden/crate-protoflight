@@ -247,14 +247,8 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
     let barometer = Barometer::new(init.barometer_type, shared_i2c);
     let magnetometer = Magnetometer::new(init.magnetometer_type, shared_i2c);
 
-    let gps = match GpsParser::new(init.gps_provider) {
-        Some(parser) => {
-            let (gps_tx, gps_rx) = uart6.split();
-
-            Some(GpsHardware { uart_rx: gps_rx, uart_tx: gps_tx, parser })
-        }
-        None => None,
-    };
+        let (gps_tx, gps_rx) = uart6.split();
+    let gps = Some(GpsHardware { uart_rx: gps_rx, uart_tx: gps_tx });
     let rangefinder = Rangefinder::new(init.rangefinder_type);
     let optical_flow = OpticalFlow::new(init.optical_flow_type);
 

@@ -4,17 +4,13 @@ use radio_controllers::{Radio, RadioType};
 
 use crate::{
     barometer_sensors::{Barometer, BarometerType},
-    gps::GpsProvider,
     magnetometer_sensors::{Magnetometer, MagnetometerType},
     optical_flow_sensors::{OpticalFlow, OpticalFlowType},
     rangefinder_sensors::{Rangefinder, RangefinderType},
 };
 
 #[cfg(not(feature = "rp2350"))]
-use crate::{
-    boards::{GpsUartRx, GpsUartTx},
-    gps::GpsParser,
-};
+use crate::boards::{GpsUartRx, GpsUartTx};
 
 //#[cfg(all(feature = "rp2350xa", feature = "rp2350xb"))]
 //compile_error!("rp2350xa and rp2350xb are mutually exclusive");
@@ -51,7 +47,6 @@ pub struct BoardInit {
     pub radio_type: RadioType,
     pub barometer_type: BarometerType,
     pub magnetometer_type: MagnetometerType,
-    pub gps_provider: GpsProvider,
     pub rangefinder_type: RangefinderType,
     pub optical_flow_type: OpticalFlowType,
 }
@@ -82,7 +77,6 @@ pub struct Board<I: ImuDevice> {
 pub struct GpsHardware {
     pub uart_rx: GpsUartRx,
     pub uart_tx: GpsUartTx,
-    pub parser: GpsParser,
 }
 #[cfg(feature = "rp2350")]
 pub struct GpsHardware {}

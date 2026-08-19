@@ -1,13 +1,15 @@
 #![doc = include_str!("README.md")]
 
-pub mod airb_omnibus_f4;
-pub mod board;
-pub mod madflight_fc3;
-pub mod matek_f405_wte;
-pub mod mock_uart;
 mod platform_rp2350;
 mod platform_std;
 mod platform_stm32;
+
+pub mod board;
+pub mod mock_uart;
+
+pub mod airb_omnibus_f4;
+pub mod madflight_fc3;
+pub mod matek_f405_wte;
 pub mod rpi_pico2;
 pub mod sp_racing_f4_evo;
 pub mod speedybee_f405_v4;
@@ -28,7 +30,7 @@ pub use platform_rp2350::{I2cDeviceBlocking, SharedI2cBus};
 pub use platform_stm32::{GpsUartRx, GpsUartTx, I2cDeviceBlocking};
 
 #[cfg(feature = "rpi_pico2")]
-pub use boards::rpi_pico2::{BoardImu, board_hardware};
+pub use rpi_pico2::{BoardImu, board_hardware};
 
 #[cfg(feature = "madflight_fc3")]
 pub use madflight_fc3::{BoardImu, board_hardware};
