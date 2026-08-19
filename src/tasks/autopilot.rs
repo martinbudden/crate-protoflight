@@ -185,7 +185,7 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
         }
 
         if loop_count.is_multiple_of(200) {
-            log::info!("     AUTOPILOT:loop {loop_count}");
+            log::info!("       AUTOPILOT:loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }

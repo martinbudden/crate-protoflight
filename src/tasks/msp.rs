@@ -147,7 +147,7 @@ pub async fn run(ctx: &'static mut MspContext) {
             Msp::process_read_command(cmd_msp, &mut src, &ctx.config_publisher, &ctx.fast_config_publisher).await;
 
         if loop_count.is_multiple_of(10) {
-            log::info!("           MSP:      loop {loop_count}");
+            log::info!("             MSP:      loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }

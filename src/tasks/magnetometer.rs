@@ -82,7 +82,7 @@ pub async fn run(ctx: &'static mut MagnetometerContext) {
         ctx.magnetometer_publisher.publish_immediate(magnetometer_message);
 
         if loop_count.is_multiple_of(10) {
-            log::info!("  MAG:      loop {loop_count}");
+            log::info!("    MAG:      loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }

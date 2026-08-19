@@ -160,7 +160,7 @@ pub async fn run(ctx: &'static mut OsdContext) {
             }
         }
         if loop_count.is_multiple_of(50) {
-            log::info!("           OSD:      loop {loop_count}");
+            log::info!("             OSD:      loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }
@@ -196,7 +196,7 @@ pub async fn run(ctx: &'static mut OsdContext) {
         ctx.osd.update_display(&mut draw_context, time_microseconds);
 
         if loop_count.is_multiple_of(10) {
-            log::info!("      OSD:      loop {loop_count}");
+            log::info!("        OSD:      loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }

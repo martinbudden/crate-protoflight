@@ -132,7 +132,7 @@ pub async fn run(ctx: &'static mut GpsContext) {
         }
 
         if loop_count.is_multiple_of(10) {
-            log::info!("           GPS:      loop {loop_count}");
+            log::info!("             GPS:      loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }

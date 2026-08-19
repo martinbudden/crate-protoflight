@@ -86,7 +86,7 @@ pub async fn run(ctx: &'static mut ImuContext<BoardImu>) {
         IMU_SIGNAL.signal(imu_data);
 
         if loop_count.is_multiple_of(1000) {
-            log::info!("           IMU:      loop {loop_count}");
+            log::info!("             IMU:      loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
 

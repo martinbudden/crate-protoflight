@@ -68,17 +68,23 @@ pub async fn run(ctx: &'static mut BlackboxWriterContext) {
 
     open_storage();
 
+    let mut loop_count: u32 = 0;
     loop {
         match BLACKBOX_WRITE_QUEUE.receive().await {
             BlackboxWriteItem::Data(block) => {
                 let chunk = &block.data[..block.len];
                 append_to_sector_buffer(ctx, chunk).await;
+                if loop_count.is_multiple_of(10) {
+                    log::info!(" BLACKBOXw:loop {loop_count},{0}", block.len);
+                }
             }
             BlackboxWriteItem::Flush => {
                 flush_sector_buffer(ctx).await;
+                log::info!(" BLACKBOXf:loop {loop_count}");
                 break;
             }
         }
+        loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }
 }
 
