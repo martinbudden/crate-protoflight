@@ -1,6 +1,4 @@
-use crate::gps::{
-    GpsSolutionData, NmeaRmc, nmea_gga::NmeaGga, nmea_gsa::NmeaGsa, nmea_gsv::NmeaGsv, ubx_nav_pvt_data::NavPvtData,
-};
+use crate::gps::{NmeaRmc, nmea_gga::NmeaGga, nmea_gsa::NmeaGsa, nmea_gsv::NmeaGsv, ubx_nav_pvt_data::NavPvtData};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GpsData {
@@ -88,6 +86,7 @@ impl GpsData {
     }
 
     // TODO: amend_with_gsa
+    #[allow(unused)]
     pub fn amend_with_gsv(&mut self, gsv: NmeaGsv) {
         _ = self;
         _ = gsv;
@@ -132,7 +131,6 @@ mod tests {
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
-    fn is_full_no_default<T: Sized + Send + Sync + Unpin + Copy + Clone + PartialEq>() {}
 
     #[test]
     fn normal_types() {

@@ -132,6 +132,7 @@ impl GpsSolutionData {
     }
 
     // TODO: amend_with_gsa
+    #[allow(unused)]
     pub fn amend_with_gsv(&mut self, gsv: NmeaGsv) {
         _ = self;
         _ = gsv;

@@ -1,5 +1,4 @@
-use crate::gps::GpsData;
-
+#[allow(unused)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 enum UbxState {
     #[default]
@@ -58,6 +57,7 @@ impl Default for UbxParser {
     }
 }
 
+#[allow(unused)]
 impl UbxParser {
     pub const MAX_PAYLOAD_SIZE: usize = 256;
 
@@ -180,7 +180,6 @@ impl UbxParser {
 #[cfg(test)]
 mod tests {
     #![allow(clippy::expect_used)]
-    use core::default;
 
     use super::*;
 

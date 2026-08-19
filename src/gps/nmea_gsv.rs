@@ -1,4 +1,4 @@
-use crate::gps::nmea_parser::{NmeaFields, parse_int};
+use crate::gps::nmea_parser::{NmeaFields, Parse};
 
 ///GSV is a little different from GGA/RMC/GSA because it describes satellites in view,
 ///  and a single GSV report can span multiple sentences.
@@ -17,6 +17,7 @@ use crate::gps::nmea_parser::{NmeaFields, parse_int};
 /// |  8–11 | Satellite 2                               |
 /// | 12–15 | Satellite 3                               |
 /// | 16–19 | Satellite 4                               |
+#[allow(unused)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct NmeaGsv {
     pub satellites_in_view: u8,
@@ -35,6 +36,7 @@ impl NmeaGsv {
 }
 
 impl NmeaGsv {
+    #[allow(unused)]
     pub fn parse(record: &[u8]) -> Option<Self> {
         let mut fields = NmeaFields::new(record);
 
@@ -46,19 +48,19 @@ impl NmeaGsv {
         let mut ret = Self::default();
 
         // Field 1: Number of GSV messages
-        let message_count = parse_int(fields.next()?)?;
+        let message_count = Parse::int(fields.next()?)?;
         if message_count == 0 || message_count > u32::from(u8::MAX) {
             return None;
         }
 
         // Field 2: Message number
-        let message_number = parse_int(fields.next()?)?;
+        let message_number = Parse::int(fields.next()?)?;
         if message_number == 0 || message_number > message_count {
             return None;
         }
 
         // Field 3: Total satellites in view
-        let satellites_in_view = parse_int(fields.next()?)?;
+        let satellites_in_view = Parse::int(fields.next()?)?;
         ret.satellites_in_view = u8::try_from(satellites_in_view).ok()?;
 
         Some(ret)

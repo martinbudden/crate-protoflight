@@ -27,7 +27,8 @@ The NAV-PVT payload has a fixed binary layout. The fields most relevant to our e
 |     56 |    4 | velocity down               | Yes          |
 |     60 |    4 | ground speed                | Yes          |
 |     64 |    4 | heading of motion           | Yes          |
- */
+*/
+#[allow(unused)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct NavPvtData {
     pub time_of_week_ms: u32,
@@ -68,9 +69,9 @@ impl Default for NavPvtData {
 }
 
 impl NavPvtData {
+    pub const PAYLOAD_LEN: usize = 92;
     pub const CLASS: u8 = 0x01;
     pub const ID: u8 = 0x07;
-    pub const PAYLOAD_LEN: usize = 92;
 
     pub const fn new() -> Self {
         Self {
@@ -306,6 +307,7 @@ mod tests {
         assert_eq!(result.ground_speed_mmps, ground_speed);
         assert_eq!(result.heading_motion_x1e5_deg, heading);
     }
+    #[allow(unused)]
     fn test_nav_pvt() -> NavPvtData {
         NavPvtData {
             time_of_week_ms: 123_456_789,

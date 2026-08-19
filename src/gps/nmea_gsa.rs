@@ -1,4 +1,4 @@
-use crate::gps::nmea_parser::{NmeaFields, parse_fixed_point, parse_int};
+use crate::gps::nmea_parser::{NmeaFields, Parse};
 
 /// `GPGSA,A,3,04,05,09,12,24,25,29,31,,,,,1.8,1.0,1.5`.
 /// |    # | Field         | Example     | Meaning             |
@@ -11,6 +11,7 @@ use crate::gps::nmea_parser::{NmeaFields, parse_fixed_point, parse_int};
 /// |   16 | HDOP          | `1.0`       | Horizontal dilution |
 /// |   17 | VDOP          | `1.5`       | Vertical dilution   |
 /// |   18 | System ID     | optional    | GNSS constellation  |
+#[allow(unused)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct NmeaGsa {
     pub longitude_degrees_x1e7: i32,
@@ -81,25 +82,21 @@ impl NmeaGsa {
 
         // Field 0: Talker/type
         let talker_id = fields.next()?;
-
         if talker_id.len() != 5 || &talker_id[2..] != b"GSA" {
             return None;
         }
-
         let mut ret = Self::default();
 
         // Field 1: Mode
         let mode = fields.next()?;
-
         if mode.len() != 1 || (mode[0] != b'A' && mode[0] != b'M') {
             return None;
         }
 
         // Field 2: Fix type
         let raw = fields.next()?;
-        let fix_type = parse_int(raw)?;
+        let fix_type = Parse::int(raw)?;
         ret.fix_type = u8::try_from(fix_type).ok()?;
-
         if !(1..=3).contains(&ret.fix_type) {
             return None;
         }
@@ -111,20 +108,17 @@ impl NmeaGsa {
         // will produce empty slices for the unused satellite positions, and we simply don't increment satellites_used.
         for _ in 0..12 {
             let satellite = fields.next()?;
-
             if !satellite.is_empty() {
                 // Validate that the satellite ID is numeric and fits in u8.
-                let satellite_id = parse_int(satellite)?;
+                let satellite_id = Parse::int(satellite)?;
                 _ = u8::try_from(satellite_id).ok()?;
-
                 ret.satellites_used = ret.satellites_used.checked_add(1)?;
             }
         }
 
         // Field 15: PDOP
         let raw = fields.next()?;
-        let pdop = parse_fixed_point(raw, 10)?;
-
+        let pdop = Parse::fixed_point(raw, 10)?;
         if pdop < 0 {
             return None;
         }
@@ -133,18 +127,15 @@ impl NmeaGsa {
 
         // Field 16: HDOP
         let raw = fields.next()?;
-        let hdop = parse_fixed_point(raw, 10)?;
-
+        let hdop = Parse::fixed_point(raw, 10)?;
         if hdop < 0 {
             return None;
         }
-
         ret.dilution_of_precision_horizontal = i16::try_from(hdop).ok()?;
 
         // Field 17: VDOP
         let raw = fields.next()?;
-        let vdop = parse_fixed_point(raw, 10)?;
-
+        let vdop = Parse::fixed_point(raw, 10)?;
         if vdop < 0 {
             return None;
         }

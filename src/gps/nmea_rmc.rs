@@ -1,4 +1,4 @@
-use crate::gps::nmea_parser::{NmeaFields, parse_fixed_point, parse_nmea_coordinate};
+use crate::gps::nmea_parser::{NmeaFields, Parse};
 
 /// `GPRMC,123519.00,A,4916.45,N,12311.12,W,022.4,084.4,230394,,,A`.
 ///
@@ -87,20 +87,20 @@ impl NmeaRmc {
             return None;
         }
 
-        ret.latitude_degrees_x1e7 = parse_nmea_coordinate(latitude, latitude_direction[0])?;
+        ret.latitude_degrees_x1e7 = Parse::nmea_coordinate(latitude, latitude_direction[0])?;
 
-        ret.longitude_degrees_x1e7 = parse_nmea_coordinate(longitude, longitude_direction[0])?;
+        ret.longitude_degrees_x1e7 = Parse::nmea_coordinate(longitude, longitude_direction[0])?;
 
         // Field 7: Speed over ground, knots
         let speed = fields.next()?;
-        let speed_knots_x10 = parse_fixed_point(speed, 10)?;
+        let speed_knots_x10 = Parse::fixed_point(speed, 10)?;
         // convert from knots to cm/s
         let speed_cmps = speed_knots_x10.checked_mul(1852)?.checked_div(360)?;
 
         // Field 8: Course over ground, degrees
         ret.ground_speed_cmps = i16::try_from(speed_cmps).ok()?;
         let course = fields.next()?;
-        let course = parse_fixed_point(course, 10)?;
+        let course = Parse::fixed_point(course, 10)?;
         ret.heading_deci_degrees = i16::try_from(course).ok()?;
 
         // Field 9: Date

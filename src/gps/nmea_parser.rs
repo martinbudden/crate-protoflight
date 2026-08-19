@@ -6,8 +6,7 @@ An NMEA 0183 sentence always follows a strict pattern:
 4. Concludes with a `\r\n`
 */
 
-use crate::gps::GpsData;
-
+#[allow(unused)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum NmeaEvent {
     None,
@@ -42,6 +41,7 @@ enum NmeaState {
     WaitingForLf,
 }
 
+#[allow(unused)]
 impl NmeaState {
     fn on_data_received(&mut self, data: u8) -> NmeaEvent {
         // '$' always starts a new NMEA sentence, regardless of the
@@ -215,6 +215,7 @@ pub enum NmeaRecordType {
     Vtg,*/
 }
 
+#[allow(unused)]
 impl NmeaRecordType {
     pub fn from_record(record: &[u8]) -> Option<Self> {
         if record.len() < 6 {
@@ -229,280 +230,262 @@ impl NmeaRecordType {
     }
 }
 
-/// Parses a byte slice into an integer.
-pub fn parse_int(bytes: &[u8]) -> Option<u32> {
-    if bytes.is_empty() {
-        return None;
-    }
-    let mut val = 0u32;
-    for &b in bytes {
-        if !b.is_ascii_digit() {
+pub struct Parse;
+
+#[allow(unused)]
+impl Parse {
+    /// Parses a byte slice into an integer.
+    pub fn int(bytes: &[u8]) -> Option<u32> {
+        if bytes.is_empty() {
             return None;
         }
-        val = val.checked_mul(10)?.checked_add(u32::from(b - b'0'))?;
-    }
-    Some(val)
-}
-
-/// Parses a decimal fixed-point value without allocation.
-///
-/// `scale` specifies the number of units per whole number, and must be a
-/// positive power of ten. For example:
-///
-/// - `scale = 10`   -> one decimal place
-/// - `scale = 100`  -> two decimal places
-/// - `scale = 1000` -> three decimal places
-///
-/// Excess fractional digits are truncated.
-///
-/// Examples:
-/// - `12.34` with scale 100 -> 1234
-/// - `12.3`  with scale 100 -> 1230
-/// - `12`    with scale 100 -> 1200
-pub fn parse_fixed_point(bytes: &[u8], scale: u32) -> Option<i32> {
-    if bytes.is_empty() || scale == 0 {
-        return None;
+        let mut val = 0u32;
+        for &b in bytes {
+            if !b.is_ascii_digit() {
+                return None;
+            }
+            val = val.checked_mul(10)?.checked_add(u32::from(b - b'0'))?;
+        }
+        Some(val)
     }
 
-    let mut index = 0;
-    let negative = bytes[0] == b'-';
-
-    if negative {
-        index = 1;
-
-        // "-" by itself isn't a number.
-        if index == bytes.len() {
+    /// Parses a decimal fixed-point value without allocation.
+    ///
+    /// `scale` specifies the number of units per whole number, and must be a
+    /// positive power of ten. For example:
+    ///
+    /// - `scale = 10`   -> one decimal place
+    /// - `scale = 100`  -> two decimal places
+    /// - `scale = 1000` -> three decimal places
+    ///
+    /// Excess fractional digits are truncated.
+    ///
+    /// Examples:
+    /// - `12.34` with scale 100 -> 1234
+    /// - `12.3`  with scale 100 -> 1230
+    /// - `12`    with scale 100 -> 1200
+    pub fn fixed_point(bytes: &[u8], scale: u32) -> Option<i32> {
+        if bytes.is_empty() || scale == 0 {
             return None;
         }
-    }
-
-    let mut integer_part = 0i32;
-    let mut saw_integer_digit = false;
-
-    // Parse integer part.
-    while index < bytes.len() {
-        let byte = bytes[index];
-
-        if byte == b'.' {
-            break;
+        let mut index = 0;
+        let negative = bytes[0] == b'-';
+        if negative {
+            index = 1;
+            // "-" by itself isn't a number.
+            if index == bytes.len() {
+                return None;
+            }
         }
-
-        let digit = byte.checked_sub(b'0')?;
-        if digit > 9 {
-            return None;
-        }
-
-        saw_integer_digit = true;
-
-        integer_part = integer_part.checked_mul(10)?.checked_add(i32::from(digit))?;
-
-        index += 1;
-    }
-
-    // Don't accept ".5".
-    if !saw_integer_digit {
-        return None;
-    }
-
-    let scale_i32 = i32::try_from(scale).ok()?;
-
-    let mut result = integer_part.checked_mul(scale_i32)?;
-
-    // Parse fractional part, if present.
-    if index < bytes.len() {
-        // Skip '.'.
-        index += 1;
-
-        let mut fractional_scale = scale;
-
+        let mut integer_part = 0i32;
+        let mut saw_integer_digit = false;
+        // Parse integer part.
         while index < bytes.len() {
             let byte = bytes[index];
-
+            if byte == b'.' {
+                break;
+            }
             let digit = byte.checked_sub(b'0')?;
             if digit > 9 {
                 return None;
             }
-
-            // Once the requested precision has been reached, continue
-            // validating digits but stop adding them to the result.
-            fractional_scale /= 10;
-
-            if fractional_scale != 0 {
-                let fractional_scale_i32 = i32::try_from(fractional_scale).ok()?;
-                let contribution = i32::from(digit).checked_mul(fractional_scale_i32)?;
-
-                result = result.checked_add(contribution)?;
-            }
-
+            saw_integer_digit = true;
+            integer_part = integer_part.checked_mul(10)?.checked_add(i32::from(digit))?;
             index += 1;
         }
+        // Don't accept ".5".
+        if !saw_integer_digit {
+            return None;
+        }
+        let scale_i32 = i32::try_from(scale).ok()?;
+        let mut result = integer_part.checked_mul(scale_i32)?;
+        // Parse fractional part, if present.
+        if index < bytes.len() {
+            // Skip '.'.
+            index += 1;
+            let mut fractional_scale = scale;
+            while index < bytes.len() {
+                let byte = bytes[index];
+                let digit = byte.checked_sub(b'0')?;
+                if digit > 9 {
+                    return None;
+                }
+                // Once the requested precision has been reached, continue
+                // validating digits but stop adding them to the result.
+                fractional_scale /= 10;
+                if fractional_scale != 0 {
+                    let fractional_scale_i32 = i32::try_from(fractional_scale).ok()?;
+                    let contribution = i32::from(digit).checked_mul(fractional_scale_i32)?;
+                    result = result.checked_add(contribution)?;
+                }
+                index += 1;
+            }
+        }
+        if negative { result.checked_neg() } else { Some(result) }
     }
 
-    if negative { result.checked_neg() } else { Some(result) }
-}
-
-/// Parses an NMEA latitude/longitude coordinate.
-///
-/// NMEA coordinates are represented as:
-///
-/// - latitude:  `ddmm.mmmm`
-/// - longitude: `dddmm.mmmm`
-///
-/// `direction` must be `N`, `S`, `E`, or `W`.
-///
-/// The result is returned as degrees × 1e7, rounded to the nearest unit.
-pub fn parse_nmea_coordinate(value: &[u8], direction: u8) -> Option<i32> {
-    if value.is_empty() {
-        return None;
-    }
-
-    let negative = match direction {
-        b'N' | b'E' => false,
-        b'S' | b'W' => true,
-        _ => return None,
-    };
-
-    // Find the decimal point separating degrees/minutes from the
-    // fractional part.
-    let decimal_pos = value.iter().position(|&b| b == b'.')?;
-
-    // There must be either:
-    //   ddmm.mmmm   -> 4 digits before '.'
-    //   dddmm.mmmm  -> 5 digits before '.'
-    if decimal_pos != 4 && decimal_pos != 5 {
-        return None;
-    }
-
-    // The two digits immediately before the decimal point are the
-    // integer portion of the minutes.
-    let minute_start = decimal_pos - 2;
-
-    // Parse degrees.
-    let mut degrees = 0u32;
-
-    for &byte in &value[..minute_start] {
-        let digit = byte.checked_sub(b'0')?;
-
-        if digit > 9 {
+    /// Parses an NMEA latitude/longitude coordinate.
+    ///
+    /// NMEA coordinates are represented as:
+    ///
+    /// - latitude:  `ddmm.mmmm`
+    /// - longitude: `dddmm.mmmm`
+    ///
+    /// `direction` must be `N`, `S`, `E`, or `W`.
+    ///
+    /// The result is returned as degrees × 1e7, rounded to the nearest unit.
+    pub fn nmea_coordinate(value: &[u8], direction: u8) -> Option<i32> {
+        if value.is_empty() {
             return None;
         }
 
-        degrees = degrees.checked_mul(10)?.checked_add(u32::from(digit))?;
-    }
+        let negative = match direction {
+            b'N' | b'E' => false,
+            b'S' | b'W' => true,
+            _ => return None,
+        };
 
-    // Parse integer minutes.
-    let minute_tens = value[minute_start].checked_sub(b'0')?;
+        // Find the decimal point separating degrees/minutes from the
+        // fractional part.
+        let decimal_pos = value.iter().position(|&b| b == b'.')?;
 
-    let minute_units = value[minute_start + 1].checked_sub(b'0')?;
-
-    if minute_tens > 9 || minute_units > 9 {
-        return None;
-    }
-
-    let minutes = u32::from(minute_tens) * 10 + u32::from(minute_units);
-
-    // Minutes must be in [0, 60).
-    if minutes >= 60 {
-        return None;
-    }
-
-    // Parse fractional minutes, normalizing to 1/10000 minute.
-    //
-    // NMEA normally provides four decimal places, but accepting fewer
-    // is harmless. Additional digits are deliberately truncated.
-    let mut fractional = 0u32;
-    let mut fractional_digits = 0;
-
-    for &byte in &value[decimal_pos + 1..] {
-        let digit = byte.checked_sub(b'0')?;
-
-        if digit > 9 {
+        // There must be either:
+        //   ddmm.mmmm   -> 4 digits before '.'
+        //   dddmm.mmmm  -> 5 digits before '.'
+        if decimal_pos != 4 && decimal_pos != 5 {
             return None;
         }
 
-        if fractional_digits < 4 {
-            fractional = fractional * 10 + u32::from(digit);
-            fractional_digits += 1;
-        }
-    }
+        // The two digits immediately before the decimal point are the
+        // integer portion of the minutes.
+        let minute_start = decimal_pos - 2;
 
-    // Scale fractional minutes to 1/10000 minute.
-    while fractional_digits < 4 {
-        fractional *= 10;
-        fractional_digits += 1;
-    }
+        // Parse degrees.
+        let mut degrees = 0u32;
 
-    let minutes_x1e4 = minutes.checked_mul(10_000)?.checked_add(fractional)?;
-
-    // Convert minutes to degrees × 1e7:
-    //
-    // minutes_x1e4 * 1e7 / (60 * 1e4)
-    // = minutes_x1e4 * 500 / 3
-    //
-    // Add 1 before division to round to nearest integer.
-    let minute_degrees_x1e7 = minutes_x1e4.checked_mul(50)?.checked_add(1)? / 3;
-
-    let result = degrees.checked_mul(10_000_000)?.checked_add(minute_degrees_x1e7)?;
-
-    let result = i32::try_from(result).ok()?;
-
-    if negative { result.checked_neg() } else { Some(result) }
-}
-
-/// Parses an NMEA UTC time (`hhmmss` or `hhmmss.ss`) into milliseconds
-/// since midnight.
-///
-/// Fractional seconds beyond millisecond precision are truncated.
-pub fn parse_nmea_time(bytes: &[u8]) -> Option<u32> {
-    if bytes.len() < 6 {
-        return None;
-    }
-    // hhmmss
-    let hour = parse_two_digits(&bytes[0..2])?;
-    let minute = parse_two_digits(&bytes[2..4])?;
-    let second = parse_two_digits(&bytes[4..6])?;
-    if hour >= 24 || minute >= 60 || second >= 60 {
-        return None;
-    }
-    let mut milliseconds = u32::from(hour) * 3_600_000 + u32::from(minute) * 60_000 + u32::from(second) * 1_000;
-
-    // Optional fractional seconds.
-    if bytes.len() > 6 {
-        if bytes[6] != b'.' {
-            return None;
-        }
-        let mut fraction_ms = 0u32;
-        for (index, &byte) in bytes[7..].iter().enumerate() {
+        for &byte in &value[..minute_start] {
             let digit = byte.checked_sub(b'0')?;
+
             if digit > 9 {
                 return None;
             }
-            match index {
-                0 => fraction_ms += u32::from(digit) * 100,
-                1 => fraction_ms += u32::from(digit) * 10,
-                2 => fraction_ms += u32::from(digit),
-                _ => {}
+
+            degrees = degrees.checked_mul(10)?.checked_add(u32::from(digit))?;
+        }
+
+        // Parse integer minutes.
+        let minute_tens = value[minute_start].checked_sub(b'0')?;
+
+        let minute_units = value[minute_start + 1].checked_sub(b'0')?;
+
+        if minute_tens > 9 || minute_units > 9 {
+            return None;
+        }
+
+        let minutes = u32::from(minute_tens) * 10 + u32::from(minute_units);
+
+        // Minutes must be in [0, 60).
+        if minutes >= 60 {
+            return None;
+        }
+
+        // Parse fractional minutes, normalizing to 1/10000 minute.
+        //
+        // NMEA normally provides four decimal places, but accepting fewer
+        // is harmless. Additional digits are deliberately truncated.
+        let mut fractional = 0u32;
+        let mut fractional_digits = 0;
+
+        for &byte in &value[decimal_pos + 1..] {
+            let digit = byte.checked_sub(b'0')?;
+
+            if digit > 9 {
+                return None;
+            }
+
+            if fractional_digits < 4 {
+                fractional = fractional * 10 + u32::from(digit);
+                fractional_digits += 1;
             }
         }
-        milliseconds = milliseconds.checked_add(fraction_ms)?;
+
+        // Scale fractional minutes to 1/10000 minute.
+        while fractional_digits < 4 {
+            fractional *= 10;
+            fractional_digits += 1;
+        }
+
+        let minutes_x1e4 = minutes.checked_mul(10_000)?.checked_add(fractional)?;
+
+        // Convert minutes to degrees × 1e7:
+        //
+        // minutes_x1e4 * 1e7 / (60 * 1e4)
+        // = minutes_x1e4 * 500 / 3
+        //
+        // Add 1 before division to round to nearest integer.
+        let minute_degrees_x1e7 = minutes_x1e4.checked_mul(50)?.checked_add(1)? / 3;
+
+        let result = degrees.checked_mul(10_000_000)?.checked_add(minute_degrees_x1e7)?;
+
+        let result = i32::try_from(result).ok()?;
+
+        if negative { result.checked_neg() } else { Some(result) }
     }
-    Some(milliseconds)
+
+    /// Parses an NMEA UTC time (`hhmmss` or `hhmmss.ss`) into milliseconds
+    /// since midnight.
+    ///
+    /// Fractional seconds beyond millisecond precision are truncated.
+    pub fn nmea_time(bytes: &[u8]) -> Option<u32> {
+        if bytes.len() < 6 {
+            return None;
+        }
+        // hhmmss
+        let hour = Self::two_digits(&bytes[0..2])?;
+        let minute = Self::two_digits(&bytes[2..4])?;
+        let second = Self::two_digits(&bytes[4..6])?;
+        if hour >= 24 || minute >= 60 || second >= 60 {
+            return None;
+        }
+        let mut milliseconds = u32::from(hour) * 3_600_000 + u32::from(minute) * 60_000 + u32::from(second) * 1_000;
+
+        // Optional fractional seconds.
+        if bytes.len() > 6 {
+            if bytes[6] != b'.' {
+                return None;
+            }
+            let mut fraction_ms = 0u32;
+            for (index, &byte) in bytes[7..].iter().enumerate() {
+                let digit = byte.checked_sub(b'0')?;
+                if digit > 9 {
+                    return None;
+                }
+                match index {
+                    0 => fraction_ms += u32::from(digit) * 100,
+                    1 => fraction_ms += u32::from(digit) * 10,
+                    2 => fraction_ms += u32::from(digit),
+                    _ => {}
+                }
+            }
+            milliseconds = milliseconds.checked_add(fraction_ms)?;
+        }
+        Some(milliseconds)
+    }
+
+    /// Helper function to parse 2 digits.
+    fn two_digits(bytes: &[u8]) -> Option<u8> {
+        if bytes.len() != 2 {
+            return None;
+        }
+        let tens = bytes[0].checked_sub(b'0')?;
+        let units = bytes[1].checked_sub(b'0')?;
+        if tens > 9 || units > 9 {
+            return None;
+        }
+        Some(tens * 10 + units)
+    }
 }
 
-fn parse_two_digits(bytes: &[u8]) -> Option<u8> {
-    if bytes.len() != 2 {
-        return None;
-    }
-
-    let tens = bytes[0].checked_sub(b'0')?;
-    let units = bytes[1].checked_sub(b'0')?;
-
-    if tens > 9 || units > 9 {
-        return None;
-    }
-
-    Some(tens * 10 + units)
-}
 pub struct NmeaFields<'a> {
     remainder: Option<&'a [u8]>,
 }
@@ -722,117 +705,117 @@ mod tests {
     }
     #[test]
     fn fixed_point_basic() {
-        assert_eq!(parse_fixed_point(b"12.34", 100), Some(1234));
-        assert_eq!(parse_fixed_point(b"12.3", 100), Some(1230));
-        assert_eq!(parse_fixed_point(b"12", 100), Some(1200));
+        assert_eq!(Parse::fixed_point(b"12.34", 100), Some(1234));
+        assert_eq!(Parse::fixed_point(b"12.3", 100), Some(1230));
+        assert_eq!(Parse::fixed_point(b"12", 100), Some(1200));
     }
     #[test]
     fn fixed_point_negative() {
-        assert_eq!(parse_fixed_point(b"-12.34", 100), Some(-1234));
-        assert_eq!(parse_fixed_point(b"-12.3", 100), Some(-1230));
+        assert_eq!(Parse::fixed_point(b"-12.34", 100), Some(-1234));
+        assert_eq!(Parse::fixed_point(b"-12.3", 100), Some(-1230));
     }
     #[test]
     fn fixed_point_truncates_extra_precision() {
-        assert_eq!(parse_fixed_point(b"12.345", 100), Some(1234));
+        assert_eq!(Parse::fixed_point(b"12.345", 100), Some(1234));
     }
     #[test]
     fn fixed_point_rejects_invalid_input() {
-        assert_eq!(parse_fixed_point(b"", 100), None);
-        assert_eq!(parse_fixed_point(b"-", 100), None);
-        assert_eq!(parse_fixed_point(b"12.x", 100), None);
-        assert_eq!(parse_fixed_point(b"12.3.4", 100), None);
-        assert_eq!(parse_fixed_point(b"abc", 100), None);
+        assert_eq!(Parse::fixed_point(b"", 100), None);
+        assert_eq!(Parse::fixed_point(b"-", 100), None);
+        assert_eq!(Parse::fixed_point(b"12.x", 100), None);
+        assert_eq!(Parse::fixed_point(b"12.3.4", 100), None);
+        assert_eq!(Parse::fixed_point(b"abc", 100), None);
     }
     #[test]
     fn fixed_point_rejects_overflow() {
-        assert_eq!(parse_fixed_point(b"999999999999999999", 100), None);
+        assert_eq!(Parse::fixed_point(b"999999999999999999", 100), None);
     }
     #[test]
     fn parse_nmea_coordinate_north() {
-        assert_eq!(parse_nmea_coordinate(b"4916.45", b'N'), Some(492_741_667));
+        assert_eq!(Parse::nmea_coordinate(b"4916.45", b'N'), Some(492_741_667));
     }
     #[test]
     fn parse_nmea_coordinate_south() {
-        assert_eq!(parse_nmea_coordinate(b"4916.45", b'S'), Some(-492_741_667));
+        assert_eq!(Parse::nmea_coordinate(b"4916.45", b'S'), Some(-492_741_667));
     }
     #[test]
     fn parse_nmea_coordinate_east() {
-        assert_eq!(parse_nmea_coordinate(b"12311.12", b'E'), Some(1_231_853_333));
+        assert_eq!(Parse::nmea_coordinate(b"12311.12", b'E'), Some(1_231_853_333));
     }
     #[test]
     fn parse_nmea_coordinate_west() {
-        assert_eq!(parse_nmea_coordinate(b"12311.12", b'W'), Some(-1_231_853_333));
+        assert_eq!(Parse::nmea_coordinate(b"12311.12", b'W'), Some(-1_231_853_333));
     }
     #[test]
     fn parse_nmea_coordinate_rejects_invalid_direction() {
-        assert_eq!(parse_nmea_coordinate(b"4916.45", b'X'), None);
+        assert_eq!(Parse::nmea_coordinate(b"4916.45", b'X'), None);
     }
     #[test]
     fn parse_nmea_coordinate_rejects_invalid_minutes() {
-        assert_eq!(parse_nmea_coordinate(b"4960.00", b'N'), None);
+        assert_eq!(Parse::nmea_coordinate(b"4960.00", b'N'), None);
     }
     #[test]
     fn parse_nmea_coordinate_rejects_missing_decimal() {
-        assert_eq!(parse_nmea_coordinate(b"491645", b'N'), None);
+        assert_eq!(Parse::nmea_coordinate(b"491645", b'N'), None);
     }
     #[test]
     fn parse_nmea_coordinate_rejects_bad_digit() {
-        assert_eq!(parse_nmea_coordinate(b"49x6.45", b'N'), None);
+        assert_eq!(Parse::nmea_coordinate(b"49x6.45", b'N'), None);
     }
     #[test]
     fn parse_nmea_coordinate_rejects_empty() {
-        assert_eq!(parse_nmea_coordinate(b"", b'N'), None);
+        assert_eq!(Parse::nmea_coordinate(b"", b'N'), None);
     }
     #[test]
     fn parse_nmea_coordinate_zero() {
-        assert_eq!(parse_nmea_coordinate(b"0000.00", b'N'), Some(0));
+        assert_eq!(Parse::nmea_coordinate(b"0000.00", b'N'), Some(0));
     }
     #[test]
     fn parse_nmea_coordinate_exact_degree() {
-        assert_eq!(parse_nmea_coordinate(b"4900.00", b'N'), Some(490_000_000));
+        assert_eq!(Parse::nmea_coordinate(b"4900.00", b'N'), Some(490_000_000));
     }
     #[test]
     fn parse_nmea_coordinate_near_sixty_minutes() {
-        assert_eq!(parse_nmea_coordinate(b"4959.9999", b'N'), Some(499_999_983));
+        assert_eq!(Parse::nmea_coordinate(b"4959.9999", b'N'), Some(499_999_983));
     }
     #[test]
     fn parse_nmea_time_basic() {
-        assert_eq!(parse_nmea_time(b"123519"), Some(45_319_000));
+        assert_eq!(Parse::nmea_time(b"123519"), Some(45_319_000));
     }
     #[test]
     fn parse_nmea_time_with_fraction() {
-        assert_eq!(parse_nmea_time(b"123519.500"), Some(45_319_500));
+        assert_eq!(Parse::nmea_time(b"123519.500"), Some(45_319_500));
     }
     #[test]
     fn parse_nmea_time_truncates_excess_precision() {
-        assert_eq!(parse_nmea_time(b"123519.5009"), Some(45_319_500));
+        assert_eq!(Parse::nmea_time(b"123519.5009"), Some(45_319_500));
     }
     #[test]
     fn parse_nmea_time_midnight() {
-        assert_eq!(parse_nmea_time(b"000000"), Some(0));
+        assert_eq!(Parse::nmea_time(b"000000"), Some(0));
     }
     #[test]
     fn parse_nmea_time_end_of_day() {
-        assert_eq!(parse_nmea_time(b"235959.999"), Some(86_399_999));
+        assert_eq!(Parse::nmea_time(b"235959.999"), Some(86_399_999));
     }
     #[test]
     fn parse_nmea_time_rejects_invalid_hour() {
-        assert_eq!(parse_nmea_time(b"240000"), None);
+        assert_eq!(Parse::nmea_time(b"240000"), None);
     }
     #[test]
     fn parse_nmea_time_rejects_invalid_minute() {
-        assert_eq!(parse_nmea_time(b"126000"), None);
+        assert_eq!(Parse::nmea_time(b"126000"), None);
     }
     #[test]
     fn parse_nmea_time_rejects_invalid_second() {
-        assert_eq!(parse_nmea_time(b"125960"), None);
+        assert_eq!(Parse::nmea_time(b"125960"), None);
     }
     #[test]
     fn parse_nmea_time_rejects_bad_digit() {
-        assert_eq!(parse_nmea_time(b"1235X9"), None);
+        assert_eq!(Parse::nmea_time(b"1235X9"), None);
     }
     #[test]
     fn parse_nmea_time_rejects_bad_separator() {
-        assert_eq!(parse_nmea_time(b"123519X500"), None);
+        assert_eq!(Parse::nmea_time(b"123519X500"), None);
     }
 }

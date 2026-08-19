@@ -32,6 +32,8 @@ pub use nmea_parser::NmeaRecordType;
 pub use nmea_rmc::NmeaRmc;
 
 pub use ubx_nav_pvt_data::NavPvtData;
+#[allow(unused)]
 pub use ubx_parser::UbxMessage;
 
+#[allow(unused)]
 pub(crate) use ubx_nav_pvt_data::make_realistic_nav_pvt_payload;

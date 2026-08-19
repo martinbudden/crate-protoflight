@@ -21,6 +21,7 @@ pub enum GpsParser {
 }
 
 impl GpsParser {
+    #[allow(unused)]
     pub const fn new(gps_provider: GpsProvider) -> Option<Self> {
         match gps_provider {
             GpsProvider::Nmea => Some(GpsParser::Nmea(NmeaParser::new())),

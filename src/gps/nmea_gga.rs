@@ -1,4 +1,4 @@
-use crate::gps::nmea_parser::{NmeaFields, parse_fixed_point, parse_int, parse_nmea_coordinate};
+use crate::gps::nmea_parser::{NmeaFields, Parse};
 
 /// For GGA the fields are:
 /// 0.  GPGGA
@@ -63,7 +63,7 @@ impl NmeaGga {
 
         // Field 1: UTC time
         let _time = fields.next()?;
-        //ret.time_of_day_ms = parse_nmea_time(time)?;
+        //ret.time_of_day_ms = Parse::nmea_time(time)?;
 
         // Field 2/3: latitude and N/S
         let latitude = fields.next()?;
@@ -77,23 +77,23 @@ impl NmeaGga {
             return None;
         }
 
-        ret.latitude_degrees_x1e7 = parse_nmea_coordinate(latitude, latitude_direction[0])?;
+        ret.latitude_degrees_x1e7 = Parse::nmea_coordinate(latitude, latitude_direction[0])?;
 
-        ret.longitude_degrees_x1e7 = parse_nmea_coordinate(longitude, longitude_direction[0])?;
+        ret.longitude_degrees_x1e7 = Parse::nmea_coordinate(longitude, longitude_direction[0])?;
 
         // Field 6: Fix Quality
         let raw = fields.next()?;
-        let val = parse_int(raw)?;
+        let val = Parse::int(raw)?;
         ret.fix = u8::try_from(val).ok()?;
 
         // Field 7: Satellites Tracked
         let raw = fields.next()?;
-        let val = parse_int(raw)?;
+        let val = Parse::int(raw)?;
         ret.satellite_count = u8::try_from(val).ok()?;
 
         // Field 8: HDOP
         let hdop = fields.next()?;
-        let hdop = parse_fixed_point(hdop, 10)?;
+        let hdop = Parse::fixed_point(hdop, 10)?;
         if hdop < 0 {
             return None;
         }
@@ -105,7 +105,7 @@ impl NmeaGga {
         if altitude_units != b"M" {
             return None;
         }
-        ret.altitude_cm = parse_fixed_point(altitude, 100)?;
+        ret.altitude_cm = Parse::fixed_point(altitude, 100)?;
 
         // Field 11: Geoid separation
         let geoid_separation = fields.next()?;
@@ -113,7 +113,7 @@ impl NmeaGga {
         if geoid_separation_units != b"M" {
             return None;
         }
-        ret.geoid_separation_cm = parse_fixed_point(geoid_separation, 100)?;
+        ret.geoid_separation_cm = Parse::fixed_point(geoid_separation, 100)?;
 
         // Fields 13 and 14: DGPS age and station ID.
         // Not currently used.
