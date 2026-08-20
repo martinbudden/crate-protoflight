@@ -2,7 +2,7 @@
 
 use crate::{
     barometer_sensors::Barometer,
-    boards::board::{Board, BoardInit, BoardInitError, GpsHardware, ImuContext},
+    boards::board::{Board, BoardInit, BoardInitError, GpsHardware},
     boards::{GpsUartRx, GpsUartTx},
     i2c_bus::{MockI2c, SharedI2cBus},
     magnetometer_sensors::Magnetometer,
@@ -16,11 +16,6 @@ use radio_controllers::{Radio, RadioType};
 use static_cell::StaticCell;
 
 pub type BoardImu = ImuMock<MockImuBus>;
-
-#[allow(unused)]
-pub fn imu_context(imu: BoardImu) -> ImuContext<BoardImu> {
-    ImuContext::new(imu)
-}
 
 #[allow(clippy::unnecessary_wraps)]
 pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {

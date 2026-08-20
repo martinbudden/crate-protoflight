@@ -146,7 +146,7 @@ pub async fn run(ctx: &'static mut OsdContext) {
                 // across multiple task iterations to reduce latency spikes.
                 while ctx.osd_state != OsdState::Idle {
                     #[allow(clippy::cast_possible_truncation)]
-                    let time_us = embassy_time::Instant::now().as_micros() as u32;
+                    let time_us = embassy_time::Instant::now().as_micros();
                     ctx.osd_state
                         .update_display_iteration(
                             &mut ctx.osd_elements,
@@ -192,8 +192,8 @@ pub async fn run(ctx: &'static mut OsdContext) {
         let arming_flags = ArmingFlags::new();
         let mut draw_context = OsdDrawContext { display_port: &mut display_port, orientation, arming_flags };
         // Update the OSD with the latest data.
-        let time_microseconds = 0_u32;
-        ctx.osd.update_display(&mut draw_context, time_microseconds);
+        let time_us = 0_u64;
+        ctx.osd.update_display(&mut draw_context, time_us);
 
         if loop_count.is_multiple_of(10) {
             log::info!("        OSD:      loop {loop_count}");

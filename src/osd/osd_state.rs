@@ -77,7 +77,7 @@ pub enum OsdState {
 #[allow(unused)]
 impl OsdState {
     /// Triggers a canvas refresh sync for blinking animations.
-    fn sync_blink(&mut self, _time_microseconds: u32) {
+    fn sync_blink(&mut self, _time_us: u64) {
         _ = self;
     }
 
@@ -117,7 +117,7 @@ impl OsdState {
     }
 
     /// Evaluates phase 1 display statistics data blocks.
-    async fn process_stats1(&mut self, display_port_mutex: &'static DisplayPortMutex, _time_us: u32) -> Self {
+    async fn process_stats1(&mut self, display_port_mutex: &'static DisplayPortMutex, _time_us: u64) -> Self {
         // transaction begins here since RefreshStats draws to the screen
         let mut display_port = display_port_mutex.lock().await;
         display_port.begin_transaction(DisplayPort::DISPLAY_TRANSACTION_OPTION_RESET_DRAWING);
@@ -136,7 +136,7 @@ impl OsdState {
         }*/
     }
     /// Evaluates phase 2 display statistics data blocks.
-    fn process_stats2(&mut self, _time_us: u32) -> Self {
+    fn process_stats2(&mut self, _time_us: u64) -> Self {
         _ = self;
         Self::ProcessStats3
     }
@@ -160,7 +160,7 @@ impl OsdState {
         draw_ctx: &OsdDrawContext,
         display_port_mutex: &'static DisplayPortMutex,
         osd_config: &OsdConfig,
-        time_us: u32,
+        time_us: u64,
     ) -> Self {
         let mut display_port = display_port_mutex.lock().await;
         if draw_ctx.rx_message.rc_modes.test(RcMode::OSD) {
@@ -290,7 +290,7 @@ impl OsdState {
         draw_ctx: &OsdDrawContext,
         display_port_mutex: &'static DisplayPortMutex,
         osd_config: &OsdConfig,
-        time_us: u32,
+        time_us: u64,
     ) {
         *self = match core::mem::take(self) {
             Self::Init => self.init(display_port_mutex).await,

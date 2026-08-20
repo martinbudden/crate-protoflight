@@ -80,13 +80,3 @@ pub struct GpsHardware {
 }
 #[cfg(feature = "rp2350")]
 pub struct GpsHardware {}
-/// Context for IMU task.
-pub struct ImuContext<I: ImuDevice> {
-    pub imu: I,
-}
-
-impl<I: ImuDevice> ImuContext<I> {
-    pub fn new(imu: I) -> Self {
-        Self { imu }
-    }
-}

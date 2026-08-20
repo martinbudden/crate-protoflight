@@ -11,7 +11,6 @@ mod blackbox_encoder;
 mod blackbox_writer;
 mod gps;
 mod gyro_pid;
-mod imu;
 pub mod init;
 mod magnetometer;
 mod motor_mixer;

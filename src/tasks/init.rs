@@ -101,13 +101,11 @@ pub async fn init(spawner: Spawner) {
 
     #[rustfmt::skip]
     let gyro_pid_ctx = tasks::gyro_pid::init(
+        hardware.imu,
         config.imu_filter_bank,
         #[cfg(feature = "rpm_filters")] config.rpm_notch_filter_bank,
         #[cfg(feature = "rpm_filters")] 0.001,
     );
-
-    // Initialize the IMU task context with the IMU provided by the Board Support Package.
-    let imu_ctx = tasks::imu::init(hardware.imu);
 
     // Initialize the motor mixer task context with the motor driver provided by the Board Support Package.
     #[rustfmt::skip]
@@ -183,8 +181,6 @@ pub async fn init(spawner: Spawner) {
     #[allow(clippy::expect_used)]
     {
         gyro_pid_spawner.spawn(tasks::gyro_pid::run(gyro_pid_ctx).expect("Failed to create GYRO PID task"));
-        // TODO: The IMU task is just used during development. It will at some point be removed.
-        realtime_spawner.spawn(tasks::imu::run(imu_ctx).expect("Failed to create IMU task"));
         realtime_spawner.spawn(tasks::motor_mixer::run(motor_mixer_ctx).expect("Failed to create MOTOR MIXER task"));
         realtime_spawner.spawn(tasks::rx::run(rx_ctx).expect("Failed to create RX task"));
     }

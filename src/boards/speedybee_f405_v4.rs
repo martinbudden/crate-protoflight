@@ -9,7 +9,7 @@
 
 use crate::{
     barometer_sensors::Barometer,
-    boards::board::{Board, BoardInit, BoardInitError, GpsHardware, ImuContext},
+    boards::board::{Board, BoardInit, BoardInitError, GpsHardware},
     gps::GpsParser,
     i2c_bus::SharedI2cBus,
     magnetometer_sensors::Magnetometer,
@@ -64,10 +64,6 @@ type BoardSpi =
     ExclusiveDevice<Spi<'static, embassy_stm32::mode::Async, embassy_stm32::spi::mode::Master>, Output<'static>, Delay>;
 
 pub type BoardImu = Imu426xx<ImuSpiBus<BoardSpi>>;
-
-pub fn imu_context(imu: BoardImu) -> ImuContext<BoardImu> {
-    ImuContext::new(imu)
-}
 
 pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
     static I2C_BUS: StaticCell<SharedI2cBus> = StaticCell::new();

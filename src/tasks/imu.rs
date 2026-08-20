@@ -4,7 +4,7 @@ use imu_sensors::{AccFullScale, AccUnits, GyroFullScale, GyroUnits, Imu};
 use static_cell::StaticCell;
 use vqm::Vector3f32;
 
-use crate::boards::{BoardImu, ImuContext};
+use crate::boards::BoardImu;
 
 /*#[cfg(feature = "rp2350")]
 use embassy_rp::{

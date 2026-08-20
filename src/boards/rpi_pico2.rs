@@ -5,7 +5,7 @@
 use crate::{
     barometer_sensors::Barometer,
     boards::SharedI2cBus,
-    boards::board::{Board, BoardInit, BoardInitError, GpsHardware, ImuContext},
+    boards::board::{Board, BoardInit, BoardInitError, GpsHardware},
     gps::GpsParser,
     magnetometer_sensors::Magnetometer,
     optical_flow_sensors::OpticalFlow,
@@ -36,9 +36,6 @@ type BoardSpi =
 
 pub type BoardImu = Imu426xx<ImuSpiBus<BoardSpi>>;
 
-pub fn imu_context(imu: BoardImu) -> ImuContext<BoardImu> {
-    ImuContext::new(imu)
-}
 #[cfg(feature = "multicore")]
 static EXECUTOR_CORE1: embassy_executor::InterruptExecutor = InterruptExecutor::new();
 //static EXECUTOR_CORE1: StaticCell<Executor> = StaticCell::new();

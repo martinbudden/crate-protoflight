@@ -27,7 +27,7 @@ pub struct GyroPidMessage {
     pub pid_errors_p: [f32; Self::RPY_AXIS_COUNT],
     pub pid_errors_i: [f32; Self::RPY_AXIS_COUNT],
     pub pid_errors_d: [f32; Self::RP_AXIS_COUNT],
-    pub time_us: u32,
+    pub time_us: u64,
 }
 
 //#[cfg(not(any(feature = "servos", feature = "eight_motors")))]
@@ -73,7 +73,7 @@ pub struct SetpointMessage {
     pub motor_rpm_d2: [i16; Self::MAX_SUPPORTED_MOTOR_COUNT], // motor rpm divided by 2
     #[cfg(feature = "servos")]
     pub servos: [i16; Self::MAX_SUPPORTED_SERVO_COUNT],
-    pub time_us: u32,
+    pub time_us: u64,
     pub rc_modes: BitSet64,
     pub gps_state_flags: u8,
     pub failsafe_phase: u8,

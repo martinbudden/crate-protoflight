@@ -3,19 +3,23 @@ use embassy_sync::{
     watch::{Receiver, Sender, Watch},
 };
 
-use motor_mixers::MotorMixerMessage;
-#[cfg(feature = "rpm_filters")]
-use motor_mixers::RpmNotchFilterBankConfig;
-use sensor_fusion::{MadgwickFilterf32, SensorFusion};
-use simple_bitset::BitSet64;
+use embassy_time::Instant;
 use static_cell::StaticCell;
 
+use imu_sensors::{AccFullScale, AccUnits, GyroFullScale, GyroUnits, ImuDevice};
+use motor_mixers::MotorMixerMessage;
+use sensor_fusion::{MadgwickFilterf32, SensorFusion};
+use simple_bitset::BitSet64;
+
+#[cfg(feature = "rpm_filters")]
+use motor_mixers::RpmNotchFilterBankConfig;
+
 use crate::{
+    boards::BoardImu,
     config::{FastConfigItem, FastConfigSubscriber, fast_config_subscriber},
     flight::{FilterAccGyro, FlightController, ImuFilterBank, ImuFilterBankConfig, RcControls, VehicleControl},
     sensors::{GyroPidMessage, SetpointMessage},
     tasks::{
-        imu::IMU_SIGNAL,
         motor_mixer::MOTOR_MIXER_SIGNAL,
         rx::{RxMessageReceiver, rx_message_receiver},
     },
@@ -60,10 +64,12 @@ pub fn setpoint_receiver() -> SetpointReceiver {
     SETPOINT_WATCH.receiver().expect("setpoint receiver failed")
 }
 
-static GYRO_PID_CTX: StaticCell<GyroPidContext> = StaticCell::new();
+static GYRO_PID_CTX: StaticCell<GyroPidContext<BoardImu>> = StaticCell::new();
+
 /// Context for `gyro_pid` task.
 #[allow(unused)]
-pub struct GyroPidContext {
+pub struct GyroPidContext<I: ImuDevice> {
+    pub imu: I,
     pub rx_receiver: RxMessageReceiver,
     pub gyro_pid_sender: GyroPidSender,
     pub setpoint_sender: SetpointSender,
@@ -75,24 +81,24 @@ pub struct GyroPidContext {
     pub rc_modes: BitSet64,
 }
 
-impl GyroPidContext {
+#[rustfmt::skip]
+impl<I: ImuDevice> GyroPidContext<I> {
     pub fn new(
+        imu: I,
         imu_filter_bank_config: ImuFilterBankConfig,
         #[cfg(feature = "rpm_filters")] rpm_notch_filter_bank_config: RpmNotchFilterBankConfig,
         #[cfg(feature = "rpm_filters")] looptime_seconds: f32,
     ) -> Self {
         Self {
+            imu,
             rx_receiver: rx_message_receiver(),
             gyro_pid_sender: gyro_pid_sender(),
             setpoint_sender: setpoint_sender(),
             fast_config_subscriber: fast_config_subscriber(),
-            #[cfg(not(feature = "rpm_filters"))]
-            imu_filters: ImuFilterBank::with_config(imu_filter_bank_config),
-            #[cfg(feature = "rpm_filters")]
             imu_filters: ImuFilterBank::with_config_and_notch(
                 imu_filter_bank_config,
-                rpm_notch_filter_bank_config,
-                looptime_seconds,
+                #[cfg(feature = "rpm_filters")] rpm_notch_filter_bank_config,
+                #[cfg(feature = "rpm_filters")] looptime_seconds,
             ),
             sensor_fusion: MadgwickFilterf32::new(),
             flight_controller: FlightController::new(),
@@ -104,11 +110,13 @@ impl GyroPidContext {
 
 #[rustfmt::skip]
 pub fn init(
+    imu: BoardImu,
     imu_filter_bank_config: ImuFilterBankConfig,
     #[cfg(feature = "rpm_filters")] rpm_notch_filter_bank_config: RpmNotchFilterBankConfig,
     #[cfg(feature = "rpm_filters")] looptime_seconds: f32,
-) -> &'static mut GyroPidContext {
+) -> &'static mut GyroPidContext<BoardImu> {
     GYRO_PID_CTX.init(GyroPidContext::new(
+        imu,
         imu_filter_bank_config,
         #[cfg(feature = "rpm_filters")] rpm_notch_filter_bank_config,
         #[cfg(feature = "rpm_filters")] looptime_seconds,
@@ -119,12 +127,21 @@ pub fn init(
 // The gyro_pid task calculates the motor commands, sends them immediately to the motor_mixer task
 // and then updates the GyroPidMessage and sends it.
 #[embassy_executor::task]
-pub async fn run(ctx: &'static mut GyroPidContext) {
+pub async fn run(ctx: &'static mut GyroPidContext<BoardImu>) {
     log::info!("    GYRO_PID: task started");
-    let mut time_us: u32 = 0;
     let mut loop_count: u32 = 0;
     let mut gyro_pid_send_count: u32 = 0;
     let gyro_pid_denominator = 10;
+
+    let sample_rates = ctx.imu.init(8000, GyroFullScale::Max, GyroUnits::Rps, AccFullScale::Max, AccUnits::G).await;
+    let (gyro_rate_hz, _acc_rate_hz) = match sample_rates {
+        Ok((gyro_rate_hz, acc_rate_hz)) => (gyro_rate_hz, acc_rate_hz),
+        Err(_err) => (1000, 1000),
+    };
+
+    #[allow(clippy::cast_precision_loss)]
+    let delta_t: f32 = 1.0 / (gyro_rate_hz as f32);
+    let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(u64::from(gyro_rate_hz)));
 
     // This is the famous GYRO/PID loop!
     loop {
@@ -132,16 +149,25 @@ pub async fn run(ctx: &'static mut GyroPidContext) {
         // The GYRO part of the GYRO/PID loop
         // ****
 
-        // TODO: this signal should be replaced by an interrupt driven DMA read from the IMU.
-        // I'm using a Signal like this during development to keep things simple.
-        let imu_data = IMU_SIGNAL.wait().await;
-        let delta_t = imu_data.delta_t;
+        // TODO: this ticker wait should be replaced by an interrupt driven DMA read from the IMU.
+        // I'm using a ticker like this during development to keep things simple.
+        ticker.next().await;
+        let time_us = Instant::now().as_micros();
+
+        let acc_gyro = imu_sensors::Imu::read_acc_gyro(&mut ctx.imu).await;
+        // let acc_gyro = imu_sensors::ImuDevice::read_acc_gyro(&mut ctx.imu).await;
+
+        /*let (acc, gyro_rps) = match acc_gyro {
+            Ok((acc, gyro_rps)) => (acc, gyro_rps),
+            Err(_acc_gyro) => (Vector3f32::default(), Vector3f32::default()),
+        };*/
+        let (acc, gyro_rps) = acc_gyro.unwrap_or_default();
 
         // Save the unfiltered gyro value for telemetry.
-        let gyro_rps_unfiltered = imu_data.gyro_rps;
+        let gyro_rps_unfiltered = gyro_rps;
 
         // Filter the acc and gyro values. This includes RPM notch filtering, if that is enabled.
-        let (acc, gyro_rps) = ctx.imu_filters.update(imu_data.acc, imu_data.gyro_rps, delta_t);
+        let (acc, gyro_rps) = ctx.imu_filters.update(acc, gyro_rps, delta_t);
 
         // Check if there has been a yaw heading correction from the GPS, if so, apply it.
         #[cfg(feature = "gps")]
@@ -233,9 +259,6 @@ pub async fn run(ctx: &'static mut GyroPidContext) {
                 }
             }
         }
-
-        // Increment fake time (e.g., 1000us per sample for 1kHz)
-        time_us = time_us.wrapping_add(125); // use wrapping_add to handle when time rolls over at max u32.
 
         if loop_count.is_multiple_of(1000) {
             log::info!("        GYRO_PID: loop {loop_count}");

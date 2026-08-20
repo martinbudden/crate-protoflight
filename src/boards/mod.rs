@@ -15,7 +15,7 @@ pub mod sp_racing_f4_evo;
 pub mod speedybee_f405_v4;
 pub mod std;
 
-pub use board::{BoardInit, ImuContext};
+pub use board::BoardInit;
 
 #[cfg(feature = "std")]
 pub use {
