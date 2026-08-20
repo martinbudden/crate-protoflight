@@ -28,12 +28,6 @@ NavPvtData::parse()
     │
     ▼
 NavPvtData
-    │
-    ▼
-NavPvtData::to_gps_data()
-    │
-    ▼
-GpsData
 */
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UbxParser {
@@ -60,6 +54,8 @@ impl Default for UbxParser {
 #[allow(unused)]
 impl UbxParser {
     pub const MAX_PAYLOAD_SIZE: usize = 256;
+    pub const SYNC_BYTE_1: u8 = 0xB5;
+    pub const SYNC_BYTE_2: u8 = 0x62;
 
     pub const fn new() -> Self {
         Self {
@@ -95,7 +91,7 @@ impl UbxParser {
 
         self.state = match core::mem::take(&mut self.state) {
             UbxState::WaitingForSync1 => {
-                if byte == 0xB5 {
+                if byte == Self::SYNC_BYTE_1 {
                     UbxState::WaitingForSync2
                 } else {
                     UbxState::WaitingForSync1
@@ -103,9 +99,9 @@ impl UbxParser {
             }
 
             UbxState::WaitingForSync2 => {
-                if byte == 0x62 {
+                if byte == Self::SYNC_BYTE_2 {
                     UbxState::Class
-                } else if byte == 0xB5 {
+                } else if byte == Self::SYNC_BYTE_1 {
                     // Stay here so a repeated sync byte can begin a frame.
                     UbxState::WaitingForSync2
                 } else {
@@ -174,6 +170,34 @@ impl UbxParser {
         } else {
             None
         }
+    }
+}
+
+pub struct Parse;
+
+impl Parse {
+    #[inline]
+    pub fn try_read_u32(bytes: &[u8]) -> Option<u32> {
+        let bytes: [u8; 4] = bytes.get(..4)?.try_into().ok()?;
+        Some(u32::from_le_bytes(bytes))
+    }
+
+    #[inline]
+    pub fn try_read_i32(bytes: &[u8]) -> Option<i32> {
+        let bytes: [u8; 4] = bytes.get(..4)?.try_into().ok()?;
+        Some(i32::from_le_bytes(bytes))
+    }
+
+    #[inline]
+    pub fn try_read_u16(bytes: &[u8]) -> Option<u16> {
+        let bytes: [u8; 2] = bytes.get(..2)?.try_into().ok()?;
+        Some(u16::from_le_bytes(bytes))
+    }
+
+    #[inline]
+    pub fn try_read_i16(bytes: &[u8]) -> Option<i16> {
+        let bytes: [u8; 2] = bytes.get(..2)?.try_into().ok()?;
+        Some(i16::from_le_bytes(bytes))
     }
 }
 

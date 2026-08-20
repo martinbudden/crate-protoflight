@@ -13,7 +13,7 @@ use crate::barometer_sensors::BarometerType;
 use crate::tasks::global_debug::GlobalDebug;
 
 #[cfg(feature = "gps")]
-use crate::gps::GpsSolutionDataAbridged;
+use crate::gps::GpsDataAbridged;
 
 #[cfg(feature = "optical_flow")]
 use crate::optical_flow_sensors::OpticalFlowType;
@@ -51,7 +51,7 @@ pub struct MspSensorData {
     pub gyro: Vector3i16,
     pub mag: Vector3i16,
     #[cfg(feature = "gps")]
-    pub gps_sol: GpsSolutionDataAbridged,
+    pub gps_sol: GpsDataAbridged,
 }
 
 impl MspSensorData {
@@ -67,7 +67,7 @@ impl MspSensorData {
             gyro: Vector3i16 { x: 0, y: 0, z: 0 },
             mag: Vector3i16 { x: 0, y: 0, z: 0 },
             #[cfg(feature = "gps")]
-            gps_sol: GpsSolutionDataAbridged::new(),
+            gps_sol: GpsDataAbridged::new(),
         }
     }
 }
@@ -1222,7 +1222,7 @@ impl Msp {
         dst.write_u16(sensor_data.gps_sol.ground_speed_cmps);
         dst.write_u16(sensor_data.gps_sol.ground_course_degrees_x10);
         // Added in API version 1.44
-        dst.write_u16(sensor_data.gps_sol.dop_positional);
+        dst.write_u16(sensor_data.gps_sol.pdop);
         MspResult::Ack
     }
 

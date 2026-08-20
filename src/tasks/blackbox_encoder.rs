@@ -399,16 +399,14 @@ pub fn slow_data_from(setpoint_message: SetpointMessage) -> BlackboxSlowData {
 #[inline]
 pub fn gps_data_from(gps: GpsSolutionData) -> BlackboxGpsData {
     BlackboxGpsData {
-        time_of_week_ms: gps.time,
+        time_of_week_ms: gps.time_of_week_ms,
         interval_ms: 0,
-        position: BlackboxGpsPosition {
-            longitude_degrees_x1e7: gps.longitude_degrees_x1e7,
-            latitude_degrees_x1e7: gps.latitude_degrees_x1e7,
-            altitude_cm: gps.altitude_cm,
-        },
-        velocity_north_cmps: gps.velocity_ned_cmps.north,
-        velocity_east_cmps: gps.velocity_ned_cmps.east,
-        velocity_down_cmps: gps.velocity_ned_cmps.down,
+        longitude_degrees_x1e7: gps.longitude_degrees_x1e7,
+        latitude_degrees_x1e7: gps.latitude_degrees_x1e7,
+        altitude_cm: gps.altitude_cm,
+        velocity_north_cmps: gps.velocity_north_cmps,
+        velocity_east_cmps: gps.velocity_east_cmps,
+        velocity_down_cmps: gps.velocity_down_cmps,
         speed3d_cmps: gps.speed3d_cmps.cast_signed(),
         ground_speed_cmps: gps.ground_speed_cmps.cast_signed(),
         ground_course_degrees_x10: gps.ground_course_degrees_x10.cast_signed(),

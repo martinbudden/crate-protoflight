@@ -11,7 +11,7 @@ use crate::{
     boards::{GpsUartRx, GpsUartTx},
     gps::{
         Geodetic, GeographicCoordinate, GpsData, GpsMessage, GpsParser, GpsParserEvent, GpsProvider, GpsSolutionData,
-        GpsYawHeadingMessage, NavPvtData, NmeaGga, NmeaGsa, NmeaRecordType, NmeaRmc,
+        GpsYawHeadingMessage, NmeaGga, NmeaGsa, NmeaRecordType, NmeaRmc, UbxNavPvt,
     },
 };
 
@@ -143,31 +143,31 @@ fn process_gps_event(gps: &mut GpsData, gps_solution: &mut GpsSolutionData, even
         GpsParserEvent::NmeaComplete(record) => match NmeaRecordType::from_record(record) {
             Some(NmeaRecordType::Gga) => {
                 if let Some(gga) = NmeaGga::parse(record) {
-                    gps.amend_with_gga(gga);
-                    gps_solution.amend_with_gga(gga);
+                    gps.amend_with_nmea_gga(gga);
+                    gps_solution.amend_with_nmea_gga(gga);
                 }
             }
             Some(NmeaRecordType::Rmc) => {
                 if let Some(rmc) = NmeaRmc::parse(record) {
-                    gps.amend_with_rmc(rmc);
-                    gps_solution.amend_with_rmc(rmc);
+                    gps.amend_with_nmea_rmc(rmc);
+                    gps_solution.amend_with_nmea_rmc(rmc);
                 }
             }
             Some(NmeaRecordType::Gsa) => {
                 if let Some(gsa) = NmeaGsa::parse(record) {
-                    gps.amend_with_gsa(gsa);
-                    gps_solution.amend_with_gsa(gsa);
+                    gps.amend_with_nmea_gsa(gsa);
+                    gps_solution.amend_with_nmea_gsa(gsa);
                 }
             }
             None => {}
         },
         GpsParserEvent::UbxMessage(message) => {
-            if message.class == NavPvtData::CLASS
-                && message.id == NavPvtData::ID
-                && let Some(nav) = NavPvtData::parse(message.payload)
+            if message.class == UbxNavPvt::CLASS
+                && message.id == UbxNavPvt::ID
+                && let Some(nav) = UbxNavPvt::parse(message.payload)
             {
-                gps.amend_with_nav_pvt_data(nav);
-                gps_solution.amend_with_nav_pvt_data(nav);
+                gps.amend_with_ubx_nav_pvt(nav);
+                gps_solution.amend_with_ubx_nav_pvt(nav);
             }
         }
     }

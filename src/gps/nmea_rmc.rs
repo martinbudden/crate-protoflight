@@ -51,7 +51,6 @@ impl NmeaRmc {
         let mut fields = NmeaFields::new(record);
 
         let talker_id = fields.next()?;
-
         if talker_id.len() != 5 || &talker_id[2..] != b"RMC" {
             return None;
         }
@@ -59,8 +58,8 @@ impl NmeaRmc {
         let mut ret = Self::default();
 
         // Field 1: UTC time
-        let _time = fields.next()?;
-        //ret.time_of_day_ms = parse_nmea_time(time)?;
+        let time = fields.next()?;
+        ret.time_of_day_ms = Parse::nmea_time(time)?;
 
         // Field 2: Status
         let status = fields.next()?;
@@ -124,7 +123,7 @@ mod tests {
 
         let result = NmeaRmc::parse(record).expect("RMC record should parse");
 
-        //assert_eq!(result.time_of_week_ms, 45_319_000);
+        assert_eq!(result.time_of_day_ms, 45_319_000);
 
         assert_eq!(result.latitude_degrees_x1e7, 492_741_667);
 

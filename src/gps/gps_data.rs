@@ -1,5 +1,25 @@
-use crate::gps::{NmeaRmc, nmea_gga::NmeaGga, nmea_gsa::NmeaGsa, nmea_gsv::NmeaGsv, ubx_nav_pvt_data::NavPvtData};
+use crate::gps::{NmeaRmc, nmea_gga::NmeaGga, nmea_gsa::NmeaGsa, nmea_gsv::NmeaGsv, ubx_nav_pvt::UbxNavPvt};
 
+/*
+   // horizontal accuracy in mm
+   pub h_accuracy_mm: u32,
+   // vertical accuracy in mm
+   pub v_accuracy_mm: u32,
+   // speed accuracy in mm/s
+   pub s_accuracy_mm: u32,
+   // heading accuracy in degrees * 1e-5
+   pub heading_accuracy_degrees_x1e5: u32,
+   // speed in cm/s
+   pub speed3d_cmps: u16,
+   // speed in cm/s
+   pub ground_speed_cmps: u16,
+   // degrees * 10
+   pub ground_course_degrees_x10: u16,
+   // interval between navigation solutions in ms
+   pub navigation_interval_ms: u32,
+   // GPS date/time from NAV-PVT
+   pub date_time: GpsDateTime,
+*/
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GpsData {
     pub longitude_degrees_x1e7: i32,
@@ -10,7 +30,7 @@ pub struct GpsData {
     pub bearing_to_home_degrees: f32,
     pub distance_flown_meters: f32,
     pub time_of_week_ms: u32,
-    pub velocity_north_cmps: i32,
+    pub velocity_north_cmps: i32, // TODO: should this be i16 rather than i32?
     pub velocity_east_cmps: i32,
     pub velocity_down_cmps: i32,
     pub speed3d_cmps: i32,
@@ -21,10 +41,12 @@ pub struct GpsData {
     pub fix: u8,             // GGA fix quality
     pub fix_type: u8,        // GSA: 1/2/3
     pub is_healthy: u8,
-
-    pub dilution_of_precision_horizontal: i16, // GGA
-    pub dilution_of_precision_position: i16,   // GSA
-    pub dilution_of_precision_vertical: i16,   // GSA
+    /// 3D positional dilution of position.
+    pub pdop_x100: i16,
+    /// 2D horizontal dilution of position.
+    pub hdop_x100: i16,
+    /// 1D vertical dilution of position.
+    pub vdop_x100: i16,
     pub update: u8,
 }
 
@@ -60,16 +82,16 @@ impl GpsData {
             fix: 0,
             fix_type: 0,
             is_healthy: 0,
-            dilution_of_precision_horizontal: 0,
-            dilution_of_precision_position: 0,
-            dilution_of_precision_vertical: 0,
+            pdop_x100: 0,
+            hdop_x100: 0,
+            vdop_x100: 0,
             update: 0,
         }
     }
 }
 
 impl GpsData {
-    pub fn amend_with_gga(&mut self, gga: NmeaGga) {
+    pub fn amend_with_nmea_gga(&mut self, gga: NmeaGga) {
         self.latitude_degrees_x1e7 = gga.latitude_degrees_x1e7;
         self.longitude_degrees_x1e7 = gga.longitude_degrees_x1e7;
         self.altitude_cm = gga.altitude_cm;
@@ -80,25 +102,25 @@ impl GpsData {
     }
 
     // TODO: amend_with_gsa
-    pub fn amend_with_gsa(&mut self, gsa: NmeaGsa) {
+    pub fn amend_with_nmea_gsa(&mut self, gsa: NmeaGsa) {
         _ = self;
         _ = gsa;
     }
 
     // TODO: amend_with_gsa
     #[allow(unused)]
-    pub fn amend_with_gsv(&mut self, gsv: NmeaGsv) {
+    pub fn amend_with_nmea_gsv(&mut self, gsv: NmeaGsv) {
         _ = self;
         _ = gsv;
     }
 
     // TODO: amend_with_rmc
-    pub fn amend_with_rmc(&mut self, gsv: NmeaRmc) {
+    pub fn amend_with_nmea_rmc(&mut self, gsv: NmeaRmc) {
         _ = self;
         _ = gsv;
     }
 
-    pub fn amend_with_nav_pvt_data(&mut self, nav: NavPvtData) {
+    pub fn amend_with_ubx_nav_pvt(&mut self, nav: UbxNavPvt) {
         self.longitude_degrees_x1e7 = nav.longitude_degrees_x1e7;
         self.latitude_degrees_x1e7 = nav.latitude_degrees_x1e7;
         self.altitude_cm = nav.height_msl_mm / 10;
@@ -116,7 +138,7 @@ impl GpsData {
             self.ground_speed_cmps =
                 (nav.ground_speed_mmps / 10).clamp(i32::from(i16::MIN), i32::from(i16::MAX)) as i16;
             self.heading_deci_degrees =
-                (nav.heading_motion_x1e5_deg as i32 / 1000).clamp(i32::from(i16::MIN), i32::from(i16::MAX)) as i16;
+                (nav.heading_degrees_x1e5 as i32 / 1000).clamp(i32::from(i16::MIN), i32::from(i16::MAX)) as i16;
         }
 
         self.satellite_count = nav.satellite_count;
@@ -125,6 +147,38 @@ impl GpsData {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GpsDataAbridged {
+    pub longitude_degrees_x1e7: i32,
+    pub latitude_degrees_x1e7: i32,
+    pub altitude_cm: i32,
+    pub satellite_count: u8,
+    // speed in cm/s
+    pub ground_speed_cmps: u16,
+    // degrees * 10
+    pub ground_course_degrees_x10: u16,
+    pub pdop: u16,
+}
+
+impl Default for GpsDataAbridged {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl GpsDataAbridged {
+    pub const fn new() -> Self {
+        Self {
+            longitude_degrees_x1e7: 0,
+            latitude_degrees_x1e7: 0,
+            altitude_cm: 0,
+            ground_speed_cmps: 0,
+            ground_course_degrees_x10: 0,
+            satellite_count: 0,
+            pdop: 0,
+        }
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -135,32 +189,33 @@ mod tests {
     #[test]
     fn normal_types() {
         is_full::<GpsData>();
+        is_full::<GpsDataAbridged>();
     }
     #[test]
     fn nav_pvt_maps_time_of_week() {
-        let nav = NavPvtData { time_of_week_ms: 123_456_789, ..NavPvtData::default() };
+        let nav = UbxNavPvt { time_of_week_ms: 123_456_789, ..UbxNavPvt::default() };
 
         let mut gps = GpsData::default();
-        gps.amend_with_nav_pvt_data(nav);
+        gps.amend_with_ubx_nav_pvt(nav);
 
         assert_eq!(gps.time_of_week_ms, 123_456_789);
     }
     #[test]
     fn nav_pvt_maps_fix_and_health() {
-        let nav = NavPvtData { fix_type: 3, flags: 0x01, ..NavPvtData::default() };
+        let nav = UbxNavPvt { fix_type: 3, flags: 0x01, ..UbxNavPvt::default() };
 
         let mut gps = GpsData::default();
-        gps.amend_with_nav_pvt_data(nav);
+        gps.amend_with_ubx_nav_pvt(nav);
 
         assert_eq!(gps.fix, 3);
         assert_eq!(gps.is_healthy, 1);
     }
     #[test]
     fn nav_pvt_fix_is_unhealthy_when_gnss_fix_ok_is_clear() {
-        let nav = NavPvtData { fix_type: 3, flags: 0x00, ..NavPvtData::default() };
+        let nav = UbxNavPvt { fix_type: 3, flags: 0x00, ..UbxNavPvt::default() };
 
         let mut gps = GpsData::default();
-        gps.amend_with_nav_pvt_data(nav);
+        gps.amend_with_ubx_nav_pvt(nav);
 
         assert_eq!(gps.fix, 3);
         assert_eq!(gps.is_healthy, 0);

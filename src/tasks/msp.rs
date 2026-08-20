@@ -135,7 +135,7 @@ pub async fn run(ctx: &'static mut MspContext) {
             msp_sensor_data.gps_sol.satellite_count = gps_solution_data.satellite_count;
             msp_sensor_data.gps_sol.ground_speed_cmps = gps_solution_data.ground_speed_cmps;
             msp_sensor_data.gps_sol.ground_course_degrees_x10 = gps_solution_data.ground_course_degrees_x10;
-            msp_sensor_data.gps_sol.dop_positional = gps_solution_data.dop.positional;
+            msp_sensor_data.gps_sol.pdop = gps_solution_data.pdop;
         }
 
         // Generally, we don't want to store the Reader itself because it tracks a "cursor" (current position).

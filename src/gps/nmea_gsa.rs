@@ -85,6 +85,7 @@ impl NmeaGsa {
         if talker_id.len() != 5 || &talker_id[2..] != b"GSA" {
             return None;
         }
+
         let mut ret = Self::default();
 
         // Field 1: Mode

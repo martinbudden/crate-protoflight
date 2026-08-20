@@ -1,3 +1,8 @@
+use crate::gps::{
+    ubx_nav::{UBX_NAV_CLASS, UbxNavId},
+    ubx_parser::Parse,
+};
+
 /*
 The NAV-PVT payload has a fixed binary layout. The fields most relevant to our existing GpsData are:
 
@@ -28,9 +33,9 @@ The NAV-PVT payload has a fixed binary layout. The fields most relevant to our e
 |     60 |    4 | ground speed                | Yes          |
 |     64 |    4 | heading of motion           | Yes          |
 */
-#[allow(unused)]
+///Navigation position velocity time solution.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct NavPvtData {
+pub struct UbxNavPvt {
     pub time_of_week_ms: u32,
     pub year: u16,
     pub month: u8,
@@ -59,19 +64,19 @@ pub struct NavPvtData {
     pub velocity_east_mmps: i32,
     pub velocity_down_mmps: i32,
     pub ground_speed_mmps: i32,
-    pub heading_motion_x1e5_deg: u32,
+    pub heading_degrees_x1e5: u32,
 }
 
-impl Default for NavPvtData {
+impl Default for UbxNavPvt {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl NavPvtData {
+impl UbxNavPvt {
+    pub const CLASS: u8 = UBX_NAV_CLASS;
+    pub const ID: u8 = UbxNavId::PVT;
     pub const PAYLOAD_LEN: usize = 92;
-    pub const CLASS: u8 = 0x01;
-    pub const ID: u8 = 0x07;
 
     pub const fn new() -> Self {
         Self {
@@ -99,38 +104,20 @@ impl NavPvtData {
             velocity_east_mmps: 0,
             velocity_down_mmps: 0,
             ground_speed_mmps: 0,
-            heading_motion_x1e5_deg: 0,
+            heading_degrees_x1e5: 0,
         }
     }
 }
 
-impl NavPvtData {
-    #[inline]
-    fn read_u32_le(bytes: &[u8]) -> Option<u32> {
-        let bytes: [u8; 4] = bytes.get(..4)?.try_into().ok()?;
-        Some(u32::from_le_bytes(bytes))
-    }
-
-    #[inline]
-    fn read_i32_le(bytes: &[u8]) -> Option<i32> {
-        let bytes: [u8; 4] = bytes.get(..4)?.try_into().ok()?;
-        Some(i32::from_le_bytes(bytes))
-    }
-
-    #[inline]
-    fn read_u16_le(bytes: &[u8]) -> Option<u16> {
-        let bytes: [u8; 2] = bytes.get(..2)?.try_into().ok()?;
-        Some(u16::from_le_bytes(bytes))
-    }
-
-    pub fn parse(payload: &[u8]) -> Option<NavPvtData> {
-        if payload.len() != NavPvtData::PAYLOAD_LEN {
+impl UbxNavPvt {
+    pub fn parse(payload: &[u8]) -> Option<UbxNavPvt> {
+        if payload.len() != UbxNavPvt::PAYLOAD_LEN {
             return None;
         }
-        Some(NavPvtData {
-            time_of_week_ms: Self::read_u32_le(&payload[0..4])?,
+        Some(UbxNavPvt {
+            time_of_week_ms: Parse::try_read_u32(&payload[0..4])?,
 
-            year: Self::read_u16_le(&payload[4..6])?,
+            year: Parse::try_read_u16(&payload[4..6])?,
             month: payload[6],
             day: payload[7],
             hour: payload[8],
@@ -138,29 +125,30 @@ impl NavPvtData {
             second: payload[10],
 
             valid: payload[11],
-            time_accuracy_ns: Self::read_u32_le(&payload[12..16])?,
-            nano: Self::read_i32_le(&payload[16..20])?,
+            time_accuracy_ns: Parse::try_read_u32(&payload[12..16])?,
+            nano: Parse::try_read_i32(&payload[16..20])?,
 
             fix_type: payload[20],
             flags: payload[21],
             flags2: payload[22],
             satellite_count: payload[23],
-            longitude_degrees_x1e7: Self::read_i32_le(&payload[24..28])?,
-            latitude_degrees_x1e7: Self::read_i32_le(&payload[28..32])?,
-            height_ellipsoid_mm: Self::read_i32_le(&payload[32..36])?,
-            height_msl_mm: Self::read_i32_le(&payload[36..40])?,
-            horizontal_accuracy_mm: Self::read_u32_le(&payload[40..44])?,
-            vertical_accuracy_mm: Self::read_u32_le(&payload[44..48])?,
-            velocity_north_mmps: Self::read_i32_le(&payload[48..52])?,
-            velocity_east_mmps: Self::read_i32_le(&payload[52..56])?,
-            velocity_down_mmps: Self::read_i32_le(&payload[56..60])?,
-            ground_speed_mmps: Self::read_i32_le(&payload[60..64])?,
-            heading_motion_x1e5_deg: Self::read_u32_le(&payload[64..68])?,
+            longitude_degrees_x1e7: Parse::try_read_i32(&payload[24..28])?,
+            latitude_degrees_x1e7: Parse::try_read_i32(&payload[28..32])?,
+            height_ellipsoid_mm: Parse::try_read_i32(&payload[32..36])?,
+            height_msl_mm: Parse::try_read_i32(&payload[36..40])?,
+            horizontal_accuracy_mm: Parse::try_read_u32(&payload[40..44])?,
+            vertical_accuracy_mm: Parse::try_read_u32(&payload[44..48])?,
+            velocity_north_mmps: Parse::try_read_i32(&payload[48..52])?,
+            velocity_east_mmps: Parse::try_read_i32(&payload[52..56])?,
+            velocity_down_mmps: Parse::try_read_i32(&payload[56..60])?,
+            ground_speed_mmps: Parse::try_read_i32(&payload[60..64])?,
+            heading_degrees_x1e5: Parse::try_read_u32(&payload[64..68])?,
         })
     }
 }
-pub(crate) fn make_realistic_nav_pvt_payload() -> [u8; NavPvtData::PAYLOAD_LEN] {
-    let mut payload = [0u8; NavPvtData::PAYLOAD_LEN];
+
+pub(crate) fn make_realistic_nav_pvt_payload() -> [u8; UbxNavPvt::PAYLOAD_LEN] {
+    let mut payload = [0u8; UbxNavPvt::PAYLOAD_LEN];
 
     // iTOW: 12:34:56.789
     payload[0..4].copy_from_slice(&45_296_789u32.to_le_bytes());
@@ -212,13 +200,21 @@ mod tests {
     use crate::gps::{GpsData, ubx_parser::UbxParser};
 
     use super::*;
+    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
+    fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+
+    #[test]
+    fn normal_types() {
+        is_full::<UbxNavPvt>();
+    }
+
     #[test]
     fn parse_nav_pvt_extracts_itow() {
-        let mut payload = [0u8; NavPvtData::PAYLOAD_LEN];
+        let mut payload = [0u8; UbxNavPvt::PAYLOAD_LEN];
         let itow = 123_456_789u32;
         payload[0..4].copy_from_slice(&itow.to_le_bytes());
 
-        let result = NavPvtData::parse(&payload).expect("NAV-PVT should parse");
+        let result = UbxNavPvt::parse(&payload).expect("NAV-PVT should parse");
 
         assert_eq!(result.time_of_week_ms, itow);
     }
@@ -226,11 +222,11 @@ mod tests {
     fn parse_nav_pvt_rejects_wrong_payload_length() {
         let payload = [0u8; 91];
 
-        assert_eq!(NavPvtData::parse(&payload), None);
+        assert_eq!(UbxNavPvt::parse(&payload), None);
     }
     #[test]
     fn parse_nav_pvt_extracts_status_and_accuracy() {
-        let mut payload = [0u8; NavPvtData::PAYLOAD_LEN];
+        let mut payload = [0u8; UbxNavPvt::PAYLOAD_LEN];
 
         payload[11] = 0x07;
 
@@ -244,7 +240,7 @@ mod tests {
         payload[22] = 0x02; // example flags2
         payload[23] = 12; // satellites
 
-        let result = NavPvtData::parse(&payload).expect("NAV-PVT should parse");
+        let result = UbxNavPvt::parse(&payload).expect("NAV-PVT should parse");
 
         assert_eq!(result.valid, 0x07);
         assert_eq!(result.time_accuracy_ns, 123_456);
@@ -256,7 +252,7 @@ mod tests {
     }
     #[test]
     fn parse_nav_pvt_extracts_position() {
-        let mut payload = [0u8; NavPvtData::PAYLOAD_LEN];
+        let mut payload = [0u8; UbxNavPvt::PAYLOAD_LEN];
 
         let longitude = -1_234_567i32;
         let latitude = 51_234_567i32;
@@ -274,7 +270,7 @@ mod tests {
         payload[40..44].copy_from_slice(&horizontal_accuracy.to_le_bytes());
         payload[44..48].copy_from_slice(&vertical_accuracy.to_le_bytes());
 
-        let result = NavPvtData::parse(&payload).expect("NAV-PVT should parse");
+        let result = UbxNavPvt::parse(&payload).expect("NAV-PVT should parse");
 
         assert_eq!(result.longitude_degrees_x1e7, longitude);
         assert_eq!(result.latitude_degrees_x1e7, latitude);
@@ -285,7 +281,7 @@ mod tests {
     }
     #[test]
     fn parse_nav_pvt_extracts_velocity_and_heading() {
-        let mut payload = [0u8; NavPvtData::PAYLOAD_LEN];
+        let mut payload = [0u8; UbxNavPvt::PAYLOAD_LEN];
 
         let velocity_north = 12_345i32;
         let velocity_east = -6_789i32;
@@ -299,17 +295,17 @@ mod tests {
         payload[60..64].copy_from_slice(&ground_speed.to_le_bytes());
         payload[64..68].copy_from_slice(&heading.to_le_bytes());
 
-        let result = NavPvtData::parse(&payload).expect("NAV-PVT should parse");
+        let result = UbxNavPvt::parse(&payload).expect("NAV-PVT should parse");
 
         assert_eq!(result.velocity_north_mmps, velocity_north);
         assert_eq!(result.velocity_east_mmps, velocity_east);
         assert_eq!(result.velocity_down_mmps, velocity_down);
         assert_eq!(result.ground_speed_mmps, ground_speed);
-        assert_eq!(result.heading_motion_x1e5_deg, heading);
+        assert_eq!(result.heading_degrees_x1e5, heading);
     }
     #[allow(unused)]
-    fn test_nav_pvt() -> NavPvtData {
-        NavPvtData {
+    fn test_nav_pvt() -> UbxNavPvt {
+        UbxNavPvt {
             time_of_week_ms: 123_456_789,
 
             year: 2026,
@@ -339,7 +335,7 @@ mod tests {
             velocity_east_mmps: -450,
             velocity_down_mmps: 120,
             ground_speed_mmps: 1_310,
-            heading_motion_x1e5_deg: 123_456,
+            heading_degrees_x1e5: 123_456,
         }
     }
     #[test]
@@ -376,8 +372,8 @@ mod tests {
             if let Some(message) = parser.on_data_received(byte) {
                 assert_eq!(message.class, 0x01);
                 assert_eq!(message.id, 0x07);
-                let nav = NavPvtData::parse(message.payload).expect("NAV-PVT payload should parse");
-                gps.amend_with_nav_pvt_data(nav);
+                let nav = UbxNavPvt::parse(message.payload).expect("NAV-PVT payload should parse");
+                gps.amend_with_ubx_nav_pvt(nav);
                 break;
             }
         }

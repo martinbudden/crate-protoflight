@@ -41,10 +41,10 @@ impl NmeaGsv {
         let mut fields = NmeaFields::new(record);
 
         let talker_id = fields.next()?;
-
         if talker_id.len() != 5 || &talker_id[2..] != b"GSV" {
             return None;
         }
+
         let mut ret = Self::default();
 
         // Field 1: Number of GSV messages

@@ -136,7 +136,7 @@ checksum = "b588b76d00fde79687d7646a9b5bdf3cc0f655e0bbd080335a95d7e96f3587da"
 [[package]]
 name = "blackbox-logger"
 version = "0.1.9"
-source = "git+https://github.com/martinbudden/crate-blackbox-logger#c8f1be6adbdef070cba04a074b879cad5b3d45c5"
+source = "git+https://github.com/martinbudden/crate-blackbox-logger#a669fa036de0eb5dd9cbc77f6fa3969ec35bf001"
 dependencies = [
  "embassy-futures",
  "postcard",
