@@ -83,8 +83,6 @@ impl ImuFilterBank {
             gyro_lpf2: Pt1FilterVector3f32::new(),
             gyro_notch1: BiquadFilterVector3f32::new(),
             gyro_notch2: BiquadFilterVector3f32::new(),
-            #[cfg(feature = "rpm_filters")]
-            rpm_filters: RpmNotchFilterBank::new(),
         }
     }
     #[cfg(feature = "rpm_filters")]

@@ -30,4 +30,11 @@ impl MockUart {
 
         Ok(bytes_to_copy)
     }
+    pub async fn write(&mut self, buf: &[u8]) -> Result<usize, ()> {
+        _ = self;
+        _ = buf;
+
+        core::future::poll_fn(|_| core::task::Poll::Ready(())).await;
+        Ok(0)
+    }
 }

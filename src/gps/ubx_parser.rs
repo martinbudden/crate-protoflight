@@ -1,16 +1,12 @@
-#[allow(unused)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-enum UbxState {
-    #[default]
-    WaitingForSync1,
-    WaitingForSync2,
-    Class,
-    Id,
-    LengthLow,
-    LengthHigh,
-    Payload,
-    ChecksumA,
-    ChecksumB,
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[repr(u8)]
+pub enum UbxVersion {
+    M5,
+    M6,
+    M7,
+    M8,
+    M9,
+    M10,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -44,32 +40,30 @@ pub enum UbxClassId {
     Sec = 0x27,
     /// High Rate Navigation Results Messages: High rate time, position, speed, heading.
     Hnr = 0x28,
-    /// Steal a reserved value.
-    None = 0xff,
 }
 
 impl UbxClassId {
-    #[must_use]
-    pub fn from_u8(value: u8) -> Self {
+    pub fn try_from_u8(value: u8) -> Option<Self> {
         match value {
-            0x01 => Self::Nav,
-            0x02 => Self::Rxm,
-            0x04 => Self::Inf,
-            0x05 => Self::Ack,
-            0x06 => Self::Cfg,
-            0x09 => Self::Upd,
-            0x0a => Self::Mon,
-            0x0b => Self::Aid,
-            0x0d => Self::Tim,
-            0x10 => Self::Esf,
-            0x13 => Self::Mga,
-            0x21 => Self::Log,
-            0x27 => Self::Sec,
-            0x28 => Self::Hnr,
-            _ => Self::None,
+            0x01 => Some(Self::Nav),
+            0x02 => Some(Self::Rxm),
+            0x04 => Some(Self::Inf),
+            0x05 => Some(Self::Ack),
+            0x06 => Some(Self::Cfg),
+            0x09 => Some(Self::Upd),
+            0x0a => Some(Self::Mon),
+            0x0b => Some(Self::Aid),
+            0x0d => Some(Self::Tim),
+            0x10 => Some(Self::Esf),
+            0x13 => Some(Self::Mga),
+            0x21 => Some(Self::Log),
+            0x27 => Some(Self::Sec),
+            0x28 => Some(Self::Hnr),
+            _ => None,
         }
     }
 }
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UbxMessage<'a> {
     pub class: UbxClassId,
@@ -81,10 +75,24 @@ impl<'a> UbxMessage<'a> {
     pub fn new(class: UbxClassId, id: u8, payload: &'a [u8]) -> Self {
         Self { class, id, payload }
     }
-    pub fn new_from_u8_class(class: u8, id: u8, payload: &'a [u8]) -> Self {
-        let class = UbxClassId::from_u8(class);
-        Self { class, id, payload }
+    pub fn new_from_u8_class(class_u8: u8, id: u8, payload: &'a [u8]) -> Option<Self> {
+        UbxClassId::try_from_u8(class_u8).map(|class| Self { class, id, payload })
     }
+}
+
+#[allow(unused)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+enum UbxState {
+    #[default]
+    WaitingForSync1,
+    WaitingForSync2,
+    Class,
+    Id,
+    LengthLow,
+    LengthHigh,
+    Payload,
+    ChecksumA,
+    ChecksumB,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -224,7 +232,7 @@ impl UbxParser {
         };
 
         if complete {
-            Some(UbxMessage::new_from_u8_class(self.class, self.id, &self.payload[..self.payload_length]))
+            UbxMessage::new_from_u8_class(self.class, self.id, &self.payload[..self.payload_length])
         } else {
             None
         }

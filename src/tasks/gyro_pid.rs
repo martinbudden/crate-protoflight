@@ -95,10 +95,15 @@ impl<I: ImuDevice> GyroPidContext<I> {
             gyro_pid_sender: gyro_pid_sender(),
             setpoint_sender: setpoint_sender(),
             fast_config_subscriber: fast_config_subscriber(),
+            #[cfg(feature = "rpm_filters")]
             imu_filters: ImuFilterBank::with_config_and_notch(
                 imu_filter_bank_config,
-                #[cfg(feature = "rpm_filters")] rpm_notch_filter_bank_config,
-                #[cfg(feature = "rpm_filters")] looptime_seconds,
+                rpm_notch_filter_bank_config,
+                looptime_seconds,
+            ),
+            #[cfg(not(feature = "rpm_filters"))]
+            imu_filters: ImuFilterBank::with_config(
+                imu_filter_bank_config,
             ),
             sensor_fusion: MadgwickFilterf32::new(),
             flight_controller: FlightController::new(),

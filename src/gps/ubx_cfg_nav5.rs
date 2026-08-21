@@ -7,43 +7,45 @@ use crate::gps::{
 /// Poll a message configuration.
 #[allow(unused)]
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct UbxCfgMsgPoll {
-    pub class: u8,
-    pub id: u8,
+pub struct UbxCfgNav5 {
+    pub mask: u16,
+    pub model: u8,
+    pub fix_mode: u8,
 }
 
-impl Default for UbxCfgMsgPoll {
+impl Default for UbxCfgNav5 {
     fn default() -> Self {
-        Self::new()
+        Self::new(0)
     }
 }
 
-impl UbxCfgMsgPoll {
+impl UbxCfgNav5 {
     pub const CLASS: UbxClassId = UbxClassId::Cfg;
-    pub const ID: u8 = UbxCfgId::MSG;
-    pub const PAYLOAD_LEN_U16: u16 = 2;
+    pub const ID: u8 = UbxCfgId::RATE;
+    pub const PAYLOAD_LEN_U16: u16 = 36;
     pub const PAYLOAD_LEN: usize = Self::PAYLOAD_LEN_U16 as usize;
     pub const FRAME_LEN: usize = Self::PAYLOAD_LEN + 8;
 
-    pub const fn new() -> Self {
-        Self { class: 0, id: 0 }
+    pub const fn new(model: u8) -> Self {
+        Self { mask: 0, model, fix_mode: 0 }
     }
 }
 
-impl UbxCfgMsgPoll {
-    pub fn parse(payload: &[u8]) -> Option<UbxCfgMsgPoll> {
+impl UbxCfgNav5 {
+    pub fn parse(payload: &[u8]) -> Option<UbxCfgNav5> {
         if payload.len() != Self::PAYLOAD_LEN {
             return None;
         }
-        Some(UbxCfgMsgPoll { class: payload[0], id: payload[1] })
+        Some(UbxCfgNav5 { mask: Parse::try_read_u16(&payload[0..2])?, model: payload[2], fix_mode: payload[3] })
     }
 
     #[inline]
     pub fn make_payload(self) -> [u8; Self::PAYLOAD_LEN] {
         let mut payload = [0u8; Self::PAYLOAD_LEN];
 
-        payload[0] = self.class;
-        payload[1] = self.id;
+        payload[0..2].copy_from_slice(&self.mask.to_le_bytes());
+        payload[3] = self.model;
+        payload[4] = self.fix_mode;
 
         payload
     }
@@ -60,8 +62,7 @@ impl UbxCfgMsgPoll {
         frame[5] = payload_len[1];
 
         let payload = self.make_payload();
-        frame[6] = payload[0];
-        frame[7] = payload[1];
+        frame[6..6 + Self::PAYLOAD_LEN].copy_from_slice(&payload);
 
         // UBX Fletcher checksum covers class, ID, length and payload.
         let mut checksum_a = 0u8;
@@ -121,6 +122,6 @@ mod tests {
 
     #[test]
     fn normal_types() {
-        is_full::<UbxCfgMsgPoll>();
+        is_full::<UbxCfgNav5>();
     }
 }

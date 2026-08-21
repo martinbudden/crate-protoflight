@@ -9,6 +9,10 @@ impl UbxCfgId {
     pub const NAV5: u8 = 0x24;
     /// Navigation engine expert settings.
     pub const NAVX5: u8 = 0x03;
+    /// Navigation/measurement rate settings.
+    pub const RATE: u8 = 0x08;
+    /// GNSS system configuration.
+    pub const GNSS: u8 = 0x3e;
     /// Power mode setup.
     pub const PMS: u8 = 0x86;
     /// SBAS configuration.

@@ -7,43 +7,49 @@ use crate::gps::{
 /// Poll a message configuration.
 #[allow(unused)]
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct UbxCfgMsgPoll {
-    pub class: u8,
-    pub id: u8,
+pub struct UbxCfgRate {
+    pub measurement_rate: u16,
+    pub nav_rate: u16,
+    pub time_ref: u16,
 }
 
-impl Default for UbxCfgMsgPoll {
+impl Default for UbxCfgRate {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl UbxCfgMsgPoll {
+impl UbxCfgRate {
     pub const CLASS: UbxClassId = UbxClassId::Cfg;
-    pub const ID: u8 = UbxCfgId::MSG;
-    pub const PAYLOAD_LEN_U16: u16 = 2;
+    pub const ID: u8 = UbxCfgId::RATE;
+    pub const PAYLOAD_LEN_U16: u16 = 6;
     pub const PAYLOAD_LEN: usize = Self::PAYLOAD_LEN_U16 as usize;
     pub const FRAME_LEN: usize = Self::PAYLOAD_LEN + 8;
 
     pub const fn new() -> Self {
-        Self { class: 0, id: 0 }
+        Self { measurement_rate: 0, nav_rate: 0, time_ref: 0 }
     }
 }
 
-impl UbxCfgMsgPoll {
-    pub fn parse(payload: &[u8]) -> Option<UbxCfgMsgPoll> {
+impl UbxCfgRate {
+    pub fn parse(payload: &[u8]) -> Option<UbxCfgRate> {
         if payload.len() != Self::PAYLOAD_LEN {
             return None;
         }
-        Some(UbxCfgMsgPoll { class: payload[0], id: payload[1] })
+        Some(UbxCfgRate {
+            measurement_rate: Parse::try_read_u16(&payload[0..2])?,
+            nav_rate: Parse::try_read_u16(&payload[2..4])?,
+            time_ref: Parse::try_read_u16(&payload[4..6])?,
+        })
     }
 
     #[inline]
     pub fn make_payload(self) -> [u8; Self::PAYLOAD_LEN] {
         let mut payload = [0u8; Self::PAYLOAD_LEN];
 
-        payload[0] = self.class;
-        payload[1] = self.id;
+        payload[0..2].copy_from_slice(&self.measurement_rate.to_le_bytes());
+        payload[2..4].copy_from_slice(&self.nav_rate.to_le_bytes());
+        payload[4..Self::PAYLOAD_LEN].copy_from_slice(&self.time_ref.to_le_bytes());
 
         payload
     }
@@ -60,8 +66,7 @@ impl UbxCfgMsgPoll {
         frame[5] = payload_len[1];
 
         let payload = self.make_payload();
-        frame[6] = payload[0];
-        frame[7] = payload[1];
+        frame[6..6 + Self::PAYLOAD_LEN].copy_from_slice(&payload);
 
         // UBX Fletcher checksum covers class, ID, length and payload.
         let mut checksum_a = 0u8;
@@ -121,6 +126,6 @@ mod tests {
 
     #[test]
     fn normal_types() {
-        is_full::<UbxCfgMsgPoll>();
+        is_full::<UbxCfgRate>();
     }
 }

@@ -9,12 +9,12 @@ use static_cell::StaticCell;
 
 use crate::{
     boards::{GpsUartRx, GpsUartTx},
+    config::GLOBAL_CONFIG,
     gps::{
         Geodetic, GeographicCoordinate, GpsData, GpsMessage, GpsParser, GpsParserEvent, GpsProvider, GpsStatusData,
-        GpsYawHeadingMessage,
+        GpsYawHeadingMessage, NmeaGga, NmeaGsa, NmeaRecordType, NmeaRmc, UbxAckId, UbxCfgId, UbxCfgNav5, UbxCfgPms,
+        UbxCfgRate, UbxClassId, UbxMonId, UbxNavDop, UbxNavId, UbxNavPvt,
     },
-    gps::{NmeaGga, NmeaGsa, NmeaRecordType, NmeaRmc},
-    gps::{UbxAckId, UbxCfgId, UbxClassId, UbxMonId, UbxNavDop, UbxNavId, UbxNavPvt},
 };
 
 static GPS_CTX: StaticCell<GpsContext> = StaticCell::new();
@@ -67,6 +67,7 @@ pub struct GpsContext {
     pub gps_data: GpsData,
     pub gps_status_data: GpsStatusData,
     pub home: Geodetic,
+    pub buf: [u8; 128],
 }
 
 impl GpsContext {
@@ -80,6 +81,7 @@ impl GpsContext {
             gps_data: GpsData::new(),
             gps_status_data: GpsStatusData::new(),
             home: Geodetic::new(),
+            buf: [0u8; 128],
         }
     }
 }
@@ -94,43 +96,45 @@ pub fn init(uart_rx: GpsUartRx, uart_tx: GpsUartTx, gps_provider: GpsProvider) -
 pub async fn run(ctx: &'static mut GpsContext) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(10));
     let mut loop_count: u32 = 0;
-    let mut buf = [0u8; 128];
 
     log::info!("         GPS: task started");
+
+    initialize(&mut ctx.uart_tx).await;
+
     loop {
         // Wait for the next tick. TODO: chang GPS task to run off interrupt
         ticker.next().await;
         core::future::poll_fn(|_| core::task::Poll::Ready(())).await;
 
-        if let Ok(n) = ctx.uart_rx.read(&mut buf).await {
-            for &byte in &buf[..n] {
+        if let Ok(n) = ctx.uart_rx.read(&mut ctx.buf).await {
+            for &byte in &ctx.buf[..n] {
                 if let Some(event) = ctx.gps_parser.on_data_received(byte) {
                     process_gps_event(&mut ctx.gps_data, &mut ctx.gps_status_data, event);
+
+                    // Publish the gps data for use by (eg) the OSD.
+                    ctx.gps_publisher.publish_immediate(GpsMessage::Data(ctx.gps_data));
+                    ctx.gps_publisher.publish_immediate(GpsMessage::Status(ctx.gps_status_data));
+
+                    // Convert the gps data position to a `GeographicCoordinate` for use by the autopilot.
+                    let geographic_coordinate = GeographicCoordinate::from_long_lat_alt(
+                        ctx.gps_data.longitude_degrees_x1e7,
+                        ctx.gps_data.latitude_degrees_x1e7,
+                        ctx.gps_data.altitude_cm,
+                    );
+                    let gps_position = ctx.home.position_relative_to_home_meters(geographic_coordinate);
+                    ctx.gps_publisher.publish_immediate(GpsMessage::Position(gps_position));
+
+                    // Only trust GPS heading if moving faster than 1.5 m/s (150 cmps, approx 3 knots)
+                    if ctx.gps_data.ground_speed_cmps > 150 {
+                        let gps_yaw_heading_message = GpsYawHeadingMessage {
+                            yaw_heading_radians: (f32::from(ctx.gps_data.heading_deci_degrees) * 0.1).to_radians(),
+                            delta_t: 0.1,
+                        };
+                        // signal the yaw heading so the gyro_pid task can use it to correct yaw drift in the sensor fusion filter.
+                        GPS_YAW_HEADING_SIGNAL.signal(gps_yaw_heading_message);
+                    }
                 }
             }
-        }
-
-        // Publish the gps data for use by (eg) the OSD.
-        ctx.gps_publisher.publish_immediate(GpsMessage::Data(ctx.gps_data));
-        ctx.gps_publisher.publish_immediate(GpsMessage::Status(ctx.gps_status_data));
-
-        // Convert the gps data position to a `GpsPositionMeters` use by the autopilot.
-        let geographic_coordinate = GeographicCoordinate::from_long_lat_alt(
-            ctx.gps_data.longitude_degrees_x1e7,
-            ctx.gps_data.latitude_degrees_x1e7,
-            ctx.gps_data.altitude_cm,
-        );
-        let gps_position = ctx.home.position_relative_to_home_meters(geographic_coordinate);
-        ctx.gps_publisher.publish_immediate(GpsMessage::Position(gps_position));
-
-        // Only trust GPS heading if moving faster than 1.5 m/s (150 cmps, approx 3 knots)
-        if ctx.gps_data.ground_speed_cmps > 150 {
-            let gps_yaw_heading_message = GpsYawHeadingMessage {
-                yaw_heading_radians: (f32::from(ctx.gps_data.heading_deci_degrees) * 0.1).to_radians(),
-                delta_t: 0.1,
-            };
-            // signal the yaw heading so the gyro_pid task can use it to correct yaw drift in the sensor fusion filter.
-            GPS_YAW_HEADING_SIGNAL.signal(gps_yaw_heading_message);
         }
 
         if loop_count.is_multiple_of(10) {
@@ -138,6 +142,20 @@ pub async fn run(ctx: &'static mut GpsContext) {
         }
         loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
     }
+}
+
+async fn initialize(uart_tx: &mut GpsUartTx) {
+    let global_config = GLOBAL_CONFIG.lock().await;
+    let gps_config = global_config.gps;
+    drop(global_config);
+
+    // TODO: initialize GPS before main task loop.
+    let nav5 = UbxCfgNav5::new(gps_config.gps_ublox_acquire_model as u8);
+    let _ = uart_tx.write(&nav5.make_frame()).await;
+    let pms = UbxCfgPms::default();
+    let _ = uart_tx.write(&pms.make_frame()).await;
+    let rate = UbxCfgRate::default();
+    let _ = uart_tx.write(&rate.make_frame()).await;
 }
 
 fn process_gps_event(gps_data: &mut GpsData, gps_status: &mut GpsStatusData, event: GpsParserEvent<'_>) {

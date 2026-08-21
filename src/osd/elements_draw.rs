@@ -15,7 +15,7 @@ use crate::{
     },
 };
 
-use core::{convert::TryFrom, fmt::Write};
+use core::fmt::Write;
 use radio_controllers::RcMode;
 use strum::EnumCount;
 
@@ -290,7 +290,8 @@ impl OsdElements {
     }
 }
 
-/// Custom error type for invalid enum index casting.
+/*
+/// Custom error type for invalid `OsdElementId` enum index casting.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct OsdElementIdError;
 
@@ -325,6 +326,7 @@ impl TryFrom<usize> for OsdElementId {
         }
     }
 }
+*/
 
 /// Defines the order in which the elements are drawn.
 /// Elements positioned later in the list will overlay the earlier ones if their character positions overlap.
@@ -1055,6 +1057,6 @@ mod tests {
     #[test]
     fn normal_types() {
         is_full::<OsdElementId>();
-        is_full::<OsdElementIdError>();
+        //is_full::<OsdElementIdError>();
     }
 }
