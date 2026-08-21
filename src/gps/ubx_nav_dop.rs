@@ -1,7 +1,4 @@
-use crate::gps::{
-    ubx_nav::{UBX_NAV_CLASS, UbxNavId},
-    ubx_parser::Parse,
-};
+use crate::gps::{UbxClassId, ubx_nav::UbxNavId, ubx_parser::Parse};
 
 /// Dilution of precision.
 #[allow(unused)]
@@ -24,9 +21,11 @@ impl Default for UbxNavDop {
 }
 
 impl UbxNavDop {
-    pub const CLASS: u8 = UBX_NAV_CLASS;
+    pub const CLASS: UbxClassId = UbxClassId::Nav;
     pub const ID: u8 = UbxNavId::DOP;
-    pub const PAYLOAD_LEN: usize = 18;
+    pub const PAYLOAD_LEN_U16: u16 = 18;
+    pub const PAYLOAD_LEN: usize = Self::PAYLOAD_LEN_U16 as usize;
+    pub const FRAME_LEN: usize = Self::PAYLOAD_LEN + 8;
 
     pub const fn new() -> Self {
         Self { time_of_week_ms: 0, g_dop: 0, t_dop: 0, p_dop: 0, v_dop: 0, h_dop: 0, n_dop: 0, e_dop: 0 }

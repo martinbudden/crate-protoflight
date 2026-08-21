@@ -1,7 +1,4 @@
-use crate::gps::{
-    ubx_nav::{UBX_NAV_CLASS, UbxNavId},
-    ubx_parser::Parse,
-};
+use crate::gps::{UbxClassId, ubx_nav::UbxNavId, ubx_parser::Parse};
 
 /// Receiver navigation status.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -22,9 +19,11 @@ impl Default for UbxNavStatus {
 }
 
 impl UbxNavStatus {
-    pub const CLASS: u8 = UBX_NAV_CLASS;
+    pub const CLASS: UbxClassId = UbxClassId::Nav;
     pub const ID: u8 = UbxNavId::STATUS;
-    pub const PAYLOAD_LEN: usize = 16;
+    pub const PAYLOAD_LEN_U16: u16 = 16;
+    pub const PAYLOAD_LEN: usize = Self::PAYLOAD_LEN_U16 as usize;
+    pub const FRAME_LEN: usize = Self::PAYLOAD_LEN + 8;
 
     pub const fn new() -> Self {
         Self {

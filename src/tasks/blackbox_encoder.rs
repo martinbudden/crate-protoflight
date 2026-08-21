@@ -28,7 +28,7 @@ use crate::tasks::{DebugMode, GLOBAL_DEBUG};
 #[cfg(feature = "gps")]
 use {
     crate::{
-        gps::{GpsMessage, GpsSolutionData},
+        gps::{GpsData, GpsMessage},
         tasks::gps::GpsSubscriber,
     },
     blackbox_logger::{BlackboxGpsData, BlackboxGpsPosition},
@@ -294,9 +294,9 @@ pub async fn run(ctx: &'static mut BlackboxEncoderContext) {
         #[cfg(feature = "gps")]
         if let Some(wait_result) = ctx.gps_subscriber.try_next_message()
             && let embassy_sync::pubsub::WaitResult::Message(event) = wait_result
-            && let GpsMessage::Solution(gps_solution_data) = event
+            && let GpsMessage::Data(gps_data) = event
         {
-            let gps_data = gps_data_from(gps_solution_data);
+            let gps_data = gps_data_from(gps_data);
             ctx.blackbox.set_gps_data(gps_data);
         }
 
@@ -397,7 +397,7 @@ pub fn slow_data_from(setpoint_message: SetpointMessage) -> BlackboxSlowData {
 
 #[cfg(feature = "gps")]
 #[inline]
-pub fn gps_data_from(gps: GpsSolutionData) -> BlackboxGpsData {
+pub fn gps_data_from(gps: GpsData) -> BlackboxGpsData {
     BlackboxGpsData {
         time_of_week_ms: gps.time_of_week_ms,
         interval_ms: 0,
@@ -407,9 +407,9 @@ pub fn gps_data_from(gps: GpsSolutionData) -> BlackboxGpsData {
         velocity_north_cmps: gps.velocity_north_cmps,
         velocity_east_cmps: gps.velocity_east_cmps,
         velocity_down_cmps: gps.velocity_down_cmps,
-        speed3d_cmps: gps.speed3d_cmps.cast_signed(),
-        ground_speed_cmps: gps.ground_speed_cmps.cast_signed(),
-        ground_course_degrees_x10: gps.ground_course_degrees_x10.cast_signed(),
+        speed3d_cmps: gps.speed3d_cmps,
+        ground_speed_cmps: gps.ground_speed_cmps,
+        ground_course_degrees_x10: gps.heading_deci_degrees,
         satellite_count: gps.satellite_count,
     }
 }

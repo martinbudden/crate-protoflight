@@ -1,5 +1,3 @@
-pub const UBX_CFG_CLASS: u8 = 0x06;
-
 pub struct UbxCfgId;
 
 impl UbxCfgId {
@@ -13,6 +11,8 @@ impl UbxCfgId {
     pub const NAVX5: u8 = 0x03;
     /// Power mode setup.
     pub const PMS: u8 = 0x86;
-    // SBAS configuration.
+    /// SBAS configuration.
     pub const SBAS: u8 = 0x16;
+    /// Extended NMEA protocol configuration V1.
+    pub const NMEA: u8 = 0x17;
 }

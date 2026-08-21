@@ -81,7 +81,7 @@ impl Geodetic {
         }
     }
 
-    pub fn distance_from_home_meters(self, geographic_coordinate: GeographicCoordinate) -> Vector3f32 {
+    pub fn position_relative_to_home_meters(self, geographic_coordinate: GeographicCoordinate) -> Vector3f32 {
         self.distance_meters(self.home, geographic_coordinate)
     }
 }

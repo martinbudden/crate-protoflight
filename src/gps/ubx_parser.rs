@@ -14,21 +14,79 @@ enum UbxState {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[repr(u8)]
+pub enum UbxClassId {
+    /// Navigation Results Messages: Position, Speed, Time, Acceleration, Heading, DOP, SVs used.
+    Nav = 0x01,
+    /// Receiver Manager Messages: Satellite Status, RTC Status.
+    Rxm = 0x02,
+    /// Information Messages: Printf-Style Messages, with IDs such as Error, Warning, Notice.
+    Inf = 0x04,
+    ///Ack/Nak Messages: Acknowledge or Reject messages to UBX-CFG input messages.
+    Ack = 0x05,
+    /// Configuration Input Messages: Configure the receiver.
+    Cfg = 0x06,
+    /// Firmware Update Messages: Memory/Flash erase/write, Reboot, Flash identification, etc.
+    Upd = 0x09,
+    /// Monitoring Messages: Communication Status, Stack Usage, Task Status.
+    Mon = 0x0A,
+    /// Assist Now Aiding Messages: Ephemeris, Almanac, other A-GPS data input.
+    Aid = 0x0B,
+    /// Timing Messages: Time Pulse Output, Time Mark Results.
+    Tim = 0x0D,
+    /// External Sensor Fusion Messages: External Sensor Measurements and Status Information.
+    Esf = 0x10,
+    /// Multiple GNSS Assistance Messages: Assistance data for various GNSS.
+    Mga = 0x13,
+    /// Logging Messages: Log creation, deletion, info and retrieval.
+    Log = 0x21,
+    /// Security Feature Messages.
+    Sec = 0x27,
+    /// High Rate Navigation Results Messages: High rate time, position, speed, heading.
+    Hnr = 0x28,
+    /// Steal a reserved value.
+    None = 0xff,
+}
+
+impl UbxClassId {
+    #[must_use]
+    pub fn from_u8(value: u8) -> Self {
+        match value {
+            0x01 => Self::Nav,
+            0x02 => Self::Rxm,
+            0x04 => Self::Inf,
+            0x05 => Self::Ack,
+            0x06 => Self::Cfg,
+            0x09 => Self::Upd,
+            0x0a => Self::Mon,
+            0x0b => Self::Aid,
+            0x0d => Self::Tim,
+            0x10 => Self::Esf,
+            0x13 => Self::Mga,
+            0x21 => Self::Log,
+            0x27 => Self::Sec,
+            0x28 => Self::Hnr,
+            _ => Self::None,
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UbxMessage<'a> {
-    pub class: u8,
+    pub class: UbxClassId,
     pub id: u8,
     pub payload: &'a [u8],
 }
 
-/*
-UBX payload
-    │
-    ▼
-NavPvtData::parse()
-    │
-    ▼
-NavPvtData
-*/
+impl<'a> UbxMessage<'a> {
+    pub fn new(class: UbxClassId, id: u8, payload: &'a [u8]) -> Self {
+        Self { class, id, payload }
+    }
+    pub fn new_from_u8_class(class: u8, id: u8, payload: &'a [u8]) -> Self {
+        let class = UbxClassId::from_u8(class);
+        Self { class, id, payload }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UbxParser {
     state: UbxState,
@@ -166,7 +224,7 @@ impl UbxParser {
         };
 
         if complete {
-            Some(UbxMessage { class: self.class, id: self.id, payload: &self.payload[..self.payload_length] })
+            Some(UbxMessage::new_from_u8_class(self.class, self.id, &self.payload[..self.payload_length]))
         } else {
             None
         }
@@ -220,7 +278,7 @@ mod tests {
         for byte in frame {
             result = parser.on_data_received(byte);
         }
-        assert_eq!(result, Some(UbxMessage { class: 0x01, id: 0x07, payload: &[] }));
+        assert_eq!(result, Some(UbxMessage { class: UbxClassId::Nav, id: 0x07, payload: &[] }));
     }
     #[test]
     fn valid_message_with_payload_is_received() {
@@ -231,7 +289,7 @@ mod tests {
             assert!(result.is_none());
             result = parser.on_data_received(byte);
         }
-        assert_eq!(result, Some(UbxMessage { class: 0x01, id: 0x02, payload: &[0x11, 0x22, 0x33] }));
+        assert_eq!(result, Some(UbxMessage { class: UbxClassId::Nav, id: 0x02, payload: &[0x11, 0x22, 0x33] }));
     }
     #[test]
     fn invalid_checksum_is_rejected() {
@@ -261,7 +319,7 @@ mod tests {
         for byte in good_frame {
             result = parser.on_data_received(byte);
         }
-        assert_eq!(result, Some(UbxMessage { class: 0x01, id: 0x02, payload: &[0x11, 0x22, 0x33] }));
+        assert_eq!(result, Some(UbxMessage { class: UbxClassId::Nav, id: 0x02, payload: &[0x11, 0x22, 0x33] }));
     }
     #[test]
     fn oversized_payload_is_rejected() {
@@ -297,6 +355,6 @@ mod tests {
         for byte in good_frame {
             result = parser.on_data_received(byte);
         }
-        assert_eq!(result, Some(UbxMessage { class: 0x01, id: 0x02, payload: &[0x11, 0x22, 0x33] }));
+        assert_eq!(result, Some(UbxMessage { class: UbxClassId::Nav, id: 0x02, payload: &[0x11, 0x22, 0x33] }));
     }
 }

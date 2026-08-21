@@ -34,9 +34,9 @@ pub struct NmeaGsa {
     pub fix_type: u8,        // GSA: 1/2/3
     pub is_healthy: u8,
 
-    pub dilution_of_precision_horizontal: i16, // GGA
-    pub dilution_of_precision_position: i16,   // GSA
-    pub dilution_of_precision_vertical: i16,   // GSA
+    pub hdop: u16,
+    pub pdop: u16,
+    pub vdop: u16,
     pub update: u8,
 }
 
@@ -68,9 +68,9 @@ impl NmeaGsa {
             fix: 0,
             fix_type: 0,
             is_healthy: 0,
-            dilution_of_precision_horizontal: 0,
-            dilution_of_precision_position: 0,
-            dilution_of_precision_vertical: 0,
+            hdop: 0,
+            pdop: 0,
+            vdop: 0,
             update: 0,
         }
     }
@@ -123,8 +123,7 @@ impl NmeaGsa {
         if pdop < 0 {
             return None;
         }
-
-        ret.dilution_of_precision_position = i16::try_from(pdop).ok()?;
+        ret.pdop = u16::try_from(pdop).ok()?;
 
         // Field 16: HDOP
         let raw = fields.next()?;
@@ -132,7 +131,7 @@ impl NmeaGsa {
         if hdop < 0 {
             return None;
         }
-        ret.dilution_of_precision_horizontal = i16::try_from(hdop).ok()?;
+        ret.hdop = u16::try_from(hdop).ok()?;
 
         // Field 17: VDOP
         let raw = fields.next()?;
@@ -141,7 +140,7 @@ impl NmeaGsa {
             return None;
         }
 
-        ret.dilution_of_precision_vertical = i16::try_from(vdop).ok()?;
+        ret.vdop = u16::try_from(vdop).ok()?;
 
         // Field 18: GNSS system ID, if present.
         // Not currently used.
@@ -164,9 +163,9 @@ mod tests {
         assert_eq!(result.fix_type, 3);
         assert_eq!(result.satellites_used, 8);
 
-        assert_eq!(result.dilution_of_precision_position, 18);
-        assert_eq!(result.dilution_of_precision_horizontal, 10);
-        assert_eq!(result.dilution_of_precision_vertical, 15);
+        assert_eq!(result.pdop, 18);
+        assert_eq!(result.hdop, 10);
+        assert_eq!(result.vdop, 15);
     }
     #[test]
     fn parse_gsa_record_accepts_no_fix() {

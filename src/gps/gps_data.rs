@@ -1,4 +1,6 @@
-use crate::gps::{NmeaRmc, nmea_gga::NmeaGga, nmea_gsa::NmeaGsa, nmea_gsv::NmeaGsv, ubx_nav_pvt::UbxNavPvt};
+use crate::gps::{
+    NmeaRmc, nmea_gga::NmeaGga, nmea_gsa::NmeaGsa, nmea_gsv::NmeaGsv, ubx_nav_dop::UbxNavDop, ubx_nav_pvt::UbxNavPvt,
+};
 
 /*
    // horizontal accuracy in mm
@@ -30,10 +32,10 @@ pub struct GpsData {
     pub bearing_to_home_degrees: f32,
     pub distance_flown_meters: f32,
     pub time_of_week_ms: u32,
-    pub velocity_north_cmps: i32, // TODO: should this be i16 rather than i32?
-    pub velocity_east_cmps: i32,
-    pub velocity_down_cmps: i32,
-    pub speed3d_cmps: i32,
+    pub velocity_north_cmps: i16,
+    pub velocity_east_cmps: i16,
+    pub velocity_down_cmps: i16,
+    pub speed3d_cmps: i16,
     pub ground_speed_cmps: i16,
     pub heading_deci_degrees: i16,
     pub satellite_count: u8, // GGA: satellites tracked
@@ -42,11 +44,11 @@ pub struct GpsData {
     pub fix_type: u8,        // GSA: 1/2/3
     pub is_healthy: u8,
     /// 3D positional dilution of position.
-    pub pdop_x100: i16,
+    pub pdop_x100: u16,
     /// 2D horizontal dilution of position.
-    pub hdop_x100: i16,
+    pub hdop_x100: u16,
     /// 1D vertical dilution of position.
-    pub vdop_x100: i16,
+    pub vdop_x100: u16,
     pub update: u8,
 }
 
@@ -120,6 +122,12 @@ impl GpsData {
         _ = gsv;
     }
 
+    #[allow(clippy::cast_possible_truncation)]
+    #[inline]
+    fn i32_to_i16_clamped(val: i32) -> i16 {
+        val.clamp(i32::from(i16::MIN), i32::from(i16::MAX)) as i16
+    }
+
     pub fn amend_with_ubx_nav_pvt(&mut self, nav: UbxNavPvt) {
         self.longitude_degrees_x1e7 = nav.longitude_degrees_x1e7;
         self.latitude_degrees_x1e7 = nav.latitude_degrees_x1e7;
@@ -130,20 +138,22 @@ impl GpsData {
 
         self.time_of_week_ms = nav.time_of_week_ms;
 
-        self.velocity_north_cmps = nav.velocity_north_mmps / 10;
-        self.velocity_east_cmps = nav.velocity_east_mmps / 10;
-        self.velocity_down_cmps = nav.velocity_down_mmps / 10;
-        #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+        self.velocity_north_cmps = Self::i32_to_i16_clamped(nav.velocity_north_mmps / 10);
+        self.velocity_east_cmps = Self::i32_to_i16_clamped(nav.velocity_east_mmps / 10);
+        self.velocity_down_cmps = Self::i32_to_i16_clamped(nav.velocity_down_mmps / 10);
+        self.ground_speed_cmps = Self::i32_to_i16_clamped(nav.ground_speed_mmps / 10);
+        #[allow(clippy::cast_possible_wrap)]
         {
-            self.ground_speed_cmps =
-                (nav.ground_speed_mmps / 10).clamp(i32::from(i16::MIN), i32::from(i16::MAX)) as i16;
-            self.heading_deci_degrees =
-                (nav.heading_degrees_x1e5 as i32 / 1000).clamp(i32::from(i16::MIN), i32::from(i16::MAX)) as i16;
+            self.heading_deci_degrees = Self::i32_to_i16_clamped(nav.heading_degrees_x1e5 as i32 / 1000);
         }
 
         self.satellite_count = nav.satellite_count;
         self.fix = nav.fix_type;
         self.is_healthy = u8::from(nav.flags & 0x01 != 0);
+    }
+    pub fn amend_with_ubx_nav_dop(&mut self, dop: UbxNavDop) {
+        _ = self;
+        _ = dop;
     }
 }
 

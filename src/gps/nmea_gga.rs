@@ -23,7 +23,7 @@ pub struct NmeaGga {
     pub longitude_degrees_x1e7: i32,
     pub fix: u8,
     pub satellite_count: u8,
-    pub hdop_x100: i16,
+    pub hdop_x100: u16,
     pub altitude_cm: i32,
     pub geoid_separation_cm: i32,
 }
@@ -96,7 +96,7 @@ impl NmeaGga {
         if hdop < 0 {
             return None;
         }
-        ret.hdop_x100 = i16::try_from(hdop).ok()?;
+        ret.hdop_x100 = u16::try_from(hdop).ok()?;
 
         // Field 9/10: Altitude and units
         let altitude = fields.next()?;

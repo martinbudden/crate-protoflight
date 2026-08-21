@@ -129,13 +129,17 @@ pub async fn run(ctx: &'static mut MspContext) {
         #[cfg(feature = "gps")]
         if let Some(wait_result) = ctx.gps_subscriber.try_next_message()
             && let embassy_sync::pubsub::WaitResult::Message(event) = wait_result
-            && let GpsMessage::Solution(gps_solution_data) = event
+            && let GpsMessage::Data(gps_data) = event
         {
-            msp_sensor_data.gps_sol.longitude_degrees_x1e7 = gps_solution_data.longitude_degrees_x1e7;
-            msp_sensor_data.gps_sol.satellite_count = gps_solution_data.satellite_count;
-            msp_sensor_data.gps_sol.ground_speed_cmps = gps_solution_data.ground_speed_cmps;
-            msp_sensor_data.gps_sol.ground_course_degrees_x10 = gps_solution_data.ground_course_degrees_x10;
-            msp_sensor_data.gps_sol.pdop = gps_solution_data.pdop;
+            msp_sensor_data.gps_sol.longitude_degrees_x1e7 = gps_data.longitude_degrees_x1e7;
+            msp_sensor_data.gps_sol.satellite_count = gps_data.satellite_count;
+            // TODO: check sign of gps data
+            #[allow(clippy::cast_sign_loss)]
+            {
+                msp_sensor_data.gps_sol.ground_speed_cmps = gps_data.ground_speed_cmps as u16;
+                msp_sensor_data.gps_sol.ground_course_degrees_x10 = gps_data.heading_deci_degrees as u16;
+            }
+            msp_sensor_data.gps_sol.pdop = gps_data.pdop_x100;
         }
 
         // Generally, we don't want to store the Reader itself because it tracks a "cursor" (current position).

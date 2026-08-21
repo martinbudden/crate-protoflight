@@ -1,6 +1,7 @@
 use crate::gps::{
-    ubx_nav::{UBX_NAV_CLASS, UbxNavId},
-    ubx_parser::Parse,
+    UbxClassId,
+    ubx_nav::UbxNavId,
+    ubx_parser::{Parse, UbxParser},
 };
 
 /*
@@ -74,9 +75,11 @@ impl Default for UbxNavPvt {
 }
 
 impl UbxNavPvt {
-    pub const CLASS: u8 = UBX_NAV_CLASS;
+    pub const CLASS: UbxClassId = UbxClassId::Nav;
     pub const ID: u8 = UbxNavId::PVT;
-    pub const PAYLOAD_LEN: usize = 92;
+    pub const PAYLOAD_LEN_U16: u16 = 92;
+    pub const PAYLOAD_LEN: usize = Self::PAYLOAD_LEN_U16 as usize;
+    pub const FRAME_LEN: usize = Self::PAYLOAD_LEN + 8;
 
     pub const fn new() -> Self {
         Self {
@@ -144,6 +147,74 @@ impl UbxNavPvt {
             ground_speed_mmps: Parse::try_read_i32(&payload[60..64])?,
             heading_degrees_x1e5: Parse::try_read_u32(&payload[64..68])?,
         })
+    }
+
+    #[inline]
+    pub fn make_payload(self) -> [u8; Self::PAYLOAD_LEN] {
+        let mut payload = [0u8; Self::PAYLOAD_LEN];
+
+        payload[0..4].copy_from_slice(&self.time_of_week_ms.to_le_bytes());
+        let year = self.year.to_le_bytes();
+        payload[4] = year[0];
+        payload[5] = year[1];
+        payload[6] = self.month;
+        payload[7] = self.day;
+        payload[8] = self.hour;
+        payload[9] = self.minute;
+        payload[10] = self.second;
+        payload[11] = self.valid;
+
+        payload[12..16].copy_from_slice(&self.time_accuracy_ns.to_le_bytes());
+        payload[16..20].copy_from_slice(&self.nano.to_le_bytes());
+
+        payload[20] = self.fix_type;
+        payload[21] = self.flags;
+        payload[22] = self.flags2;
+        payload[23] = self.satellite_count;
+
+        payload[24..28].copy_from_slice(&self.latitude_degrees_x1e7.to_le_bytes());
+        payload[28..32].copy_from_slice(&self.longitude_degrees_x1e7.to_le_bytes());
+        payload[32..36].copy_from_slice(&self.height_ellipsoid_mm.to_le_bytes());
+        payload[36..40].copy_from_slice(&self.height_msl_mm.to_le_bytes());
+        payload[40..44].copy_from_slice(&self.horizontal_accuracy_mm.to_le_bytes());
+        payload[44..48].copy_from_slice(&self.vertical_accuracy_mm.to_le_bytes());
+        payload[48..52].copy_from_slice(&self.velocity_north_mmps.to_le_bytes());
+        payload[52..56].copy_from_slice(&self.velocity_east_mmps.to_le_bytes());
+        payload[56..60].copy_from_slice(&self.velocity_down_mmps.to_le_bytes());
+        payload[60..64].copy_from_slice(&self.ground_speed_mmps.to_le_bytes());
+        payload[64..68].copy_from_slice(&self.heading_degrees_x1e5.to_le_bytes());
+
+        payload
+    }
+
+    pub fn make_frame(self) -> [u8; Self::FRAME_LEN] {
+        let mut frame = [0u8; Self::FRAME_LEN];
+
+        frame[0] = UbxParser::SYNC_BYTE_1;
+        frame[1] = UbxParser::SYNC_BYTE_2;
+        frame[2] = Self::CLASS as u8;
+        frame[3] = Self::ID;
+        let payload_len = Self::PAYLOAD_LEN_U16.to_le_bytes();
+        frame[4] = payload_len[0];
+        frame[5] = payload_len[1];
+
+        let payload = self.make_payload();
+        frame[6] = payload[0];
+        frame[7] = payload[1];
+
+        // UBX Fletcher checksum covers class, ID, length and payload.
+        let mut checksum_a = 0u8;
+        let mut checksum_b = 0u8;
+
+        for &byte in &frame[2..Self::FRAME_LEN - 3] {
+            checksum_a = checksum_a.wrapping_add(byte);
+            checksum_b = checksum_b.wrapping_add(checksum_a);
+        }
+
+        frame[Self::FRAME_LEN - 2] = checksum_a;
+        frame[Self::FRAME_LEN - 1] = checksum_b;
+
+        frame
     }
 }
 
@@ -370,7 +441,7 @@ mod tests {
         let mut gps = GpsData::default();
         for byte in frame {
             if let Some(message) = parser.on_data_received(byte) {
-                assert_eq!(message.class, 0x01);
+                assert_eq!(message.class, UbxClassId::Nav);
                 assert_eq!(message.id, 0x07);
                 let nav = UbxNavPvt::parse(message.payload).expect("NAV-PVT payload should parse");
                 gps.amend_with_ubx_nav_pvt(nav);

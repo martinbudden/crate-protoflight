@@ -57,6 +57,8 @@ impl GpsParser {
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic)]
+    use crate::gps::UbxClassId;
+
     use super::*;
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
@@ -69,41 +71,33 @@ mod tests {
     fn make_ubx_frame(class: u8, id: u8, payload: &[u8]) -> Vec<u8> {
         #[allow(clippy::cast_possible_truncation)]
         let payload_len = (payload.len() as u16).to_le_bytes();
-
         let mut frame = Vec::with_capacity(8 + payload.len());
-
         frame.extend_from_slice(&[
             0xB5, 0x62, // UBX sync characters
             class, id,
         ]);
         frame.extend_from_slice(&payload_len);
         frame.extend_from_slice(payload);
-
         let mut ck_a = 0u8;
         let mut ck_b = 0u8;
-
         // Checksum covers class, ID, length and payload.
         for &byte in &frame[2..] {
             ck_a = ck_a.wrapping_add(byte);
             ck_b = ck_b.wrapping_add(ck_a);
         }
-
         frame.extend_from_slice(&[ck_a, ck_b]);
-
         frame
     }
     #[test]
     fn ubx_parser_produces_ubx_message_event() {
         let payload = [0x11, 0x22, 0x33];
         let frame = make_ubx_frame(0x01, 0x02, &payload);
-
         let mut parser = GpsParser::Ubx(UbxParser::new());
-
         for byte in frame {
             if let Some(event) = parser.on_data_received(byte) {
                 match event {
                     GpsParserEvent::UbxMessage(message) => {
-                        assert_eq!(message.class, 0x01);
+                        assert_eq!(message.class, UbxClassId::Nav);
                         assert_eq!(message.id, 0x02);
                         assert_eq!(message.payload, &payload);
                     }
@@ -111,19 +105,15 @@ mod tests {
                         panic!("expected UBX message event");
                     }
                 }
-
                 return;
             }
         }
-
         panic!("expected UBX message event");
     }
     #[test]
     fn nmea_parser_produces_nmea_complete_event() {
         let record = b"$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47\r\n";
-
         let mut parser = GpsParser::Nmea(NmeaParser::new());
-
         for &byte in record {
             if let Some(event) = parser.on_data_received(byte) {
                 match event {
@@ -134,11 +124,9 @@ mod tests {
                         panic!("expected NMEA complete event");
                     }
                 }
-
                 return;
             }
         }
-
         panic!("expected NMEA complete event");
     }
 }

@@ -1,5 +1,3 @@
-pub const UBX_NAV_CLASS: u8 = 0x01;
-
 pub struct UbxNavId;
 
 impl UbxNavId {

@@ -1,4 +1,4 @@
-use crate::gps::ubx_mon::{UBX_MON_CLASS, UbxMonId};
+use crate::gps::{UbxClassId, ubx_mon::UbxMonId};
 
 /// Dilution of precision.
 #[allow(unused)]
@@ -17,9 +17,11 @@ impl Default for UbxMonVer {
 }
 
 impl UbxMonVer {
-    pub const CLASS: u8 = UBX_MON_CLASS;
+    pub const CLASS: UbxClassId = UbxClassId::Mon;
     pub const ID: u8 = UbxMonId::VER;
-    pub const PAYLOAD_LEN: usize = 40; // 40 + 30*N
+    pub const PAYLOAD_LEN_U16: u16 = 40; // 40 + 30*N
+    pub const PAYLOAD_LEN: usize = Self::PAYLOAD_LEN_U16 as usize;
+    pub const FRAME_LEN: usize = Self::PAYLOAD_LEN + 8;
 
     pub const fn new() -> Self {
         Self { software_version: [0u8; 30], hardware_version: [0u8; 10] }

@@ -7,13 +7,17 @@ mod geodetic;
 mod gps_data;
 mod gps_message;
 mod gps_parser;
-mod gps_solution_data;
+mod gps_status_data;
 
 mod nmea_gga;
 mod nmea_gsa;
 mod nmea_gsv;
 mod nmea_parser;
 mod nmea_rmc;
+
+mod ubx_ack;
+mod ubx_ack_ack;
+mod ubx_ack_nak;
 
 mod ubx_cfg;
 mod ubx_cfg_msg;
@@ -36,7 +40,7 @@ pub use geodetic::{Geodetic, GeographicCoordinate};
 pub use gps_data::{GpsData, GpsDataAbridged};
 pub use gps_message::{GpsMessage, GpsYawHeadingMessage};
 pub use gps_parser::{GpsParser, GpsParserEvent};
-pub use gps_solution_data::GpsSolutionData;
+pub use gps_status_data::GpsStatusData;
 
 pub use nmea_gga::NmeaGga;
 pub use nmea_gsa::NmeaGsa;
@@ -44,9 +48,16 @@ pub use nmea_gsv::NmeaGsv;
 pub use nmea_parser::NmeaRecordType;
 pub use nmea_rmc::NmeaRmc;
 
+pub use ubx_ack::UbxAckId;
+pub use ubx_cfg::UbxCfgId;
+pub use ubx_mon::UbxMonId;
+pub use ubx_nav::UbxNavId;
+
+pub use ubx_cfg_msg::{UbxCfgMsgPoll, UbxCfgMsgSet};
+pub use ubx_mon_ver::UbxMonVer;
+pub use ubx_nav_dop::UbxNavDop;
 pub use ubx_nav_pvt::UbxNavPvt;
-#[allow(unused)]
-pub use ubx_parser::UbxMessage;
+pub use ubx_parser::{UbxClassId, UbxMessage};
 
 #[allow(unused)]
 pub(crate) use ubx_nav_pvt::make_realistic_nav_pvt_payload;
