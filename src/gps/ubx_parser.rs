@@ -40,6 +40,8 @@ pub enum UbxClassId {
     Sec = 0x27,
     /// High Rate Navigation Results Messages: High rate time, position, speed, heading.
     Hnr = 0x28,
+    // For configuring NMEA messages using the UBX protocol message UBX-CFG-MSG.
+    Nmea = 0xf0,
 }
 
 impl UbxClassId {

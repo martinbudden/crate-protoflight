@@ -34,6 +34,7 @@ mod ubx_nav_posllh;
 mod ubx_nav_pvt;
 mod ubx_nav_status;
 mod ubx_nav_velned;
+mod ubx_nmea;
 mod ubx_parser;
 
 pub use config::{GpsConfig, GpsOffOn, GpsProvider, GpsRescueConfig, SbasMode};
@@ -51,19 +52,25 @@ pub use nmea_gsv::NmeaGsv;
 pub use nmea_parser::NmeaRecordType;
 pub use nmea_rmc::NmeaRmc;
 
-pub use ubx_ack::UbxAckId;
-pub use ubx_cfg::UbxCfgId;
-pub use ubx_mon::UbxMonId;
-pub use ubx_nav::UbxNavId;
+pub use ubx_nmea::UbxNmeaId;
+pub use ubx_parser::{UbxClassId, UbxMessage};
 
+pub use ubx_ack::UbxAckId;
+pub use ubx_ack_ack::UbxAckAck;
+pub use ubx_ack_nak::UbxAckNak;
+
+pub use ubx_cfg::UbxCfgId;
 pub use ubx_cfg_msg::{UbxCfgMsgPoll, UbxCfgMsgSet};
 pub use ubx_cfg_nav5::UbxCfgNav5;
 pub use ubx_cfg_pms::UbxCfgPms;
 pub use ubx_cfg_rate::UbxCfgRate;
+
+pub use ubx_mon::UbxMonId;
 pub use ubx_mon_ver::UbxMonVer;
+
+pub use ubx_nav::UbxNavId;
 pub use ubx_nav_dop::UbxNavDop;
 pub use ubx_nav_pvt::UbxNavPvt;
-pub use ubx_parser::{UbxClassId, UbxMessage};
 
 #[allow(unused)]
 pub(crate) use ubx_nav_pvt::make_realistic_nav_pvt_payload;

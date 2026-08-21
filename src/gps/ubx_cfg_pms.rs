@@ -63,28 +63,18 @@ impl UbxCfgPms {
     pub fn make_frame(self) -> [u8; Self::FRAME_LEN] {
         let mut frame = [0u8; Self::FRAME_LEN];
 
-        frame[0] = UbxParser::SYNC_BYTE_1;
-        frame[1] = UbxParser::SYNC_BYTE_2;
-        frame[2] = Self::CLASS as u8;
-        frame[3] = Self::ID;
-        let payload_len = Self::PAYLOAD_LEN_U16.to_le_bytes();
-        frame[4] = payload_len[0];
-        frame[5] = payload_len[1];
+        frame[0..4].copy_from_slice(&[UbxParser::SYNC_BYTE_1, UbxParser::SYNC_BYTE_2, Self::CLASS as u8, Self::ID]);
+        frame[4..6].copy_from_slice(&Self::PAYLOAD_LEN_U16.to_le_bytes());
 
-        let payload = self.make_payload();
-        frame[6..6 + Self::PAYLOAD_LEN].copy_from_slice(&payload);
+        frame[6..6 + Self::PAYLOAD_LEN].copy_from_slice(&self.make_payload());
 
         // UBX Fletcher checksum covers class, ID, length and payload.
-        let mut checksum_a = 0u8;
-        let mut checksum_b = 0u8;
-
+        let mut checksum = [0u8; 2];
         for &byte in &frame[2..Self::FRAME_LEN - 3] {
-            checksum_a = checksum_a.wrapping_add(byte);
-            checksum_b = checksum_b.wrapping_add(checksum_a);
+            checksum[0] = checksum[0].wrapping_add(byte);
+            checksum[1] = checksum[1].wrapping_add(checksum[1]);
         }
-
-        frame[Self::FRAME_LEN - 2] = checksum_a;
-        frame[Self::FRAME_LEN - 1] = checksum_b;
+        frame[Self::FRAME_LEN - 2..Self::FRAME_LEN].copy_from_slice(&checksum);
 
         frame
     }

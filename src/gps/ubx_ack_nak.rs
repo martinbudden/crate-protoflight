@@ -18,7 +18,7 @@ impl Default for UbxAckNak {
 impl UbxAckNak {
     pub const CLASS: UbxClassId = UbxClassId::Ack;
     pub const ID: u8 = UbxAckId::NAK;
-    pub const PAYLOAD_LEN_U16: u16 = 22;
+    pub const PAYLOAD_LEN_U16: u16 = 2;
     pub const PAYLOAD_LEN: usize = Self::PAYLOAD_LEN_U16 as usize;
     pub const FRAME_LEN: usize = Self::PAYLOAD_LEN + 8;
 
