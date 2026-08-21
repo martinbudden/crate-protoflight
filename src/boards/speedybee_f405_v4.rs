@@ -5,7 +5,8 @@
 
 // For Betaflight configuration files:
 // see <https://github.com/betaflight/config/blob/master/configs/SPBE/SPEEDYBEEF405V4/config.h>
-// and <https://github.com/betaflight/unified-targets/blob/master/configs/default/SPBE-SPEEDYBEEF405V4.config>.
+// and <https://github.com/betaflight/unified-targets/blob/master/configs/default/SPBE-SPEEDYBEEF405V4.config>
+// and <https://betaflight.com/docs/wiki/boards/current/SPEEDYBEEF405V4>.
 
 use crate::{
     barometer_sensors::Barometer,
