@@ -4,16 +4,16 @@ mod platform_rp2350;
 mod platform_std;
 mod platform_stm32;
 
-pub mod board;
-pub mod mock_uart;
+mod board;
+mod mock_uart;
 
-pub mod airb_omnibus_f4;
-pub mod madflight_fc3;
-pub mod matek_f405_wte;
-pub mod rpi_pico2;
-pub mod sp_racing_f4_evo;
-pub mod speedybee_f405_v4;
-pub mod std;
+mod airb_omnibus_f4;
+mod madflight_fc3;
+mod matek_f405_wte;
+mod rpi_pico2;
+mod sp_racing_f4_evo;
+mod speedybee_f405_v4;
+mod std;
 
 pub use board::BoardInit;
 

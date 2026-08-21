@@ -7,7 +7,7 @@ use embassy_sync::{
 use static_cell::StaticCell;
 
 use crate::{
-    autopilot::pilot::Autopilot,
+    autopilot::Autopilot,
     flight::RxMessage,
     tasks::{
         gyro_pid::{GyroPidReceiver, gyro_pid_receiver},

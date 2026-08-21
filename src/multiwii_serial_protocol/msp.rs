@@ -9,8 +9,6 @@ use crate::config::{ConfigItem, ConfigPublisher, FastConfigItem, FastConfigPubli
 #[cfg(feature = "barometer")]
 use crate::barometer_sensors::BarometerType;
 
-#[cfg(feature = "debug")]
-use crate::tasks::global_debug::GlobalDebug;
 
 #[cfg(feature = "gps")]
 use crate::gps::GpsDataAbridged;
@@ -669,7 +667,7 @@ impl Msp {
         #[cfg(feature = "debug")]
         {
             dst.write_u8(crate::tasks::GLOBAL_DEBUG.mode());
-            dst.write_u8(GlobalDebug::COUNT_U8);
+            dst.write_u8(crate::tasks::GlobalDebug::COUNT_U8);
         }
         #[cfg(not(feature = "debug"))]
         {

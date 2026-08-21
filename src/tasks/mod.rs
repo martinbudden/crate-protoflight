@@ -2,7 +2,7 @@
 #![doc = include_str!("README.md")]
 
 #[macro_use]
-pub mod global_debug;
+mod global_debug;
 
 mod autopilot;
 mod barometer;
@@ -11,7 +11,7 @@ mod blackbox_encoder;
 mod blackbox_writer;
 mod gps;
 mod gyro_pid;
-pub mod init;
+mod init;
 mod magnetometer;
 mod motor_mixer;
 mod msp;
@@ -21,6 +21,7 @@ mod osd;
 mod rangefinder;
 mod rx;
 
-#[allow(unused)]
+pub use init::init;
+
 #[cfg(feature = "debug")]
-pub use global_debug::{DebugMode, GLOBAL_DEBUG};
+pub use global_debug::{DebugMode, GLOBAL_DEBUG,GlobalDebug};
