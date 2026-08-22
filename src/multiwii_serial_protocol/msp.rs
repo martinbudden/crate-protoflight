@@ -512,7 +512,7 @@ impl Msp {
         dst.write_u8(arming_config.auto_disarm_delay);
         dst.write_u8(0); // was disarm_kill_switch
         dst.write_u8(imu_config.small_angle);
-        dst.write_u8(arming_config.gyro_cal_on_first_arm);
+        dst.write_u8(arming_config.gyro_calibrate_on_first_arm);
         MspResult::Ack
     }
     async fn set_arming_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
@@ -530,7 +530,7 @@ impl Msp {
             imu_config.small_angle = src.read_u8();
         }
         if src.bytes_remaining() < 1 {
-            arming_config.gyro_cal_on_first_arm = src.read_u8();
+            arming_config.gyro_calibrate_on_first_arm = src.read_u8();
         }
         if global_config.arming != arming_config {
             global_config.arming = arming_config;

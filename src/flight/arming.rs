@@ -7,7 +7,7 @@ use {
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ArmingConfig {
-    pub gyro_cal_on_first_arm: u8, // calibrate the gyro right before the first arm
+    pub gyro_calibrate_on_first_arm: u8, // calibrate the gyro right before the first arm
     pub auto_disarm_delay: u8, // allow automatically disarming multicopters after auto_disarm_delay seconds of zero throttle. Disabled when 0
     pub prearm_allow_rearm: u8,
 }
@@ -23,7 +23,7 @@ impl Default for ArmingConfig {
 
 impl ArmingConfig {
     pub const fn new() -> Self {
-        Self { gyro_cal_on_first_arm: 0, auto_disarm_delay: 5, prearm_allow_rearm: 0 }
+        Self { gyro_calibrate_on_first_arm: 0, auto_disarm_delay: 5, prearm_allow_rearm: 0 }
     }
 }
 
@@ -140,9 +140,12 @@ mod tests {
 
     #[test]
     fn normal_types() {
+        is_full::<ArmingConfig>();
         is_full::<ArmingFlags>();
         is_full::<DisarmingFlags>();
 
+        #[cfg(feature = "serde")]
+        is_config::<ArmingConfig>();
         #[cfg(feature = "serde")]
         is_config::<ArmingFlags>();
         #[cfg(feature = "serde")]
