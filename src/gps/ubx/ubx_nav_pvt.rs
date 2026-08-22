@@ -1,6 +1,5 @@
 use super::{
-    UbxClassId,
-    ubx_nav::UbxNavId,
+    UbxClassId, UbxNavId,
     ubx_parser::{Parse, UbxParser},
 };
 

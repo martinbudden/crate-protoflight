@@ -1,4 +1,4 @@
-use super::{UbxClassId, ubx_ack::UbxAckId};
+use super::{UbxAckId, UbxClassId};
 
 /// Message acknowledged.
 #[allow(unused)]

@@ -26,8 +26,8 @@ pub use gps_status_data::GpsStatusData;
 pub use nmea::{NmeaGga, NmeaGsa, NmeaGsv, NmeaRecordType, NmeaRmc};
 
 pub use ubx::{
-    UbxAckAck, UbxAckId, UbxAckNak, UbxCfgId, UbxCfgMsgPoll, UbxCfgMsgSet, UbxCfgNav5, UbxCfgPms, UbxCfgRate,
-    UbxClassId, UbxMessage, UbxMonId, UbxMonVer, UbxNavDop, UbxNavId, UbxNavPvt, UbxNmeaId, UbxParser,
+    UbxAckAck, UbxAckNak, UbxCfgMsgPoll, UbxCfgMsgSet, UbxCfgNav5, UbxCfgPms, UbxCfgRate, UbxMessage, UbxMonId,
+    UbxMonVer, UbxNavDop, UbxNavId, UbxNavPvt, UbxParser,
 };
 
 pub(crate) use ubx::make_realistic_nav_pvt_payload;

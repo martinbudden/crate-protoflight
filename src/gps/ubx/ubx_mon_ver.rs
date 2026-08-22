@@ -1,4 +1,4 @@
-use super::{UbxClassId, ubx_mon::UbxMonId};
+use super::{UbxClassId, UbxMonId};
 
 /// Dilution of precision.
 #[allow(unused)]

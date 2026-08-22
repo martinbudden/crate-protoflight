@@ -1,3 +1,5 @@
+use super::UbxClassId;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(u8)]
 pub enum UbxVersion {
@@ -7,63 +9,6 @@ pub enum UbxVersion {
     M8,
     M9,
     M10,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[repr(u8)]
-pub enum UbxClassId {
-    /// Navigation Results Messages: Position, Speed, Time, Acceleration, Heading, DOP, SVs used.
-    Nav = 0x01,
-    /// Receiver Manager Messages: Satellite Status, RTC Status.
-    Rxm = 0x02,
-    /// Information Messages: Printf-Style Messages, with IDs such as Error, Warning, Notice.
-    Inf = 0x04,
-    ///Ack/Nak Messages: Acknowledge or Reject messages to UBX-CFG input messages.
-    Ack = 0x05,
-    /// Configuration Input Messages: Configure the receiver.
-    Cfg = 0x06,
-    /// Firmware Update Messages: Memory/Flash erase/write, Reboot, Flash identification, etc.
-    Upd = 0x09,
-    /// Monitoring Messages: Communication Status, Stack Usage, Task Status.
-    Mon = 0x0A,
-    /// Assist Now Aiding Messages: Ephemeris, Almanac, other A-GPS data input.
-    Aid = 0x0B,
-    /// Timing Messages: Time Pulse Output, Time Mark Results.
-    Tim = 0x0D,
-    /// External Sensor Fusion Messages: External Sensor Measurements and Status Information.
-    Esf = 0x10,
-    /// Multiple GNSS Assistance Messages: Assistance data for various GNSS.
-    Mga = 0x13,
-    /// Logging Messages: Log creation, deletion, info and retrieval.
-    Log = 0x21,
-    /// Security Feature Messages.
-    Sec = 0x27,
-    /// High Rate Navigation Results Messages: High rate time, position, speed, heading.
-    Hnr = 0x28,
-    // For configuring NMEA messages using the UBX protocol message UBX-CFG-MSG.
-    Nmea = 0xf0,
-}
-
-impl UbxClassId {
-    pub fn try_from_u8(value: u8) -> Option<Self> {
-        match value {
-            0x01 => Some(Self::Nav),
-            0x02 => Some(Self::Rxm),
-            0x04 => Some(Self::Inf),
-            0x05 => Some(Self::Ack),
-            0x06 => Some(Self::Cfg),
-            0x09 => Some(Self::Upd),
-            0x0a => Some(Self::Mon),
-            0x0b => Some(Self::Aid),
-            0x0d => Some(Self::Tim),
-            0x10 => Some(Self::Esf),
-            0x13 => Some(Self::Mga),
-            0x21 => Some(Self::Log),
-            0x27 => Some(Self::Sec),
-            0x28 => Some(Self::Hnr),
-            _ => None,
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

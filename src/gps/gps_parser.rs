@@ -53,9 +53,9 @@ impl GpsParser {
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic)]
-    use crate::gps::UbxClassId;
 
     use super::*;
+    use crate::gps::ubx::UbxClassId;
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
