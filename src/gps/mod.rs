@@ -1,7 +1,7 @@
 #![doc = include_str!("README.md")]
 #![allow(unused)]
 
-mod config;
+mod gps_config;
 mod gps_rescue_config;
 
 mod geodetic;
@@ -38,7 +38,7 @@ mod ubx_nav_velned;
 mod ubx_nmea;
 mod ubx_parser;
 
-pub use config::{GpsConfig, GpsOffOn, GpsProvider, SbasMode};
+pub use gps_config::{GpsConfig, GpsOffOn, GpsProvider, SbasMode};
 pub use gps_rescue_config::{GpsRescueAltitudeMode, GpsRescueConfig, GpsRescueSanityChecks};
 
 pub use geodetic::{Geodetic, GeographicCoordinate};
