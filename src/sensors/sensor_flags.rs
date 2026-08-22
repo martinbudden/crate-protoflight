@@ -10,6 +10,15 @@ pub struct SensorFlags {
     pub flags: u32,
 }
 
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for SensorFlags {}
+
+impl Default for SensorFlags {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[allow(unused)]
 impl SensorFlags {
     pub const GYRO: u32 = 1 << 0;
@@ -41,15 +50,6 @@ impl SensorFlags {
 
     pub fn set_flags(&mut self, flags: u32) {
         self.flags = flags;
-    }
-}
-
-#[cfg(feature = "serde")]
-impl PostcardValue<'_> for SensorFlags {}
-
-impl Default for SensorFlags {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

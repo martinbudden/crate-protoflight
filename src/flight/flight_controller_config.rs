@@ -86,6 +86,12 @@ pub struct FlightControllerFiltersConfig {
 #[cfg(feature = "serde")]
 impl PostcardValue<'_> for FlightControllerFiltersConfig {}
 
+impl Default for FlightControllerFiltersConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FlightControllerFiltersConfig {
     pub const PT1: u8 = 0;
     pub const _BIQUAD: u8 = 1;
@@ -106,12 +112,6 @@ impl FlightControllerFiltersConfig {
             output_lpf_hz: 500,
             rc_smoothing_feedforward_cutoff: 0,
         }
-    }
-}
-
-impl Default for FlightControllerFiltersConfig {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -141,7 +141,7 @@ impl Default for FlightModeConfig {
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct TpaConfig {
-    pub mode: u8,
+    pub mode: TpaMode,
     pub rate: u8,
     pub breakpoint: u16,
     pub low_rate: i8,
@@ -152,19 +152,51 @@ pub struct TpaConfig {
 #[cfg(feature = "serde")]
 impl PostcardValue<'_> for TpaConfig {}
 
-impl TpaConfig {
-    pub const _TPA_MODE_P: u8 = 0;
-    pub const TPA_MODE_D: u8 = 1;
-    pub const _TPA_MODE_PDS: u8 = 2;
-
-    pub const fn new() -> Self {
-        Self { mode: Self::TPA_MODE_D, rate: 65, breakpoint: 1350, low_rate: 20, low_always: 0, low_breakpoint: 1050 }
-    }
-}
-
 impl Default for TpaConfig {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl TpaConfig {
+    pub const fn new() -> Self {
+        Self { mode: TpaMode::D, rate: 65, breakpoint: 1350, low_rate: 20, low_always: 0, low_breakpoint: 1050 }
+    }
+}
+
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum TpaMode {
+    P = 0,
+    #[default]
+    D = 1,
+    Pds = 2,
+}
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for TpaMode {}
+
+#[allow(unused)]
+impl TpaMode {
+    #[must_use]
+    pub fn from_u8(value: u8) -> Self {
+        match value {
+            0 => Self::P,
+            1 => Self::D,
+            2 => Self::Pds,
+            _ => Self::default(),
+        }
+    }
+
+    #[must_use]
+    pub fn try_from_u8(value: u8) -> Option<Self> {
+        match value {
+            0 => Some(Self::P),
+            1 => Some(Self::D),
+            2 => Some(Self::Pds),
+            _ => None,
+        }
     }
 }
 
@@ -179,15 +211,15 @@ pub struct AntiGravityConfig {
 #[cfg(feature = "serde")]
 impl PostcardValue<'_> for AntiGravityConfig {}
 
-impl AntiGravityConfig {
-    pub const fn new() -> Self {
-        Self { cutoff_hz: 5, p_gain: 100, i_gain: 80 }
-    }
-}
-
 impl Default for AntiGravityConfig {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl AntiGravityConfig {
+    pub const fn new() -> Self {
+        Self { cutoff_hz: 5, p_gain: 100, i_gain: 80 }
     }
 }
 
@@ -202,15 +234,15 @@ pub struct CrashFlipConfig {
 #[cfg(feature = "serde")]
 impl PostcardValue<'_> for CrashFlipConfig {}
 
-impl CrashFlipConfig {
-    pub const fn new() -> Self {
-        Self { motor_percent: 0, rate: 0, auto_rearm: 0 }
-    }
-}
-
 impl Default for CrashFlipConfig {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl CrashFlipConfig {
+    pub const fn new() -> Self {
+        Self { motor_percent: 0, rate: 0, auto_rearm: 0 }
     }
 }
 
@@ -257,6 +289,12 @@ pub struct CrashRecoveryConfig {
 #[cfg(feature = "serde")]
 impl PostcardValue<'_> for CrashRecoveryConfig {}
 
+impl Default for CrashRecoveryConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CrashRecoveryConfig {
     pub const fn new() -> Self {
         Self {
@@ -270,12 +308,6 @@ impl CrashRecoveryConfig {
             recovery_rate: 100,      // degrees per second
             recovery: 0,             // off, on, on and beeps when it is in crash recovery mode
         }
-    }
-}
-
-impl Default for CrashRecoveryConfig {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -317,15 +349,15 @@ pub struct DMaxConfig {
 #[cfg(feature = "serde")]
 impl PostcardValue<'_> for DMaxConfig {}
 
-impl DMaxConfig {
-    pub const fn new() -> Self {
-        Self { d_max: [0u8; 2], gain: 0, advance: 0 }
-    }
-}
-
 impl Default for DMaxConfig {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl DMaxConfig {
+    pub const fn new() -> Self {
+        Self { d_max: [0u8; 2], gain: 0, advance: 0 }
     }
 }
 
@@ -371,6 +403,12 @@ pub struct GyroConfig {
 #[cfg(feature = "serde")]
 impl PostcardValue<'_> for GyroConfig {}
 
+impl Default for GyroConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GyroConfig {
     pub const fn new() -> Self {
         Self {
@@ -409,12 +447,6 @@ impl GyroConfig {
 
             gyro_enabled_bitmask: 0,
         }
-    }
-}
-
-impl Default for GyroConfig {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

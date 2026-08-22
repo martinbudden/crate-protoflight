@@ -15,16 +15,16 @@ pub struct RangefinderConfig {
 #[cfg(feature = "serde")]
 impl PostcardValue<'_> for RangefinderConfig {}
 
+impl Default for RangefinderConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[allow(unused)]
 impl RangefinderConfig {
     pub const fn new() -> Self {
         Self { hardware: RangefinderType::None }
-    }
-}
-
-impl Default for RangefinderConfig {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

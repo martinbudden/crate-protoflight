@@ -12,18 +12,18 @@ pub struct ArmingConfig {
     pub prearm_allow_rearm: u8,
 }
 
-impl ArmingConfig {
-    pub const fn new() -> Self {
-        Self { gyro_cal_on_first_arm: 0, auto_disarm_delay: 5, prearm_allow_rearm: 0 }
-    }
-}
-
 #[cfg(feature = "serde")]
 impl PostcardValue<'_> for ArmingConfig {}
 
 impl Default for ArmingConfig {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl ArmingConfig {
+    pub const fn new() -> Self {
+        Self { gyro_cal_on_first_arm: 0, auto_disarm_delay: 5, prearm_allow_rearm: 0 }
     }
 }
 

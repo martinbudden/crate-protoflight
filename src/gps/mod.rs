@@ -2,6 +2,7 @@
 #![allow(unused)]
 
 mod config;
+mod gps_rescue_config;
 
 mod geodetic;
 mod gps_data;
@@ -37,7 +38,8 @@ mod ubx_nav_velned;
 mod ubx_nmea;
 mod ubx_parser;
 
-pub use config::{GpsConfig, GpsOffOn, GpsProvider, GpsRescueConfig, SbasMode};
+pub use config::{GpsConfig, GpsOffOn, GpsProvider, SbasMode};
+pub use gps_rescue_config::{GpsRescueAltitudeMode, GpsRescueConfig, GpsRescueSanityChecks};
 
 pub use geodetic::{Geodetic, GeographicCoordinate};
 

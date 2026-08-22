@@ -20,6 +20,12 @@ pub struct ImuConfig {
 #[cfg(feature = "serde")]
 impl PostcardValue<'_> for ImuConfig {}
 
+impl Default for ImuConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ImuConfig {
     pub const fn new() -> Self {
         Self {
@@ -32,11 +38,6 @@ impl ImuConfig {
     }
 }
 
-impl Default for ImuConfig {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 #[cfg(test)]
 mod tests {
     use super::*;

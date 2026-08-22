@@ -1,4 +1,4 @@
-use radio_controllers::{RadioType, Rates, RatesConfig, RcMode, RcModes};
+use radio_controllers::{Rates, RcMode, RcModes};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use stream_buf::{StreamBufReader, StreamBufWriter};
@@ -8,7 +8,6 @@ use crate::config::{ConfigItem, ConfigPublisher, FastConfigItem, FastConfigPubli
 
 #[cfg(feature = "barometer")]
 use crate::barometer_sensors::BarometerType;
-
 
 #[cfg(feature = "gps")]
 use crate::gps::GpsDataAbridged;
@@ -76,15 +75,15 @@ pub struct Msp {
     pub version: u8,
 }
 
-impl Msp {
-    pub const fn new() -> Self {
-        Self { version: 0 }
-    }
-}
-
 impl Default for Msp {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl Msp {
+    pub const fn new() -> Self {
+        Self { version: 0 }
     }
 }
 
@@ -123,6 +122,8 @@ impl Msp {
             }
             Msp::ARMING_CONFIG => Self::arming_config(dst).await,
             Msp::FAILSAFE_CONFIG => Self::failsafe_config(dst).await,
+            #[cfg(feature = "blackbox")]
+            Msp::BLACKBOX_CONFIG => Self::blackbox_config(dst).await,
             Msp::ADVANCED_CONFIG => Self::advanced_config(dst).await,
             Msp::FILTER_CONFIG => Self::filter_config(dst).await,
             Msp::SENSOR_CONFIG => Self::sensor_config(dst).await,
@@ -209,6 +210,8 @@ impl Msp {
             Msp::SET_RSSI_CONFIG => Self::set_rssi_config(src, config_publisher).await,
             Msp::SET_ARMING_CONFIG => Self::set_arming_config(src, config_publisher).await,
             Msp::SET_FAILSAFE_CONFIG => Self::set_failsafe_config(src, config_publisher).await,
+            #[cfg(feature = "blackbox")]
+            Msp::SET_BLACKBOX_CONFIG => Self::set_blackbox_config(src, config_publisher).await,
             Msp::SET_ADVANCED_CONFIG => Self::set_advanced_config(src, config_publisher).await,
             Msp::SET_FILTER_CONFIG => Self::set_filter_config(src, config_publisher).await,
             Msp::SET_SENSOR_CONFIG => Self::set_sensor_config(src, config_publisher).await,
@@ -576,7 +579,7 @@ impl Msp {
         let mut global_config = GLOBAL_CONFIG.lock().await;
         let mut rx = global_config.rx;
 
-        rx.serial_rx_provider = RadioType::from_u8(src.read_u8());
+        rx.serial_rx_provider = radio_controllers::RadioType::from_u8(src.read_u8());
         rx.max_check = src.read_u16();
         rx.mid_rc = src.read_u16();
         rx.min_check = src.read_u16();
@@ -616,9 +619,9 @@ impl Msp {
         dst.write_u8(config.delay_deciseconds);
         dst.write_u8(config.landing_time_seconds);
         dst.write_u16(config.throttle_pwm);
-        dst.write_u8(config.switch_mode);
+        dst.write_u8(config.switch_mode as u8);
         dst.write_u16(config.throttle_low_delay_deciseconds);
-        dst.write_u8(config.procedure);
+        dst.write_u8(config.procedure as u8);
         MspResult::Ack
     }
     async fn set_failsafe_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
@@ -632,13 +635,74 @@ impl Msp {
         config.delay_deciseconds = src.read_u8();
         config.landing_time_seconds = src.read_u8();
         config.throttle_pwm = src.read_u16();
-        config.switch_mode = src.read_u8();
+        config.switch_mode = radio_controllers::FailsafeSwitchMode::from_u8(src.read_u8());
         config.throttle_low_delay_deciseconds = src.read_u16();
-        config.procedure = src.read_u8();
+        config.procedure = radio_controllers::FailsafeProcedure::from_u8(src.read_u8());
 
         if config != global_config.failsafe {
             global_config.failsafe = config;
             publisher.publish(ConfigItem::Failsafe(config)).await;
+        }
+        MspResult::Ack
+    }
+
+    #[cfg(feature = "blackbox")]
+    async fn blackbox_config(dst: &mut StreamBufWriter<'_>) -> MspResult {
+        let config = {
+            let global_config = GLOBAL_CONFIG.lock().await;
+            global_config.blackbox
+        };
+        dst.write_u8(1); //Blackbox supported
+        dst.write_u8(config.device as u8);
+        dst.write_u8(1); // Rate numerator, not used anymore
+        dst.write_u8(8); // TODO: blackbox p_interval
+        dst.write_u16(64); // TODO: blackbox i_interval / p_interval
+        dst.write_u8(config.sample_rate);
+        // Added in MSP API 1.45
+        dst.write_u32(config.fields_disabled_mask);
+
+        MspResult::Ack
+    }
+    #[cfg(feature = "blackbox")]
+    async fn set_blackbox_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
+        // Check if enough data is even present before locking anything
+        if src.bytes_remaining() < 8 {
+            return MspResult::Error;
+        }
+        let mut global_config = GLOBAL_CONFIG.lock().await;
+        let mut config = global_config.blackbox;
+
+        // Don't allow config to be updated while Blackbox is logging
+        //if blackboxMayEditConfig() {
+        config.device = blackbox_logger::BlackboxDevice::from_u8(src.read_u8());
+        let rate_numerator = u16::from(src.read_u8());
+        let rate_denominator = u16::from(src.read_u8());
+        let p_ratio = if src.bytes_remaining() >= 2 {
+            // p_ratio specified, so use it directly
+            src.read_u16()
+        } else {
+            // p_ratio not specified in MSP, so calculate it from old rateNum and rateDenom
+            let blackbox_i_interval = 256; // TODO: blackbox i_interval
+            blackbox_i_interval * rate_numerator / rate_denominator
+        };
+
+        if src.bytes_remaining() >= 1 {
+            // sample_rate specified, so use it directly
+            config.sample_rate = src.read_u8();
+        } else {
+            // sample_rate not specified in MSP, so calculate it from old p_ratio
+            _ = p_ratio;
+            config.sample_rate = blackbox_logger::BlackboxConfig::default().sample_rate; // TODO calculate blackbox sample rate from p_ratio.
+        }
+
+        // Added in MSP API 1.45
+        if src.bytes_remaining() >= 4 {
+            config.fields_disabled_mask = src.read_u32();
+        }
+
+        if config != global_config.blackbox {
+            global_config.blackbox = config;
+            publisher.publish(ConfigItem::Blackbox(config)).await;
         }
         MspResult::Ack
     }
@@ -986,14 +1050,14 @@ impl Msp {
         dst.write_u8(rates.rc_rates[Rates::PITCH]);
         dst.write_u8(rates.rc_expos[Rates::PITCH]);
         // added in 1.41
-        dst.write_u8(rates.throttle_limit_type);
+        dst.write_u8(rates.throttle_limit_type as u8);
         dst.write_u8(rates.throttle_limit_percent);
         // added in 1.42
         dst.write_u16(rates.limits[Rates::ROLL]);
         dst.write_u16(rates.limits[Rates::PITCH]);
         dst.write_u16(rates.limits[Rates::YAW]);
         // added in 1.43
-        dst.write_u8(RatesConfig::TYPE_ACTUAL); // hardcoded, since we only support RATES_TYPE_ACTUAL rates.ratesType);
+        dst.write_u8(radio_controllers::RatesType::Actual as u8); // hardcoded, since we only support RateTypes::Actual.
         MspResult::Ack
     }
     async fn set_rc_tuning(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
@@ -1037,7 +1101,7 @@ impl Msp {
         }
         // version 1.41
         if src.bytes_remaining() >= 2 {
-            rates.throttle_limit_type = src.read_u8();
+            rates.throttle_limit_type = radio_controllers::ThrottleLimitType::from_u8(src.read_u8());
             rates.throttle_limit_percent = src.read_u8();
         }
         // version 1.42
@@ -1280,13 +1344,13 @@ impl Msp {
         dst.write_u16(autopilot_config.throttle_min);
         dst.write_u16(autopilot_config.throttle_max);
         dst.write_u16(autopilot_config.hover_throttle);
-        dst.write_u8(gps_rescue_config.sanity_checks);
+        dst.write_u8(gps_rescue_config.sanity_checks as u8);
         dst.write_u8(gps_rescue_config.min_sats);
         // Added in API version 1.43
         dst.write_u16(gps_rescue_config.ascend_rate);
         dst.write_u16(gps_rescue_config.descend_rate);
         dst.write_u8(gps_rescue_config.allow_arming_without_fix);
-        dst.write_u8(gps_rescue_config.altitude_mode);
+        dst.write_u8(gps_rescue_config.altitude_mode as u8);
         // Added in API version 1.44
         dst.write_u16(gps_rescue_config.min_start_dist_m);
         // Added in API version 1.46
@@ -1310,7 +1374,7 @@ impl Msp {
         autopilot_config.throttle_min = src.read_u16();
         autopilot_config.throttle_max = src.read_u16();
         autopilot_config.hover_throttle = src.read_u16();
-        gps_rescue_config.sanity_checks = src.read_u8();
+        gps_rescue_config.sanity_checks = crate::gps::GpsRescueSanityChecks::from_u8(src.read_u8());
         gps_rescue_config.min_sats = src.read_u8();
 
         if src.bytes_remaining() >= 6 {
@@ -1318,7 +1382,7 @@ impl Msp {
             gps_rescue_config.ascend_rate = src.read_u16();
             gps_rescue_config.descend_rate = src.read_u16();
             gps_rescue_config.allow_arming_without_fix = src.read_u8();
-            gps_rescue_config.altitude_mode = src.read_u8();
+            gps_rescue_config.altitude_mode = crate::gps::GpsRescueAltitudeMode::from_u8(src.read_u8());
         }
         if src.bytes_remaining() >= 2 {
             // Added in API version 1.44

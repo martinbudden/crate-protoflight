@@ -10,6 +10,15 @@ pub struct FeatureFlags {
     flags: u32,
 }
 
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for FeatureFlags {}
+
+impl Default for FeatureFlags {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[allow(unused)]
 impl FeatureFlags {
     pub const RX_PPM: u32 = 1 << 0;
@@ -55,15 +64,6 @@ impl FeatureFlags {
 
     pub fn set_flags(&mut self, flags: u32) {
         self.flags = flags;
-    }
-}
-
-#[cfg(feature = "serde")]
-impl PostcardValue<'_> for FeatureFlags {}
-
-impl Default for FeatureFlags {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

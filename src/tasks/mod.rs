@@ -23,5 +23,6 @@ mod rx;
 
 pub use init::init;
 
+#[allow(unused)]
 #[cfg(feature = "debug")]
-pub use global_debug::{DebugMode, GLOBAL_DEBUG,GlobalDebug};
+pub use global_debug::{DebugMode, GLOBAL_DEBUG, GlobalDebug};

@@ -7,7 +7,7 @@ mod path_follower;
 mod pilot;
 mod xy_position_dual_ring_pid;
 
-pub use pilot::Autopilot;
 pub use config::{AutopilotConfig, PositionHoldConfig};
 #[allow(unused)]
 pub use mock_multirotor::{MockMultirotorXY, MockMultirotorZ};
+pub use pilot::Autopilot;

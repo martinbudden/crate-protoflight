@@ -76,17 +76,17 @@ pub struct BatteryProfiles {
 #[cfg(feature = "serde")]
 impl PostcardValue<'_> for BatteryProfiles {}
 
+impl Default for BatteryProfiles {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BatteryProfiles {
     pub const MAX: u8 = 2;
     pub const COUNT: usize = 3;
     pub const fn new() -> Self {
         Self { profiles: [BatteryProfile::new(); Self::COUNT] }
-    }
-}
-
-impl Default for BatteryProfiles {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -172,6 +172,12 @@ pub struct VoltageMeterReading {
     pub low_voltage_cutoff: bool,
 }
 
+impl Default for VoltageMeterReading {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl VoltageMeterReading {
     pub const SOURCE_NONE: u8 = 0;
     pub const SOURCE_ADC: u8 = 1;
@@ -193,12 +199,6 @@ impl VoltageMeterReading {
     }
 }
 
-impl Default for VoltageMeterReading {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CurrentMeterReading {
     /// Current read by current sensor in centiampere (1/100th A).
@@ -209,6 +209,12 @@ pub struct CurrentMeterReading {
     pub mah_drawn: i32,
     /// mAh offset.
     pub mah_drawn_offset: i32,
+}
+
+impl Default for CurrentMeterReading {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl CurrentMeterReading {
@@ -226,16 +232,17 @@ impl CurrentMeterReading {
     }
 }
 
-impl Default for CurrentMeterReading {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BatteryMessage {
     pub voltage: VoltageMeterReading,
     pub current: CurrentMeterReading,
     pub state: BatteryState,
+}
+
+impl Default for BatteryMessage {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl BatteryMessage {
@@ -245,12 +252,6 @@ impl BatteryMessage {
             current: CurrentMeterReading::new(),
             state: BatteryState::default(),
         }
-    }
-}
-
-impl Default for BatteryMessage {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

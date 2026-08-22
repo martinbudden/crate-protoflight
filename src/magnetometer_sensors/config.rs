@@ -43,6 +43,12 @@ pub struct MagnetometerConfig {
 #[cfg(feature = "serde")]
 impl PostcardValue<'_> for MagnetometerConfig {}
 
+impl Default for MagnetometerConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MagnetometerConfig {
     pub const fn new() -> Self {
         Self {
@@ -51,12 +57,6 @@ impl MagnetometerConfig {
             i2c_address: 0,
             zero: FlightDynamicsTrims::new(),
         }
-    }
-}
-
-impl Default for MagnetometerConfig {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

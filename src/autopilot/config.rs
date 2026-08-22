@@ -97,6 +97,12 @@ pub struct AutopilotConfig {
 #[cfg(feature = "serde")]
 impl PostcardValue<'_> for AutopilotConfig {}
 
+impl Default for AutopilotConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AutopilotConfig {
     pub const fn new() -> Self {
         Self {
@@ -157,12 +163,6 @@ impl AutopilotConfig {
     }
 }
 
-impl Default for AutopilotConfig {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct PositionHoldConfig {
@@ -175,6 +175,15 @@ pub struct PositionHoldConfig {
     pub optical_flow_max_range_cm: u16,
 }
 
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for PositionHoldConfig {}
+
+impl Default for PositionHoldConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[allow(unused)]
 impl PositionHoldConfig {
     pub const SOURCE_AUTO: u8 = 0;
@@ -183,15 +192,6 @@ impl PositionHoldConfig {
 
     pub const fn new() -> Self {
         Self { deadband: 0, position_source: 0, optical_flow_quality_min: 0, optical_flow_max_range_cm: 0 }
-    }
-}
-
-#[cfg(feature = "serde")]
-impl PostcardValue<'_> for PositionHoldConfig {}
-
-impl Default for PositionHoldConfig {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

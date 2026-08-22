@@ -66,6 +66,12 @@ pub struct OsdConfig {
 #[cfg(feature = "serde")]
 impl PostcardValue<'_> for OsdConfig {}
 
+impl Default for OsdConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl OsdConfig {
     pub const fn new() -> Self {
         Self {
@@ -122,12 +128,6 @@ impl OsdConfig {
     }
 }
 
-impl Default for OsdConfig {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct OsdStatsConfig {
@@ -142,6 +142,12 @@ pub struct OsdStatsConfig {
 #[cfg(feature = "serde")]
 impl PostcardValue<'_> for OsdStatsConfig {}
 
+impl Default for OsdStatsConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl OsdStatsConfig {
     pub const fn new() -> Self {
         Self {
@@ -155,12 +161,6 @@ impl OsdStatsConfig {
     }
 }
 
-impl Default for OsdStatsConfig {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 /// Osd Elements configuration array: 2 bits for type, 2 bits for profile, 6 bits for y, 6 bits for x.
@@ -171,15 +171,15 @@ pub struct OsdElementsConfig {
 #[cfg(feature = "serde")]
 impl PostcardValue<'_> for OsdElementsConfig {}
 
-impl OsdElementsConfig {
-    pub const fn new() -> Self {
-        Self { positions: [0u16; OsdElements::COUNT] }
-    }
-}
-
 impl Default for OsdElementsConfig {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl OsdElementsConfig {
+    pub const fn new() -> Self {
+        Self { positions: [0u16; OsdElements::COUNT] }
     }
 }
 
@@ -194,6 +194,12 @@ pub struct PilotConfig {
 #[cfg(feature = "serde")]
 impl PostcardValue<'_> for PilotConfig {}
 
+impl Default for PilotConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PilotConfig {
     pub const MAX_NAME_LENGTH: usize = 16;
     pub const CUSTOM_MESSAGE_COUNT: usize = 5;
@@ -203,12 +209,6 @@ impl PilotConfig {
             pilot_name: FixedBuf::new(),
             message: [FixedBuf::new(); Self::CUSTOM_MESSAGE_COUNT],
         }
-    }
-}
-
-impl Default for PilotConfig {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
