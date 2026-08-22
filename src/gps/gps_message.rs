@@ -1,6 +1,6 @@
 use vqm::Vector3f32;
 
-use crate::gps::{GpsData, GpsStatusData};
+use crate::gps::{GpsSolution, GpsStatus};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "std", derive(derive_more::Display))]
@@ -25,9 +25,9 @@ impl GpsYawHeadingMessage {
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[non_exhaustive]
 pub enum GpsMessage {
-    Data(GpsData),
+    Data(GpsSolution),
     Position(Vector3f32),
-    Status(GpsStatusData),
+    Status(GpsStatus),
 }
 
 #[cfg(test)]

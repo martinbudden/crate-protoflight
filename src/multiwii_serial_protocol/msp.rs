@@ -10,7 +10,7 @@ use crate::config::{ConfigItem, ConfigPublisher, FastConfigItem, FastConfigPubli
 use crate::barometer_sensors::BarometerType;
 
 #[cfg(feature = "gps")]
-use crate::gps::GpsDataAbridged;
+use crate::gps::GpsSolutionAbridged;
 
 #[cfg(feature = "optical_flow")]
 use crate::optical_flow_sensors::OpticalFlowType;
@@ -48,7 +48,7 @@ pub struct MspSensorData {
     pub gyro: Vector3i16,
     pub mag: Vector3i16,
     #[cfg(feature = "gps")]
-    pub gps_sol: GpsDataAbridged,
+    pub gps_solution: GpsSolutionAbridged,
 }
 
 impl MspSensorData {
@@ -64,7 +64,7 @@ impl MspSensorData {
             gyro: Vector3i16 { x: 0, y: 0, z: 0 },
             mag: Vector3i16 { x: 0, y: 0, z: 0 },
             #[cfg(feature = "gps")]
-            gps_sol: GpsDataAbridged::new(),
+            gps_solution: GpsSolutionAbridged::new(),
         }
     }
 }
@@ -1274,17 +1274,17 @@ impl Msp {
     #[cfg(feature = "gps")]
     fn raw_gps(dst: &mut StreamBufWriter<'_>, sensor_data: &MspSensorData) -> MspResult {
         dst.write_u8(0); //STATE(GPS_FIX));
-        dst.write_u8(sensor_data.gps_sol.satellite_count);
-        dst.write_u32(sensor_data.gps_sol.latitude_degrees_x1e7.cast_unsigned());
-        dst.write_u32(sensor_data.gps_sol.longitude_degrees_x1e7.cast_unsigned());
+        dst.write_u8(sensor_data.gps_solution.satellite_count);
+        dst.write_u32(sensor_data.gps_solution.latitude_degrees_x1e7.cast_unsigned());
+        dst.write_u32(sensor_data.gps_solution.longitude_degrees_x1e7.cast_unsigned());
         // Altitude changed from 1m to 0.01m per lsb since MSP API 1.39 by RTH.
         // To maintain backwards compatibility compensate to 1m per lsb in MSP.
         #[allow(clippy::cast_possible_truncation)]
-        dst.write_u16((sensor_data.gps_sol.altitude_cm / 100).cast_unsigned() as u16);
-        dst.write_u16(sensor_data.gps_sol.ground_speed_cmps);
-        dst.write_u16(sensor_data.gps_sol.ground_course_degrees_x10);
+        dst.write_u16((sensor_data.gps_solution.altitude_cm / 100).cast_unsigned() as u16);
+        dst.write_u16(sensor_data.gps_solution.ground_speed_cmps);
+        dst.write_u16(sensor_data.gps_solution.ground_course_degrees_x10);
         // Added in API version 1.44
-        dst.write_u16(sensor_data.gps_sol.pdop);
+        dst.write_u16(sensor_data.gps_solution.pdop);
         MspResult::Ack
     }
 

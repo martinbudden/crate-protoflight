@@ -3,7 +3,7 @@
 ## Terminology
 
 **Solution**: In GNSS documentation, a "solution" generally means the receiver's computed navigation state,
-that is the answer it has computed from all its satellite measurements.
+that is the answer the GPS receiver has computed from all its satellite measurements.
 
 **DOP**: Dilution Of Precision.
 **LLH**: Longitude, Latitude, Height.

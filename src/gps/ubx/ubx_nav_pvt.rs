@@ -242,7 +242,7 @@ pub(crate) fn make_realistic_nav_pvt_payload() -> [u8; UbxNavPvt::PAYLOAD_LEN] {
 #[cfg(test)]
 mod tests {
     #![allow(clippy::expect_used)]
-    use crate::gps::{GpsData, UbxParser};
+    use crate::gps::{GpsSolution, UbxParser};
 
     use super::*;
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
@@ -412,7 +412,7 @@ mod tests {
         frame.push(ck_b);
 
         let mut parser = UbxParser::new();
-        let mut gps = GpsData::default();
+        let mut gps = GpsSolution::default();
         for byte in frame {
             if let Some(message) = parser.on_data_received(byte) {
                 assert_eq!(message.class, UbxClassId::Nav);

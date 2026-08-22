@@ -28,7 +28,16 @@ impl UbxNavDop {
     pub const FRAME_LEN: usize = Self::PAYLOAD_LEN + 8;
 
     pub const fn new() -> Self {
-        Self { time_of_week_ms: 0, gdop_x100: 0, tdop_x100: 0, pdop_x100: 0, vdop_x100: 0, hdop_x100: 0, ndop_x100: 0, edop_x100: 0 }
+        Self {
+            time_of_week_ms: 0,
+            gdop_x100: 0,
+            tdop_x100: 0,
+            pdop_x100: 0,
+            vdop_x100: 0,
+            hdop_x100: 0,
+            ndop_x100: 0,
+            edop_x100: 0,
+        }
     }
 }
 

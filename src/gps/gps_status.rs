@@ -1,9 +1,10 @@
 use crate::gps::{
-    nmea::{NmeaGga, NmeaGsa, NmeaGsv, NmeaRmc}, ubx::{UbxNavDop, UbxNavPvt, UbxVersion},
+    nmea::{NmeaGga, NmeaGsa, NmeaGsv, NmeaRmc},
+    ubx::{UbxNavDop, UbxNavPvt, UbxVersion},
 };
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct GpsStatusData {
+pub struct GpsStatus {
     pub errors: u32,
     pub timeouts: u32,
     pub last_nav_message_time_of_week: u32,
@@ -14,13 +15,13 @@ pub struct GpsStatusData {
     pub ubx_version: UbxVersion,
 }
 
-impl Default for GpsStatusData {
+impl Default for GpsStatus {
     fn default() -> Self {
         Self::new()
     }
 }
 #[allow(unused)]
-impl GpsStatusData {
+impl GpsStatus {
     pub const fn new() -> Self {
         Self {
             errors: 0,
@@ -35,7 +36,7 @@ impl GpsStatusData {
     }
 }
 
-impl GpsStatusData {
+impl GpsStatus {
     pub fn amend_with_nmea_gga(&mut self, gga: NmeaGga) {
         _ = self;
         _ = gga;
@@ -103,6 +104,6 @@ mod tests {
 
     #[test]
     fn normal_types() {
-        is_full::<GpsStatusData>();
+        is_full::<GpsStatus>();
     }
 }

@@ -23,8 +23,11 @@ use crate::gps::{
    // GPS date/time from NAV-PVT
    pub date_time: GpsDateTime,
 */
+
+/// In GNSS terminology, a "solution" generally means the receiver's computed navigation state,
+/// that is the answer the GPS receiver has computed from all its satellite measurements.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct GpsData {
+pub struct GpsSolution {
     pub longitude_degrees_x1e7: i32,
     pub latitude_degrees_x1e7: i32,
     pub altitude_cm: i32,
@@ -53,13 +56,13 @@ pub struct GpsData {
     pub update: u8,
 }
 
-impl Default for GpsData {
+impl Default for GpsSolution {
     fn default() -> Self {
         Self::new()
     }
 }
 #[allow(unused)]
-impl GpsData {
+impl GpsSolution {
     const FIX_HOME: u8 = 0x01;
     const FIX: u8 = 0x02;
     const FIX_EVER: u8 = 0x04;
@@ -93,7 +96,7 @@ impl GpsData {
     }
 }
 
-impl GpsData {
+impl GpsSolution {
     pub fn amend_with_nmea_gga(&mut self, gga: NmeaGga) {
         self.latitude_degrees_x1e7 = gga.latitude_degrees_x1e7;
         self.longitude_degrees_x1e7 = gga.longitude_degrees_x1e7;
@@ -162,7 +165,7 @@ impl GpsData {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct GpsDataAbridged {
+pub struct GpsSolutionAbridged {
     pub longitude_degrees_x1e7: i32,
     pub latitude_degrees_x1e7: i32,
     pub altitude_cm: i32,
@@ -174,13 +177,13 @@ pub struct GpsDataAbridged {
     pub pdop: u16,
 }
 
-impl Default for GpsDataAbridged {
+impl Default for GpsSolutionAbridged {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl GpsDataAbridged {
+impl GpsSolutionAbridged {
     pub const fn new() -> Self {
         Self {
             longitude_degrees_x1e7: 0,
@@ -202,14 +205,14 @@ mod tests {
 
     #[test]
     fn normal_types() {
-        is_full::<GpsData>();
-        is_full::<GpsDataAbridged>();
+        is_full::<GpsSolution>();
+        is_full::<GpsSolutionAbridged>();
     }
     #[test]
     fn nav_pvt_maps_time_of_week() {
         let nav = UbxNavPvt { time_of_week_ms: 123_456_789, ..UbxNavPvt::default() };
 
-        let mut gps = GpsData::default();
+        let mut gps = GpsSolution::default();
         gps.amend_with_ubx_nav_pvt(nav);
 
         assert_eq!(gps.time_of_week_ms, 123_456_789);
@@ -218,7 +221,7 @@ mod tests {
     fn nav_pvt_maps_fix_and_health() {
         let nav = UbxNavPvt { fix_type: 3, flags: 0x01, ..UbxNavPvt::default() };
 
-        let mut gps = GpsData::default();
+        let mut gps = GpsSolution::default();
         gps.amend_with_ubx_nav_pvt(nav);
 
         assert_eq!(gps.fix, 3);
@@ -228,7 +231,7 @@ mod tests {
     fn nav_pvt_fix_is_unhealthy_when_gnss_fix_ok_is_clear() {
         let nav = UbxNavPvt { fix_type: 3, flags: 0x00, ..UbxNavPvt::default() };
 
-        let mut gps = GpsData::default();
+        let mut gps = GpsSolution::default();
         gps.amend_with_ubx_nav_pvt(nav);
 
         assert_eq!(gps.fix, 3);

@@ -8,20 +8,20 @@ mod gps_config;
 mod gps_rescue_config;
 
 mod geodetic;
-mod gps_data;
 mod gps_message;
 mod gps_parser;
-mod gps_status_data;
+mod gps_solution;
+mod gps_status;
 
 pub use gps_config::{GpsConfig, GpsOffOn, GpsProvider, SbasMode};
 pub use gps_rescue_config::{GpsRescueAltitudeMode, GpsRescueConfig, GpsRescueSanityChecks};
 
 pub use geodetic::{Geodetic, GeographicCoordinate};
 
-pub use gps_data::{GpsData, GpsDataAbridged};
 pub use gps_message::{GpsMessage, GpsYawHeadingMessage};
 pub use gps_parser::{GpsParser, GpsParserEvent};
-pub use gps_status_data::GpsStatusData;
+pub use gps_solution::{GpsSolution, GpsSolutionAbridged};
+pub use gps_status::GpsStatus;
 
 pub use nmea::{NmeaGga, NmeaGsa, NmeaGsv, NmeaRecordType, NmeaRmc};
 

@@ -28,7 +28,7 @@ use crate::tasks::{DebugMode, GLOBAL_DEBUG};
 #[cfg(feature = "gps")]
 use {
     crate::{
-        gps::{GpsData, GpsMessage},
+        gps::{GpsMessage, GpsSolution},
         tasks::gps::GpsSubscriber,
     },
     blackbox_logger::{BlackboxGpsData, BlackboxGpsPosition},
@@ -397,7 +397,7 @@ pub fn slow_data_from(setpoint_message: SetpointMessage) -> BlackboxSlowData {
 
 #[cfg(feature = "gps")]
 #[inline]
-pub fn gps_data_from(gps: GpsData) -> BlackboxGpsData {
+pub fn gps_data_from(gps: GpsSolution) -> BlackboxGpsData {
     BlackboxGpsData {
         time_of_week_ms: gps.time_of_week_ms,
         interval_ms: 0,

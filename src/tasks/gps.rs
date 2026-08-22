@@ -11,7 +11,7 @@ use crate::{
     boards::{GpsUartRx, GpsUartTx},
     config::GLOBAL_CONFIG,
     gps::{
-        Geodetic, GeographicCoordinate, GpsData, GpsMessage, GpsParser, GpsParserEvent, GpsProvider, GpsStatusData,
+        Geodetic, GeographicCoordinate, GpsMessage, GpsParser, GpsParserEvent, GpsProvider, GpsSolution, GpsStatus,
         GpsYawHeadingMessage,
         nmea::{NmeaGga, NmeaGsa, NmeaRecordType, NmeaRmc},
         ubx::{
@@ -67,8 +67,8 @@ pub struct GpsContext {
     pub uart_tx: GpsUartTx,
     pub gps_parser: GpsParser,
     pub gps_publisher: GpsPublisher,
-    pub gps_data: GpsData,
-    pub gps_status_data: GpsStatusData,
+    pub gps_data: GpsSolution,
+    pub gps_status_data: GpsStatus,
     pub home: Geodetic,
     pub buf: [u8; 128],
 }
@@ -81,8 +81,8 @@ impl GpsContext {
             uart_tx,
             gps_parser: GpsParser::new_unwrapped(gps_provider),
             gps_publisher: GPS_PUB_SUB_CHANNEL.publisher().expect("gps_publisher failed"),
-            gps_data: GpsData::new(),
-            gps_status_data: GpsStatusData::new(),
+            gps_data: GpsSolution::new(),
+            gps_status_data: GpsStatus::new(),
             home: Geodetic::new(),
             buf: [0u8; 128],
         }
@@ -161,7 +161,7 @@ async fn initialize(uart_tx: &mut GpsUartTx) {
     let _ = uart_tx.write(&rate.make_frame()).await;
 }
 
-fn process_gps_event(gps_data: &mut GpsData, gps_status: &mut GpsStatusData, event: GpsParserEvent<'_>) {
+fn process_gps_event(gps_data: &mut GpsSolution, gps_status: &mut GpsStatus, event: GpsParserEvent<'_>) {
     match event {
         GpsParserEvent::NmeaComplete(record) => match NmeaRecordType::from_record(record) {
             Some(NmeaRecordType::Gga) => {
@@ -235,8 +235,8 @@ mod tests {
     fn process_gps_event_amends_gga() {
         let record = b"GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,";
 
-        let mut gps = GpsData::default();
-        let mut gps_status = GpsStatusData::default();
+        let mut gps = GpsSolution::default();
+        let mut gps_status = GpsStatus::default();
 
         process_gps_event(&mut gps, &mut gps_status, GpsParserEvent::NmeaComplete(record));
 
@@ -252,8 +252,8 @@ mod tests {
     fn process_gps_event_amends_nav_pvt() {
         let payload = make_realistic_nav_pvt_payload();
 
-        let mut gps = GpsData::default();
-        let mut gps_status = GpsStatusData::default();
+        let mut gps = GpsSolution::default();
+        let mut gps_status = GpsStatus::default();
 
         let message = UbxMessage { class: UbxClassId::Nav, id: 0x07, payload: &payload };
 
@@ -277,8 +277,8 @@ mod tests {
     fn process_gps_event_amends_rmc() {
         let record = b"GPRMC,..."; // existing known-good RMC fixture
 
-        let mut gps = GpsData::default();
-        let mut gps_status = GpsStatusData::default();
+        let mut gps = GpsSolution::default();
+        let mut gps_status = GpsStatus::default();
 
         process_gps_event(&mut gps, &mut gps_status, GpsParserEvent::NmeaComplete(record));
 
@@ -292,8 +292,8 @@ mod tests {
     fn process_gps_event_amends_gsa() {
         let record = b"GPGSA,..."; // existing known-good GSA fixture
 
-        let mut gps = GpsData::default();
-        let mut gps_status = GpsStatusData::default();
+        let mut gps = GpsSolution::default();
+        let mut gps_status = GpsStatus::default();
 
         process_gps_event(&mut gps, &mut gps_status, GpsParserEvent::NmeaComplete(record));
 
@@ -304,22 +304,22 @@ mod tests {
     }
     #[test]
     fn process_gps_event_ignores_unknown_nmea_record() {
-        let mut gps = GpsData::default();
-        let mut gps_status = GpsStatusData::default();
+        let mut gps = GpsSolution::default();
+        let mut gps_status = GpsStatus::default();
 
         process_gps_event(&mut gps, &mut gps_status, GpsParserEvent::NmeaComplete(b"GPXXX,something"));
 
-        assert_eq!(gps, GpsData::default());
+        assert_eq!(gps, GpsSolution::default());
     }
     #[test]
     fn process_gps_event_ignores_unknown_ubx_message() {
-        let mut gps = GpsData::default();
-        let mut gps_status = GpsStatusData::default();
+        let mut gps = GpsSolution::default();
+        let mut gps_status = GpsStatus::default();
 
         let message = UbxMessage { class: UbxClassId::Nav, id: 0x99, payload: &[] };
 
         process_gps_event(&mut gps, &mut gps_status, GpsParserEvent::UbxMessage(message));
 
-        assert_eq!(gps, GpsData::default());
+        assert_eq!(gps, GpsSolution::default());
     }
 }
