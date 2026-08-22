@@ -1,6 +1,6 @@
 #![cfg(feature = "serde")]
 
-use embedded_storage_async::nor_flash::{ErrorType, NorFlash};
+use embedded_storage_async::nor_flash::NorFlash;
 
 #[allow(unused)]
 use sequential_storage::{
@@ -81,6 +81,7 @@ impl Key {
     const FEATURES_CONFIG: u16 = 0x060E;
     const BLACKBOX_CONFIG: u16 = 0x060F;
     const BATTERY_CONFIG: u16 = 0x0610;
+    const ARMING_CONFIG: u16 = 0x0611;
 }
 /*
 There are two layers of `Option`
@@ -95,7 +96,7 @@ fetch_item
           ├── None
           │     → record has been deleted
           │
-          └── Some(BatteryConfig)
+          └── Some(ArmingConfig)
                 → actual configuration
 */
 
@@ -110,18 +111,25 @@ macro_rules! generate_config_handlers {
 
             // Generate the LOAD function
             #[allow(unused)]
-            pub async fn [<load_ $prefix:lower _config>]<F, C>(config: &mut [<$prefix Config>], storage: &mut MapStorage<u16, F, C>)
+            pub async fn [<load_ $prefix:lower _config>]<F, C>(
+                config: &mut [<$prefix Config>],
+                storage: &mut MapStorage<u16, F, C>,
+            ) -> Result<(), sequential_storage::Error<F::Error>>
             where
                 F: NorFlash,
                 C: CacheImpl<u16>
             {
                 let mut buffer = [0u8; $buf_size];
-
-                if let Ok(Some(Some(loaded_data))) =
-                    storage.fetch_item::<Option<[<$prefix Config>]>>(&mut buffer, &$key).await
-                {
-                    *config = loaded_data;
+                let stored = storage.fetch_item::<Option<[<$prefix Config>]>>(&mut buffer, &$key).await?;
+                match stored {
+                    Some(Some(loaded_data)) => {
+                        *config = loaded_data;
+                    }
+                    None | Some(None) => {
+                        *config = [<$prefix Config>]::default();
+                    }
                 }
+                Ok(())
             }
 
             // Generate the SAVE function
@@ -129,59 +137,51 @@ macro_rules! generate_config_handlers {
             pub async fn [<save_ $prefix:lower _config>]<F, C>(
                 config: &[<$prefix Config>],
                 storage: &mut MapStorage<u16, F, C>
-            ) -> Result<(), sequential_storage::Error<<F as ErrorType>::Error>>
+            ) -> Result<(), sequential_storage::Error<F::Error>>
             where
                 F: NorFlash,
                 C: CacheImpl<u16>,
                 [<$prefix Config>]: PartialEq // Enforces that the struct derives PartialEq
             {
                 let mut buffer = [0u8; $buf_size];
-
-                // 1. READ BEFORE WRITE: Fetch the current active item from flash
-                if let Ok(Some(Some(existing_data))) = storage
-                    .fetch_item::<Option<[<$prefix Config>]>>(&mut buffer, &$key)
-                    .await
-                {
-                    // 2. CHECK EQUALITY: If identical, skip the write entirely
-                    if &existing_data == config {
-                        #[cfg(not(target_arch = "arm"))]
-                        //println!("[NVS]: Data matches flash exactly. Skipping redundant write.");
-                        return Ok(());
+                // READ BEFORE SAVE: Check what is currently stored under this key
+                let stored = storage.fetch_item::<Option<[<$prefix Config>]>>(&mut buffer, &$key).await?;
+                if *config == [<$prefix Config>]::default() {
+                    // Default configuration means "no stored configuration".
+                    // If there is an existing configuration, append a None marker to mark it deleted.
+                    // If there is no record, do nothing.
+                    if matches!(stored, Some(Some(_))) {
+                        let delete_marker: Option<ArmingConfig> = None;
+                        storage.store_item(&mut buffer, &$key, &delete_marker).await?;
+                    }
+                } else {
+                    // Non-default configuration:
+                    // only write it if it differs from the currently stored value.
+                    if !matches!(stored, Some(Some(stored_config)) if stored_config == *config) {
+                        storage.store_item(&mut buffer, &$key, &Some(*config)).await?;
                     }
                 }
-
-                // 3. WRITE ONLY IF CHANGED: Clear or reuse the buffer for serialization
-                let data_to_save = Some(config.clone());
-                storage.store_item(&mut buffer, &$key, &data_to_save).await
+                Ok(())
             }
 
             // Generate the DELETE function
             #[allow(unused)]
             pub async fn [<delete_ $prefix:lower _config>]<F, C>(
                 storage: &mut MapStorage<u16, F, C>
-            ) -> Result<(), sequential_storage::Error<<F as ErrorType>::Error>>
+            ) -> Result<(), sequential_storage::Error<F::Error>>
             where
                 F: NorFlash,
                 C: CacheImpl<u16>
             {
                 let mut buffer = [0u8; $buf_size];
-
                 // READ BEFORE DELETE: Check what is currently stored under this key
-                // `.fetch_item` returns `Ok(Some(StoredValue))` if the key is found.
-                // StoredValue itself is an Option<Config>. If it is already `None`, it's deleted.
-                if let Ok(Some(None)) = storage
-                    .fetch_item::<Option<[<$prefix Config>]>>(&mut buffer, &$key)
-                    .await
-                {
-                    // CHECK STATUS: If a None marker is already active, skip the write
-                    //#[cfg(not(target_arch = "arm"))]
-                    //println!("[NVS]: Subsystem is already deleted in flash. Skipping redundant marker write.");
-                    return Ok(());
-                }
-
+                let stored =storage.fetch_item::<Option<[<$prefix Config>]>>(&mut buffer, &$key).await?;
                 // WRITE ONLY IF NOT ALREADY DELETED
-                let delete_marker: Option<[<$prefix Config>]> = None;
-                storage.store_item(&mut buffer, &$key, &delete_marker).await
+                if matches!(stored, Some(Some(_))) {
+                    let delete_marker: Option<[<$prefix Config>]> = None;
+                    storage.store_item(&mut buffer, &$key, &delete_marker).await?;
+                }
+                Ok(())
             }
         }
     };
@@ -195,17 +195,14 @@ generate_config_handlers!(crate::osd, Osd, Key::OSD_CONFIG, 256);
 #[cfg(feature = "blackbox")]
 generate_config_handlers!(blackbox_logger, Blackbox, Key::BLACKBOX_CONFIG, 256);
 
-//#[cfg(feature = "battery")]
-//generate_config_handlers!(crate::sensors, Battery, Key::BATTERY_CONFIG, 256);
-
 #[cfg(feature = "battery")]
-use crate::sensors::BatteryConfig;
+generate_config_handlers!(crate::sensors, Battery, Key::BATTERY_CONFIG, 256);
+
+use crate::flight::ArmingConfig;
 
 /// Load from NVS (Unwraps `Option`).
-#[allow(unused)]
-#[cfg(feature = "battery")]
-pub async fn load_battery_config<F, C>(
-    config: &mut BatteryConfig,
+pub async fn load_arming_config<F, C>(
+    config: &mut ArmingConfig,
     storage: &mut MapStorage<u16, F, C>,
 ) -> Result<(), sequential_storage::Error<F::Error>>
 where
@@ -213,20 +210,18 @@ where
     C: CacheImpl<u16>,
 {
     let mut buffer = [0u8; 256];
-
-    let stored = storage.fetch_item::<Option<BatteryConfig>>(&mut buffer, &Key::BATTERY_CONFIG).await?;
-
+    let stored = storage.fetch_item::<Option<ArmingConfig>>(&mut buffer, &Key::ARMING_CONFIG).await?;
     match stored {
         Some(Some(loaded_data)) => {
             *config = loaded_data;
         }
         None | Some(None) => {
-            *config = BatteryConfig::default();
+            *config = ArmingConfig::default();
         }
     }
-
     Ok(())
 }
+
 /// Wrap with `Some` and store to NVS.
 /*
 | Existing flash    | `config`    | Action               |
@@ -249,9 +244,8 @@ Some(Some(config))
     → actual stored configuration
 */
 #[allow(unused)]
-#[cfg(feature = "battery")]
-pub async fn save_battery_config<F, C>(
-    config: &BatteryConfig,
+pub async fn save_arming_config<F, C>(
+    config: &ArmingConfig,
     storage: &mut MapStorage<u16, F, C>,
 ) -> Result<(), sequential_storage::Error<F::Error>>
 where
@@ -259,22 +253,20 @@ where
     C: CacheImpl<u16>,
 {
     let mut buffer = [0u8; 256];
-
-    let stored = storage.fetch_item::<Option<BatteryConfig>>(&mut buffer, &Key::BATTERY_CONFIG).await?;
-
-    if *config == BatteryConfig::default() {
+    let stored = storage.fetch_item::<Option<ArmingConfig>>(&mut buffer, &Key::ARMING_CONFIG).await?;
+    if *config == ArmingConfig::default() {
         // Default configuration means "no stored configuration".
         // If there is an existing configuration, append a None marker
         // to mark it deleted. If there is no record, do nothing.
         if matches!(stored, Some(Some(_))) {
-            let delete_marker: Option<BatteryConfig> = None;
-            storage.store_item(&mut buffer, &Key::BATTERY_CONFIG, &delete_marker).await?;
+            let delete_marker: Option<ArmingConfig> = None;
+            storage.store_item(&mut buffer, &Key::ARMING_CONFIG, &delete_marker).await?;
         }
     } else {
         // Non-default configuration:
         // only write it if it differs from the currently stored value.
         if !matches!(stored, Some(Some(stored_config)) if stored_config == *config) {
-            storage.store_item(&mut buffer, &Key::BATTERY_CONFIG, &Some(*config)).await?;
+            storage.store_item(&mut buffer, &Key::ARMING_CONFIG, &Some(*config)).await?;
         }
     }
 
@@ -293,8 +285,7 @@ fetch
  flash error → return error
 */
 #[allow(unused)]
-#[cfg(feature = "battery")]
-pub async fn delete_battery_config<F, C>(
+pub async fn delete_arming_config<F, C>(
     storage: &mut MapStorage<u16, F, C>,
 ) -> Result<(), sequential_storage::Error<F::Error>>
 where
@@ -303,12 +294,13 @@ where
 {
     let mut buffer = [0u8; 256];
 
-    let stored = storage.fetch_item::<Option<BatteryConfig>>(&mut buffer, &Key::BATTERY_CONFIG).await?;
+    // READ BEFORE DELETE: Check what is currently stored under this key
+    let stored = storage.fetch_item::<Option<ArmingConfig>>(&mut buffer, &Key::ARMING_CONFIG).await?;
 
+    // WRITE ONLY IF NOT ALREADY DELETED
     if matches!(stored, Some(Some(_))) {
-        let delete_marker: Option<BatteryConfig> = None;
-
-        storage.store_item(&mut buffer, &Key::BATTERY_CONFIG, &delete_marker).await?;
+        let delete_marker: Option<ArmingConfig> = None;
+        storage.store_item(&mut buffer, &Key::ARMING_CONFIG, &delete_marker).await?;
     }
 
     Ok(())
@@ -340,20 +332,16 @@ where
 
     let mut config = GLOBAL_CONFIG.lock().await;
 
-    #[cfg(feature = "battery")]
-    nvs::load_battery_config(&mut config.battery, &mut map_storage).await?;
+    nvs::load_arming_config(&mut config.arming, &mut map_storage).await?;
 
     Ok(())
 }
-#[cfg(all(test, feature = "std", feature = "battery"))]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     #![allow(clippy::expect_used)]
     use super::*;
 
-    #[cfg(feature = "battery")]
-    use crate::sensors::BatteryConfig;
-
-    use crate::tasks::non_volatile_storage::{load_battery_config, save_battery_config};
+    use crate::tasks::non_volatile_storage::{load_arming_config, save_arming_config};
     /*
     No record
         │
@@ -385,7 +373,7 @@ mod tests {
                                     config B
     */
     #[test]
-    fn test_battery_config_save_and_reload() {
+    fn test_arming_config_save_and_reload() {
         /*
         empty flash
             │
@@ -410,7 +398,7 @@ mod tests {
              default
         */
         futures::executor::block_on(async {
-            let path = "test_battery_config.nor";
+            let path = "test_arming_config.nor";
 
             // Start with a clean mock flash.
             let _ = std::fs::remove_file(path);
@@ -431,105 +419,73 @@ mod tests {
 
             // Initially there should be no stored configuration,
             // so loading should produce the default.
-            let default_config = BatteryConfig::default();
-            let mut config = BatteryConfig::default();
+            let default_config = ArmingConfig::default();
+            let mut config = ArmingConfig::default();
 
-            load_battery_config(&mut config, &mut storage).await.expect("Failed to load initial battery config");
+            load_arming_config(&mut config, &mut storage).await.expect("Failed to load initial arming config");
 
-            assert_eq!(config, BatteryConfig::default());
+            assert_eq!(config, ArmingConfig::default());
 
             // Create a deliberately non-default configuration.
-            let test_config = BatteryConfig {
-                vbat_not_present_cell_voltage: 3500,
-                lvc_percentage: 25,
-
-                voltage_meter_source: 1,
-                current_meter_source: 2,
-
-                use_vbat_alerts: 1,
-                use_consumption_alerts: 1,
-                vbat_hysteresis: 2,
-
-                vbat_display_lpf_period: 10,
-                vbat_sag_lpf_period: 20,
-                ibat_lpf_period: 30,
-
-                vbat_duration_for_warning: 5,
-                vbat_duration_for_critical: 10,
-            };
+            let test_config =
+                ArmingConfig { gyro_calibrate_on_first_arm: 1, auto_disarm_delay: 50, prearm_allow_rearm: 1 };
             assert_ne!(default_config, test_config);
 
             // Save it.
-            save_battery_config(&test_config, &mut storage).await.expect("Failed to save battery config");
+            save_arming_config(&test_config, &mut storage).await.expect("Failed to save arming config");
 
             // Load it back.
-            let mut loaded_config = BatteryConfig::default();
+            let mut loaded_config = ArmingConfig::default();
 
-            load_battery_config(&mut loaded_config, &mut storage).await.expect("Failed to reload battery config");
+            load_arming_config(&mut loaded_config, &mut storage).await.expect("Failed to reload arming config");
 
             // Verify the round trip.
             assert_eq!(loaded_config, test_config);
 
             // Save the same configuration again.
-            save_battery_config(&test_config, &mut storage).await.expect("Failed to save battery config");
+            save_arming_config(&test_config, &mut storage).await.expect("Failed to save arming config");
 
             // Load it again.
-            let mut loaded_config = BatteryConfig::default();
+            let mut loaded_config = ArmingConfig::default();
 
-            load_battery_config(&mut loaded_config, &mut storage).await.expect("Failed to reload battery config");
+            load_arming_config(&mut loaded_config, &mut storage).await.expect("Failed to reload arming config");
 
             assert_eq!(loaded_config, test_config);
 
             // Saving the default configuration should delete the stored configuration.
-            let default_config = BatteryConfig::default();
+            let default_config = ArmingConfig::default();
 
-            save_battery_config(&default_config, &mut storage).await.expect("Failed to save default battery config");
+            save_arming_config(&default_config, &mut storage).await.expect("Failed to save default arming config");
 
             // Loading after deletion should return the default.
-            let mut loaded_config = BatteryConfig::default();
+            let mut loaded_config = ArmingConfig::default();
 
-            load_battery_config(&mut loaded_config, &mut storage)
+            load_arming_config(&mut loaded_config, &mut storage)
                 .await
-                .expect("Failed to load battery config after deletion");
+                .expect("Failed to load arming config after deletion");
 
-            assert_eq!(loaded_config, BatteryConfig::default());
+            assert_eq!(loaded_config, ArmingConfig::default());
 
             // Saving the default configuration again should do nothing.
-            save_battery_config(&default_config, &mut storage).await.expect("Failed to save default battery config");
+            save_arming_config(&default_config, &mut storage).await.expect("Failed to save default arming config");
 
             // It should still load as the default configuration.
-            let mut loaded_config = BatteryConfig::default();
+            let mut loaded_config = ArmingConfig::default();
 
-            load_battery_config(&mut loaded_config, &mut storage).await.expect("Failed to load battery config");
+            load_arming_config(&mut loaded_config, &mut storage).await.expect("Failed to load arming config");
 
-            assert_eq!(loaded_config, BatteryConfig::default());
+            assert_eq!(loaded_config, ArmingConfig::default());
 
             // Saving a new non-default configuration after deletion should store it.
-            let new_test_config = BatteryConfig {
-                vbat_not_present_cell_voltage: 3600,
-                lvc_percentage: 30,
+            let new_test_config =
+                ArmingConfig { gyro_calibrate_on_first_arm: 1, auto_disarm_delay: 20, prearm_allow_rearm: 0 };
 
-                voltage_meter_source: 2,
-                current_meter_source: 1,
-
-                use_vbat_alerts: 0,
-                use_consumption_alerts: 1,
-                vbat_hysteresis: 3,
-
-                vbat_display_lpf_period: 15,
-                vbat_sag_lpf_period: 25,
-                ibat_lpf_period: 35,
-
-                vbat_duration_for_warning: 6,
-                vbat_duration_for_critical: 12,
-            };
-
-            save_battery_config(&new_test_config, &mut storage).await.expect("Failed to save new battery config");
+            save_arming_config(&new_test_config, &mut storage).await.expect("Failed to save new arming config");
 
             // Loading should now return the new configuration.
-            let mut loaded_config = BatteryConfig::default();
+            let mut loaded_config = ArmingConfig::default();
 
-            load_battery_config(&mut loaded_config, &mut storage).await.expect("Failed to load new battery config");
+            load_arming_config(&mut loaded_config, &mut storage).await.expect("Failed to load new arming config");
 
             assert_eq!(loaded_config, new_test_config);
 
