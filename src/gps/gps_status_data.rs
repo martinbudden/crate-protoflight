@@ -1,4 +1,7 @@
-use crate::gps::{NmeaGga, NmeaGsa, NmeaGsv, NmeaRmc, UbxNavPvt, ubx_nav_dop::UbxNavDop};
+use crate::gps::{
+    nmea::{NmeaGga, NmeaGsa, NmeaGsv, NmeaRmc},
+    ubx::{UbxNavDop, UbxNavPvt},
+};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GpsStatusData {}

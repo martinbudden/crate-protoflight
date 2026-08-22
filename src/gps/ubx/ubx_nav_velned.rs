@@ -1,4 +1,4 @@
-use crate::gps::{UbxClassId, ubx_nav::UbxNavId, ubx_parser::Parse};
+use super::{UbxClassId, ubx_nav::UbxNavId, ubx_parser::Parse};
 
 /// Velocity solution in NED frame.
 #[allow(unused)]

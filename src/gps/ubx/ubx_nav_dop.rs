@@ -1,4 +1,4 @@
-use crate::gps::{UbxClassId, ubx_nav::UbxNavId, ubx_parser::Parse};
+use super::{UbxClassId, ubx_nav::UbxNavId, ubx_parser::Parse};
 
 /// Dilution of precision.
 #[allow(unused)]

@@ -1,24 +1,23 @@
-use crate::gps::{UbxClassId, ubx_ack::UbxAckId};
+use super::{UbxClassId, ubx_ack::UbxAckId};
 
 /// Message acknowledged.
-#[allow(unused)]
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct UbxAckAck {
+pub struct UbxAckNak {
     /// Class ID of the Acknowledged Message.
     pub class: u8,
     /// Message ID of the Acknowledged Message.
     pub id: u8,
 }
 
-impl Default for UbxAckAck {
+impl Default for UbxAckNak {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl UbxAckAck {
+impl UbxAckNak {
     pub const CLASS: UbxClassId = UbxClassId::Ack;
-    pub const ID: u8 = UbxAckId::ACK;
+    pub const ID: u8 = UbxAckId::NAK;
     pub const PAYLOAD_LEN_U16: u16 = 2;
     pub const PAYLOAD_LEN: usize = Self::PAYLOAD_LEN_U16 as usize;
     pub const FRAME_LEN: usize = Self::PAYLOAD_LEN + 8;
@@ -28,12 +27,12 @@ impl UbxAckAck {
     }
 }
 
-impl UbxAckAck {
-    pub fn parse(payload: &[u8]) -> Option<UbxAckAck> {
+impl UbxAckNak {
+    pub fn parse(payload: &[u8]) -> Option<UbxAckNak> {
         if payload.len() != Self::PAYLOAD_LEN {
             return None;
         }
-        Some(UbxAckAck { class: payload[0], id: payload[1] })
+        Some(UbxAckNak { class: payload[0], id: payload[1] })
     }
 }
 
@@ -46,6 +45,6 @@ mod tests {
 
     #[test]
     fn normal_types() {
-        is_full::<UbxAckAck>();
+        is_full::<UbxAckNak>();
     }
 }

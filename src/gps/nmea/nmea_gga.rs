@@ -1,4 +1,4 @@
-use crate::gps::nmea_parser::{NmeaFields, Parse};
+use super::nmea_parser::{NmeaFields, Parse};
 
 /// For GGA the fields are:
 /// 0.  GPGGA

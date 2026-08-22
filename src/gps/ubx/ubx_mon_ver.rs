@@ -1,4 +1,4 @@
-use crate::gps::{UbxClassId, ubx_mon::UbxMonId};
+use super::{UbxClassId, ubx_mon::UbxMonId};
 
 /// Dilution of precision.
 #[allow(unused)]

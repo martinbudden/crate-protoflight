@@ -1,4 +1,4 @@
-use crate::gps::{
+use super::{
     UbxClassId,
     ubx_cfg::UbxCfgId,
     ubx_parser::{Parse, UbxParser},

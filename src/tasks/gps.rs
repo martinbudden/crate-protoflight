@@ -12,8 +12,11 @@ use crate::{
     config::GLOBAL_CONFIG,
     gps::{
         Geodetic, GeographicCoordinate, GpsData, GpsMessage, GpsParser, GpsParserEvent, GpsProvider, GpsStatusData,
-        GpsYawHeadingMessage, NmeaGga, NmeaGsa, NmeaRecordType, NmeaRmc, UbxAckId, UbxCfgId, UbxCfgNav5, UbxCfgPms,
-        UbxCfgRate, UbxClassId, UbxMonId, UbxNavDop, UbxNavId, UbxNavPvt,
+        GpsYawHeadingMessage,
+        nmea::{NmeaGga, NmeaGsa, NmeaRecordType, NmeaRmc},
+        ubx::{
+            UbxAckId, UbxCfgId, UbxCfgNav5, UbxCfgPms, UbxCfgRate, UbxClassId, UbxMonId, UbxNavDop, UbxNavId, UbxNavPvt,
+        },
     },
 };
 

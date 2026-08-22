@@ -1,4 +1,4 @@
-use crate::gps::nmea_parser::{NmeaFields, Parse};
+use super::nmea_parser::{NmeaFields, Parse};
 
 /// `GPGSA,A,3,04,05,09,12,24,25,29,31,,,,,1.8,1.0,1.5`.
 /// |    # | Field         | Example     | Meaning             |

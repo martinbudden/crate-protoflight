@@ -1,8 +1,4 @@
-use crate::gps::{
-    GpsProvider,
-    nmea_parser::NmeaParser,
-    ubx_parser::{UbxMessage, UbxParser},
-};
+use crate::gps::{GpsProvider, UbxMessage, UbxParser, nmea::NmeaParser};
 
 //
 #[allow(unused)]

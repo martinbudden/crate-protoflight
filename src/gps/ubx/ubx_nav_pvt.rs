@@ -1,4 +1,4 @@
-use crate::gps::{
+use super::{
     UbxClassId,
     ubx_nav::UbxNavId,
     ubx_parser::{Parse, UbxParser},
@@ -268,7 +268,7 @@ pub(crate) fn make_realistic_nav_pvt_payload() -> [u8; UbxNavPvt::PAYLOAD_LEN] {
 #[cfg(test)]
 mod tests {
     #![allow(clippy::expect_used)]
-    use crate::gps::{GpsData, ubx_parser::UbxParser};
+    use crate::gps::{GpsData, UbxParser};
 
     use super::*;
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}

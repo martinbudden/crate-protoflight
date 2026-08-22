@@ -1,4 +1,4 @@
-use crate::gps::nmea_parser::{NmeaFields, Parse};
+use super::nmea_parser::{NmeaFields, Parse};
 
 /// `GPRMC,123519.00,A,4916.45,N,12311.12,W,022.4,084.4,230394,,,A`.
 ///

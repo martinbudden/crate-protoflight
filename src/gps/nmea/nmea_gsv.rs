@@ -1,4 +1,4 @@
-use crate::gps::nmea_parser::{NmeaFields, Parse};
+use super::nmea_parser::{NmeaFields, Parse};
 
 ///GSV is a little different from GGA/RMC/GSA because it describes satellites in view,
 ///  and a single GSV report can span multiple sentences.

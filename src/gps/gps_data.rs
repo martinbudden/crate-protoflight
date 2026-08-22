@@ -1,5 +1,6 @@
 use crate::gps::{
-    NmeaRmc, nmea_gga::NmeaGga, nmea_gsa::NmeaGsa, nmea_gsv::NmeaGsv, ubx_nav_dop::UbxNavDop, ubx_nav_pvt::UbxNavPvt,
+    nmea::{NmeaGga, NmeaGsa, NmeaGsv, NmeaRmc},
+    ubx::{UbxNavDop, UbxNavPvt},
 };
 
 /*
