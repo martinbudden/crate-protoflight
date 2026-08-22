@@ -3,42 +3,46 @@ use super::{
     ubx_parser::{Parse, UbxParser},
 };
 
-/// Navigation/measurement rate settings.
+/// SBAS configuration.
 #[allow(unused)]
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct UbxCfgRate {
-    pub measurement_rate: u16,
-    pub nav_rate: u16,
-    pub time_ref: u16,
+pub struct UbxCfgSbas {
+    pub mode: u8,
+    pub usage: u8,
+    pub max_sbas: u8,
+    pub scanmode2: u8,
+    pub scanmode1: u32,
 }
 
-impl Default for UbxCfgRate {
+impl Default for UbxCfgSbas {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl UbxCfgRate {
+impl UbxCfgSbas {
     pub const CLASS: UbxClassId = UbxClassId::Cfg;
-    pub const ID: u8 = UbxCfgId::RATE;
-    pub const PAYLOAD_LEN_U16: u16 = 6;
+    pub const ID: u8 = UbxCfgId::PMS;
+    pub const PAYLOAD_LEN_U16: u16 = 8;
     pub const PAYLOAD_LEN: usize = Self::PAYLOAD_LEN_U16 as usize;
     pub const FRAME_LEN: usize = Self::PAYLOAD_LEN + 8;
 
     pub const fn new() -> Self {
-        Self { measurement_rate: 0, nav_rate: 0, time_ref: 0 }
+        Self { mode: 0, usage: 0, max_sbas: 0, scanmode2: 0, scanmode1: 0 }
     }
 }
 
-impl UbxCfgRate {
-    pub fn parse(payload: &[u8]) -> Option<UbxCfgRate> {
+impl UbxCfgSbas {
+    pub fn parse(payload: &[u8]) -> Option<UbxCfgSbas> {
         if payload.len() != Self::PAYLOAD_LEN {
             return None;
         }
-        Some(UbxCfgRate {
-            measurement_rate: Parse::try_read_u16(&payload[0..2])?,
-            nav_rate: Parse::try_read_u16(&payload[2..4])?,
-            time_ref: Parse::try_read_u16(&payload[4..6])?,
+        Some(UbxCfgSbas {
+            mode: payload[0],
+            usage: payload[1],
+            max_sbas: payload[2],
+            scanmode2: payload[3],
+            scanmode1: Parse::try_read_u32(&payload[4..8])?,
         })
     }
 
@@ -46,9 +50,12 @@ impl UbxCfgRate {
     pub fn make_payload(self) -> [u8; Self::PAYLOAD_LEN] {
         let mut payload = [0u8; Self::PAYLOAD_LEN];
 
-        payload[0..2].copy_from_slice(&self.measurement_rate.to_le_bytes());
-        payload[2..4].copy_from_slice(&self.nav_rate.to_le_bytes());
-        payload[4..Self::PAYLOAD_LEN].copy_from_slice(&self.time_ref.to_le_bytes());
+        payload[0] = self.mode;
+        payload[1] = self.usage;
+        payload[2] = self.max_sbas;
+        payload[3] = self.scanmode2;
+
+        payload[4..8].copy_from_slice(&self.scanmode1.to_le_bytes());
 
         payload
     }
@@ -65,6 +72,6 @@ mod tests {
 
     #[test]
     fn normal_types() {
-        is_full::<UbxCfgRate>();
+        is_full::<UbxCfgSbas>();
     }
 }

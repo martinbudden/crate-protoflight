@@ -3,7 +3,7 @@ use super::{
     ubx_parser::{Parse, UbxParser},
 };
 
-/// Poll a message configuration.
+/// Navigation engine settings.
 #[allow(unused)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UbxCfgNav5 {
@@ -121,39 +121,6 @@ impl UbxCfgNav5 {
     }
 
     make_frame!();
-}
-
-#[allow(unused)]
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct UbxCfgMsgSet {
-    pub class: u8,
-    pub id: u8,
-    pub rate: u8,
-}
-
-impl Default for UbxCfgMsgSet {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl UbxCfgMsgSet {
-    pub const CLASS: u8 = 0x06;
-    pub const ID: u8 = 0x01;
-    pub const PAYLOAD_LEN: usize = 2;
-
-    pub const fn new() -> Self {
-        Self { class: 0, id: 0, rate: 0 }
-    }
-}
-
-impl UbxCfgMsgSet {
-    pub fn parse(payload: &[u8]) -> Option<UbxCfgMsgSet> {
-        if payload.len() != Self::PAYLOAD_LEN {
-            return None;
-        }
-        Some(UbxCfgMsgSet { class: payload[0], id: payload[1], rate: payload[2] })
-    }
 }
 
 #[cfg(test)]

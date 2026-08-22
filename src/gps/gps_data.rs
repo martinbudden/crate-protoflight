@@ -153,8 +153,11 @@ impl GpsData {
         self.is_healthy = u8::from(nav.flags & 0x01 != 0);
     }
     pub fn amend_with_ubx_nav_dop(&mut self, dop: UbxNavDop) {
-        _ = self;
-        _ = dop;
+        if dop.time_of_week_ms > self.time_of_week_ms {
+            self.pdop_x100 = dop.pdop_x100;
+            self.hdop_x100 = dop.hdop_x100;
+            self.vdop_x100 = dop.vdop_x100;
+        }
     }
 }
 

@@ -1,5 +1,16 @@
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(u8)]
+pub enum UbxVersion {
+    M5,
+    M6,
+    M7,
+    M8,
+    M9,
+    M10,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[repr(u8)]
 pub enum UbxClassId {
     /// Navigation Results Messages: Position, Speed, Time, Acceleration, Heading, DOP, SVs used.
     Nav = 0x01,

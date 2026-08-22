@@ -5,13 +5,13 @@ use super::{UbxClassId, UbxNavId, ubx_parser::Parse};
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UbxNavDop {
     pub time_of_week_ms: u32,
-    pub g_dop: u16,
-    pub t_dop: u16,
-    pub p_dop: u16,
-    pub v_dop: u16,
-    pub h_dop: u16,
-    pub n_dop: u16,
-    pub e_dop: u16,
+    pub gdop_x100: u16,
+    pub tdop_x100: u16,
+    pub pdop_x100: u16,
+    pub vdop_x100: u16,
+    pub hdop_x100: u16,
+    pub ndop_x100: u16,
+    pub edop_x100: u16,
 }
 
 impl Default for UbxNavDop {
@@ -28,7 +28,7 @@ impl UbxNavDop {
     pub const FRAME_LEN: usize = Self::PAYLOAD_LEN + 8;
 
     pub const fn new() -> Self {
-        Self { time_of_week_ms: 0, g_dop: 0, t_dop: 0, p_dop: 0, v_dop: 0, h_dop: 0, n_dop: 0, e_dop: 0 }
+        Self { time_of_week_ms: 0, gdop_x100: 0, tdop_x100: 0, pdop_x100: 0, vdop_x100: 0, hdop_x100: 0, ndop_x100: 0, edop_x100: 0 }
     }
 }
 
@@ -39,13 +39,13 @@ impl UbxNavDop {
         }
         Some(UbxNavDop {
             time_of_week_ms: Parse::try_read_u32(&payload[0..4])?,
-            g_dop: Parse::try_read_u16(&payload[4..6])?,
-            t_dop: Parse::try_read_u16(&payload[6..8])?,
-            p_dop: Parse::try_read_u16(&payload[8..10])?,
-            v_dop: Parse::try_read_u16(&payload[10..12])?,
-            h_dop: Parse::try_read_u16(&payload[12..14])?,
-            n_dop: Parse::try_read_u16(&payload[14..16])?,
-            e_dop: Parse::try_read_u16(&payload[16..Self::PAYLOAD_LEN])?,
+            gdop_x100: Parse::try_read_u16(&payload[4..6])?,
+            tdop_x100: Parse::try_read_u16(&payload[6..8])?,
+            pdop_x100: Parse::try_read_u16(&payload[8..10])?,
+            vdop_x100: Parse::try_read_u16(&payload[10..12])?,
+            hdop_x100: Parse::try_read_u16(&payload[12..14])?,
+            ndop_x100: Parse::try_read_u16(&payload[14..16])?,
+            edop_x100: Parse::try_read_u16(&payload[16..Self::PAYLOAD_LEN])?,
         })
     }
 }

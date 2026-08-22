@@ -10,10 +10,13 @@ mod ubx_ack_nak;
 mod ubx_cfg_msg;
 mod ubx_cfg_nav5;
 mod ubx_cfg_pms;
+mod ubx_cfg_prt;
 mod ubx_cfg_rate;
+mod ubx_cfg_sbas;
 
 mod ubx_mon_ver;
 
+mod ubx_cfg_navx5;
 mod ubx_nav_dop;
 mod ubx_nav_posllh;
 mod ubx_nav_pvt;
@@ -22,9 +25,9 @@ mod ubx_nav_velned;
 
 mod ubx_parser;
 
-pub use ubx_ids::{UbxAckId, UbxCfgId, UbxClassId, UbxMonId, UbxNavId, UbxNmeaId};
+pub use ubx_ids::{UbxAckId, UbxCfgId, UbxClassId, UbxMonId, UbxNavId, UbxNmeaId, UbxVersion};
 
-pub use ubx_parser::{UbxMessage, UbxParser, UbxVersion};
+pub use ubx_parser::{UbxMessage, UbxParser};
 
 pub use ubx_ack_ack::UbxAckAck;
 pub use ubx_ack_nak::UbxAckNak;

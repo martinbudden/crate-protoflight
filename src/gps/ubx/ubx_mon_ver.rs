@@ -1,6 +1,6 @@
 use super::{UbxClassId, UbxMonId};
 
-/// Dilution of precision.
+/// Poll receiver and software version.
 #[allow(unused)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UbxMonVer {

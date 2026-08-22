@@ -1,6 +1,6 @@
 use super::{UbxAckId, UbxClassId};
 
-/// Message acknowledged.
+/// Message not acknowledged.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UbxAckNak {
     /// Class ID of the Acknowledged Message.

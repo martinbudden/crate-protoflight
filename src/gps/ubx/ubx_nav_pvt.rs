@@ -33,7 +33,10 @@ The NAV-PVT payload has a fixed binary layout. The fields most relevant to our e
 |     60 |    4 | ground speed                | Yes          |
 |     64 |    4 | heading of motion           | Yes          |
 */
-///Navigation position velocity time solution.
+/// Navigation Position Velocity Time solution.
+/// In GNSS documentation, a "solution" generally means the receiver's computed navigation state,
+/// that is the answer it has computed from all its satellite measurements.
+/// `UbxNavPvt` supersedes `UbxNavSol`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UbxNavPvt {
     pub time_of_week_ms: u32,

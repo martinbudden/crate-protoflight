@@ -1,5 +1,16 @@
 # UBX
 
+## Terminology
+
+**Solution**: In GNSS documentation, a "solution" generally means the receiver's computed navigation state,
+that is the answer it has computed from all its satellite measurements.
+
+**DOP**: Dilution Of Precision.
+**LLH**: Longitude, Latitude, Height.
+**NED**: North East Down.
+**SBAS**: Satellite Based Augmentation Systems.
+**SV**: Space Vehicle.
+
 ## UBX-NAV
 
 Navigation Results Messages: i.e. Position, Speed, Time, Acceleration, Heading, DOP, SVs used.
