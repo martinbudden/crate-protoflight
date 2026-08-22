@@ -1,6 +1,10 @@
 //#![allow(clippy::doc_markdown)]
 #![doc = include_str!("README.md")]
 
+// Macros must be brought into scope before the modules that use them.
+
+#[macro_use]
+mod non_volatile_storage_macros;
 #[macro_use]
 mod global_debug;
 
