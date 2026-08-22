@@ -1,3 +1,7 @@
+// Macros must be brought into scope before the modules that use them.
+#[macro_use]
+mod ubx_macros;
+
 mod ubx_ids;
 
 mod ubx_ack_ack;

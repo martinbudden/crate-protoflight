@@ -186,35 +186,7 @@ impl UbxNavPvt {
         payload
     }
 
-    pub fn make_frame(self) -> [u8; Self::FRAME_LEN] {
-        let mut frame = [0u8; Self::FRAME_LEN];
-
-        frame[0] = UbxParser::SYNC_BYTE_1;
-        frame[1] = UbxParser::SYNC_BYTE_2;
-        frame[2] = Self::CLASS as u8;
-        frame[3] = Self::ID;
-        let payload_len = Self::PAYLOAD_LEN_U16.to_le_bytes();
-        frame[4] = payload_len[0];
-        frame[5] = payload_len[1];
-
-        let payload = self.make_payload();
-        frame[6] = payload[0];
-        frame[7] = payload[1];
-
-        // UBX Fletcher checksum covers class, ID, length and payload.
-        let mut checksum_a = 0u8;
-        let mut checksum_b = 0u8;
-
-        for &byte in &frame[2..Self::FRAME_LEN - 3] {
-            checksum_a = checksum_a.wrapping_add(byte);
-            checksum_b = checksum_b.wrapping_add(checksum_a);
-        }
-
-        frame[Self::FRAME_LEN - 2] = checksum_a;
-        frame[Self::FRAME_LEN - 1] = checksum_b;
-
-        frame
-    }
+    make_frame!();
 }
 
 pub(crate) fn make_realistic_nav_pvt_payload() -> [u8; UbxNavPvt::PAYLOAD_LEN] {
