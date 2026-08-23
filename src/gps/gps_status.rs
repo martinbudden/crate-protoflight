@@ -1,4 +1,4 @@
-use crate::gps::{
+use super::{
     nmea::{NmeaGga, NmeaGsa, NmeaGsv, NmeaRmc},
     ubx::{UbxNavDop, UbxNavPvt, UbxVersion},
 };

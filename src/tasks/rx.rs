@@ -35,7 +35,7 @@ pub fn rx_message_receiver() -> RxMessageReceiver {
 }
 
 #[cfg(feature = "autopilot")]
-use crate::tasks::autopilot::{AutopilotReceiver, autopilot_receiver};
+use super::autopilot::{AutopilotReceiver, autopilot_receiver};
 
 /// Context for the receiver task.
 pub struct RxContext {

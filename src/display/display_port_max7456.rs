@@ -2,9 +2,7 @@
 
 use embedded_hal_async::spi::SpiBus;
 
-use crate::display::{
-    Display, DisplayPort, DisplayPortDeviceType, DisplayPortLayer, DisplayPortLayers, DisplayPortSeverity,
-};
+use super::{Display, DisplayPort, DisplayPortDeviceType, DisplayPortLayer, DisplayPortLayers, DisplayPortSeverity};
 
 const SPI_BUFFER_SIZE: usize = 512;
 

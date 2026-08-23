@@ -1,4 +1,4 @@
-use crate::flight::{
+use super::{
     rx_message::RcControls,
     vehicle_controller::{VehicleControlInitializing, VehicleController},
     {FlightModeConfig, VehicleControl},

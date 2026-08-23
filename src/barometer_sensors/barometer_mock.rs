@@ -1,4 +1,4 @@
-use crate::barometer_sensors::{BarometerI2cError, BarometerMessage};
+use super::{BarometerI2cError, BarometerMessage};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BarometerMock {}

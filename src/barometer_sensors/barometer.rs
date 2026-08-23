@@ -1,6 +1,6 @@
 //#[cfg(feature = "barometer")]
 #[allow(unused)]
-use crate::barometer_sensors::{
+use super::{
     BarometerDevice, BarometerMessage, barometer_bmp085::BarometerBmp085, barometer_dps310::BarometerDps310,
     barometer_mock::BarometerMock,
 };

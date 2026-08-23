@@ -1,6 +1,6 @@
 #![cfg(feature = "std")]
 
-use crate::boards::mock_uart::MockUart;
+use super::mock_uart::MockUart;
 
 pub type GpsUartRx = MockUart;
 pub type GpsUartTx = MockUart;

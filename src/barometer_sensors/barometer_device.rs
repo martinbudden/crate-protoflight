@@ -1,4 +1,4 @@
-use crate::barometer_sensors::BarometerI2cError;
+use super::BarometerI2cError;
 #[allow(unused)]
 use num_traits::Float;
 /// The common interface for barometer.

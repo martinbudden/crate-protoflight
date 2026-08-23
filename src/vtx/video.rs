@@ -7,7 +7,7 @@ use {
     serde::{Deserialize, Serialize},
 };
 
-use crate::vtx::VtxConfig;
+use super::VtxConfig;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum VtxType {

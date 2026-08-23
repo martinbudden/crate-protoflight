@@ -4,7 +4,7 @@ use sensor_fusion::AltitudeKalmanFilterf32;
 #[cfg(any(feature = "gps", feature = "optical_flow"))]
 use sensor_fusion::PositionKalmanFilterf32;
 
-use crate::autopilot::altitude_dual_ring_pid::AltitudeDualRingPid;
+use super::altitude_dual_ring_pid::AltitudeDualRingPid;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Autopilot {

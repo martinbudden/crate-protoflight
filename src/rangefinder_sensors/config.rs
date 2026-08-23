@@ -1,4 +1,4 @@
-use crate::rangefinder_sensors::RangefinderType;
+use super::RangefinderType;
 
 #[cfg(feature = "serde")]
 use {

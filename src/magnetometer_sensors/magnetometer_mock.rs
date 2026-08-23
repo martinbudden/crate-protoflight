@@ -1,4 +1,4 @@
-use crate::magnetometer_sensors::{MagnetometerMessage, magnetometer::RxMagnetometer};
+use super::{MagnetometerMessage, magnetometer::RxMagnetometer};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MagnetometerMock;

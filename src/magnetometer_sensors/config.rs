@@ -1,4 +1,4 @@
-use crate::magnetometer_sensors::MagnetometerType;
+use super::MagnetometerType;
 
 #[cfg(feature = "serde")]
 use {

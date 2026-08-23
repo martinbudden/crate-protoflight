@@ -1,6 +1,6 @@
 use core::ops::Deref;
 
-use crate::display::{Display, DisplayPort, DisplayPortDeviceType, DisplayPortLayer, DisplayPortSeverity};
+use super::{Display, DisplayPort, DisplayPortDeviceType, DisplayPortLayer, DisplayPortSeverity};
 
 struct Commands {}
 

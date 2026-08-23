@@ -1,6 +1,6 @@
 use vqm::Vector3f32;
 
-use crate::gps::{GpsSolution, GpsStatus};
+use super::{GpsSolution, GpsStatus};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "std", derive(derive_more::Display))]

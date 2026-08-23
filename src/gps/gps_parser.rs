@@ -1,4 +1,4 @@
-use crate::gps::{GpsProvider, UbxMessage, UbxParser, nmea::NmeaParser};
+use super::{GpsProvider, UbxMessage, UbxParser, nmea::NmeaParser};
 
 //
 #[allow(unused)]

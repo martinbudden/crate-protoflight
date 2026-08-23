@@ -1,4 +1,4 @@
-use crate::optical_flow_sensors::OpticalFlowType;
+use super::OpticalFlowType;
 
 #[cfg(feature = "serde")]
 use {

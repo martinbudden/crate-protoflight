@@ -1,6 +1,6 @@
 #![cfg(feature = "rangefinder")]
 
-use crate::rangefinder_sensors::{RangefinderMessage, rangefinder::RangefinderDevice};
+use super::{RangefinderMessage, rangefinder::RangefinderDevice};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RangefinderHcsr04 {}

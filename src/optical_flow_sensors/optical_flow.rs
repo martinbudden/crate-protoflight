@@ -1,8 +1,8 @@
 #![allow(unused)]
 
-use crate::optical_flow_sensors::optical_flow_mock::OpticalFlowMock;
+use super::optical_flow_mock::OpticalFlowMock;
 #[cfg(feature = "optical_flow")]
-use crate::optical_flow_sensors::optical_flow_mt::OpticalFlowMt;
+use super::optical_flow_mt::OpticalFlowMt;
 
 #[cfg(feature = "serde")]
 use {

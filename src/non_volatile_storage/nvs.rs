@@ -233,8 +233,8 @@ pub async fn load_global_configs<F>(flash_driver: F) -> Result<(), sequential_st
 where
     F: NorFlash,
 {
+    use super::nvs;
     use crate::config::GLOBAL_CONFIG;
-    use crate::non_volatile_storage::nvs;
 
     let map_config = MapConfig::new(0..FLASH_SIZE_BYTES);
     let cache = Cache::new_uncached();

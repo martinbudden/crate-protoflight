@@ -1,4 +1,4 @@
-use crate::multiwii_serial_protocol::msp::Msp;
+use super::msp::Msp;
 
 #[rustfmt::skip]
 #[allow(unused)]

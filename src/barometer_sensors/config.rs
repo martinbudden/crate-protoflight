@@ -1,4 +1,4 @@
-use crate::barometer_sensors::barometer::BarometerType;
+use super::barometer::BarometerType;
 
 #[cfg(feature = "serde")]
 use {

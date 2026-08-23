@@ -1,6 +1,4 @@
-use crate::display::{
-    Display, DisplayPort, DisplayPortDeviceType, DisplayPortLayer, DisplayPortLayers, DisplayPortSeverity,
-};
+use super::{Display, DisplayPort, DisplayPortDeviceType, DisplayPortLayer, DisplayPortLayers, DisplayPortSeverity};
 use core::ops::Deref;
 
 #[derive(Debug, PartialEq)]

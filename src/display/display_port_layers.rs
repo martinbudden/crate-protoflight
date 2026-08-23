@@ -1,6 +1,4 @@
-use crate::display::{
-    DisplayPort, DisplayPortDeviceType, DisplayPortLayer, DisplayPortLayerBuffer, DisplayPortSeverity,
-};
+use super::{DisplayPort, DisplayPortDeviceType, DisplayPortLayer, DisplayPortLayerBuffer, DisplayPortSeverity};
 use core::convert::Infallible;
 use core::ops::Deref;
 

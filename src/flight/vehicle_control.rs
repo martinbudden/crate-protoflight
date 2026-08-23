@@ -1,4 +1,4 @@
-use crate::flight::{rx_message::RcControls, vehicle_controller::VehicleController};
+use super::{rx_message::RcControls, vehicle_controller::VehicleController};
 use simple_bitset::BitSet64;
 use vqm::{Quaternionf32, Vector3f32, Vector4f32};
 

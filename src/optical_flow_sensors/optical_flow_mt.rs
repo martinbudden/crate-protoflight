@@ -1,6 +1,6 @@
 #![cfg(feature = "optical_flow")]
 
-use crate::optical_flow_sensors::{OpticalFlowMessage, optical_flow::OpticalFlowDevice};
+use super::{OpticalFlowMessage, optical_flow::OpticalFlowDevice};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct OpticalFlowMt {}

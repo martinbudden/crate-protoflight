@@ -1,8 +1,8 @@
 #![allow(unused)]
 
 #[cfg(feature = "rangefinder")]
-use crate::rangefinder_sensors::rangefinder_hcsr04::RangefinderHcsr04;
-use crate::rangefinder_sensors::rangefinder_mock::RangefinderMock;
+use super::rangefinder_hcsr04::RangefinderHcsr04;
+use super::rangefinder_mock::RangefinderMock;
 
 #[cfg(feature = "serde")]
 use {

@@ -5,25 +5,25 @@ use embassy_sync::pubsub::WaitResult;
 use static_cell::StaticCell;
 use vqm::Quaternionf32;
 
+use super::{
+    gyro_pid::{GyroPidReceiver, SetpointReceiver, gyro_pid_receiver, setpoint_receiver},
+    rx::{RxMessageReceiver, rx_message_receiver},
+};
 use crate::{
     config::GLOBAL_CONFIG,
     display::{Display, DisplayPortLayer, DisplayPortMutex},
     flight::{ArmingFlags, RxMessage},
     osd::{Osd, OsdDrawContext, OsdElements, OsdState},
-    tasks::{
-        gyro_pid::{GyroPidReceiver, SetpointReceiver, gyro_pid_receiver, setpoint_receiver},
-        rx::{RxMessageReceiver, rx_message_receiver},
-    },
 };
 
 #[cfg(feature = "optical_flow")]
-use crate::tasks::optical_flow::{OpticalFlowSubscriber, optical_flow_subscriber};
+use super::optical_flow::{OpticalFlowSubscriber, optical_flow_subscriber};
 
 #[cfg(feature = "rangefinder")]
-use crate::tasks::rangefinder::{RangefinderSubscriber, rangefinder_subscriber};
+use super::rangefinder::{RangefinderSubscriber, rangefinder_subscriber};
 
 #[cfg(feature = "barometer")]
-use crate::tasks::barometer::{BarometerSubscriber, barometer_subscriber};
+use super::barometer::{BarometerSubscriber, barometer_subscriber};
 
 #[cfg(feature = "battery")]
 use crate::{
@@ -32,7 +32,7 @@ use crate::{
 };
 
 #[cfg(feature = "gps")]
-use crate::tasks::gps::{GpsSubscriber, gps_subscriber};
+use super::gps::{GpsSubscriber, gps_subscriber};
 
 static OSD_CTX: StaticCell<OsdContext> = StaticCell::new();
 /// Context for OSD task.

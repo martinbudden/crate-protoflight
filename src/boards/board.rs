@@ -10,7 +10,7 @@ use crate::{
 };
 
 #[cfg(not(feature = "rp2350"))]
-use crate::boards::{GpsUartRx, GpsUartTx};
+use super::{GpsUartRx, GpsUartTx};
 
 //#[cfg(all(feature = "rp2350xa", feature = "rp2350xb"))]
 //compile_error!("rp2350xa and rp2350xb are mutually exclusive");

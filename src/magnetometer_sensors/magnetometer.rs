@@ -1,7 +1,7 @@
 #![allow(unused)]
 
 #[cfg(feature = "magnetometer")]
-use crate::magnetometer_sensors::magnetometer_hmc5883::MagnetometerHmc5883;
+use super::magnetometer_hmc5883::MagnetometerHmc5883;
 use crate::{i2c_bus::SharedI2cBus, magnetometer_sensors::magnetometer_mock::MagnetometerMock};
 
 #[cfg(feature = "serde")]
