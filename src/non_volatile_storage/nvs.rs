@@ -2,7 +2,6 @@
 
 use embedded_storage_async::nor_flash::NorFlash;
 
-#[allow(unused)]
 use sequential_storage::{
     cache::{Cache, CacheImpl},
     map::{MapConfig, MapStorage},
@@ -27,8 +26,6 @@ const FLASH_SIZE_BYTES: usize = 4 * 1024 * 1024;
 #[allow(unused)]
 #[cfg(not(feature = "rp2350"))]
 const FLASH_SIZE_BYTES: u32 = 4 * 1024 * 1024;
-
-extern crate paste;
 
 struct Key {}
 
@@ -236,7 +233,8 @@ pub async fn load_global_configs<F>(flash_driver: F) -> Result<(), sequential_st
 where
     F: NorFlash,
 {
-    use crate::{config::GLOBAL_CONFIG, tasks::non_volatile_storage as nvs};
+    use crate::config::GLOBAL_CONFIG;
+    use crate::non_volatile_storage::nvs;
 
     let map_config = MapConfig::new(0..FLASH_SIZE_BYTES);
     let cache = Cache::new_uncached();
@@ -253,7 +251,6 @@ mod tests {
     #![allow(clippy::expect_used)]
     use super::*;
 
-    use crate::tasks::non_volatile_storage::{load_arming_config, save_arming_config};
     /*
     No record
         │

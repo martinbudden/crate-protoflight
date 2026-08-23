@@ -4,8 +4,6 @@
 // Macros must be brought into scope before the modules that use them.
 
 #[macro_use]
-mod non_volatile_storage_macros;
-#[macro_use]
 mod global_debug;
 
 mod autopilot;
@@ -19,7 +17,6 @@ mod init;
 mod magnetometer;
 mod motor_mixer;
 mod msp;
-mod non_volatile_storage;
 mod optical_flow;
 mod osd;
 mod rangefinder;

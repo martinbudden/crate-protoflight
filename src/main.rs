@@ -20,6 +20,7 @@ mod gps;
 mod i2c_bus;
 mod magnetometer_sensors;
 mod multiwii_serial_protocol;
+mod non_volatile_storage;
 mod optical_flow_sensors;
 mod osd;
 mod rangefinder_sensors;

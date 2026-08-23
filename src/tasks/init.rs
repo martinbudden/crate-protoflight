@@ -1,5 +1,8 @@
 use embassy_executor::Spawner;
 
+#[cfg(all(feature = "serde", feature = "std"))]
+use crate::non_volatile_storage as nvs;
+
 use crate::{
     boards::{BoardInit, board_hardware},
     config::GLOBAL_CONFIG,
@@ -40,9 +43,9 @@ pub async fn init(spawner: Spawner) {
     // ==================================================
 
     #[cfg(all(feature = "serde", feature = "rp2350"))]
-    tasks::non_volatile_storage::load_global_configs(board_flash()).await;
+    nvs::load_global_configs(board_flash()).await;
     #[cfg(all(feature = "serde", feature = "std"))]
-    let _err = tasks::non_volatile_storage::load_global_configs(tasks::non_volatile_storage::init_flash_driver()).await;
+    let _err = nvs::load_global_configs(nvs::init_flash_driver()).await;
 
     // ==================================================
     // Lock the GLOBAL_CONFIGs.
