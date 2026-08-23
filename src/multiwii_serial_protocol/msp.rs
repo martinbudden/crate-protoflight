@@ -1234,7 +1234,7 @@ impl Msp {
     }
     #[cfg(feature = "battery")]
     async fn set_battery_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
-        use crate::sensors::{CurrentMeterReading, VoltageMeterReading};
+        use crate::battery_sensors::{CurrentMeterReading, VoltageMeterReading};
 
         if src.bytes_remaining() < 7 {
             return MspResult::Error;

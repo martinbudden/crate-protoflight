@@ -11,6 +11,7 @@
 
 mod autopilot;
 mod barometer_sensors;
+mod battery_sensors;
 mod boards;
 mod config;
 mod display;
@@ -24,7 +25,6 @@ mod non_volatile_storage;
 mod optical_flow_sensors;
 mod osd;
 mod rangefinder_sensors;
-mod sensors;
 mod tasks;
 mod vtx;
 

@@ -6,7 +6,7 @@ use embassy_sync::{
 };
 use static_cell::StaticCell;
 
-use crate::sensors::BatteryMessage;
+use crate::battery_sensors::BatteryMessage;
 
 static BATTERY_CTX: StaticCell<BatteryContext> = StaticCell::new();
 

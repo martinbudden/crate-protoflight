@@ -27,7 +27,7 @@ use crate::tasks::barometer::{BarometerSubscriber, barometer_subscriber};
 
 #[cfg(feature = "battery")]
 use crate::{
-    sensors::BatteryMessage,
+    battery_sensors::BatteryMessage,
     tasks::battery::{BatterySubscriber, battery_subscriber},
 };
 

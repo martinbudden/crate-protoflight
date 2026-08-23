@@ -5,7 +5,7 @@ use vqm::Quaternionf32;
 use crate::flight::{ArmingFlags, RxMessage};
 
 #[cfg(feature = "battery")]
-use crate::sensors::BatteryMessage;
+use crate::battery_sensors::BatteryMessage;
 
 #[derive(Debug, PartialEq)]
 pub struct OsdDrawContext {

@@ -10,19 +10,19 @@ use radio_controllers::{FailsafeConfig, RatesConfig, RcControlsConfig, RcModes, 
 
 use crate::{
     autopilot::{AutopilotConfig, PositionHoldConfig},
+    battery_sensors::{CurrentSensorAdcConfig, CurrentSensorVirtualConfig},
     config::{ImuConfig, SensorFlags, SystemConfig, profiles::SchemaVersion},
     flight::{
         AntiGravityConfig, ArmingConfig, CrashFlipConfig, CrashRecoveryConfig, DMaxConfig, FeatureFlags,
         FlightControllerFiltersConfig, GyroConfig, ImuFilterBankConfig, PidConfig, TpaConfig, YawSpinRecoveryConfig,
     },
-    sensors::{CurrentSensorAdcConfig, CurrentSensorVirtualConfig},
 };
 
 #[cfg(feature = "barometer")]
 use crate::barometer_sensors::BarometerConfig;
 
 #[cfg(feature = "battery")]
-use crate::sensors::{BatteryConfig, BatteryProfiles};
+use crate::battery_sensors::{BatteryConfig, BatteryProfiles};
 
 #[cfg(feature = "blackbox")]
 use blackbox_logger::BlackboxConfig;

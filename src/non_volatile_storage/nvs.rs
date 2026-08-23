@@ -106,7 +106,7 @@ generate_config_handlers!(crate::osd, Osd, Key::OSD_CONFIG, 256);
 generate_config_handlers!(blackbox_logger, Blackbox, Key::BLACKBOX_CONFIG, 256);
 
 #[cfg(feature = "battery")]
-generate_config_handlers!(crate::sensors, Battery, Key::BATTERY_CONFIG, 256);
+generate_config_handlers!(crate::battery_sensors, Battery, Key::BATTERY_CONFIG, 256);
 
 use crate::flight::ArmingConfig;
 
