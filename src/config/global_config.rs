@@ -10,12 +10,12 @@ use radio_controllers::{FailsafeConfig, RatesConfig, RcControlsConfig, RcModes, 
 
 use crate::{
     autopilot::{AutopilotConfig, PositionHoldConfig},
-    config::{ImuConfig, SystemConfig, profiles::SchemaVersion},
+    config::{ImuConfig, SensorFlags, SystemConfig, profiles::SchemaVersion},
     flight::{
         AntiGravityConfig, ArmingConfig, CrashFlipConfig, CrashRecoveryConfig, DMaxConfig, FeatureFlags,
         FlightControllerFiltersConfig, GyroConfig, ImuFilterBankConfig, PidConfig, TpaConfig, YawSpinRecoveryConfig,
     },
-    sensors::{CurrentSensorAdcConfig, CurrentSensorVirtualConfig, SensorFlags},
+    sensors::{CurrentSensorAdcConfig, CurrentSensorVirtualConfig},
 };
 
 #[cfg(feature = "barometer")]

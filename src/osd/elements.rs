@@ -1,6 +1,7 @@
 #![cfg(feature = "osd")]
 
 use crate::{
+    config::SensorFlags,
     display::{Display, DisplayPortLayer, DisplayPortSeverity},
     osd::{
         OsdConfig, OsdElementsConfig,
@@ -8,7 +9,6 @@ use crate::{
         elements_draw::{OSD_ELEMENT_DISPLAY_ORDER, OsdElementId},
         fixed_buf::FixedBuf,
     },
-    sensors::SensorFlags,
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
