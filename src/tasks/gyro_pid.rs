@@ -18,8 +18,8 @@ use crate::{
     boards::BoardImu,
     config::{FastConfigItem, FastConfigSubscriber, fast_config_subscriber},
     flight::{FilterAccGyro, FlightController, ImuFilterBank, ImuFilterBankConfig, RcControls, VehicleControl},
-    sensors::{GyroPidMessage, SetpointMessage},
     tasks::{
+        GyroPidMessage, SetpointMessage,
         motor_mixer::MOTOR_MIXER_SIGNAL,
         rx::{RxMessageReceiver, rx_message_receiver},
     },

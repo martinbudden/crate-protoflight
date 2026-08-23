@@ -33,12 +33,16 @@ pub struct GyroPidMessage {
 //#[cfg(not(any(feature = "servos", feature = "eight_motors")))]
 const _: () = assert!(core::mem::size_of::<GyroPidMessage>() == 112);
 
-impl GyroPidMessage {
-    pub const RPY_AXIS_COUNT: usize = 3;
-    pub const RP_AXIS_COUNT: usize = 2;
+impl Default for GyroPidMessage {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl GyroPidMessage {
+    pub const RPY_AXIS_COUNT: usize = 3;
+    pub const RP_AXIS_COUNT: usize = 2;
+
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -52,12 +56,6 @@ impl GyroPidMessage {
             pid_errors_d: [0f32; Self::RP_AXIS_COUNT],
             time_us: 0,
         }
-    }
-}
-
-impl Default for GyroPidMessage {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -81,6 +79,12 @@ pub struct SetpointMessage {
     pub rx_flight_channel_is_valid: bool,
 }
 
+impl Default for SetpointMessage {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[allow(unused)]
 impl SetpointMessage {
     pub const RC_COMMAND_COUNT: usize = 4;
@@ -96,9 +100,7 @@ impl SetpointMessage {
     // ailerons, elevator, rudder, throttle (which may be controlled by a servo, if the motor is an internal combustion engine)
     #[cfg(feature = "servos")]
     pub const MAX_SUPPORTED_SERVO_COUNT: usize = 8;
-}
 
-impl SetpointMessage {
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -117,12 +119,6 @@ impl SetpointMessage {
             rx_signal_received: false,
             rx_flight_channel_is_valid: false,
         }
-    }
-}
-
-impl Default for SetpointMessage {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

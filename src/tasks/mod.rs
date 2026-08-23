@@ -15,6 +15,7 @@ mod gps;
 mod gyro_pid;
 mod init;
 mod magnetometer;
+mod messages;
 mod motor_mixer;
 mod msp;
 mod optical_flow;
@@ -23,6 +24,7 @@ mod rangefinder;
 mod rx;
 
 pub use init::init;
+pub use messages::{GyroPidMessage, SetpointMessage};
 
 #[allow(unused)]
 #[cfg(feature = "debug")]

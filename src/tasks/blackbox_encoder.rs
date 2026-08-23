@@ -11,9 +11,9 @@ use static_cell::StaticCell;
 
 #[cfg(feature = "gps")]
 use crate::tasks::gps::gps_subscriber;
-use crate::{
-    sensors::{GyroPidMessage, SetpointMessage},
-    tasks::gyro_pid::{GyroPidReceiver, SetpointReceiver, gyro_pid_receiver, setpoint_receiver},
+use crate::tasks::{
+    GyroPidMessage, SetpointMessage,
+    gyro_pid::{GyroPidReceiver, SetpointReceiver, gyro_pid_receiver, setpoint_receiver},
 };
 
 #[cfg(feature = "barometer")]
