@@ -14,12 +14,12 @@ use {
 #[allow(missing_docs)]
 #[allow(unused)]
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum MagnetometerType {
     #[default]
     Default = 0,
-    None = 1,
+    NoMagnetometer = 1,
     Hmc5883 = 2,
     Ak8975 = 3,
     Ak8963 = 4,
@@ -37,12 +37,11 @@ impl PostcardValue<'_> for MagnetometerType {}
 
 #[allow(unused)]
 impl MagnetometerType {
-    pub const COUNT: u8 = 11;
-
+    /// Forgiving conversion, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {
-            1 => Self::None,
+            1 => Self::NoMagnetometer,
             2 => Self::Hmc5883,
             3 => Self::Ak8975,
             4 => Self::Ak8963,
@@ -113,16 +112,15 @@ impl RxMagnetometer for Magnetometer {
 mod tests {
     use super::*;
 
-    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
-    fn _is_full_no_partial_eq<T: Sized + Send + Sync + Unpin + Copy + Clone + Default>() {}
+    fn is_full_eq<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + Eq + PartialEq>() {}
     #[cfg(feature = "serde")]
     fn is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
         is_full::<MagnetometerMessage>();
-        is_full::<MagnetometerType>();
+        is_full_eq::<MagnetometerType>();
         #[cfg(feature = "serde")]
         is_config::<MagnetometerType>();
     }

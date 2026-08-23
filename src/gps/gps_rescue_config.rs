@@ -70,7 +70,7 @@ impl GpsRescueConfig {
 
 #[allow(missing_docs)]
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum GpsRescueSanityChecks {
     Off = 0,
@@ -81,6 +81,7 @@ pub enum GpsRescueSanityChecks {
 
 #[allow(unused)]
 impl GpsRescueSanityChecks {
+    /// Forgiving conversion, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {
@@ -94,7 +95,7 @@ impl GpsRescueSanityChecks {
 
 #[allow(missing_docs)]
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum GpsRescueAltitudeMode {
     #[default]
@@ -105,6 +106,7 @@ pub enum GpsRescueAltitudeMode {
 
 #[allow(unused)]
 impl GpsRescueAltitudeMode {
+    /// Forgiving conversion, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {
@@ -120,13 +122,15 @@ impl GpsRescueAltitudeMode {
 mod tests {
     use super::*;
 
-    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+    fn is_full_eq<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + Eq + PartialEq>() {}
     #[cfg(feature = "serde")]
     fn is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
+        is_full_eq::<GpsRescueSanityChecks>();
+        is_full_eq::<GpsRescueAltitudeMode>();
         is_full::<GpsRescueConfig>();
         #[cfg(feature = "serde")]
         is_config::<GpsRescueConfig>();

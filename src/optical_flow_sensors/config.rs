@@ -24,7 +24,7 @@ impl Default for OpticalFlowConfig {
 #[allow(unused)]
 impl OpticalFlowConfig {
     pub const fn new() -> Self {
-        Self { hardware: OpticalFlowType::None }
+        Self { hardware: OpticalFlowType::NoOpticalFlow }
     }
 }
 

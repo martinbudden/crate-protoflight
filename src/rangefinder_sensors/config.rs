@@ -24,7 +24,7 @@ impl Default for RangefinderConfig {
 #[allow(unused)]
 impl RangefinderConfig {
     pub const fn new() -> Self {
-        Self { hardware: RangefinderType::None }
+        Self { hardware: RangefinderType::NoRangefinder }
     }
 }
 

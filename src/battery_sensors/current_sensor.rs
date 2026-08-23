@@ -4,7 +4,7 @@ use {
     serde::{Deserialize, Serialize},
 };
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct CurrentSensorAdcConfig {
     /// scale the current sensor output voltage to milliamps. Value in mV/10A.
@@ -66,26 +66,29 @@ impl CurrentSensorVirtualConfig {
 }
 
 #[allow(unused)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[repr(u8)]
 pub enum CurrentMeterSource {
     #[default]
-    None,
-    Adc,
-    Virtual,
-    Esc,
-    Msp,
+    NoSource = 0,
+    Adc = 1,
+    Virtual = 2,
+    Esc = 3,
+    Msp = 4,
 }
 
 #[cfg(feature = "serde")]
 impl PostcardValue<'_> for CurrentMeterSource {}
 
-#[allow(unused)]
+impl_try_from_u8!(CurrentMeterSource);
+
 impl CurrentMeterSource {
+    /// Forgiving conversion, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {
-            0 => Self::None,
+            0 => Self::NoSource,
             1 => Self::Adc,
             2 => Self::Virtual,
             3 => Self::Esc,
@@ -93,22 +96,10 @@ impl CurrentMeterSource {
             _ => Self::default(),
         }
     }
-
-    #[must_use]
-    pub fn try_from_u8(value: u8) -> Option<Self> {
-        match value {
-            0 => Some(Self::None),
-            1 => Some(Self::Adc),
-            2 => Some(Self::Virtual),
-            3 => Some(Self::Esc),
-            4 => Some(Self::Msp),
-            _ => None,
-        }
-    }
 }
 
 #[allow(unused)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum CurrentSensorType {
     #[default]
@@ -121,8 +112,11 @@ pub enum CurrentSensorType {
 #[cfg(feature = "serde")]
 impl PostcardValue<'_> for CurrentSensorType {}
 
+impl_try_from_u8!(CurrentSensorType);
+
 #[allow(unused)]
 impl CurrentSensorType {
+    /// Forgiving conversion, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {
@@ -133,25 +127,14 @@ impl CurrentSensorType {
             _ => Self::default(),
         }
     }
-
-    #[must_use]
-    pub fn try_from_u8(value: u8) -> Option<Self> {
-        match value {
-            0 => Some(Self::Virtual),
-            1 => Some(Self::Adc),
-            2 => Some(Self::Esc),
-            4 => Some(Self::Msp),
-            _ => None,
-        }
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+    fn is_full_eq<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + Eq + PartialEq>() {}
     #[cfg(feature = "serde")]
     fn is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
@@ -159,8 +142,8 @@ mod tests {
     fn normal_types() {
         is_full::<CurrentSensorAdcConfig>();
         is_full::<CurrentSensorVirtualConfig>();
-        is_full::<CurrentMeterSource>();
-        is_full::<CurrentSensorType>();
+        is_full_eq::<CurrentMeterSource>();
+        is_full_eq::<CurrentSensorType>();
 
         #[cfg(feature = "serde")]
         is_config::<CurrentSensorAdcConfig>();

@@ -2,6 +2,7 @@ use super::BarometerI2cError;
 #[allow(unused)]
 use num_traits::Float;
 /// The common interface for barometer.
+#[allow(unused)]
 pub trait BarometerDevice {
     /// Returns sample rate or error.
     //pub async fn init(&self) -> Result<u32, BarometerI2cError> {
@@ -34,6 +35,7 @@ impl BarometerMessage {
 }
 
 impl BarometerMessage {
+    #[allow(unused)]
     pub fn calculate_altitude_meters(pressure: f32, pressure_at_reference_altitude: f32) -> f32 {
         44330.0 * (1.0 - (pressure / pressure_at_reference_altitude).powf(0.1903))
     }

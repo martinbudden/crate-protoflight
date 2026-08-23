@@ -9,6 +9,9 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::doc_paragraphs_missing_punctuation)]
 
+#[macro_use]
+mod macros;
+
 mod autopilot;
 mod barometer_sensors;
 mod battery_sensors;

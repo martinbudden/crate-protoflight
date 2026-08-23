@@ -71,7 +71,7 @@ impl GpsStatus {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[repr(u8)]
 pub enum UbxAckState {
     #[default]
@@ -83,6 +83,7 @@ pub enum UbxAckState {
 
 #[allow(unused)]
 impl UbxAckState {
+    /// Forgiving conversion, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {
@@ -99,11 +100,12 @@ impl UbxAckState {
 mod tests {
     use super::*;
 
-    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+    fn is_full_eq<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + Eq + PartialEq>() {}
 
     #[test]
     fn normal_types() {
         is_full::<GpsStatus>();
+        is_full_eq::<UbxAckState>();
     }
 }

@@ -15,6 +15,7 @@ pub use display_port::{
 };
 pub use display_port_layers::DisplayPortLayers;
 
+#[allow(unused)]
 pub use display_port_mutex::{DisplayPortMutex, display_port_mutex_init};
 
 #[allow(unused)]

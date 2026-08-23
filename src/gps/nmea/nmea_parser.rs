@@ -9,7 +9,7 @@ An NMEA 0183 sentence always follows a strict pattern:
 #[allow(unused)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum NmeaEvent {
-    None,
+    NoEvent,
     Start,
     PayloadByte(u8),
     Complete,
@@ -59,7 +59,7 @@ impl NmeaState {
 
                     NmeaEvent::Start
                 } else {
-                    NmeaEvent::None
+                    NmeaEvent::NoEvent
                 }
             }
 
@@ -67,7 +67,7 @@ impl NmeaState {
                 if data == b'*' {
                     *self = Self::WaitingForChecksum1 { calculated_checksum };
 
-                    NmeaEvent::None
+                    NmeaEvent::NoEvent
                 } else if data.is_ascii_graphic() || data == b' ' {
                     calculated_checksum ^= data;
 
@@ -76,7 +76,7 @@ impl NmeaState {
                     NmeaEvent::PayloadByte(data)
                 } else {
                     *self = Self::WaitingForStart;
-                    NmeaEvent::None
+                    NmeaEvent::NoEvent
                 }
             }
 
@@ -87,7 +87,7 @@ impl NmeaState {
                     *self = Self::WaitingForStart;
                 }
 
-                NmeaEvent::None
+                NmeaEvent::NoEvent
             }
 
             Self::WaitingForChecksum2 { calculated_checksum, received_checksum_high } => {
@@ -103,7 +103,7 @@ impl NmeaState {
                     *self = Self::WaitingForStart;
                 }
 
-                NmeaEvent::None
+                NmeaEvent::NoEvent
             }
 
             Self::WaitingForCr => {
@@ -113,7 +113,7 @@ impl NmeaState {
                     *self = Self::WaitingForStart;
                 }
 
-                NmeaEvent::None
+                NmeaEvent::NoEvent
             }
 
             Self::WaitingForLf => {
@@ -122,7 +122,7 @@ impl NmeaState {
                     NmeaEvent::Complete
                 } else {
                     *self = Self::WaitingForStart;
-                    NmeaEvent::None
+                    NmeaEvent::NoEvent
                 }
             }
         }
@@ -178,7 +178,7 @@ impl NmeaParser {
         self.complete = false;
 
         match self.state.on_data_received(data) {
-            NmeaEvent::None => {}
+            NmeaEvent::NoEvent => {}
 
             NmeaEvent::Start => {
                 self.payload_index = 0;

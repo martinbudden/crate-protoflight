@@ -53,7 +53,7 @@ impl MagnetometerConfig {
     pub const fn new() -> Self {
         Self {
             alignment: 0, // mag alignment
-            hardware: MagnetometerType::None,
+            hardware: MagnetometerType::NoMagnetometer,
             i2c_address: 0,
             zero: FlightDynamicsTrims::new(),
         }

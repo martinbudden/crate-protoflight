@@ -165,7 +165,7 @@ impl TpaConfig {
 }
 
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum TpaMode {
     P = 0,
@@ -177,8 +177,11 @@ pub enum TpaMode {
 #[cfg(feature = "serde")]
 impl PostcardValue<'_> for TpaMode {}
 
+impl_try_from_u8!(TpaMode);
+
 #[allow(unused)]
 impl TpaMode {
+    /// Forgiving conversion, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {
@@ -186,16 +189,6 @@ impl TpaMode {
             1 => Self::D,
             2 => Self::Pds,
             _ => Self::default(),
-        }
-    }
-
-    #[must_use]
-    pub fn try_from_u8(value: u8) -> Option<Self> {
-        match value {
-            0 => Some(Self::P),
-            1 => Some(Self::D),
-            2 => Some(Self::Pds),
-            _ => None,
         }
     }
 }
@@ -454,13 +447,14 @@ impl GyroConfig {
 mod tests {
     use super::*;
 
-    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+    fn is_full_eq<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + Eq + PartialEq>() {}
     #[cfg(feature = "serde")]
     fn is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
+        is_full_eq::<TpaMode>();
         is_full::<PidConfig>();
         is_full::<FlightControllerFiltersConfig>();
         is_full::<FlightModeConfig>();

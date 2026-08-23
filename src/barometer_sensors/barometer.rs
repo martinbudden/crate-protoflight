@@ -15,12 +15,12 @@ use {
 #[allow(missing_docs)]
 #[allow(unused)]
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum BarometerType {
     #[default]
     Default = 0,
-    None = 1,
+    NoBarometer = 1,
     Bmp085 = 2,
     Ms5611 = 3,
     Bmp280 = 4,
@@ -40,12 +40,11 @@ impl PostcardValue<'_> for BarometerType {}
 
 #[allow(unused)]
 impl BarometerType {
-    pub const COUNT: u8 = 13;
-
+    /// Forgiving conversion, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {
-            1 => Self::None,
+            1 => Self::NoBarometer,
             2 => Self::Bmp085,
             3 => Self::Ms5611,
             4 => Self::Bmp280,
@@ -86,6 +85,7 @@ pub enum Barometer {
 }
 
 impl Barometer {
+    #[allow(unused)]
     #[must_use]
     pub const fn new(barometer_type: BarometerType, i2c_bus: &'static SharedI2cBus) -> Option<Barometer> {
         match barometer_type {
@@ -136,14 +136,13 @@ impl BarometerDevice for Barometer {
 mod tests {
     use super::*;
 
-    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
-    fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+    fn is_full_eq<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + Eq + PartialEq>() {}
     #[cfg(feature = "serde")]
     fn is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
-        is_full::<BarometerType>();
+        is_full_eq::<BarometerType>();
         #[cfg(feature = "serde")]
         is_config::<BarometerType>();
     }

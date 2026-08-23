@@ -13,7 +13,7 @@ pub enum GpsParser {
     Nmea(NmeaParser),
     Ubx(UbxParser),
     #[default]
-    None,
+    NoParser,
 }
 
 impl GpsParser {
@@ -45,7 +45,7 @@ impl GpsParser {
                 }
             }
             Self::Ubx(parser) => parser.on_data_received(data).map(GpsParserEvent::UbxMessage),
-            Self::None => None,
+            Self::NoParser => None,
         }
     }
 }

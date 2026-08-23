@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 use static_cell::StaticCell;
 

@@ -66,22 +66,22 @@ pub async fn init(spawner: Spawner) {
         #[cfg(feature = "barometer")]
         barometer_type: config.barometer.hardware,
         #[cfg(not(feature = "barometer"))]
-        barometer_type: crate::barometer_sensors::BarometerType::None,
+        barometer_type: crate::barometer_sensors::BarometerType::NoBarometer,
 
         #[cfg(feature = "magnetometer")]
         magnetometer_type: config.magnetometer.hardware,
         #[cfg(not(feature = "magnetometer"))]
-        magnetometer_type: crate::magnetometer_sensors::MagnetometerType::None,
+        magnetometer_type: crate::magnetometer_sensors::MagnetometerType::NoMagnetometer,
 
         #[cfg(feature = "rangefinder")]
         rangefinder_type: config.rangefinder.hardware,
         #[cfg(not(feature = "rangefinder"))]
-        rangefinder_type: crate::rangefinder_sensors::RangefinderType::None,
+        rangefinder_type: crate::rangefinder_sensors::RangefinderType::NoRangefinder,
 
         #[cfg(feature = "optical_flow")]
         optical_flow_type: config.optical_flow.hardware,
         #[cfg(not(feature = "optical_flow"))]
-        optical_flow_type: crate::optical_flow_sensors::OpticalFlowType::None,
+        optical_flow_type: crate::optical_flow_sensors::OpticalFlowType::NoOpticalFlow,
     };
 
     #[allow(clippy::panic)]

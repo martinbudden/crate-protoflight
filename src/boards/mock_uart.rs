@@ -12,6 +12,7 @@ impl embedded_io_async::ErrorType for MockUart {
 
 //impl embedded_io_async::Read for MockUart {
 impl MockUart {
+    #[allow(unused)]
     pub async fn read(&mut self, buf: &mut [u8]) -> Result<usize, ()> {
         // Check if we have read all mock data
         if self.position >= self.data.len() {
@@ -30,6 +31,7 @@ impl MockUart {
 
         Ok(bytes_to_copy)
     }
+    #[allow(unused)]
     pub async fn write(&mut self, buf: &[u8]) -> Result<usize, ()> {
         _ = self;
         _ = buf;

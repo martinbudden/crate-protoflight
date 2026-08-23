@@ -14,11 +14,11 @@ use {
 #[allow(missing_docs)]
 #[allow(unused)]
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum RangefinderType {
     #[default]
-    None = 0,
+    NoRangefinder = 0,
     Hcsr04 = 1,
     TfMini = 2,
     Tf02 = 3,
@@ -46,7 +46,7 @@ impl RangefinderType {
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {
-            0 => Self::None,
+            0 => Self::NoRangefinder,
             1 => Self::Hcsr04,
             2 => Self::TfMini,
             3 => Self::Tf02,
@@ -123,16 +123,15 @@ impl RangefinderDevice for Rangefinder {
 mod tests {
     use super::*;
 
-    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
-    fn _is_full_no_partial_eq<T: Sized + Send + Sync + Unpin + Copy + Clone + Default>() {}
+    fn is_full_eq<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + Eq + PartialEq>() {}
     #[cfg(feature = "serde")]
     fn is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
         is_full::<RangefinderMessage>();
-        is_full::<RangefinderType>();
+        is_full_eq::<RangefinderType>();
         #[cfg(feature = "serde")]
         is_full::<RangefinderType>();
     }

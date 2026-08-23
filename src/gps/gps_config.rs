@@ -34,7 +34,7 @@ impl GpsConfig {
     pub const fn new() -> Self {
         Self {
             provider: GpsProvider::Ubx,
-            sbas_mode: SbasMode::None,
+            sbas_mode: SbasMode::SbasNone,
             auto_config: GpsOffOn::On,
             auto_baud: GpsOffOn::Off,
             gps_ublox_acquire_model: GpsModel::Stationary,
@@ -51,7 +51,7 @@ impl GpsConfig {
 
 #[allow(missing_docs)]
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum GpsProvider {
     #[default]
@@ -59,11 +59,12 @@ pub enum GpsProvider {
     Ubx = 1,
     Msp = 2,
     Mock = 3,
-    None = 255,
+    NoGps = 255,
 }
 
 #[allow(unused)]
 impl GpsProvider {
+    /// Forgiving conversion, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {
@@ -71,7 +72,7 @@ impl GpsProvider {
             1 => Self::Ubx,
             2 => Self::Msp,
             3 => Self::Mock,
-            255 => Self::None,
+            255 => Self::NoGps,
             _ => Self::default(),
         }
     }
@@ -80,7 +81,7 @@ impl GpsProvider {
 #[allow(missing_docs)]
 #[allow(unused)]
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum GpsModel {
     #[default]
@@ -99,6 +100,7 @@ impl PostcardValue<'_> for GpsModel {}
 
 #[allow(unused)]
 impl GpsModel {
+    /// Forgiving conversion, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {
@@ -118,7 +120,7 @@ impl GpsModel {
 #[allow(missing_docs)]
 #[allow(unused)]
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum UtcStandard {
     #[default]
@@ -134,6 +136,7 @@ impl PostcardValue<'_> for UtcStandard {}
 
 #[allow(unused)]
 impl UtcStandard {
+    /// Forgiving conversion, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {
@@ -150,7 +153,7 @@ impl UtcStandard {
 #[allow(missing_docs)]
 #[allow(unused)]
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum SbasMode {
     #[default]
@@ -159,13 +162,12 @@ pub enum SbasMode {
     Waas = 2,
     Msas = 3,
     Gagan = 4,
-    None = 5,
+    SbasNone = 5,
 }
 
 #[allow(unused)]
 impl SbasMode {
-    pub const COUNT: u8 = 13;
-
+    /// Forgiving conversion, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {
@@ -173,7 +175,7 @@ impl SbasMode {
             1 => Self::Egnos,
             2 => Self::Waas,
             3 => Self::Gagan,
-            4 => Self::None,
+            4 => Self::SbasNone,
             _ => Self::default(),
         }
     }
@@ -182,7 +184,7 @@ impl SbasMode {
 #[allow(missing_docs)]
 #[allow(unused)]
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum GpsOffOn {
     #[default]
@@ -192,8 +194,7 @@ pub enum GpsOffOn {
 
 #[allow(unused)]
 impl GpsOffOn {
-    pub const COUNT: u8 = 2;
-
+    /// Forgiving conversion, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {
@@ -208,8 +209,8 @@ impl GpsOffOn {
 mod tests {
     use super::*;
 
-    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+    fn is_full_eq<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + Eq + PartialEq>() {}
     #[cfg(feature = "serde")]
     fn is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
@@ -218,7 +219,11 @@ mod tests {
         is_full::<GpsConfig>();
         #[cfg(feature = "serde")]
         is_config::<GpsConfig>();
-        is_full::<GpsOffOn>();
+        is_full_eq::<GpsProvider>();
+        is_full_eq::<GpsModel>();
+        is_full_eq::<UtcStandard>();
+        is_full_eq::<SbasMode>();
+        is_full_eq::<GpsOffOn>();
     }
     #[test]
     fn test_new() {

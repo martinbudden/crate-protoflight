@@ -14,12 +14,12 @@ use {
 #[allow(missing_docs)]
 #[allow(unused)]
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum OpticalFlowType {
     #[default]
     Default = 0,
-    None = 1,
+    NoOpticalFlow = 1,
     Mt = 2,
     Upt1 = 3,
     Mock = 4,
@@ -32,7 +32,7 @@ impl OpticalFlowType {
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {
-            1 => Self::None,
+            1 => Self::NoOpticalFlow,
             2 => Self::Mt,
             3 => Self::Upt1,
             4 => Self::Mock,
@@ -99,14 +99,14 @@ impl OpticalFlowDevice for OpticalFlow {
 mod tests {
     use super::*;
 
-    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
-    fn _is_full_no_partial_eq<T: Sized + Send + Sync + Unpin + Copy + Clone + Default>() {}
     #[cfg(feature = "serde")]
     fn is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
+    fn is_full_eq<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + Eq + PartialEq>() {}
 
     #[test]
     fn normal_types() {
         is_full::<OpticalFlowMessage>();
+        is_full_eq::<OpticalFlowType>();
     }
 }

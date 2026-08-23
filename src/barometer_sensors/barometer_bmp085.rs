@@ -36,6 +36,7 @@ impl Reg {
     const _TEMPERATURE_XLSB: u8 = 0xFC;
 }
 
+#[allow(unused)]
 pub struct BarometerBmp085 {
     #[allow(unused)]
     pub i2c_bus: &'static SharedI2cBus,
@@ -68,6 +69,7 @@ impl BarometerBmp085 {
 }
 
 impl BarometerBmp085 {
+    #[allow(unused)]
     fn calculate_temperature(&mut self, temperature: MsbLsbXlsb, calibration: TemperatureCalibration) {
         let adc_t: i32 =
             ((((temperature.msb) << 16) | ((temperature.lsb) << 8) | (temperature.xlsb)) >> 4).cast_signed();
@@ -80,6 +82,7 @@ impl BarometerBmp085 {
         }
     }
 
+    #[allow(unused)]
     fn calculate_pressure(&mut self, pressure: MsbLsbXlsb, calibration: PressureCalibration) {
         let mut vp1 = i64::from(self.temperature_fine) - 128_000;
         let mut vp2 = vp1 * vp1 * i64::from(calibration.p6);
@@ -169,6 +172,7 @@ impl MsbLsbXlsb {
 
 //impl BarometerDevice for BarometerBmp085 {
 impl BarometerBmp085 {
+    #[allow(unused)]
     pub async fn init(&self) -> Result<u32, BarometerI2cError> {
         //async fn init(&mut self) -> Result<u32, ()> {
         // Placeholder: explicitly await an immediately ready inline future
@@ -177,6 +181,7 @@ impl BarometerBmp085 {
         Ok(40)
     }
 
+    #[allow(unused)]
     pub async fn make_reading(&mut self) {
         // Placeholder: explicitly await an immediately ready inline future
         core::future::poll_fn(|_| core::task::Poll::Ready(())).await;
@@ -192,6 +197,7 @@ impl BarometerBmp085 {
         self.calculate_pressure(pressure, self.pressure_calibration);
     }
 
+    #[allow(unused)]
     pub fn message(&self) -> BarometerMessage {
         let altitude_m =
             BarometerMessage::calculate_altitude_meters(self.pressure_pascals, self.pressure_at_reference_altitude);
