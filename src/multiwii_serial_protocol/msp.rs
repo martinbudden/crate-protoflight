@@ -1,6 +1,11 @@
 use radio_controllers::{Rates, RcMode, RcModes};
 #[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
+use {
+    postcard::experimental::max_size::MaxSize,
+    sequential_storage::map::PostcardValue,
+    serde::{Deserialize, Serialize},
+};
+
 use stream_buf::{StreamBufReader, StreamBufWriter};
 use vqm::Quaternion;
 
@@ -70,10 +75,13 @@ impl MspSensorData {
 }
 /// MSP configurator. Reads and writes data in Betaflight MSP-compatible format.
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct Msp {
     pub version: u8,
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for Msp {}
 
 impl Default for Msp {
     fn default() -> Self {

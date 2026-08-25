@@ -2,6 +2,7 @@
 
 #[cfg(feature = "serde")]
 use {
+    postcard::experimental::max_size::MaxSize,
     sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
 };
@@ -12,7 +13,7 @@ use crate::{
 };
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct OsdConfig {
     pub profile: [[u8; Osd::PROFILE_COUNT]; Osd::PROFILE_NAME_LENGTH + 2], // extra byte for zero terminator and extra byte to even-align
     pub rc_channels: [i8; Osd::RC_CHANNELS_COUNT],                         // RC channel values to display, -1 if none
@@ -129,7 +130,7 @@ impl OsdConfig {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct OsdStatsConfig {
     pub total_flights: u32,
     pub total_time_s: u32,
@@ -162,7 +163,7 @@ impl OsdStatsConfig {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 /// Osd Elements configuration array: 2 bits for type, 2 bits for profile, 6 bits for y, 6 bits for x.
 pub struct OsdElementsConfig {
     pub positions: [u16; OsdElements::COUNT],
@@ -184,7 +185,7 @@ impl OsdElementsConfig {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct PilotConfig {
     pub craft_name: FixedBuf<{ PilotConfig::MAX_NAME_LENGTH }>,
     pub pilot_name: FixedBuf<{ PilotConfig::MAX_NAME_LENGTH }>,
@@ -219,7 +220,7 @@ mod tests {
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     #[cfg(feature = "serde")]
-    fn is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
+    fn is_config<T: Serialize + MaxSize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {

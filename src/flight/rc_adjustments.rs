@@ -6,6 +6,7 @@ use radio_controllers::{
 
 #[cfg(feature = "serde")]
 use {
+    postcard::experimental::max_size::MaxSize,
     sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
 };
@@ -16,7 +17,7 @@ use crate::{
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 enum RcAdjustment {
     #[default]
     None,
@@ -85,7 +86,7 @@ pub const RC_ADJUSTMENT_CONFIGS: [RcAdjustmentConfig; RcAdjustment::COUNT] = [
 ];
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct RcAdjustments {
     pub stepwise_adjustments: [RcTimedAdjustmentState; Self::MAX_RANGE_COUNT],
     pub continuos_adjustments: [RcContinuosAdjustmentState; Self::MAX_RANGE_COUNT],
@@ -217,7 +218,7 @@ mod tests {
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     #[cfg(feature = "serde")]
-    fn is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
+    fn is_config<T: Serialize + MaxSize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {

@@ -103,7 +103,7 @@ airb_omnibus_f4_sd = ["stm32", "stm32f405", "motors_t3_t2"]
 # Core backend features declared explicitly
 # libm feature activates the optional crate named "libm", etc
 libm = ["dep:libm", "num-traits/libm", "vqm/libm", "imu-sensors/libm", "signal-filters/libm", "radio-controllers/libm"]
-serde = ["dep:serde", "blackbox-logger/serde", "imu-sensors/serde", "motor-mixers/serde", "radio-controllers/serde", "simple-bitset/serde", "vqm/serde" ]
+serde = ["dep:serde", "dep:postcard", "blackbox-logger/serde", "imu-sensors/serde", "motor-mixers/serde", "radio-controllers/serde", "simple-bitset/serde", "vqm/serde" ]
 rtt-debug = ["dep:rtt-target"]
 # align feature activates align feature in vqm and signal-filters crates, etc
 align = ["vqm/align", "signal-filters/align"]
@@ -196,8 +196,8 @@ derive_more = { version = "2.1.1", default-features = false, features = ["displa
 num-traits = { version = "0.2.19", default-features = false }
 libm = { version = "0.2.16", optional = true }
 
-serde = { version = "1.0.228", default-features = false, features = ["derive"], optional = true }
-postcard = { version = "1.1.3", default-features = false, features = ["embedded-io"], optional = true }
+serde = { version = "1.0.229", default-features = false, features = ["derive"], optional = true }
+postcard = { version = "1.1.3", default-features = false, features = ["embedded-io", "experimental-derive"], optional = true }
 sequential-storage = { version = "8.0.1", default-features = false, features = ["postcard"] }
 embedded-storage-async = { version = "0.4.1", default-features = false }
 # In-memory storage simulator

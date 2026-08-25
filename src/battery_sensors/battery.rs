@@ -4,6 +4,7 @@
 use core::ops::{Index, IndexMut};
 #[cfg(feature = "serde")]
 use {
+    postcard::experimental::max_size::MaxSize,
     sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
 };
@@ -19,7 +20,7 @@ pub enum BatteryState {
 }
 /// Per-profile battery settings (voltage thresholds, capacity).
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct BatteryProfile {
     /// maximum voltage per cell, used for auto-detecting battery voltage in 0.01V units, default is 430 (4.30V).
     pub max_cell_voltage_v_x100: u16,
@@ -68,7 +69,7 @@ impl BatteryProfile {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct BatteryProfiles {
     pub profiles: [BatteryProfile; Self::COUNT],
 }
@@ -105,7 +106,7 @@ impl IndexMut<usize> for BatteryProfiles {
     }
 }
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct BatteryConfig {
     pub vbat_not_present_cell_voltage: u16, // Between vbat_max_cell_voltage and 2*this is considered to be USB powered. Below this it is not present
     pub lvc_percentage: u8,                 // Percentage of throttle when lvc is triggered
@@ -262,7 +263,7 @@ mod tests {
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     #[cfg(feature = "serde")]
-    fn is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
+    fn is_config<T: Serialize + MaxSize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {

@@ -1,11 +1,12 @@
 #[cfg(feature = "serde")]
 use {
+    postcard::experimental::max_size::MaxSize,
     sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
 };
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct PidConfig {
     pub kp: u8, // proportional gain
     pub ki: u8, // integral gain
@@ -34,7 +35,7 @@ impl Default for PidConfig {
 
 #[allow(unused)]
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct PidConfigs {
     pub roll_rate: PidConfig,
     pub pitch_rate: PidConfig,
@@ -65,7 +66,7 @@ impl Default for PidConfigs {
 /// Configuration data for the flight controller filters.
 /// These the dterm filters, the output filters, and the RC smoothing filters.
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct FlightControllerFiltersConfig {
     //enum { PT1 : 0, BIQUAD, PT2, PT3 }
     pub dterm_lpf1_hz: u16,
@@ -116,7 +117,7 @@ impl FlightControllerFiltersConfig {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct FlightModeConfig {
     pub level_race_mode: u8, // aka "NFE(not fast enough) race mode": angle mode on roll, acro mode on pitch
 }
@@ -139,7 +140,7 @@ impl Default for FlightModeConfig {
 /// Configuration data for Throttle PID Attenuation (TPA),
 /// Allows dynamic adjustment of the PID gains according to the throttle value.
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct TpaConfig {
     pub mode: TpaMode,
     pub rate: u8,
@@ -166,7 +167,7 @@ impl TpaConfig {
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub enum TpaMode {
     P = 0,
     #[default]
@@ -194,7 +195,7 @@ impl TpaMode {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct AntiGravityConfig {
     pub cutoff_hz: u8,
     pub p_gain: u8,
@@ -217,7 +218,7 @@ impl AntiGravityConfig {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct CrashFlipConfig {
     pub motor_percent: u8,
     pub rate: u8,
@@ -240,7 +241,7 @@ impl CrashFlipConfig {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct YawSpinRecoveryConfig {
     pub yaw_spin_threshold: i16,
     pub yaw_spin_recovery: u8,
@@ -266,7 +267,7 @@ impl Default for YawSpinRecoveryConfig {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct CrashRecoveryConfig {
     pub d_threshold: u16,        // dterm crash value
     pub g_threshold: u16,        // gyro crash value
@@ -305,7 +306,7 @@ impl CrashRecoveryConfig {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct ItermRelaxConfig {
     pub relax_type: u8,                   // not used
     pub relax: u8,                        // Enable iterm suppression during stick input
@@ -332,7 +333,7 @@ impl Default for ItermRelaxConfig {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct DMaxConfig {
     pub d_max: [u8; 2], // Maximum D value on each axis
     pub gain: u8,       // gain factor for amount of gyro / setpoint activity required to boost D
@@ -355,7 +356,7 @@ impl DMaxConfig {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct GyroConfig {
     pub gyro_movement_calibration_threshold: u8, // people keep forgetting that moving model while init results in wrong gyro offsets. and then they never reset gyro. so this is now on by default.
     pub gyro_hardware_lpf: u8,                   // gyro DLPF setting
@@ -450,7 +451,7 @@ mod tests {
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     fn is_full_eq<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + Eq + PartialEq>() {}
     #[cfg(feature = "serde")]
-    fn is_config<T: Serialize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
+    fn is_config<T: Serialize + MaxSize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
