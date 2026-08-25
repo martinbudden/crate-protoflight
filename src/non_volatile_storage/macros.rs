@@ -10,7 +10,7 @@ macro_rules! generate_config_handlers {
 
 use $location::[<$prefix Config>];
 
-// Generate the LOAD function
+/// Generate the `load` function.
 #[allow(unused)]
 pub async fn [<load_ $prefix:lower _config>]<F, C>(
     config: &mut [<$prefix Config>],
@@ -33,7 +33,7 @@ where
     Ok(())
 }
 
-// Generate the SAVE function
+/// Generate the `store` function.
 #[allow(unused)]
 pub async fn [<save_ $prefix:lower _config>]<F, C>(
     config: &[<$prefix Config>],
@@ -65,7 +65,7 @@ where
     Ok(())
 }
 
-// Generate the DELETE function
+/// Generate the `delete` function.
 #[allow(unused)]
 pub async fn [<delete_ $prefix:lower _config>]<F, C>(
     storage: &mut MapStorage<u16, F, C>

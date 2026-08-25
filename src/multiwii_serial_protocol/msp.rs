@@ -123,6 +123,12 @@ impl Msp {
             Msp::ARMING_CONFIG => Self::arming_config(dst).await,
             Msp::FAILSAFE_CONFIG => Self::failsafe_config(dst).await,
             #[cfg(feature = "blackbox")]
+            Msp::DATAFLASH_READ => Self::dataflash_read(dst).await,
+            #[cfg(feature = "blackbox")]
+            Msp::DATAFLASH_READ => Self::dataflash_summary(dst).await,
+            #[cfg(feature = "blackbox")]
+            Msp::DATAFLASH_READ => Self::dataflash_erase().await,
+            #[cfg(feature = "blackbox")]
             Msp::BLACKBOX_CONFIG => Self::blackbox_config(dst).await,
             Msp::ADVANCED_CONFIG => Self::advanced_config(dst).await,
             Msp::FILTER_CONFIG => Self::filter_config(dst).await,
@@ -233,6 +239,9 @@ impl Msp {
 
             #[cfg(feature = "gps")]
             Msp::SET_GPS_RESCUE => Self::set_gps_rescue(src, config_publisher).await,
+
+            #[cfg(feature = "serde")]
+            Msp::EEPROM_WRITE => Self::write_to_nvs().await,
 
             _ => {
                 // we do not know how to handle the (valid) message, indicate an error MSP `$M!`.
@@ -646,6 +655,33 @@ impl Msp {
         MspResult::Ack
     }
 
+    #[cfg(feature = "blackbox")]
+    async fn dataflash_read(_dst: &mut StreamBufWriter<'_>) -> MspResult {
+        let blackbox_device = {
+            let global_config = GLOBAL_CONFIG.lock().await;
+            global_config.blackbox.device
+        };
+        _ = blackbox_device;
+        MspResult::Error
+    }
+    #[cfg(feature = "blackbox")]
+    async fn dataflash_summary(_dst: &mut StreamBufWriter<'_>) -> MspResult {
+        let blackbox_device = {
+            let global_config = GLOBAL_CONFIG.lock().await;
+            global_config.blackbox.device
+        };
+        _ = blackbox_device;
+        MspResult::Error
+    }
+    #[cfg(feature = "blackbox")]
+    async fn dataflash_erase() -> MspResult {
+        let blackbox_device = {
+            let global_config = GLOBAL_CONFIG.lock().await;
+            global_config.blackbox.device
+        };
+        _ = blackbox_device;
+        MspResult::Error
+    }
     #[cfg(feature = "blackbox")]
     async fn blackbox_config(dst: &mut StreamBufWriter<'_>) -> MspResult {
         let config = {
@@ -1401,6 +1437,13 @@ impl Msp {
             global_config.autopilot = autopilot_config;
             publisher.publish(ConfigItem::Autopilot(autopilot_config)).await;
         }
+        MspResult::Ack
+    }
+
+    #[cfg(feature = "serde")]
+    async fn write_to_nvs() -> MspResult {
+        // TODO: write_to_nvs to call store_global_configs
+        let _global_config = GLOBAL_CONFIG.lock().await;
         MspResult::Ack
     }
 }

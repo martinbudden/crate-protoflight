@@ -4,7 +4,7 @@
 // Macros must be brought into scope before the modules that use them.
 
 #[macro_use]
-mod nvs_macros;
+mod macros;
 
 mod nvs;
 

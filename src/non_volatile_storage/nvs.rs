@@ -79,6 +79,7 @@ impl Key {
     const BLACKBOX_CONFIG: u16 = 0x060F;
     const BATTERY_CONFIG: u16 = 0x0610;
     const ARMING_CONFIG: u16 = 0x0611;
+    const BAROMETER_CONFIG: u16 = 0x612;
 }
 /*
 There are two layers of `Option`
@@ -97,16 +98,97 @@ fetch_item
                 → actual configuration
 */
 
+//generate_config_handlers!(crate::flight, Arming, Key::ARMING_CONFIG, 256);
+
 generate_config_handlers!(radio_controllers, Rates, Key::RATES, 256);
 
-#[cfg(feature = "osd")]
-generate_config_handlers!(crate::osd, Osd, Key::OSD_CONFIG, 256);
+#[cfg(feature = "barometer")]
+generate_config_handlers!(crate::barometer_sensors, Barometer, Key::BAROMETER_CONFIG, 256);
+
+#[cfg(feature = "battery")]
+generate_config_handlers!(crate::battery_sensors, Battery, Key::BATTERY_CONFIG, 256);
 
 #[cfg(feature = "blackbox")]
 generate_config_handlers!(blackbox_logger, Blackbox, Key::BLACKBOX_CONFIG, 256);
 
-#[cfg(feature = "battery")]
-generate_config_handlers!(crate::battery_sensors, Battery, Key::BATTERY_CONFIG, 256);
+#[cfg(feature = "osd")]
+generate_config_handlers!(crate::osd, Osd, Key::OSD_CONFIG, 256);
+
+// PC (Host) Build Configuration --- If building on your PC (x86_64, Mac, etc)
+#[cfg(feature = "std")]
+pub fn init_flash_driver() -> impl NorFlash {
+    let path = "pc_mock_flash.nor";
+    let capacity_bytes = 1024 * 1024; // 1MB 
+
+    #[allow(clippy::expect_used)]
+    let inner_sync_nor =
+        NorMemoryInFile::<4, 4, 4096>::new(path, capacity_bytes).expect("Failed to create synchronous mock flash file");
+
+    NorMemoryAsync::new(inner_sync_nor)
+}
+
+pub async fn load_global_configs<F>(flash_driver: F) -> Result<(), sequential_storage::Error<F::Error>>
+where
+    F: NorFlash,
+{
+    use super::nvs;
+    use crate::config::GLOBAL_CONFIG;
+
+    let map_config = MapConfig::new(0..FLASH_SIZE_BYTES);
+    let cache = Cache::new_uncached();
+    let mut map_storage = MapStorage::new(flash_driver, map_config, cache);
+
+    let mut config = GLOBAL_CONFIG.lock().await;
+
+    nvs::load_rates_config(&mut config.rates, &mut map_storage).await?;
+    nvs::load_arming_config(&mut config.arming, &mut map_storage).await?;
+
+    #[cfg(feature = "barometer")]
+    nvs::load_barometer_config(&mut config.barometer, &mut map_storage).await?;
+
+    #[cfg(feature = "battery")]
+    nvs::load_battery_config(&mut config.battery, &mut map_storage).await?;
+
+    #[cfg(feature = "blackbox")]
+    nvs::load_blackbox_config(&mut config.blackbox, &mut map_storage).await?;
+
+    #[cfg(feature = "osd")]
+    nvs::load_osd_config(&mut config.osd, &mut map_storage).await?;
+
+    Ok(())
+}
+
+#[allow(unused)]
+pub async fn store_global_configs<F>(flash_driver: F) -> Result<(), sequential_storage::Error<F::Error>>
+where
+    F: NorFlash,
+{
+    use super::nvs;
+    use crate::config::GLOBAL_CONFIG;
+
+    let map_config = MapConfig::new(0..FLASH_SIZE_BYTES);
+    let cache = Cache::new_uncached();
+    let mut map_storage = MapStorage::new(flash_driver, map_config, cache);
+
+    let config = GLOBAL_CONFIG.lock().await;
+
+    nvs::save_rates_config(&config.rates, &mut map_storage).await?;
+    nvs::save_arming_config(&config.arming, &mut map_storage).await?;
+
+    #[cfg(feature = "barometer")]
+    nvs::save_barometer_config(&config.barometer, &mut map_storage).await?;
+
+    #[cfg(feature = "battery")]
+    nvs::save_battery_config(&config.battery, &mut map_storage).await?;
+
+    #[cfg(feature = "blackbox")]
+    nvs::save_blackbox_config(&config.blackbox, &mut map_storage).await?;
+
+    #[cfg(feature = "osd")]
+    nvs::save_osd_config(&config.osd, &mut map_storage).await?;
+
+    Ok(())
+}
 
 use crate::flight::ArmingConfig;
 
@@ -215,37 +297,6 @@ where
     Ok(())
 }
 
-// PC (Host) Build Configuration --- If building on your PC (x86_64, Mac, etc.)
-#[cfg(feature = "std")]
-pub fn init_flash_driver() -> impl NorFlash {
-    let path = "pc_mock_flash.nor";
-    let capacity_bytes = 1024 * 1024; // 1MB 
-
-    #[allow(clippy::expect_used)]
-    let inner_sync_nor =
-        NorMemoryInFile::<4, 4, 4096>::new(path, capacity_bytes).expect("Failed to create synchronous mock flash file");
-
-    NorMemoryAsync::new(inner_sync_nor)
-}
-
-//#[cfg(feature = "std")]
-pub async fn load_global_configs<F>(flash_driver: F) -> Result<(), sequential_storage::Error<F::Error>>
-where
-    F: NorFlash,
-{
-    use super::nvs;
-    use crate::config::GLOBAL_CONFIG;
-
-    let map_config = MapConfig::new(0..FLASH_SIZE_BYTES);
-    let cache = Cache::new_uncached();
-    let mut map_storage = MapStorage::new(flash_driver, map_config, cache);
-
-    let mut config = GLOBAL_CONFIG.lock().await;
-
-    nvs::load_arming_config(&mut config.arming, &mut map_storage).await?;
-
-    Ok(())
-}
 #[cfg(all(test, feature = "std"))]
 mod tests {
     #![allow(clippy::expect_used)]
