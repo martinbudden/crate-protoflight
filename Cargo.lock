@@ -135,8 +135,9 @@ checksum = "b588b76d00fde79687d7646a9b5bdf3cc0f655e0bbd080335a95d7e96f3587da"
 
 [[package]]
 name = "blackbox-logger"
-version = "0.1.9"
-source = "git+https://github.com/martinbudden/crate-blackbox-logger#da561b910b71b39db73a5ca20e71a48b72cbaab4"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bebc07307389c00ae7ed9102c6ddca1b7df59eb021910cfedaf08d04ac47aa7e"
 dependencies = [
  "embassy-futures",
  "postcard",
@@ -1262,7 +1263,7 @@ dependencies = [
 [[package]]
 name = "motor-mixers"
 version = "0.1.5"
-source = "git+https://github.com/martinbudden/crate-motor-mixers#92c7a1d8b8ea071188b3aed866706dde4c42e12b"
+source = "git+https://github.com/martinbudden/crate-motor-mixers#84967cd97b4557b1e0278a69c4d754057e81ed33"
 dependencies = [
  "embassy-executor",
  "embassy-futures",
@@ -1593,11 +1594,10 @@ dependencies = [
 [[package]]
 name = "radio-controllers"
 version = "0.1.6"
-source = "git+https://github.com/martinbudden/crate-radio-controllers#9b09472c739d53df29ab45a54f9c43e44893b815"
+source = "git+https://github.com/martinbudden/crate-radio-controllers#3f7719d57fc2ea7fe20525f945dc6b3e5cf479ed"
 dependencies = [
  "embedded-hal 1.0.0",
  "embedded-hal-nb",
- "libm",
  "nb 1.1.0",
  "postcard",
  "rustc_version 0.4.1",
@@ -1860,8 +1860,9 @@ dependencies = [
 
 [[package]]
 name = "simple-bitset"
-version = "0.1.5"
-source = "git+https://github.com/martinbudden/crate-simple-bitset#a37c53d2501b04c0a81118210ecba6e9bb8914d8"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "17c9fa5bb21b915fe823676bb42b92d22226d8ca9b999488b0ed40546dbb5a05"
 dependencies = [
  "postcard",
  "rustc_version 0.4.1",
@@ -2229,7 +2230,7 @@ dependencies = [
 [[package]]
 name = "vqm"
 version = "0.1.14"
-source = "git+https://github.com/martinbudden/crate-vector-quaternion-matrix#1237f7c612c3b91fc7181fcdce84e0b6c0decb74"
+source = "git+https://github.com/martinbudden/crate-vector-quaternion-matrix#f90a9c4eb649ee4526b280f635765fe3bb75dd6a"
 dependencies = [
  "cfg-if",
  "derive_more",

@@ -26,7 +26,8 @@ rustc_version = "0.4.1"
 [features]
 #default = ["std", "libm"]
 #default = ["rp2350", "libm"]
-default = ["libm",
+default = [
+    #"libm",
     "std",
     #"rp2350",
     #"speedybee_f405_v4",
@@ -102,7 +103,7 @@ airb_omnibus_f4_sd = ["stm32", "stm32f405", "motors_t3_t2"]
 
 # Core backend features declared explicitly
 # libm feature activates the optional crate named "libm", etc
-libm = ["dep:libm", "num-traits/libm", "vqm/libm", "imu-sensors/libm", "signal-filters/libm", "radio-controllers/libm"]
+libm = ["dep:libm", "vqm/libm", "imu-sensors/libm", "signal-filters/libm",]
 serde = ["dep:serde", "dep:postcard", "blackbox-logger/serde", "imu-sensors/serde", "motor-mixers/serde", "radio-controllers/serde", "simple-bitset/serde", "vqm/serde" ]
 rtt-debug = ["dep:rtt-target"]
 # align feature activates align feature in vqm and signal-filters crates, etc
@@ -203,8 +204,8 @@ embedded-storage-async = { version = "0.4.1", default-features = false }
 # In-memory storage simulator
 embedded-storage-file = { version = "0.2.0", default-features = false, optional = true }
 
-#simple-bitset = "0.1.5"
-simple-bitset = { git = "https://github.com/martinbudden/crate-simple-bitset" }
+simple-bitset = "0.1.6"
+#simple-bitset = { git = "https://github.com/martinbudden/crate-simple-bitset" }
 #simple-bitset = { path = "../simple-bitset" }
 stream-buf = "0.1.2"
 #stream-buf = { git = "https://github.com/martinbudden/crate-stream-buf" }
@@ -220,8 +221,8 @@ pidsk-controller = { git = "https://github.com/martinbudden/crate-pid-controller
 #sensor-fusion = "0.1.9"
 sensor-fusion = { git = "https://github.com/martinbudden/crate-sensor-fusion" }
 #sensor-fusion = { path = "../sensor-fusion" }
-#blackbox-logger = { version = "0.1.9", default-features = false, optional = true }
-blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger", default-features = false, optional = true }
+blackbox-logger = { version = "0.1.10", default-features = false, optional = true }
+#blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger", default-features = false, optional = true }
 #blackbox-logger = { path = "../blackbox-logger", default-features = false, optional = true }
 
 #motor-mixers = { version = "0.1.5", default-features = false }
