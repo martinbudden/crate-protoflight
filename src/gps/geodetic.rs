@@ -1,7 +1,7 @@
 use vqm::Vector3f32;
 
 #[allow(unused)]
-use vqm::TrigonometricMethods;
+use vqm::MathMethods;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "std", derive(derive_more::Display))]

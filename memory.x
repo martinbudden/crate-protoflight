@@ -1,6 +1,27 @@
+/*
+PHYSICAL_FLASH_SIZE = the entire 2 MiB physical flash.
+LSA_LOG_SIZE = the 128 KiB you've reserved for your log.
+LSA_LOG_START = the address where that reserved region begins.
+
+0x1000_0000 ┌─────────────────────┐
+            │                     │
+            │     Application     │
+            │                     │
+0x101E_0000 ├─────────────────────┤
+            │                     │
+            │      LSA log        │ 128 KiB
+            │                     │
+0x1020_0000 └─────────────────────┘
+*/
+PROVIDE(__physical_flash_start = 0x10000000);
+PROVIDE(__physical_flash_end   = 0x10200000);
+
+PROVIDE(__lsa_log_start = 0x101E0000);
+PROVIDE(__lsa_log_end   = 0x10200000);
+
 MEMORY {
     /* RP2350 standard 2MB bootable Flash region */
-    FLASH : ORIGIN = 0x10000000, LENGTH = 2048K
+    FLASH : ORIGIN = 0x10000000, LENGTH = 1920K
 
     /* Primary striped working memory block required by cortex-m-rt */
     RAM   : ORIGIN = 0x20000000, LENGTH = 512K

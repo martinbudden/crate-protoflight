@@ -1,6 +1,6 @@
 use core::f32::consts::{FRAC_1_SQRT_2, FRAC_PI_2};
 #[allow(unused)]
-use vqm::TrigonometricMethods;
+use vqm::MathMethods;
 use vqm::Vector2f32;
 
 #[allow(unused)]
