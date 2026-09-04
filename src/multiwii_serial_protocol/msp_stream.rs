@@ -1,3 +1,5 @@
+use super::crc_dvb_s2::CrcDvbS2;
+
 #[derive(Clone, Copy, Default, Debug, PartialEq)]
 pub enum MspVersion {
     #[default]
@@ -115,19 +117,6 @@ impl Default for MspStream {
     }
 }
 
-/// Standard CRC-8/DVB-S2 update function.
-pub fn crc8_dvb_s2(mut crc: u8, byte: u8) -> u8 {
-    crc ^= byte;
-    for _ in 0..8 {
-        if crc & 0x80 != 0 {
-            crc = (crc << 1) ^ 0xD5;
-        } else {
-            crc <<= 1;
-        }
-    }
-    crc
-}
-
 #[derive(Clone, Copy, Default, Debug, PartialEq)]
 pub enum MspPacketState {
     #[default]
@@ -239,7 +228,7 @@ impl MspStream {
                 if version == MspVersion::V2overV1 {
                     checksum1 ^= c;
                 }
-                checksum2 = crc8_dvb_s2(checksum2, c);
+                checksum2 = CrcDvbS2::update(checksum2, c);
                 offset += 1;
 
                 // Header size is 5 bytes.
@@ -277,7 +266,7 @@ impl MspStream {
                 if version == MspVersion::V2overV1 {
                     checksum1 ^= c;
                 }
-                checksum2 = crc8_dvb_s2(checksum2, c);
+                checksum2 = CrcDvbS2::update(checksum2, c);
                 offset += 1;
                 if offset == len {
                     self.cmd_msp = cmd;
@@ -364,7 +353,7 @@ impl MspStream {
                 // Nested helper to push and update CRC
                 let push_v2 = |b: u8, dst: &mut [u8], off: &mut usize, c: &mut u8| -> Result<(), MspError> {
                     push(b, dst, off)?;
-                    *c = crc8_dvb_s2(*c, b);
+                    *c = CrcDvbS2::update(*c, b);
                     Ok(())
                 };
 
@@ -401,7 +390,7 @@ impl MspStream {
                 let push_v2_over_v1 =
                     |b: u8, dst: &mut [u8], off: &mut usize, c: &mut u8, x: &mut u8| -> Result<(), MspError> {
                         push(b, dst, off)?;
-                        *c = crc8_dvb_s2(*c, b);
+                        *c = CrcDvbS2::update(*c, b);
                         *x ^= b;
                         Ok(())
                     };

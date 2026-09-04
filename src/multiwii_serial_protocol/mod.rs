@@ -1,6 +1,8 @@
 #![cfg(feature = "msp")]
 #![doc = include_str!("README.md")]
 
+mod crc_dvb_s2;
+
 mod msp;
 mod msp_commands;
 mod msp_stream;
