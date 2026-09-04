@@ -7,19 +7,6 @@ use sequential_storage::{
     map::{MapConfig, MapStorage},
 };
 
-#[cfg(feature = "std")]
-use embedded_storage_file::{NorMemoryAsync, NorMemoryInFile};
-
-#[cfg(feature = "rp2350")]
-use {
-    embassy_embedded_hal::adapter::BlockingAsync,
-    embassy_rp::{
-        Peri,
-        flash::{Blocking, Flash},
-        peripherals::FLASH,
-    },
-};
-
 #[allow(unused)]
 #[cfg(feature = "rp2350")]
 const FLASH_SIZE_BYTES: usize = 4 * 1024 * 1024;
@@ -114,20 +101,7 @@ generate_config_handlers!(blackbox_logger, Blackbox, Key::BLACKBOX_CONFIG, 256);
 #[cfg(feature = "osd")]
 generate_config_handlers!(crate::osd, Osd, Key::OSD_CONFIG, 256);
 
-// PC (Host) Build Configuration --- If building on your PC (x86_64, Mac, etc)
-#[cfg(feature = "std")]
-pub fn init_flash_driver() -> impl NorFlash {
-    let path = "pc_mock_flash.nor";
-    let capacity_bytes = 1024 * 1024; // 1MB 
-
-    #[allow(clippy::expect_used)]
-    let inner_sync_nor =
-        NorMemoryInFile::<4, 4, 4096>::new(path, capacity_bytes).expect("Failed to create synchronous mock flash file");
-
-    NorMemoryAsync::new(inner_sync_nor)
-}
-
-pub async fn load_global_configs<F>(flash_driver: F) -> Result<(), sequential_storage::Error<F::Error>>
+pub async fn load_all_global_configs<F>(flash_driver: F) -> Result<(), sequential_storage::Error<F::Error>>
 where
     F: NorFlash,
 {
@@ -159,7 +133,7 @@ where
 }
 
 #[allow(unused)]
-pub async fn store_global_configs<F>(flash_driver: F) -> Result<(), sequential_storage::Error<F::Error>>
+pub async fn store_all_global_configs<F>(flash_driver: F) -> Result<(), sequential_storage::Error<F::Error>>
 where
     F: NorFlash,
 {
@@ -300,6 +274,8 @@ where
 #[cfg(all(test, feature = "std"))]
 mod tests {
     #![allow(clippy::expect_used)]
+    use embedded_storage_file::{NorMemoryAsync, NorMemoryInFile};
+
     use super::*;
 
     /*

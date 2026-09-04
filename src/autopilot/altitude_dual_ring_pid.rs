@@ -70,17 +70,17 @@ impl Default for AltitudeDualRingPid {
 }
 
 impl AltitudeDualRingPid {
-    pub const fn new(hover_throttle: f32) -> Self {
+    pub fn new(hover_throttle: f32) -> Self {
         Self {
             // Initialize height controller (Outer Loop)
             // Only needs Proportional (kp) to map distance error to speed:
             // because the inner loop handles the physics of acceleration,
             // the outer loop only needs Kp to calculate the vertical speed setpoint
-            altitude_pid: PidControllerf32::new(1.0),
+            altitude_pid: PidControllerf32::new(),
             // Initialize velocity controller (Inner Loop)
             // Highly reactive: utilizes kp, ki, and kd.
             // TODO: check default PID gains.
-            speed_pid: PidControllerf32::with_gains(PidGainsf32 { kp: 2.5, ki: 0.05, kd: 0.05, ks: 0.0, kk: 0.0 }),
+            speed_pid: PidControllerf32::new().with_gains(PidGainsf32::new().with_kp(2.5).with_ki(0.05).with_kd(0.05)),
             max_vertical_speed_mps: 10.0, // = 36.0 km/h, effectively unlimited
             max_throttle_adjustment: 1.0, // effectively unlimited
             hover_throttle,

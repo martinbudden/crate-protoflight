@@ -11,8 +11,8 @@ pub trait BarometerDevice {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "std", derive(derive_more::Display))]
-#[cfg_attr(feature = "std", display("Baro{{a:{altitude_m}, p:{pressure_pascals}, t:{temperature_celsius}}}"))]
+#[cfg_attr(feature = "host", derive(derive_more::Display))]
+#[cfg_attr(feature = "host", display("Baro{{a:{altitude_m}, p:{pressure_pascals}, t:{temperature_celsius}}}"))]
 pub struct BarometerMessage {
     pub altitude_m: f32,
     pub altitude_m_i32: i32,

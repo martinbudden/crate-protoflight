@@ -23,6 +23,9 @@ use crate::optical_flow_sensors::OpticalFlowType;
 #[cfg(feature = "rangefinder")]
 use crate::rangefinder_sensors::RangefinderType;
 
+#[cfg(feature = "serde")]
+use crate::non_volatile_storage::store_global_configs;
+
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum MspResult {
     Ack = 1,
@@ -92,6 +95,13 @@ impl Default for Msp {
 impl Msp {
     pub const fn new() -> Self {
         Self { version: 0 }
+    }
+}
+
+#[cfg(feature = "serde")]
+impl Msp {
+    async fn write_to_nvs() -> MspResult {
+        if store_global_configs().await.is_ok() { MspResult::Ack } else { MspResult::Error }
     }
 }
 
@@ -1445,13 +1455,6 @@ impl Msp {
             global_config.autopilot = autopilot_config;
             publisher.publish(ConfigItem::Autopilot(autopilot_config)).await;
         }
-        MspResult::Ack
-    }
-
-    #[cfg(feature = "serde")]
-    async fn write_to_nvs() -> MspResult {
-        // TODO: write_to_nvs to call store_global_configs
-        let _global_config = GLOBAL_CONFIG.lock().await;
         MspResult::Ack
     }
 }

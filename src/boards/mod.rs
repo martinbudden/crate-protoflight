@@ -1,7 +1,7 @@
 #![doc = include_str!("README.md")]
 
 mod platform_rp2350;
-mod platform_std;
+mod platform_host;
 mod platform_stm32;
 
 mod board;
@@ -13,14 +13,14 @@ mod matek_f405_wte;
 mod rpi_pico2;
 mod sp_racing_f4_evo;
 mod speedybee_f405_v4;
-mod std;
+mod host;
 
 pub use board::BoardInit;
 
-#[cfg(feature = "std")]
+#[cfg(feature = "host")]
 pub use {
-    platform_std::{GpsUartRx, GpsUartTx, I2cDeviceBlocking},
-    std::{BoardImu, board_hardware},
+    platform_host::{GpsUartRx, GpsUartTx, I2cDeviceBlocking},
+    host::{BoardImu, board_hardware},
 };
 
 #[cfg(feature = "rp2350")]

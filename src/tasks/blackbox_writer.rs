@@ -10,10 +10,11 @@ use {
     embedded_sdmmc::{Directory, Mode, SdCard, VolumeIdx, VolumeManager},
 };
 
-#[cfg(feature = "std")]
+#[cfg(feature = "host")]
 use crate::drivers::sd_card::{MockSdCard, SdStorage};
 
-/// Dummy time source required by the embedded-sdmmc library
+/// Dummy time source required by the embedded-sdmmc library.
+#[allow(unused)]
 #[cfg(not(feature = "std"))]
 pub struct VehicleTimeSource;
 
@@ -26,7 +27,7 @@ impl embedded_sdmmc::TimeSource for VehicleTimeSource {
 }
 /// System execution context for the background storage worker pipeline.
 pub struct BlackboxWriterContext {
-    #[cfg(feature = "std")]
+    #[cfg(feature = "host")]
     pub sd_card: MockSdCard,
     #[cfg(feature = "rp2350")]
     pub spi_device: BlackboxSpiDevice,
@@ -42,7 +43,7 @@ const _: () =
 impl BlackboxWriterContext {
     const SECTOR_SIZE: usize = 512;
 
-    #[cfg(feature = "std")]
+    #[cfg(feature = "host")]
     pub fn new() -> Self {
         Self { sd_card: MockSdCard::new("blackbox_log.bbl"), sector_buffer: [0u8; Self::SECTOR_SIZE], sector_idx: 0 }
     }
@@ -192,8 +193,8 @@ where
     if highest_idx >= 999 { 0 } else { highest_idx + 1 }
 }
 
-/// Helper function to perform pure ASCII modifications safely inside stack boundaries
-#[cfg(not(feature = "std"))]
+/// Helper function to perform pure ASCII modifications safely inside stack boundaries.
+#[allow(unused)]
 fn format_log_filename(index: u16, buf: &mut [u8; 12]) -> &str {
     buf[0..4].copy_from_slice(b"LOG_");
     buf[7..12].copy_from_slice(b".BIN");

@@ -1,4 +1,4 @@
-#![cfg(feature = "std")]
+#![cfg(feature = "host")]
 
 use crate::{
     barometer_sensors::Barometer,

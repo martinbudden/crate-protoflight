@@ -1,4 +1,4 @@
-#![cfg(feature = "std")]
+#![cfg(feature = "host")]
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct MockUart {
@@ -17,6 +17,7 @@ impl MockUart {
         // Check if we have read all mock data
         if self.position >= self.data.len() {
             // Put the testing loop into a brief sleep on EOF to avoid hammering the host CPU
+            #[cfg(feature = "std")]
             std::thread::sleep(std::time::Duration::from_millis(10));
             return Ok(0);
         }

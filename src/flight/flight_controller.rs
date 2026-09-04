@@ -79,8 +79,8 @@ impl FlightController {
         Self {
             vehicle_controller: VehicleController::new(),
             angle_mode_calculation_state: AngleModeCalculationState::new(),
-            pids: [PidControllerf32::new(1.0); Self::PID_COUNT],
-            pid_gains: [PidGainsf32::new(1.0, 0.0, 0.0, 0.0, 0.0); Self::PID_COUNT],
+            pids: [PidControllerf32::new(); Self::PID_COUNT],
+            pid_gains: [PidGainsf32::new(); Self::PID_COUNT],
             dterm_filters_0: [Pt1Filterf32::new(); Self::PID_COUNT],
             dterm_filters_1: [Pt1Filterf32::new(); Self::PID_COUNT],
             motor_commands_filter: Pt1FilterVector4f32::new(),

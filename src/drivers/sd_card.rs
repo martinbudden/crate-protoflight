@@ -1,6 +1,7 @@
-#![cfg(all(feature = "std", feature = "blackbox"))]
+#![cfg(all(feature = "host", feature = "blackbox"))]
 
 use embassy_futures::yield_now;
+#[cfg(feature = "std")]
 use std::{fs::File, io::Write};
 
 #[allow(async_fn_in_trait)]
@@ -10,6 +11,7 @@ pub trait SdStorage {
 }
 
 pub struct MockSdCard {
+    #[cfg(feature = "std")]
     file: File,
 }
 
@@ -17,7 +19,11 @@ impl MockSdCard {
     /// # Panics
     #[allow(clippy::expect_used)]
     pub fn new(path: &str) -> Self {
-        Self { file: File::create(path).expect("Could not create log file") }
+        _ = path;
+        Self {
+            #[cfg(feature = "std")]
+            file: File::create(path).expect("Could not create log file"),
+        }
     }
 }
 
@@ -26,14 +32,19 @@ impl SdStorage for MockSdCard {
         if data.is_empty() {
             return Ok(());
         }
+        #[cfg(feature = "std")]
         self.file.write_all(data).map_err(|_| ())?;
-        _ = self.file.flush().ok();
+        #[cfg(feature = "std")]
+        {
+            _ = self.file.flush().ok();
+        }
         yield_now().await;
         Ok(())
     }
 
     async fn flush(&mut self) {
-        _ = self.file.flush().ok();
+        #[cfg(feature = "std")]
+        {_ = self.file.flush().ok();}
         yield_now().await;
     }
 }

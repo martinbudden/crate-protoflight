@@ -1,11 +1,12 @@
 #![doc = include_str!("README.md")]
 
 mod altitude_dual_ring_pid;
+mod xy_position_dual_ring_pid;
+
 mod config;
 mod mock_multirotor;
 mod path_follower;
 mod pilot;
-mod xy_position_dual_ring_pid;
 
 pub use config::{AutopilotConfig, PositionHoldConfig};
 #[allow(unused)]

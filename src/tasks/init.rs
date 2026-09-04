@@ -1,8 +1,5 @@
 use embassy_executor::Spawner;
 
-#[cfg(all(feature = "serde", feature = "std"))]
-use crate::non_volatile_storage as nvs;
-
 use crate::{
     boards::{BoardInit, board_hardware},
     config::GLOBAL_CONFIG,
@@ -29,6 +26,7 @@ use crate::{
 /// Replacing this one understandable 250-line function with (say) five 50-line functions would mean
 /// you'd have to jump around to understand startup and it would reduce clarity.
 ///
+#[allow(unused)]
 #[allow(clippy::too_many_lines)]
 pub async fn init(spawner: Spawner) {
     use crate::tasks;
@@ -42,10 +40,8 @@ pub async fn init(spawner: Spawner) {
     // Load the GLOBAL_CONFIGs from non-volatile storage.
     // ==================================================
 
-    #[cfg(all(feature = "serde", feature = "rp2350"))]
-    nvs::load_global_configs(board_flash()).await;
-    #[cfg(all(feature = "serde", feature = "std"))]
-    let _err = nvs::load_global_configs(nvs::init_flash_driver()).await;
+    #[cfg(feature = "serde")]
+    crate::non_volatile_storage::load_global_configs().await;
 
     // ==================================================
     // Lock the GLOBAL_CONFIGs.
