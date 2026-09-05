@@ -18,7 +18,7 @@ use crate::{
 static AUTOPILOT_CTX: StaticCell<AutopilotContext> = StaticCell::new();
 
 #[cfg(any(feature = "barometer", feature = "gps", feature = "optical_flow", feature = "rangefinder"))]
-use {crate::flight::RcControls, radio_controllers::RcMode, vqm::Vector3f32};
+use {crate::flight::RcControls, radio_controllers::RcMode};
 
 #[cfg(feature = "barometer")]
 use crate::tasks::barometer::{BarometerSubscriber, barometer_subscriber};
@@ -112,8 +112,7 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
             if let Some(gyro_pid_message) = ctx.gyro_pid_receiver.try_get() {
                 let vertical_acceleration = gyro_pid_message.acc.z;
 
-                let Vector3f32 { x: estimated_vertical_speed, y: estimated_altitude, z: _estimated_bias } =
-                    ctx.autopilot.altitude_kalman_filter.predict(vertical_acceleration, delta_t);
+                ctx.autopilot.altitude_kalman_filter.predict(vertical_acceleration, delta_t);
 
                 // Check if the rc_modes have changed.
                 if let Some(rx_message) = ctx.rx_receiver.try_changed() {
@@ -127,9 +126,11 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
                     }
                 }
                 if altitude_hold {
+                    let altitude = ctx.autopilot.altitude_kalman_filter.pos();
+                    let vertical_speed = ctx.autopilot.altitude_kalman_filter.vel();
                     let throttle_stick = ctx.autopilot.altitude_controller.update(
-                        estimated_altitude,
-                        estimated_vertical_speed,
+                        altitude,
+                        vertical_speed,
                         gyro_pid_message.orientation,
                         delta_t,
                     );

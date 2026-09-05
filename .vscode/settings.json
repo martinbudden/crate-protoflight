@@ -244,6 +244,7 @@
         "Sdio",
         "SDLC",
         "sdmmc",
+        "Sensorsf",
         "serde",
         "setpoints",
         "Sfhss",
