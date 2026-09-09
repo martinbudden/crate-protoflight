@@ -23,6 +23,16 @@ Once the API has stabilized this project will adopt semantic versioning, the fir
 
 ### Security
 
+## [0.1.3] - 2026-09-09
+
+### Added
+
+- many improvements.
+
+### Changed
+
+- Updated to latest crates.
+
 ## [0.1.2] - 2026-08-04
 
 ### Added
