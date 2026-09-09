@@ -70,8 +70,6 @@ pub struct MspStream {
     pub cmd_flags: u8,
     pub checksum1: u8,
     pub checksum2: u8,
-    pub in_buf: [u8; Self::INBUF_SIZE],
-    pub out_buf: [u8; Self::OUTBUF_SIZE],
 }
 
 #[allow(unused)]
@@ -81,12 +79,6 @@ impl MspStream {
     const MSP_EVALUATE_NON_MSP_DATA: u8 = 0;
     const MSP_SKIP_NON_MSP_DATA: u8 = 1;
     const MSP_HEADER_LENGTH: usize = 3;
-    const INBUF_SIZE: usize = 192;
-    const OUTBUF_SIZE_MIN: usize = 512; // As of 2021/08/10 MSP_BOX_NAMES generates a 307 byte response for page 1. There has been overflow issues with 320 byte buffer.
-    const DATAFLASH_BUFFER_SIZE: usize = 4096;
-    const DATAFLASH_INFO_SIZE: usize = 16;
-    //const Self::OUTBUF_SIZE:usize = Self::DATAFLASH_BUFFER_SIZE + Self::DATAFLASH_INFO_SIZE;
-    const OUTBUF_SIZE: usize = Self::OUTBUF_SIZE_MIN;
 
     const MSP_MAX_HEADER_SIZE: usize = 9;
 }
@@ -105,8 +97,6 @@ impl MspStream {
             cmd_flags: 0,
             checksum1: 0,
             checksum2: 0,
-            in_buf: [0u8; MspStream::INBUF_SIZE],
-            out_buf: [0u8; MspStream::OUTBUF_SIZE],
         }
     }
 }
@@ -162,7 +152,7 @@ pub enum MspPacketState {
 impl MspStream {
     #[allow(clippy::too_many_lines)]
     #[allow(unused)]
-    pub fn process_received_packet_data(&mut self, c: u8) {
+    pub fn process_received_packet_data(&mut self, buf: &mut [u8], c: u8) {
         // We take the state out to mutate it, then put it back.
         // This is a common Rust idiom for state machines.
         self.packet_state = match core::mem::take(&mut self.packet_state) {
@@ -186,14 +176,14 @@ impl MspStream {
                 _ => MspPacketState::Idle,
             },
             MspPacketState::HeaderV1 { mut offset, mut checksum } => {
-                self.in_buf[offset] = c;
+                buf[offset] = c;
                 checksum ^= c;
                 offset += 1;
                 if offset == 2 {
                     // Size and Cmd byte
-                    let size = self.in_buf[0] as usize;
-                    let cmd = self.in_buf[1];
-                    if size > MspStream::INBUF_SIZE {
+                    let size = buf[0] as usize;
+                    let cmd = buf[1];
+                    if size > buf.len() {
                         MspPacketState::Idle
                     } else if cmd == 255 {
                         // V2_FRAME_ID
@@ -213,7 +203,7 @@ impl MspStream {
                 }
             }
             MspPacketState::PayloadV1 { len, cmd, mut offset, mut checksum } => {
-                self.in_buf[offset] = c;
+                buf[offset] = c;
                 checksum ^= c;
                 offset += 1;
                 if offset == len {
@@ -224,7 +214,7 @@ impl MspStream {
                 }
             }
             MspPacketState::HeaderV2 { version, mut offset, mut checksum1, mut checksum2 } => {
-                self.in_buf[offset] = c;
+                buf[offset] = c;
                 if version == MspVersion::V2overV1 {
                     checksum1 ^= c;
                 }
@@ -240,11 +230,11 @@ impl MspStream {
 
                 if offset == header_end {
                     // Use the start_index to find the V2 fields
-                    let flags = self.in_buf[start_index];
-                    let cmd = u16::from_le_bytes([self.in_buf[start_index + 1], self.in_buf[start_index + 2]]);
+                    let flags = buf[start_index];
+                    let cmd = u16::from_le_bytes([buf[start_index + 1], buf[start_index + 2]]);
                     let size =
-                        u16::from_le_bytes([self.in_buf[start_index + 3], self.in_buf[start_index + 4]]) as usize;
-                    if size > Self::INBUF_SIZE {
+                        u16::from_le_bytes([buf[start_index + 3], buf[start_index + 4]]) as usize;
+                    if size > buf.len() {
                         MspPacketState::Idle // <--- This is where your code was tripping!
                     } else {
                         MspPacketState::PayloadV2 {
@@ -262,7 +252,7 @@ impl MspStream {
                 }
             }
             MspPacketState::PayloadV2 { version, len, cmd, flags, mut offset, mut checksum1, mut checksum2 } => {
-                self.in_buf[offset] = c;
+                buf[offset] = c;
                 if version == MspVersion::V2overV1 {
                     checksum1 ^= c;
                 }
@@ -310,12 +300,12 @@ impl MspStream {
         let mut offset = 0;
 
         // Helper to push bytes safely into fixed slice
-        let push = |b: u8, dst: &mut [u8], off: &mut usize| -> Result<(), MspError> {
-            if *off >= dst.len() {
+        let push = |b: u8, dst: &mut [u8], offset: &mut usize| -> Result<(), MspError> {
+            if *offset >= dst.len() {
                 return Err(MspError::BufferTooSmall);
             }
-            dst[*off] = b;
-            *off += 1;
+            dst[*offset] = b;
+            *offset += 1;
             Ok(())
         };
 
@@ -351,8 +341,8 @@ impl MspStream {
                 let size = payload.len() as u16;
 
                 // Nested helper to push and update CRC
-                let push_v2 = |b: u8, dst: &mut [u8], off: &mut usize, c: &mut u8| -> Result<(), MspError> {
-                    push(b, dst, off)?;
+                let push_v2 = |b: u8, dst: &mut [u8], offset: &mut usize, c: &mut u8| -> Result<(), MspError> {
+                    push(b, dst, offset)?;
                     *c = CrcDvbS2::update(*c, b);
                     Ok(())
                 };
@@ -421,9 +411,8 @@ pub enum MspError {
     BufferTooSmall,
 }
 
-#[allow(clippy::expect_used)]
 #[cfg(test)]
-mod tests {
+mod test_traits {
     use super::*;
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
@@ -437,9 +426,16 @@ mod tests {
         is_full::<MspPacketState>();
         is_full::<MspError>();
     }
+}
+#[allow(clippy::expect_used)]
+#[cfg(test)]
+mod tests {
+    use super::*;
 
+    const INBUF_SIZE: usize = 192;
     #[test]
     fn test_msp_v1_parsing() {
+        let mut buf = [0u8; INBUF_SIZE];
         let mut stream = MspStream::new();
         let packet: [u8; 7] = [
             b'M', b'<', 2,   // Size
@@ -449,15 +445,16 @@ mod tests {
         ];
 
         for &byte in &packet {
-            stream.process_received_packet_data(byte);
+            stream.process_received_packet_data(&mut buf, byte);
         }
 
         assert!(matches!(stream.packet_state, MspPacketState::CommandReceived));
         assert_eq!(stream.cmd_msp, 100);
-        assert_eq!(&stream.in_buf[0..2], &[1, 2]);
+        assert_eq!(&buf[0..2], &[1, 2]);
     }
     #[test]
     fn test_msp_v2_native_parsing() {
+        let mut buf = [0u8; INBUF_SIZE];
         let mut stream = MspStream::new();
         let packet: [u8; 10] = [
             b'X', b'<', 0, // Flags
@@ -468,17 +465,18 @@ mod tests {
         ];
 
         for &byte in &packet {
-            stream.process_received_packet_data(byte);
+            stream.process_received_packet_data(&mut buf, byte);
         }
 
         assert_eq!(MspPacketState::CommandReceived, stream.packet_state);
         assert_eq!(19, stream.checksum2);
         assert_eq!(stream.cmd_msp, 0x0102);
         assert_eq!(stream.cmd_flags, 0);
-        assert_eq!(&stream.in_buf[0..2], &[0xAA, 0xBB]);
+        assert_eq!(&buf[0..2], &[0xAA, 0xBB]);
     }
     #[test]
     fn test_msp_v2_over_v1_parsing() {
+        let mut buf = [0u8; INBUF_SIZE];
         let mut stream = MspStream::new();
 
         // Crafted Packet: V2 Command 0x0102, Flags 0, Payload [0xAA, 0xBB]
@@ -496,7 +494,7 @@ mod tests {
         ];
 
         for (i, &byte) in packet.iter().enumerate() {
-            stream.process_received_packet_data(byte);
+            stream.process_received_packet_data(& mut buf, byte);
 
             if i < packet.len() - 1 {
                 // Ensure we haven't reset to Idle prematurely
@@ -513,7 +511,7 @@ mod tests {
         assert_eq!(19, stream.checksum2);
         assert_eq!(stream.cmd_msp, 0x0102);
         assert_eq!(stream.cmd_flags, 0);
-        assert_eq!(&stream.in_buf[0..2], &[0xAA, 0xBB]);
+        assert_eq!(&buf[0..2], &[0xAA, 0xBB]);
     }
     #[test]
     fn test_serialize_msp_v1_request() {
