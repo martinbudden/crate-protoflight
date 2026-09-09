@@ -269,7 +269,6 @@ mod tests {
     fn oversized_payload_is_rejected() {
         let payload_length = UbxParser::MAX_PAYLOAD_SIZE + 1;
 
-        #[allow(clippy::cast_possible_truncation)]
         let length_bytes = payload_length.to_le_bytes();
 
         let frame = [

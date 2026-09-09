@@ -70,8 +70,7 @@ pub struct AutopilotContext {
 
 impl AutopilotContext {
     #[rustfmt::skip]
-    pub fn new(
-    ) -> Self {
+    pub fn new() -> Self {
         Self {
             gyro_pid_receiver :gyro_pid_receiver(),
             rx_receiver:rx_message_receiver(),
@@ -188,6 +187,6 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
         if loop_count.is_multiple_of(200) {
             log::info!("       AUTOPILOT:loop {loop_count}");
         }
-        loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
+        loop_count = loop_count.wrapping_add(1);
     }
 }

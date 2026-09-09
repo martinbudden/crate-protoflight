@@ -1,31 +1,32 @@
 #![doc = include_str!("README.md")]
 
-mod platform_rp2350;
 mod platform_host;
+mod platform_rp2350;
 mod platform_stm32;
 
 mod board;
 mod mock_uart;
 
 mod airb_omnibus_f4;
+mod host;
 mod madflight_fc3;
 mod matek_f405_wte;
 mod rpi_pico2;
 mod sp_racing_f4_evo;
 mod speedybee_f405_v4;
-mod host;
 
 pub use board::BoardInit;
 
 #[cfg(feature = "host")]
 pub use {
-    platform_host::{GpsUartRx, GpsUartTx, I2cDeviceBlocking},
     host::{BoardImu, board_hardware},
+    platform_host::{GpsUartRx, GpsUartTx, I2cDeviceBlocking},
 };
 
 #[cfg(feature = "rp2350")]
 pub use platform_rp2350::{I2cDeviceBlocking, SharedI2cBus};
 
+#[allow(unused)]
 #[cfg(feature = "stm32")]
 pub use platform_stm32::{GpsUartRx, GpsUartTx, I2cDeviceBlocking};
 

@@ -133,11 +133,7 @@ impl AltitudeDualRingPid {
 }
 
 #[cfg(test)]
-mod tests {
-    #![allow(clippy::float_cmp)]
-
-    use crate::autopilot::MockMultirotorZ;
-
+mod test_traits {
     use super::*;
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
@@ -147,6 +143,14 @@ mod tests {
     fn normal_types() {
         is_full::<AltitudeDualRingPid>();
     }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::float_cmp)]
+    use super::*;
+    use crate::autopilot::MockMultirotorZ;
+
     #[test]
     fn test_new() {
         let _altitude_hold = AltitudeDualRingPid::new(0.0);

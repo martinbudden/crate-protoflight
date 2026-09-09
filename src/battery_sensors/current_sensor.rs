@@ -43,7 +43,7 @@ impl CurrentSensorAdcConfig {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct CurrentSensorVirtualConfig {
     /// scale the throttle to centiamps, using a thrust linearization function.
@@ -131,7 +131,7 @@ impl CurrentSensorType {
 }
 
 #[cfg(test)]
-mod tests {
+mod test_traits {
     use super::*;
 
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}

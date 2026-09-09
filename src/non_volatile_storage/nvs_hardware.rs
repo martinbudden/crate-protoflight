@@ -5,6 +5,7 @@ use embedded_storage_async::nor_flash::NorFlash;
 #[cfg(feature = "std")]
 use embedded_storage_file::{NorMemoryAsync, NorMemoryInFile};
 
+#[allow(unused)]
 use super::nvs::{load_all_global_configs, store_all_global_configs};
 
 #[cfg(feature = "rp2350")]
@@ -34,6 +35,11 @@ pub fn init_flash_driver() -> impl NorFlash {
 pub fn init_flash_driver() {}
 
 pub async fn load_global_configs() -> Result<(), ()> {
+    #[cfg(feature = "stm32")]
+    {
+        load_global_configs().await.map_err(|_| ())
+    }
+
     #[cfg(feature = "rp2350")]
     {
         load_global_configs(board_flash()).await.map_err(|_| ())
@@ -50,5 +56,13 @@ pub async fn store_global_configs() -> Result<(), ()> {
     {
         let flash_driver = init_flash_driver();
         store_all_global_configs(flash_driver).await.map_err(|_| ())
+    }
+    #[cfg(feature = "rp2350")]
+    {
+        Ok(())
+    }
+    #[cfg(feature = "stm32")]
+    {
+        Ok(())
     }
 }

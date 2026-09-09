@@ -59,20 +59,22 @@ pub struct OsdContext {
 }
 
 impl OsdContext {
-    #[rustfmt::skip]
     #[allow(clippy::too_many_arguments)]
-    pub fn new(display_port_mutex: &'static DisplayPortMutex,
-        background_layer_supported: bool,
-    ) -> Self {
+    pub fn new(display_port_mutex: &'static DisplayPortMutex, background_layer_supported: bool) -> Self {
         Self {
-            gyro_pid_receiver:gyro_pid_receiver(),
-            setpoint_receiver:setpoint_receiver(),
-            rx_receiver:rx_message_receiver(),
-            #[cfg(feature = "barometer")] barometer_subscriber:barometer_subscriber(),
-            #[cfg(feature = "battery")] battery_subscriber:battery_subscriber(),
-            #[cfg(feature = "gps")] gps_subscriber:gps_subscriber(),
-            #[cfg(feature = "optical_flow")] optical_flow_subscriber:optical_flow_subscriber(),
-            #[cfg(feature = "rangefinder")] rangefinder_subscriber:rangefinder_subscriber(),
+            gyro_pid_receiver: gyro_pid_receiver(),
+            setpoint_receiver: setpoint_receiver(),
+            rx_receiver: rx_message_receiver(),
+            #[cfg(feature = "barometer")]
+            barometer_subscriber: barometer_subscriber(),
+            #[cfg(feature = "battery")]
+            battery_subscriber: battery_subscriber(),
+            #[cfg(feature = "gps")]
+            gps_subscriber: gps_subscriber(),
+            #[cfg(feature = "optical_flow")]
+            optical_flow_subscriber: optical_flow_subscriber(),
+            #[cfg(feature = "rangefinder")]
+            rangefinder_subscriber: rangefinder_subscriber(),
             osd: Osd::new(),
             osd_state: OsdState::default(),
             osd_elements: OsdElements::new(background_layer_supported),
@@ -162,7 +164,7 @@ pub async fn run(ctx: &'static mut OsdContext) {
         if loop_count.is_multiple_of(50) {
             log::info!("             OSD:      loop {loop_count}");
         }
-        loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
+        loop_count = loop_count.wrapping_add(1);
     }
 }
 
@@ -198,7 +200,7 @@ pub async fn run(ctx: &'static mut OsdContext) {
         if loop_count.is_multiple_of(10) {
             log::info!("        OSD:      loop {loop_count}");
         }
-        loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
+        loop_count = loop_count.wrapping_add(1);
     }
 }
 */

@@ -308,7 +308,7 @@ pub async fn run(ctx: &'static mut BlackboxEncoderContext) {
         if ctx.blackbox.is_active() && loop_count.is_multiple_of(10) {
             log::info!("BLACKBOXe:loop {loop_count},{len},{0}", ctx.overflow_counter);
         }
-        loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
+        loop_count = loop_count.wrapping_add(1);
     }
 }
 

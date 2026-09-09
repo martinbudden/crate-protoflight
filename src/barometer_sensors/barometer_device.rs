@@ -1,3 +1,6 @@
+#[allow(unused)]
+use vqm::MathMethods; // for powf
+
 use super::BarometerI2cError;
 /// The common interface for barometer.
 #[allow(unused)]
@@ -39,7 +42,7 @@ impl BarometerMessage {
     }
 }
 #[cfg(test)]
-mod tests {
+mod test_traits {
     use super::*;
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}

@@ -1,5 +1,8 @@
 #![cfg(feature = "osd")]
 
+#[allow(unused)]
+use num_traits::float::FloatCore;
+
 use crate::{
     config::SensorFlags,
     display::{Display, DisplayPortLayer, DisplayPortSeverity},

@@ -1,8 +1,8 @@
 #![cfg(feature = "autopilot")]
 
-use sensor_fusion::KalmanFilterZWithSensorsf32;
 #[cfg(any(feature = "gps", feature = "optical_flow"))]
 use sensor_fusion::KalmanFilterXYZWithSensorsf32;
+use sensor_fusion::KalmanFilterZWithSensorsf32;
 
 use super::altitude_dual_ring_pid::AltitudeDualRingPid;
 

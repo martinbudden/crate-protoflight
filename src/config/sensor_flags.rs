@@ -44,9 +44,8 @@ impl SensorFlags {
         self.flags & flag != 0
     }
 
-    #[allow(clippy::cast_possible_truncation)]
-    pub fn flags(self) -> u16 {
-        self.flags as u16
+    pub fn flags(self) -> u32 {
+        self.flags
     }
 
     pub fn set_flags(&mut self, flags: u32) {

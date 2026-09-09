@@ -257,7 +257,7 @@ impl BatteryMessage {
 }
 
 #[cfg(test)]
-mod tests {
+mod test_traits {
     use super::*;
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
@@ -279,6 +279,11 @@ mod tests {
         #[cfg(feature = "serde")]
         is_config::<BatteryProfiles>();
     }
+}
+
+mod tests {
+    use super::*;
+
     #[test]
     fn test_new() {
         let config = BatteryConfig::new();

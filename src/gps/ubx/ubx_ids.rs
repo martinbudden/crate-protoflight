@@ -120,8 +120,8 @@ impl UbxNavId {
     pub const VEL_ECEF: u8 = 0x11;
     pub const VEL_NED: u8 = 0x12;
 
-    pub const SOL: u8 = 0x06; // users are recommended to use the UBX-NAV-PVT message in preference.
-    pub const SVINFO: u8 = 0x30; // users are recommended to use the UBX-NAV-SAT message in preference.
+    pub const SOL: u8 = 0x06; // it is recommended to use the UBX-NAV-PVT message in preference.
+    pub const SVINFO: u8 = 0x30; // it is recommended to use the UBX-NAV-SAT message in preference.
 }
 
 pub struct UbxNmeaId;

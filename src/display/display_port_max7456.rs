@@ -124,9 +124,9 @@ impl<SPI: SpiBus> DisplayPortMax7456<SPI> {
                     }
                     spi_buffer_index += 2;
 
-                    #[allow(clippy::cast_possible_truncation)]
                     // MAX7456 expects DMAH then DMAL (big-endian register order)
                     // MAX7456 address registers are written high byte first (DMAH then DMAL) (ie big-endian)
+                    #[allow(clippy::cast_possible_truncation)]
                     let address = (pos as u16).to_be_bytes();
                     self.spi_buffer[spi_buffer_index] = Self::MAX_7456ADD_DMAH;
                     self.spi_buffer[spi_buffer_index + 1] = address[0];

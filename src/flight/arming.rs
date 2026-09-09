@@ -131,7 +131,7 @@ impl Default for DisarmingFlags {
 }
 
 #[cfg(test)]
-mod tests {
+mod tes_traits {
     use super::*;
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}

@@ -44,7 +44,9 @@ impl SdStorage for MockSdCard {
 
     async fn flush(&mut self) {
         #[cfg(feature = "std")]
-        {_ = self.file.flush().ok();}
+        {
+            _ = self.file.flush().ok();
+        }
         yield_now().await;
     }
 }

@@ -55,20 +55,17 @@ pub struct RxContext {
 
 impl RxContext {
     #[rustfmt::skip]
-    pub fn new(
-        radio: Radio,
-        rates_config: RatesConfig,
-    ) -> Self {
+    pub fn new(radio: Radio, rates_config: RatesConfig) -> Self {
         Self {
             radio,
-            rx_message_sender:rx_message_sender(),
-            config_subscriber:config_subscriber(),
-            config_publisher:config_publisher(),
-            fast_config_publisher:fast_config_publisher(),
+            rx_message_sender: rx_message_sender(),
+            config_subscriber: config_subscriber(),
+            config_publisher: config_publisher(),
+            fast_config_publisher: fast_config_publisher(),
             rates: Rates::new(rates_config),
             rc_modes: RcModes::with_mac_arm(),
             rc_adjustments: RcAdjustments::new(),
-            #[cfg(feature = "autopilot")] autopilot_receiver:autopilot_receiver(),
+            #[cfg(feature = "autopilot")] autopilot_receiver: autopilot_receiver(),
         }
     }
 }
@@ -140,6 +137,6 @@ pub async fn run(ctx: &'static mut RxContext) {
         if loop_count.is_multiple_of(10) {
             log::info!("              RX:       loop {loop_count}");
         }
-        loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
+        loop_count = loop_count.wrapping_add(1);
     }
 }

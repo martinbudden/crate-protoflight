@@ -85,7 +85,7 @@ pub async fn run(ctx: &'static mut BlackboxWriterContext) {
                 break;
             }
         }
-        loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
+        loop_count = loop_count.wrapping_add(1);
     }
 }
 

@@ -230,21 +230,24 @@ impl MspStream {
 
                 if offset == header_end {
                     // Use the start_index to find the V2 fields
-                    let flags = buf[start_index];
-                    let cmd = u16::from_le_bytes([buf[start_index + 1], buf[start_index + 2]]);
-                    let size =
-                        u16::from_le_bytes([buf[start_index + 3], buf[start_index + 4]]) as usize;
-                    if size > buf.len() {
-                        MspPacketState::Idle // <--- This is where your code was tripping!
+                    if start_index + 4 > buf.len() {
+                        MspPacketState::Idle
                     } else {
-                        MspPacketState::PayloadV2 {
-                            version,
-                            len: size,
-                            cmd,
-                            flags,
-                            offset: 0, // Reset to 0 to start filling payload
-                            checksum1,
-                            checksum2,
+                        let flags = buf[start_index];
+                        let cmd = u16::from_le_bytes([buf[start_index + 1], buf[start_index + 2]]);
+                        let size = u16::from_le_bytes([buf[start_index + 3], buf[start_index + 4]]) as usize;
+                        if size > buf.len() {
+                            MspPacketState::Idle
+                        } else {
+                            MspPacketState::PayloadV2 {
+                                version,
+                                len: size,
+                                cmd,
+                                flags,
+                                offset: 0, // Reset to 0 to start filling payload
+                                checksum1,
+                                checksum2,
+                            }
                         }
                     }
                 } else {
@@ -295,7 +298,7 @@ impl MspStream {
         cmd: u16,
         flags: u8,
         payload: &[u8],
-        dst: &mut [u8], // Provide a buffer from the caller
+        dst: &mut [u8], // caller provided buffer
     ) -> Result<usize, MspError> {
         let mut offset = 0;
 
@@ -317,18 +320,18 @@ impl MspStream {
 
                 #[allow(clippy::cast_possible_truncation)]
                 let size = payload.len() as u8;
+                push(size, dst, &mut offset)?;
+
                 #[allow(clippy::cast_possible_truncation)]
                 let cmd_u8 = cmd as u8;
-                let mut xor = size ^ cmd_u8;
-
-                push(size, dst, &mut offset)?;
                 push(cmd_u8, dst, &mut offset)?;
 
+                let mut checksum = size ^ cmd_u8;
                 for &byte in payload {
                     push(byte, dst, &mut offset)?;
-                    xor ^= byte;
+                    checksum ^= byte;
                 }
-                push(xor, dst, &mut offset)?;
+                push(checksum, dst, &mut offset)?;
             }
 
             MspVersion::V2 => {
@@ -341,17 +344,21 @@ impl MspStream {
                 let size = payload.len() as u16;
 
                 // Nested helper to push and update CRC
-                let push_v2 = |b: u8, dst: &mut [u8], offset: &mut usize, c: &mut u8| -> Result<(), MspError> {
+                let push_v2 = |b: u8, dst: &mut [u8], offset: &mut usize, crc: &mut u8| -> Result<(), MspError> {
                     push(b, dst, offset)?;
-                    *c = CrcDvbS2::update(*c, b);
+                    *crc = CrcDvbS2::update(*crc, b);
                     Ok(())
                 };
 
                 push_v2(flags, dst, &mut offset, &mut crc)?;
-                push_v2((cmd & 0xFF) as u8, dst, &mut offset, &mut crc)?;
-                push_v2((cmd >> 8) as u8, dst, &mut offset, &mut crc)?;
-                push_v2((size & 0xFF) as u8, dst, &mut offset, &mut crc)?;
-                push_v2((size >> 8) as u8, dst, &mut offset, &mut crc)?;
+
+                let cmd_bytes = cmd.to_be_bytes();
+                push_v2(cmd_bytes[0], dst, &mut offset, &mut crc)?;
+                push_v2(cmd_bytes[1], dst, &mut offset, &mut crc)?;
+
+                let size_bytes = size.to_be_bytes();
+                push_v2(size_bytes[0], dst, &mut offset, &mut crc)?;
+                push_v2(size_bytes[1], dst, &mut offset, &mut crc)?;
 
                 for &byte in payload {
                     push_v2(byte, dst, &mut offset, &mut crc)?;
@@ -494,7 +501,7 @@ mod tests {
         ];
 
         for (i, &byte) in packet.iter().enumerate() {
-            stream.process_received_packet_data(& mut buf, byte);
+            stream.process_received_packet_data(&mut buf, byte);
 
             if i < packet.len() - 1 {
                 // Ensure we haven't reset to Idle prematurely

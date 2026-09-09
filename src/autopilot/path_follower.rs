@@ -145,7 +145,7 @@ impl PathFollower {
 }
 
 #[cfg(test)]
-mod tests {
+mod test_traits {
     use super::*;
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
@@ -155,6 +155,12 @@ mod tests {
     fn normal_types() {
         is_full::<PathFollower>();
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
     #[test]
     #[allow(clippy::float_cmp)]
     fn test_new() {

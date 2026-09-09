@@ -51,8 +51,20 @@ rustflags = [
 
 [alias]
 # Run using: 'cargo test-host'
-test-host = "test --no-default-features --features std,libm,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug --target x86_64-unknown-linux-gnu"
-check-host = "check --no-default-features --features std,libm,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug --target x86_64-unknown-linux-gnu"
+test-host = [
+    "test",
+    "--target", "x86_64-unknown-linux-gnu",
+    "--no-default-features",
+    "--features", "host,std,libm,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug"
+]
+
+check-host = [
+    "check",
+    "--target", "x86_64-unknown-linux-gnu",
+    "--no-default-features",
+    "--features", "host,std,libm,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug"
+]
+#check-host = "check --no-default-features --features std,libm,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug --target x86_64-unknown-linux-gnu"
 
 # Shortcut to build specifically for the Double-Precision Cortex-M7
 # Devices like: STM32H7, NXP i.MX RT1060
@@ -83,7 +95,7 @@ check-rp2350 = [
     "--target", "thumbv8m.main-none-eabihf",
     "--no-default-features",
     "--features",
-    "libm,rpi_pico2,autopilot,barometer,magnetometer,msp,osd,rangefinder,rpm_filters"
+    "libm,rp2350,rpi_pico2,autopilot,barometer,magnetometer,msp,osd,rangefinder,rpm_filters"
     #"rp2350,libm,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug"
 ]
 

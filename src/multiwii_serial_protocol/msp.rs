@@ -1,13 +1,13 @@
 use radio_controllers::{Rates, RcMode, RcModes};
+use stream_buf::{StreamBufReader, StreamBufWriter};
+use vqm::Quaternion;
+
 #[cfg(feature = "serde")]
 use {
     postcard::experimental::max_size::MaxSize,
     sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
 };
-
-use stream_buf::{StreamBufReader, StreamBufWriter};
-use vqm::Quaternion;
 
 use crate::config::{ConfigItem, ConfigPublisher, FastConfigItem, FastConfigPublisher, GLOBAL_CONFIG};
 
@@ -116,11 +116,10 @@ impl Msp {
         sensor_data: &MspSensorData,
     ) -> MspResult {
         match cmd_msp {
-            #[allow(clippy::cast_possible_truncation)]
             Msp::API_VERSION => {
-                dst.write_u8(Msp::PROTOCOL_VERSION as u8);
-                dst.write_u8(Msp::API_VERSION_MAJOR as u8);
-                dst.write_u8(Msp::API_VERSION_MINOR as u8);
+                dst.write_u8(Msp::PROTOCOL_VERSION.to_le_bytes()[0]);
+                dst.write_u8(Msp::API_VERSION_MAJOR.to_le_bytes()[0]);
+                dst.write_u8(Msp::API_VERSION_MINOR.to_le_bytes()[0]);
                 MspResult::Ack
             }
             Msp::MODE_RANGES => Self::mode_ranges(dst).await,
@@ -141,11 +140,11 @@ impl Msp {
             Msp::ARMING_CONFIG => Self::arming_config(dst).await,
             Msp::FAILSAFE_CONFIG => Self::failsafe_config(dst).await,
             #[cfg(feature = "blackbox")]
+            Msp::DATAFLASH_SUMMARY => Self::dataflash_summary(dst).await,
+            #[cfg(feature = "blackbox")]
             Msp::DATAFLASH_READ => Self::dataflash_read(dst).await,
             #[cfg(feature = "blackbox")]
-            Msp::DATAFLASH_READ => Self::dataflash_summary(dst).await,
-            #[cfg(feature = "blackbox")]
-            Msp::DATAFLASH_READ => Self::dataflash_erase().await,
+            Msp::DATAFLASH_ERASE => Self::dataflash_erase().await,
             #[cfg(feature = "blackbox")]
             Msp::BLACKBOX_CONFIG => Self::blackbox_config(dst).await,
             Msp::ADVANCED_CONFIG => Self::advanced_config(dst).await,
@@ -227,6 +226,8 @@ impl Msp {
         fast_config_publisher: &FastConfigPublisher,
     ) -> MspResult {
         match cmd_msp {
+            #[cfg(feature = "battery")]
+            Msp::SET_BATTERY_CONFIG => Self::set_battery_config(src, config_publisher).await,
             Msp::SET_MODE_RANGE => Self::set_mode_range(src, config_publisher).await,
             Msp::SET_FEATURE_CONFIG => Self::set_feature_config(src, config_publisher).await,
             Msp::SET_MIXER_CONFIG => Self::set_mixer_config(src, config_publisher).await,
@@ -239,25 +240,18 @@ impl Msp {
             Msp::SET_ADVANCED_CONFIG => Self::set_advanced_config(src, config_publisher).await,
             Msp::SET_FILTER_CONFIG => Self::set_filter_config(src, config_publisher).await,
             Msp::SET_SENSOR_CONFIG => Self::set_sensor_config(src, config_publisher).await,
-            Msp::RC_DEADBAND => Self::set_rc_controls_config(src, config_publisher).await,
-            Msp::SET_RC_TUNING => Self::set_rc_tuning(src, config_publisher).await,
             Msp::SET_PID => Self::set_pid(src, fast_config_publisher).await,
+            Msp::SET_RC_TUNING => Self::set_rc_tuning(src, config_publisher).await,
             Msp::SELECT_SETTING => Self::select_setting(src),
             Msp::SET_HEADING => Self::set_heading(src),
             Msp::SET_MOTOR_CONFIG => Self::set_motor_config(src, config_publisher).await,
-
-            #[cfg(feature = "magnetometer")]
-            Msp::SET_COMPASS_CONFIG => Self::set_compass_config(src, config_publisher).await,
-
-            #[cfg(feature = "battery")]
-            Msp::SET_BATTERY_CONFIG => Self::set_battery_config(src, config_publisher).await,
-
+            Msp::SET_RC_DEADBAND => Self::set_rc_controls_config(src, config_publisher).await,
             #[cfg(feature = "gps")]
             Msp::SET_GPS_CONFIG => Self::set_gps_config(src, config_publisher).await,
-
+            #[cfg(feature = "magnetometer")]
+            Msp::SET_COMPASS_CONFIG => Self::set_compass_config(src, config_publisher).await,
             #[cfg(feature = "gps")]
             Msp::SET_GPS_RESCUE => Self::set_gps_rescue(src, config_publisher).await,
-
             #[cfg(feature = "serde")]
             Msp::EEPROM_WRITE => Self::write_to_nvs().await,
 
@@ -1058,7 +1052,8 @@ impl Msp {
         };
         dst.write_u16(0); // pid task delta time
         dst.write_u16(0); // I2C error counter
-        dst.write_u16(sensors.flags()); // sensors
+        #[allow(clippy::cast_possible_truncation)]
+        dst.write_u16(sensors.flags() as u16); // sensors
         dst.write_u32(0); // flightmode flags
         dst.write_u8(pid_profile_index);
 

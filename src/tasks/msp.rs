@@ -1,13 +1,14 @@
 #![cfg(feature = "msp")]
 #![allow(unused)]
 
-use static_cell::StaticCell;
-//use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, pubsub::PubSubChannel};
-use stream_buf::{StreamBufReader, StreamBufWriter};
+use {
+    static_cell::StaticCell,
+    stream_buf::{StreamBufReader, StreamBufWriter},
+};
 
 use crate::{
     config::{ConfigPublisher, FastConfigPublisher, config_publisher, fast_config_publisher},
-    multiwii_serial_protocol::{Msp, MspSensorData},
+    multiwii_serial_protocol::{Msp, MspSensorData, MspStream},
 };
 
 #[cfg(feature = "barometer")]
@@ -34,9 +35,6 @@ use crate::tasks::rangefinder::{RangefinderSubscriber, rangefinder_subscriber};
 static MSP_CTX: StaticCell<MspContext> = StaticCell::new();
 
 /// Context for MSP task.
-///
-pub const MSP_READ_BUF_SIZE: usize = 256;
-pub const MSP_WRITE_BUF_SIZE: usize = 512;
 pub struct MspContext {
     pub fast_config_publisher: FastConfigPublisher,
     pub config_publisher: ConfigPublisher,
@@ -53,27 +51,29 @@ pub struct MspContext {
     #[cfg(feature = "rangefinder")]
     pub rangefinder_subscriber: RangefinderSubscriber,
     pub msp: Msp,
-    pub read_buf: [u8; MSP_READ_BUF_SIZE],
-    pub write_buf: [u8; MSP_WRITE_BUF_SIZE],
+    pub read_buf: [u8; Self::READ_BUF_SIZE],
+    pub write_buf: [u8; Self::WRITE_BUF_SIZE],
 }
 
 impl MspContext {
+    const READ_BUF_SIZE: usize = 256;
+    const WRITE_BUF_SIZE: usize = 512;
+
     #[allow(clippy::too_many_arguments)]
     #[rustfmt::skip]
-    pub fn new(
-    ) -> Self {
+    pub fn new() -> Self {
         Self {
             msp: Msp::new(),
-            fast_config_publisher:fast_config_publisher(),
-            config_publisher:config_publisher(),
-            #[cfg(feature = "barometer")] barometer_subscriber:barometer_subscriber(),
-            #[cfg(feature = "battery")] battery_subscriber:battery_subscriber(),
-            #[cfg(feature = "gps")] gps_subscriber:gps_subscriber(),
-            #[cfg(feature = "magnetometer")] magnetometer_subscriber:magnetometer_subscriber(),
-            #[cfg(feature = "optical_flow")] optical_flow_subscriber:optical_flow_subscriber(),
-            #[cfg(feature = "rangefinder")] rangefinder_subscriber:rangefinder_subscriber(),
-            read_buf: [0u8; MSP_READ_BUF_SIZE],
-            write_buf: [0u8; MSP_WRITE_BUF_SIZE],
+            fast_config_publisher: fast_config_publisher(),
+            config_publisher: config_publisher(),
+            #[cfg(feature = "barometer")] barometer_subscriber: barometer_subscriber(),
+            #[cfg(feature = "battery")] battery_subscriber: battery_subscriber(),
+            #[cfg(feature = "gps")] gps_subscriber: gps_subscriber(),
+            #[cfg(feature = "magnetometer")] magnetometer_subscriber: magnetometer_subscriber(),
+            #[cfg(feature = "optical_flow")] optical_flow_subscriber: optical_flow_subscriber(),
+            #[cfg(feature = "rangefinder")] rangefinder_subscriber: rangefinder_subscriber(),
+            read_buf: [0u8; Self::READ_BUF_SIZE],
+            write_buf: [0u8; Self::WRITE_BUF_SIZE],
         }
     }
 }
@@ -111,19 +111,24 @@ pub async fn run(ctx: &'static mut MspContext) {
         ticker.next().await; // for now just wait on ticker
 
         #[cfg(feature = "barometer")]
-        #[allow(clippy::cast_possible_truncation)]
         if let Some(wait_result) = ctx.barometer_subscriber.try_next_message()
             && let embassy_sync::pubsub::WaitResult::Message(barometer_data) = wait_result
         {
-            msp_sensor_data.barometer_altitude_cm = ((barometer_data.altitude_m * 100.0) as i32).cast_unsigned();
+            #[allow(clippy::cast_possible_truncation)]
+            {
+                msp_sensor_data.barometer_altitude_cm = ((barometer_data.altitude_m * 100.0) as i32).cast_unsigned();
+            }
         }
 
         #[cfg(feature = "rangefinder")]
-        #[allow(clippy::cast_possible_truncation)]
         if let Some(wait_result) = ctx.rangefinder_subscriber.try_next_message()
             && let embassy_sync::pubsub::WaitResult::Message(rangefinder_message) = wait_result
         {
-            msp_sensor_data.rangefinder_altitude_cm = ((rangefinder_message.distance_m * 100.0) as i32).cast_unsigned();
+            #[allow(clippy::cast_possible_truncation)]
+            {
+                msp_sensor_data.rangefinder_altitude_cm =
+                    ((rangefinder_message.distance_m * 100.0) as i32).cast_unsigned();
+            }
         }
 
         #[cfg(feature = "gps")]
@@ -153,6 +158,6 @@ pub async fn run(ctx: &'static mut MspContext) {
         if loop_count.is_multiple_of(10) {
             log::info!("             MSP:      loop {loop_count}");
         }
-        loop_count = loop_count.wrapping_add(1); // use wrapping_add to handle when time rolls over at max u32.
+        loop_count = loop_count.wrapping_add(1);
     }
 }
