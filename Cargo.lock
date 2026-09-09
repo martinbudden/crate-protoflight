@@ -1536,7 +1536,7 @@ dependencies = [
 
 [[package]]
 name = "protoflight"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "approx",
  "blackbox-logger",
