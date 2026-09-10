@@ -81,46 +81,46 @@ run-m7 = [
     "--config", "target.thumbv7em-none-eabihf.rustflags=['-C', 'target-cpu=cortex-m7', '-C', 'inline-threshold=300']"
 ]
 
-test-rp2350 = [
+test-rp235xa = [
     "test",
     "--target", "thumbv8m.main-none-eabihf",
     "--no-default-features",
     "--features",
-    #"libm,rp2350,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug"
-    "libm,rp2350"
+    #"libm,rp235xa,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug"
+    "libm,rp235xa"
 ]
 
-check-rp2350 = [
+check-rp235xa = [
     "check",
     "--target", "thumbv8m.main-none-eabihf",
     "--no-default-features",
     "--features",
-    "libm,rp2350,rpi_pico2,autopilot,barometer,magnetometer,msp,osd,rangefinder,rpm_filters"
+    "libm,rp235xa,rpi_pico2,autopilot,barometer,magnetometer,msp,osd,rangefinder,rpm_filters"
     #"rp2350,libm,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug"
 ]
 
-check-rp2350-m = [
+check-rp235xb = [
     "check",
     "--target", "thumbv8m.main-none-eabihf",
     "--no-default-features",
     "--features",
-    "libm,madflight_fc3,autopilot,barometer,magnetometer,osd,rangefinder",
+    "libm,rp235xb,madflight_fc3,autopilot,barometer,magnetometer,osd,rangefinder",
     #"rp2350,libm,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug"
 ]
 
-build-rp2350 = [
+build-rp235xa = [
     "build",
     "--target", "thumbv8m.main-none-eabihf",
     "--no-default-features",
-    "--features", "libm,rp2350,battery"
+    "--features", "libm,rp235xa,battery"
 ]
 
-run-rp2350 = [
+run-rp235xa = [
     "run",
     "--target", "thumbv8m.main-none-eabihf",
     "--no-default-features",
     "--features",
-    "libm,rp2350,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug"
+    "libm,rp235xa,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug"
 ]
 
 

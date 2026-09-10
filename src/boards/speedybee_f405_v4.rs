@@ -67,9 +67,7 @@ type BoardSpi =
 pub type BoardImu = Imu426xx<ImuSpiBus<BoardSpi>>;
 
 pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
-    static I2C_BUS: StaticCell<SharedI2cBus> = StaticCell::new();
-
-    // NOTE: stm32 numbers peripheral start at 1, eg SPI1, SPI1, I2C1, I2C2 etc
+    // NOTE: stm32 numbers peripherals starting at 1, eg SPI1, SPI2, I2C1, I2C2 etc
     /*
     Using Betaflight naming convention. For an STM32 SPI master:
     SDO = MCU → peripheral = MOSI = TX DMA
@@ -239,6 +237,7 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
 
     let radio = Radio::new(radio_controllers::RadioType::Mock);
 
+    static I2C_BUS: StaticCell<SharedI2cBus> = StaticCell::new();
     let shared_i2c = I2C_BUS.init(SharedI2cBus::new(i2c1));
 
     let barometer = Barometer::new(init.barometer_type, shared_i2c);

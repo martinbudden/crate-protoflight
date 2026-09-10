@@ -46,7 +46,7 @@ type BoardSpi =
 pub type BoardImu = Mpu6050<ImuSpiBus<BoardSpi>>;
 
 pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
-    // NOTE: stm32 numbers peripheral start at 1, eg SPI1, SPI1, I2C1, I2C2 etc
+    // NOTE: stm32 numbers peripherals starting at 1, eg SPI1, SPI2, I2C1, I2C2 etc
 
     let peripherals = embassy_stm32::init(Default::default());
 

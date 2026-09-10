@@ -8,7 +8,7 @@ use embedded_storage_file::{NorMemoryAsync, NorMemoryInFile};
 #[allow(unused)]
 use super::nvs::{load_all_global_configs, store_all_global_configs};
 
-#[cfg(feature = "rp2350")]
+#[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
 use {
     embassy_embedded_hal::adapter::BlockingAsync,
     embassy_rp::{
@@ -40,7 +40,7 @@ pub async fn load_global_configs() -> Result<(), ()> {
         load_global_configs().await.map_err(|_| ())
     }
 
-    #[cfg(feature = "rp2350")]
+    #[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
     {
         load_global_configs(board_flash()).await.map_err(|_| ())
     }
@@ -57,7 +57,7 @@ pub async fn store_global_configs() -> Result<(), ()> {
         let flash_driver = init_flash_driver();
         store_all_global_configs(flash_driver).await.map_err(|_| ())
     }
-    #[cfg(feature = "rp2350")]
+    #[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
     {
         Ok(())
     }

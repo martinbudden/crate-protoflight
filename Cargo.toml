@@ -25,12 +25,13 @@ rustc_version = "0.4.1"
 
 [features]
 #default = ["std", "libm"]
-#default = ["rp2350", "libm"]
+#default = ["rp235xa", "libm"]
 default = [
     #"libm",
     "std",
     "host",
-    #"rp2350",
+    #"rp235xa",
+    #"rp235xb",
     #"speedybee_f405_v4",
     #"sp_racing_f4_evo",
     #"airb_omnibus_f4",
@@ -58,10 +59,10 @@ default = [
     "serde",
     "vtx",
 ]
-#default = ["rp2350", "libm", "blackbox", "max7456", "osd", "rpm_filters", "barometer", "gps", "msp", "autopilot", "rangefinder"]
-#default = ["rp2350", "libm", "max7456", "osd"]
+#default = ["rp235xa", "libm", "blackbox", "max7456", "osd", "rpm_filters", "barometer", "gps", "msp", "autopilot", "rangefinder"]
+#default = ["rp235xa", "libm", "max7456", "osd"]
 #default = ["std", "libm", "blackbox", "rpm_filters", "barometer", "msp", "autopilot"]
-#default = ["rp2350", "blackbox", "libm", "osd"]
+#default = ["rp235xa", "blackbox", "libm", "osd"]
 
 autopilot = []
 barometer = ["blackbox-logger/barometer"]
@@ -95,8 +96,8 @@ motors_t3_t2 = [ "motor-mixers/motors_t3_t2"]
 
 
 # Boards supported
-rpi_pico2 = ["rp2350", "rp235xa"] #, "multicore"]
-madflight_fc3 = ["rp2350", "rp235xb"] #, "multicore"]
+rpi_pico2 = ["rp235xa"] #, "multicore"]
+madflight_fc3 = ["rp235xb"] #, "multicore"]
 matek_f405_wte = ["stm32", "stm32f405", "motors_t4_t3"]
 speedybee_f405_v4 = ["stm32", "stm32f405", "motors_t4_t3", "realtime_executor"]
 sp_racing_f4_evo = ["stm32", "stm32f405", "motors_t8"]
@@ -131,38 +132,64 @@ host = [
     "dep:env_filter"
 ]
 
-rp2350 = [
+rp2040 = [
     "dep:embassy-rp",
-    "dep:cyw43-pio",
     "dep:cortex-m-rt",
+    "embassy-executor/platform-cortex-m",   # <-- Explicitly satisfies the executor's platform check
+    "embassy-executor/executor-thread",
+
+    "embassy-rp/critical-section-impl",
+    "embassy-rp/rt",
+    "embassy-rp/time-driver",
+
+    "embassy-rp/rp2040",
+    "motor-mixers/rp2040",
+]
+
+rp235xa = [
+    "dep:embassy-rp",
+    "dep:cortex-m-rt",
+    "dep:cyw43-pio",
+    #"embassy-rp/executor-thread",           # <-- Let the HAL define the hardware executor
+    #"embassy-rp/executor-interrupt",        # <-- Add if you require high-priority interrupt task pools
+    "embassy-executor/executor-thread",
+    "embassy-executor/platform-cortex-m",   # <-- Explicitly satisfies the executor's platform check
+
+    "embassy-rp/critical-section-impl",
+    "embassy-rp/rt",
+    "embassy-rp/time-driver",
+
+    "embassy-rp/rp235xa",
+    "motor-mixers/rp235xa",
+]
+
+rp235xb = [
+    "dep:embassy-rp",
+    "dep:cortex-m-rt",
+    "dep:cyw43-pio",
+    "embassy-executor/executor-thread",
+    "embassy-executor/platform-cortex-m",   # <-- Explicitly satisfies the executor's platform check
+
     "embassy-rp/rt",
     "embassy-rp/time-driver",
     "embassy-rp/critical-section-impl",
-    #"embassy-rp/executor-thread",           # <-- Let the HAL define the hardware executor
-    #"embassy-rp/executor-interrupt",        # <-- Add if you require high-priority interrupt task pools
-    "embassy-executor/platform-cortex-m",   # <-- Explicitly satisfies the executor's platform check
-    "embassy-executor/executor-thread",
-    "motor-mixers/rp2350",
-]
 
-rp235xa =[
-    "embassy-rp/rp235xa",
-]
-
-rp235xb =[
     "embassy-rp/rp235xb",
+    "motor-mixers/rp235xb",
 ]
 
 stm32 = [
     "dep:embassy-stm32",
     "dep:cortex-m-rt",
+    "embassy-executor/executor-thread",
+    "embassy-executor/executor-interrupt",
+    "embassy-executor/platform-cortex-m",   # <-- Explicitly satisfies the executor's platform check
+
     "embassy-stm32/rt",
     "embassy-stm32/time-driver-tim2",
     "embassy-stm32/executor-thread",
     "embassy-stm32/executor-interrupt",
-    "embassy-executor/platform-cortex-m",   # <-- Explicitly satisfies the executor's platform check
-    "embassy-executor/executor-thread",
-    "embassy-executor/executor-interrupt",
+
     "motor-mixers/stm32",
 ]
 
@@ -227,8 +254,8 @@ blackbox-logger = { version = "0.1.10", default-features = false, optional = tru
 #blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger", default-features = false, optional = true }
 #blackbox-logger = { path = "../blackbox-logger", default-features = false, optional = true }
 
-motor-mixers = { version = "0.1.6", default-features = false }
-#motor-mixers = { git = "https://github.com/martinbudden/crate-motor-mixers", default-features = false }
+#motor-mixers = { version = "0.1.6", default-features = false }
+motor-mixers = { git = "https://github.com/martinbudden/crate-motor-mixers", default-features = false }
 #motor-mixers = { path = "../motor-mixers", default-features = false }
 radio-controllers = { version = "0.1.7", default-features = false }
 #radio-controllers = { git = "https://github.com/martinbudden/crate-radio-controllers", default-features = false}

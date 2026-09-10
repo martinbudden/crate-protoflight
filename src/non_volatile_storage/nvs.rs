@@ -8,10 +8,6 @@ use sequential_storage::{
 };
 
 #[allow(unused)]
-#[cfg(feature = "rp2350")]
-const FLASH_SIZE_BYTES: usize = 4 * 1024 * 1024;
-#[allow(unused)]
-#[cfg(not(feature = "rp2350"))]
 const FLASH_SIZE_BYTES: u32 = 4 * 1024 * 1024;
 
 struct Key {}

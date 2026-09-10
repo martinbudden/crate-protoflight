@@ -4,7 +4,7 @@ use static_cell::StaticCell;
 
 use crate::tasks::blackbox_encoder::{BLACKBOX_WRITE_QUEUE, BlackboxWriteItem};
 
-#[cfg(feature = "rp2350")]
+#[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
 use {
     //crate::boards::rp2350::BlackboxSpiDevice,
     embedded_sdmmc::{Directory, Mode, SdCard, VolumeIdx, VolumeManager},
@@ -29,7 +29,7 @@ impl embedded_sdmmc::TimeSource for VehicleTimeSource {
 pub struct BlackboxWriterContext {
     #[cfg(feature = "host")]
     pub sd_card: MockSdCard,
-    #[cfg(feature = "rp2350")]
+    #[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
     pub spi_device: BlackboxSpiDevice,
     /// 512-byte cache matching SD physical sector boundaries.
     pub sector_buffer: [u8; Self::SECTOR_SIZE],
@@ -47,7 +47,7 @@ impl BlackboxWriterContext {
     pub fn new() -> Self {
         Self { sd_card: MockSdCard::new("blackbox_log.bbl"), sector_buffer: [0u8; Self::SECTOR_SIZE], sector_idx: 0 }
     }
-    #[cfg(feature = "rp2350")]
+    #[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
     pub fn new() -> Self {
         Self { spi_device, sector_buffer: [0u8; Self::SECTOR_SIZE], sector_idx: 0 }
     }
@@ -125,10 +125,10 @@ async fn flush_sector_buffer(ctx: &mut BlackboxWriterContext) {
     ctx.sd_card.flush().await;
 }
 
-#[cfg(not(feature = "rp2350"))]
+#[cfg(not(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb")))]
 fn open_storage() {}
 
-#[cfg(feature = "rp2350")]
+#[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
 fn open_storage() {
     // TODO: add spi_device parameter to open_storage
     // LOW-SPEED BOOT HARDWARE HANDSHAKE ---
@@ -160,7 +160,7 @@ fn open_storage() {
 }
 
 /// Scans the root directory by inspecting raw filename bytes directly.
-#[cfg(feature = "rp2350")]
+#[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
 pub fn find_next_log_index<D, T, const DIR: usize, const FILE: usize, const VOL: usize>(
     root_dir: &mut Directory<'_, D, T, DIR, FILE, VOL>,
 ) -> u16

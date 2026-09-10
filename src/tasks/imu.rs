@@ -6,7 +6,7 @@ use vqm::Vector3f32;
 
 use crate::boards::BoardImu;
 
-/*#[cfg(feature = "rp2350")]
+/*#[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
 use embassy_rp::{
     gpio::{Input, Pull},
     interrupt::{self, InterruptExt, Priority},

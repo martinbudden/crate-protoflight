@@ -78,7 +78,7 @@ pub struct GpsHardware {
     pub uart_rx: GpsUartRx,
     pub uart_tx: GpsUartTx,
 }
-#[cfg(feature = "rp2350")]
+#[cfg(feature = "rp235xa")]
 pub struct GpsHardware {}
 
 #[cfg(feature = "stm32")]

@@ -129,9 +129,9 @@ checksum = "46afbd2983a5d5a7bd740ccb198caf5b82f45c40c09c0eed36052d91cb92e719"
 
 [[package]]
 name = "bitflags"
-version = "2.13.1"
+version = "2.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b588b76d00fde79687d7646a9b5bdf3cc0f655e0bbd080335a95d7e96f3587da"
+checksum = "3ded4057c258ba199e2d26386d3af3780957ecaee6c4ef4041c6b4b8b97c0b06"
 
 [[package]]
 name = "blackbox-logger"
@@ -1264,8 +1264,7 @@ dependencies = [
 [[package]]
 name = "motor-mixers"
 version = "0.1.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7e714d60ee528fabcfbea7c36dd738af742ea7442cd25b141def24f7a2416da"
+source = "git+https://github.com/martinbudden/crate-motor-mixers#3fb14ffc691aefc0a475bf1087885ef06e22a41c"
 dependencies = [
  "embassy-executor",
  "embassy-futures",
@@ -1273,6 +1272,7 @@ dependencies = [
  "embassy-stm32",
  "embassy-sync",
  "embassy-time",
+ "fixed",
  "pidsk-controller",
  "postcard",
  "rustc_version 0.4.1",

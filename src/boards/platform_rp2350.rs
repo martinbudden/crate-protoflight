@@ -1,4 +1,4 @@
-#![cfg(feature = "rp2350")]
+#![cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
 #![allow(unused)]
 
 use embassy_sync::{blocking_mutex::raw::NoopRawMutex, mutex::Mutex};

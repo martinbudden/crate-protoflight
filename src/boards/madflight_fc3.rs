@@ -45,8 +45,7 @@ type BoardSpi =
 pub type BoardImu = Imu426xx<ImuSpiBus<BoardSpi>>;
 
 pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
-    static I2C_BUS: StaticCell<SharedI2cBus> = StaticCell::new();
-    // NOTE: rp2350 numbers peripheral starting at 0, eg SPI0, SPI0, I2C0, I2C0 etc
+    // NOTE: rp2350 numbers peripherals starting at 0, eg SPI0, SPI1, I2C0, I2C1 etc
 
     // Take ownership of the raw RP2350 hardware peripherals block
     #[allow(clippy::default_trait_access)]
@@ -134,12 +133,6 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
         ExclusiveDevice::new(spi_bus, spi_cs_output, embassy_time::Delay)
     };
 
-    let uart1 = {
-        let mut config = UsartConfig::default();
-        config.baudrate = 115_200;
-        Uart::new_blocking(peripherals.USART1, uart1_rx, uart1_tx, config)
-    };
-
     // TODO: PIO SPI
     // --- Device 3: PIO0 Backed SPI (Auxiliary Peripheral) ---
     // let aux_pio_spi = Err(AuxiliaryPioInitError::FeatureDisabled);
@@ -158,19 +151,19 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
             .map_err(|_| BoardInitError::UartError)?
     };
 
-    let i2c0 = {
-        let mut i2c_config = I2cConfig::default();
-        i2c_config.frequency = 400_000; // Standard Fast-Mode I2C frequency (400 kHz)
-        I2c::new_async(peripherals.I2C0, i2c0_scl, i2c0_sda, Irqs, i2c_config)
-    };
     let motor_driver_quad_dshot = MotorDriverQuadDshot::new();
     let motor_driver = MotorDriver::QuadDshot(motor_driver_quad_dshot);
 
     let radio = Radio::new(radio_controllers::RadioType::Mock);
 
+    let i2c0 = {
+        let mut i2c_config = I2cConfig::default();
+        i2c_config.frequency = 400_000; // Standard Fast-Mode I2C frequency (400 kHz)
+        //I2c::new_async(peripherals.I2C0, i2c0_scl, i2c0_sda, Irqs, i2c_config)
+        I2c::new_blocking(peripherals.I2C0, i2c0_scl, i2c0_sda, i2c_config)
+    };
     static I2C_BUS: StaticCell<SharedI2cBus> = StaticCell::new();
-    let i2c = I2c::new_async(peripherals.I2C0, i2c0_sda, i2c0_scl, Irqs, config);
-    let shared_i2c = I2C_BUS.init(Mutex::new(i2c));
+    let shared_i2c = I2C_BUS.init(Mutex::new(i2c0));
 
     let barometer = Barometer::new(init.barometer_type, shared_i2c);
     let magnetometer = Magnetometer::new(init.magnetometer_type, shared_i2c);

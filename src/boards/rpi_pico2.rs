@@ -48,8 +48,7 @@ static mut CORE1_STACK: Stack<4096> = Stack::new();
 pub fn start_core1_executor() -> embassy_executor::SendSpawner {}
 
 pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
-    static I2C_BUS: StaticCell<SharedI2cBus> = StaticCell::new();
-    // NOTE: rp2350 numbers peripheral starting at 0, eg SPI0, SPI0, I2C0, I2C0 etc
+    // NOTE: rp2350 numbers peripheral starting at 0, eg SPI0, SPI1, I2C0, I2C1 etc
 
     // Take ownership of the raw RP2350 hardware peripherals block
     #[allow(clippy::default_trait_access)]
@@ -139,11 +138,13 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
         //I2c::new_async(peripherals.I2C0, i2c0_scl, i2c0_sda, Irqs, i2c_config)
         I2c::new_blocking(peripherals.I2C0, i2c0_scl, i2c0_sda, i2c_config)
     };
+
     let motor_driver_quad_dshot = MotorDriverQuadDshot::new();
     let motor_driver = MotorDriver::QuadDshot(motor_driver_quad_dshot);
 
     let radio = Radio::new(radio_controllers::RadioType::Mock);
 
+    static I2C_BUS: StaticCell<SharedI2cBus> = StaticCell::new();
     let shared_i2c = I2C_BUS.init(SharedI2cBus::new(i2c0));
 
     let barometer = Barometer::new(init.barometer_type, shared_i2c);
