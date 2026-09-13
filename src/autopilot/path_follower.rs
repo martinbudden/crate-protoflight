@@ -16,6 +16,7 @@ pub struct PathFollower {
 }
 
 impl PathFollower {
+    #[allow(unused)]
     pub const fn new() -> Self {
         Self {
             lateral_accel: 0.0,

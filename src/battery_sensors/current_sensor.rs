@@ -86,6 +86,7 @@ impl_try_from_u8!(CurrentMeterSource);
 
 impl CurrentMeterSource {
     /// Forgiving conversion, converts invalid values to default.
+    #[allow(unused)]
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {

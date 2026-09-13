@@ -334,8 +334,8 @@ impl FlightController {
         }
     }
 
-    #[allow(clippy::unused_self)]
     pub fn recover_from_yaw_spin(&mut self, _gyro_rps: Vector3f32, _delta_t: f32) -> Vector4f32 {
+        _ = self;
         Vector4f32::default()
     }
 
@@ -352,8 +352,8 @@ impl FlightController {
         setpoint - measurement
     }
 
-    #[allow(clippy::unused_self)]
     pub fn apply_crash_flip_to_motors(&mut self, _gyro_rps: Vector3f32, _delta_t: f32) -> Vector4f32 {
+        _ = self;
         Vector4f32::default()
     }
 
@@ -434,8 +434,8 @@ impl FlightController {
     ///
     /// In angle mode, the roll and pitch angles are used to set the setpoints for the rollRate and pitchRate PIDs.
     /// Level Race Mode (aka NFE(Not Fast Enough) mode) is equivalent to angle mode on roll and acro mode on pitch.
-    #[allow(clippy::unused_self)]
     fn update_rate_setpoints_for_angle_mode(&mut self, _orientation: Quaternionf32, _delta_t: f32) {
+        _ = self;
         //self.angle_mode_calculation_state.update(&mut self, orientation, delta_t)
     }
 }

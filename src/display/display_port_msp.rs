@@ -54,13 +54,13 @@ impl Deref for DisplayPortMsp {
 
 #[allow(unused)]
 impl DisplayPortMsp {
-    #[allow(clippy::unused_self)]
     pub fn output_byte(&mut self, _byte: u8) -> usize {
+        _ = self;
         0
     }
 
-    #[allow(clippy::unused_self)]
     pub fn output_slice(&mut self, data: &[u8]) -> usize {
+        _ = self;
         //let len = data.len();
         0
     }
@@ -137,6 +137,7 @@ impl Display for DisplayPortMsp {
     }
 
     async fn transfer_screen(&mut self) -> Result<bool, &'static str> {
+        core::future::ready(()).await;
         _ = self.output_byte(Commands::DRAW_SCREEN);
         Ok(false)
     }

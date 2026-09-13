@@ -223,7 +223,6 @@ impl OsdElements {
     pub const X_POSITION_MASK:   u16 = 0b_0000_0000_0011_1111;
 }
 
-#[allow(clippy::unused_self)]
 impl OsdElements {
     /// Simulates a system uptime lookup tool in microseconds.
     #[allow(unused)]
@@ -366,6 +365,7 @@ impl OsdElements {
     }
 
     pub fn draw_spec(&self) -> bool {
+        _ = self;
         true
     }
 

@@ -73,7 +73,7 @@ pub async fn run(ctx: &'static mut MotorMixerContext) {
         // wait for the motor mixer message from the gyro_pid task
         let motor_mixer_message = MOTOR_MIXER_SIGNAL.wait().await;
         // and use it to output to the motors.
-        ctx.motor_mixer.output_to_motors(motor_mixer_message);
+        ctx.motor_mixer.output_to_motors(motor_mixer_message).await;
 
         #[cfg(feature = "rpm_filters")]
         {

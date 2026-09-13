@@ -121,8 +121,8 @@ impl DisplayPortLayers {
     /// Asynchronously simulates a screen update by doing nothing.
     /// Returns `Ok(false)` immediately to signal that no data transmission is ongoing.
     #[allow(unused)]
-    #[allow(clippy::unused_async)]
     pub async fn draw_screen(&mut self) -> Result<bool, Infallible> {
+        core::future::ready(()).await;
         Ok(false)
     }
 }

@@ -82,6 +82,7 @@ impl Display for DisplayPortMock {
     }
 
     async fn transfer_screen(&mut self) -> Result<bool, &'static str> {
+        core::future::ready(()).await;
         Ok(false)
     }
 

@@ -36,7 +36,7 @@ impl SystemConfig {
             rate_profile6_pos_switch: 0,
             cpu_overclock: 0,
             power_on_arming_grace_time_seconds: 5,
-            board_identifier: [b'T', b'E', b'S', b'T'],
+            board_identifier: *b"TEST",
             hse_mhz: 0,
             configuration_state: 0,
             enable_stick_arming: 0,

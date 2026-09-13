@@ -45,6 +45,7 @@ pub struct PidConfigs {
 }
 
 impl PidConfigs {
+    #[allow(unused)]
     pub const fn new() -> Self {
         Self {
             // Betaflight compatible defaults.

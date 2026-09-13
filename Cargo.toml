@@ -132,11 +132,13 @@ host = [
     "dep:env_filter"
 ]
 
+rp = ["dep:embassy-rp"] # combined feature for all rp variants
 rp2040 = [
     "dep:embassy-rp",
     "dep:cortex-m-rt",
-    "embassy-executor/platform-cortex-m",   # <-- Explicitly satisfies the executor's platform check
+
     "embassy-executor/executor-thread",
+    "embassy-executor/platform-cortex-m",   # <-- Explicitly satisfies the executor's platform check
 
     "embassy-rp/critical-section-impl",
     "embassy-rp/rt",
@@ -150,11 +152,12 @@ rp235xa = [
     "dep:embassy-rp",
     "dep:cortex-m-rt",
     "dep:cyw43-pio",
+
+    "embassy-executor/executor-thread",
+    "embassy-executor/platform-cortex-m",
+
     #"embassy-rp/executor-thread",           # <-- Let the HAL define the hardware executor
     #"embassy-rp/executor-interrupt",        # <-- Add if you require high-priority interrupt task pools
-    "embassy-executor/executor-thread",
-    "embassy-executor/platform-cortex-m",   # <-- Explicitly satisfies the executor's platform check
-
     "embassy-rp/critical-section-impl",
     "embassy-rp/rt",
     "embassy-rp/time-driver",
@@ -167,8 +170,9 @@ rp235xb = [
     "dep:embassy-rp",
     "dep:cortex-m-rt",
     "dep:cyw43-pio",
+
     "embassy-executor/executor-thread",
-    "embassy-executor/platform-cortex-m",   # <-- Explicitly satisfies the executor's platform check
+    "embassy-executor/platform-cortex-m",
 
     "embassy-rp/rt",
     "embassy-rp/time-driver",
@@ -197,7 +201,14 @@ stm32f405 = [
     "embassy-stm32/stm32f405rg",
 ]
 
-esp32 =[]
+esp32 = [
+    "dep:esp-hal",
+    "esp-hal/esp32s3",
+
+    "embassy-executor/executor-thread",
+
+    "motor-mixers/esp32"
+]
 
 [dependencies]
 # Core Embassy executor and concurrency primitives
@@ -210,16 +221,23 @@ embassy-embedded-hal = "0.6.0"
 embedded-io-async = "0.7.0"
 static_cell = "2.1.1"
 critical-section = { version = "1.2.0" }
+
 # Hardware-specific Embassy HAL
 cortex-m-rt = { version = "0.7.5", optional = true }
 embedded-hal = { version = "1.0" }
 embedded-hal-bus = { version = "0.3.0", features = ["async"] }
 embedded-sdmmc = { version = "0.10.0", default-features = false, features = ["log"], optional = true }
+
 # Raspberry Pi Pico specific
 embassy-rp = { version = "0.10.0", default-features = false, optional = true }
 cyw43-pio = { version = "0.10.0", optional = true }
+
 # stm32f4 specific
 embassy-stm32 = { version = "0.6.0", default-features = false, optional = true }
+# eps32 specific
+esp-hal = { version = "1.2.1", default-features = false, optional = true }
+
+
 strum = { version = "0.28.0", default-features = false, features = ["derive"] }
 cfg-if = "1.0.4"
 derive_more = { version = "2.1.1", default-features = false, features = ["display"] }
