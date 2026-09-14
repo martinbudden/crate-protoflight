@@ -1,7 +1,8 @@
+#[cfg(feature = "storage")]
+use sequential_storage::map::PostcardValue;
 #[cfg(feature = "serde")]
 use {
     postcard::experimental::max_size::MaxSize,
-    sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
 };
 
@@ -13,7 +14,7 @@ pub struct ArmingConfig {
     pub prearm_allow_rearm: u8,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for ArmingConfig {}
 
 impl Default for ArmingConfig {
@@ -57,7 +58,7 @@ impl ArmingFlags {
     }
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for ArmingFlags {}
 
 impl Default for ArmingFlags {
@@ -121,7 +122,7 @@ impl DisarmingFlags {
     }
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for DisarmingFlags {}
 
 impl Default for DisarmingFlags {
@@ -137,19 +138,28 @@ mod tes_traits {
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     #[cfg(feature = "serde")]
-    fn is_config<T: Serialize + MaxSize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
+    fn is_serde<T: Serialize + MaxSize + for<'a> Deserialize<'a>>() {}
+    #[cfg(feature = "storage")]
+    fn is_storage<T: for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
         is_full::<ArmingConfig>();
         is_full::<ArmingFlags>();
         is_full::<DisarmingFlags>();
-
-        #[cfg(feature = "serde")]
-        is_config::<ArmingConfig>();
-        #[cfg(feature = "serde")]
-        is_config::<ArmingFlags>();
-        #[cfg(feature = "serde")]
-        is_config::<DisarmingFlags>();
+    }
+    #[cfg(feature = "serde")]
+    #[test]
+    fn serde_types() {
+        is_serde::<ArmingConfig>();
+        is_serde::<ArmingFlags>();
+        is_serde::<DisarmingFlags>();
+    }
+    #[cfg(feature = "storage")]
+    #[test]
+    fn storage_types() {
+        is_storage::<ArmingConfig>();
+        is_storage::<ArmingFlags>();
+        is_storage::<DisarmingFlags>();
     }
 }

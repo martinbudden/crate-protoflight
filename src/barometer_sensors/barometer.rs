@@ -9,9 +9,10 @@ use crate::i2c_bus::{I2cError, SharedI2cBus};
 #[cfg(feature = "serde")]
 use {
     postcard::experimental::max_size::MaxSize,
-    sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
 };
+#[cfg(feature = "storage")]
+use sequential_storage::map::PostcardValue;
 
 #[allow(missing_docs)]
 #[allow(unused)]
@@ -36,7 +37,7 @@ pub enum BarometerType {
     Mock = 13,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for BarometerType {}
 
 #[allow(unused)]
@@ -139,12 +140,16 @@ mod test_traits {
 
     fn is_full_eq<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + Eq + PartialEq>() {}
     #[cfg(feature = "serde")]
-    fn is_config<T: Serialize + MaxSize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
+    fn is_serde<T: Serialize + MaxSize + for<'a> Deserialize<'a>>() {}
+    #[cfg(feature = "storage")]
+    fn is_storage<T: for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
         is_full_eq::<BarometerType>();
         #[cfg(feature = "serde")]
-        is_config::<BarometerType>();
+        is_serde::<BarometerType>();
+        #[cfg(feature = "storage")]
+        is_storage::<BarometerType>();
     }
 }

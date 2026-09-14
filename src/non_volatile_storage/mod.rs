@@ -10,5 +10,4 @@ mod nvs;
 mod nvs_hardware;
 
 #[allow(unused)]
-#[cfg(feature = "serde")]
 pub use nvs_hardware::{init_flash_driver, load_global_configs, store_global_configs};

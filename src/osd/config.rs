@@ -3,9 +3,10 @@
 #[cfg(feature = "serde")]
 use {
     postcard::experimental::max_size::MaxSize,
-    sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
 };
+#[cfg(feature = "storage")]
+use sequential_storage::map::PostcardValue;
 
 use crate::{
     display::{DisplayPortBackground, DisplayPortDeviceType},
@@ -64,7 +65,7 @@ pub struct OsdConfig {
     pub osd_show_spec_prearm: u8,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for OsdConfig {}
 
 impl Default for OsdConfig {
@@ -140,7 +141,7 @@ pub struct OsdStatsConfig {
     pub save_move_limit: u8, // gyro rate limit for saving stats upon disarm
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for OsdStatsConfig {}
 
 impl Default for OsdStatsConfig {
@@ -169,7 +170,7 @@ pub struct OsdElementsConfig {
     pub positions: [u16; OsdElements::COUNT],
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for OsdElementsConfig {}
 
 impl Default for OsdElementsConfig {
@@ -192,7 +193,7 @@ pub struct PilotConfig {
     pub message: [FixedBuf<{ PilotConfig::MAX_NAME_LENGTH }>; PilotConfig::CUSTOM_MESSAGE_COUNT],
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for PilotConfig {}
 
 impl Default for PilotConfig {
@@ -220,22 +221,32 @@ mod tests {
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     #[cfg(feature = "serde")]
-    fn is_config<T: Serialize + MaxSize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
+    fn is_serde<T: Serialize + MaxSize + for<'a> Deserialize<'a>>() {}
+    #[cfg(feature = "storage")]
+    fn is_storage<T: for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
         is_full::<OsdConfig>();
-        #[cfg(feature = "serde")]
-        is_config::<OsdConfig>();
         is_full::<OsdStatsConfig>();
-        #[cfg(feature = "serde")]
-        is_config::<OsdStatsConfig>();
         is_full::<OsdElementsConfig>();
-        #[cfg(feature = "serde")]
-        is_config::<OsdElementsConfig>();
         is_full::<PilotConfig>();
-        #[cfg(feature = "serde")]
-        is_config::<PilotConfig>();
+    }
+    #[cfg(feature = "serde")]
+    #[test]
+    fn serde_types() {
+        is_serde::<OsdConfig>();
+        is_serde::<OsdStatsConfig>();
+        is_serde::<OsdElementsConfig>();
+        is_serde::<PilotConfig>();
+    }
+    #[cfg(feature = "serde")]
+    #[test]
+    fn storage_types() {
+        is_storage::<OsdConfig>();
+        is_storage::<OsdStatsConfig>();
+        is_storage::<OsdElementsConfig>();
+        is_storage::<PilotConfig>();
     }
     #[test]
     fn test_new() {

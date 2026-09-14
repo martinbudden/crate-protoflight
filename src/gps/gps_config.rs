@@ -1,9 +1,10 @@
 #[cfg(feature = "serde")]
 use {
     postcard::experimental::max_size::MaxSize,
-    sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
 };
+#[cfg(feature = "storage")]
+use sequential_storage::map::PostcardValue;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
@@ -22,7 +23,7 @@ pub struct GpsConfig {
     pub gps_ublox_utc_standard: UtcStandard,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for GpsConfig {}
 
 impl Default for GpsConfig {
@@ -96,7 +97,7 @@ pub enum GpsModel {
     Airborne4G = 7,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for GpsModel {}
 
 #[allow(unused)]
@@ -132,7 +133,7 @@ pub enum UtcStandard {
     Ntsc = 7,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for UtcStandard {}
 
 #[allow(unused)]
@@ -213,13 +214,15 @@ mod tests {
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     fn is_full_eq<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + Eq + PartialEq>() {}
     #[cfg(feature = "serde")]
-    fn is_config<T: Serialize + MaxSize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
+    fn is_serde<T: Serialize + MaxSize + for<'a> Deserialize<'a>>() {}
+    #[cfg(feature = "storage")]
+    fn is_storage<T: for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
         is_full::<GpsConfig>();
         #[cfg(feature = "serde")]
-        is_config::<GpsConfig>();
+        is_serde::<GpsConfig>();
         is_full_eq::<GpsProvider>();
         is_full_eq::<GpsModel>();
         is_full_eq::<UtcStandard>();

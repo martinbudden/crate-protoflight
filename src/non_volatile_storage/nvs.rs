@@ -1,7 +1,9 @@
 #![cfg(feature = "serde")]
 
+#[cfg(feature = "storage")]
 use embedded_storage_async::nor_flash::NorFlash;
 
+#[cfg(feature = "storage")]
 use sequential_storage::{
     cache::{Cache, CacheImpl},
     map::{MapConfig, MapStorage},
@@ -83,20 +85,22 @@ fetch_item
 
 //generate_config_handlers!(crate::flight, Arming, Key::ARMING_CONFIG, 256);
 
+#[cfg(feature = "storage")]
 generate_config_handlers!(radio_controllers, Rates, Key::RATES, 256);
 
-#[cfg(feature = "barometer")]
+#[cfg(all(feature=  "storage", feature = "barometer"))]
 generate_config_handlers!(crate::barometer_sensors, Barometer, Key::BAROMETER_CONFIG, 256);
 
-#[cfg(feature = "battery")]
+#[cfg(all(feature=  "storage", feature = "battery"))]
 generate_config_handlers!(crate::battery_sensors, Battery, Key::BATTERY_CONFIG, 256);
 
-#[cfg(feature = "blackbox")]
+#[cfg(all(feature=  "storage", feature = "blackbox"))]
 generate_config_handlers!(blackbox_logger, Blackbox, Key::BLACKBOX_CONFIG, 256);
 
-#[cfg(feature = "osd")]
+#[cfg(all(feature=  "storage", feature = "osd"))]
 generate_config_handlers!(crate::osd, Osd, Key::OSD_CONFIG, 256);
 
+#[cfg(feature = "storage")]
 pub async fn load_all_global_configs<F>(flash_driver: F) -> Result<(), sequential_storage::Error<F::Error>>
 where
     F: NorFlash,
@@ -129,6 +133,7 @@ where
 }
 
 #[allow(unused)]
+#[cfg(feature = "storage")]
 pub async fn store_all_global_configs<F>(flash_driver: F) -> Result<(), sequential_storage::Error<F::Error>>
 where
     F: NorFlash,
@@ -160,9 +165,11 @@ where
     Ok(())
 }
 
+#[cfg(feature = "storage")]
 use crate::flight::ArmingConfig;
 
 /// Load from NVS (Unwraps `Option`).
+#[cfg(feature = "storage")]
 pub async fn load_arming_config<F, C>(
     config: &mut ArmingConfig,
     storage: &mut MapStorage<u16, F, C>,
@@ -206,6 +213,7 @@ Some(Some(config))
     → actual stored configuration
 */
 #[allow(unused)]
+#[cfg(feature = "storage")]
 pub async fn save_arming_config<F, C>(
     config: &ArmingConfig,
     storage: &mut MapStorage<u16, F, C>,
@@ -249,6 +257,7 @@ fetch
  flash error → return error
 */
 #[allow(unused)]
+#[cfg(feature = "storage")]
 pub async fn delete_arming_config<F, C>(
     storage: &mut MapStorage<u16, F, C>,
 ) -> Result<(), sequential_storage::Error<F::Error>>
@@ -267,7 +276,7 @@ where
     Ok(())
 }
 
-#[cfg(all(test, feature = "std"))]
+#[cfg(all(test, feature = "std", feature = "storage"))]
 mod tests {
     #![allow(clippy::expect_used)]
     use embedded_storage_file::{NorMemoryAsync, NorMemoryInFile};

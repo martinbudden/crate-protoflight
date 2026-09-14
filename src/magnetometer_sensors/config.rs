@@ -3,9 +3,10 @@ use super::MagnetometerType;
 #[cfg(feature = "serde")]
 use {
     postcard::experimental::max_size::MaxSize,
-    sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
 };
+#[cfg(feature = "storage")]
+use sequential_storage::map::PostcardValue;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
@@ -15,7 +16,7 @@ pub struct FlightDynamicsTrims {
     pub yaw: u16,
     pub calibration_completed: u16,
 }
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for FlightDynamicsTrims {}
 
 #[allow(unused)]
@@ -41,7 +42,7 @@ pub struct MagnetometerConfig {
     pub zero: FlightDynamicsTrims,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for MagnetometerConfig {}
 
 impl Default for MagnetometerConfig {
@@ -68,12 +69,14 @@ mod tests {
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     #[cfg(feature = "serde")]
-    fn is_config<T: Serialize + MaxSize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
+    fn is_serde<T: Serialize + MaxSize + for<'a> Deserialize<'a>>() {}
+    #[cfg(feature = "storage")]
+    fn is_storage<T: for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
         is_full::<MagnetometerConfig>();
         #[cfg(feature = "serde")]
-        is_config::<MagnetometerConfig>();
+        is_serde::<MagnetometerConfig>();
     }
 }

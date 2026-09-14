@@ -6,6 +6,7 @@ use embedded_storage_async::nor_flash::NorFlash;
 use embedded_storage_file::{NorMemoryAsync, NorMemoryInFile};
 
 #[allow(unused)]
+#[cfg(feature = "storage")]
 use super::nvs::{load_all_global_configs, store_all_global_configs};
 
 #[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
@@ -34,15 +35,16 @@ pub fn init_flash_driver() -> impl NorFlash {
 #[cfg(not(feature = "std"))]
 pub fn init_flash_driver() {}
 
+#[cfg(feature = "storage")]
 pub async fn load_global_configs() -> Result<(), ()> {
     #[cfg(feature = "stm32")]
     {
-        load_global_configs().await.map_err(|_| ())
+        load_all_global_configs().await.map_err(|_| ())
     }
 
-    #[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
+    #[cfg(feature = "rp")]
     {
-        load_global_configs(board_flash()).await.map_err(|_| ())
+        load_all_global_configs(board_flash()).await.map_err(|_| ())
     }
     #[cfg(feature = "std")]
     {
@@ -50,7 +52,14 @@ pub async fn load_global_configs() -> Result<(), ()> {
     }
 }
 
+#[cfg(not(feature = "storage"))]
+pub async fn load_global_configs() -> Result<(), ()> {
+    core::future::ready(()).await;
+    Err(())
+}
+
 // TODO: write_to_nvs to call store_global_configs
+#[cfg(feature = "storage")]
 pub async fn store_global_configs() -> Result<(), ()> {
     #[cfg(all(feature = "host", feature = "std"))]
     {
@@ -65,4 +74,10 @@ pub async fn store_global_configs() -> Result<(), ()> {
     {
         Ok(())
     }
+}
+
+#[cfg(not(feature = "storage"))]
+pub async fn store_global_configs() -> Result<(), ()> {
+    core::future::ready(()).await;
+    Err(())
 }

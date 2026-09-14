@@ -5,9 +5,10 @@ use core::ops::{Index, IndexMut};
 #[cfg(feature = "serde")]
 use {
     postcard::experimental::max_size::MaxSize,
-    sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
 };
+#[cfg(feature = "storage")]
+use sequential_storage::map::PostcardValue;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum BatteryState {
@@ -38,7 +39,7 @@ pub struct BatteryProfile {
     pub profile_name: [u8; Self::MAX_NAME_LENGTH],
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for BatteryProfile {}
 
 impl Default for BatteryProfile {
@@ -74,7 +75,7 @@ pub struct BatteryProfiles {
     pub profiles: [BatteryProfile; Self::COUNT],
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for BatteryProfiles {}
 
 impl Default for BatteryProfiles {
@@ -126,7 +127,7 @@ pub struct BatteryConfig {
     pub vbat_duration_for_critical: u8, // Period voltage has to sustain before the battery state is set to BATTERY_CRIT (in 0.1 s)
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for BatteryConfig {}
 
 impl Default for BatteryConfig {
@@ -263,7 +264,9 @@ mod test_traits {
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     #[cfg(feature = "serde")]
-    fn is_config<T: Serialize + MaxSize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
+    fn is_serde<T: Serialize + MaxSize + for<'a> Deserialize<'a>>() {}
+    #[cfg(feature = "storage")]
+    fn is_storage<T: for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
@@ -273,11 +276,11 @@ mod test_traits {
         is_full::<BatteryProfiles>();
         is_full::<BatteryMessage>();
         #[cfg(feature = "serde")]
-        is_config::<BatteryConfig>();
+        is_serde::<BatteryConfig>();
         #[cfg(feature = "serde")]
-        is_config::<BatteryProfile>();
+        is_serde::<BatteryProfile>();
         #[cfg(feature = "serde")]
-        is_config::<BatteryProfiles>();
+        is_serde::<BatteryProfiles>();
     }
 }
 

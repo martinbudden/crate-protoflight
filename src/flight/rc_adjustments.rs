@@ -7,9 +7,10 @@ use radio_controllers::{
 #[cfg(feature = "serde")]
 use {
     postcard::experimental::max_size::MaxSize,
-    sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
 };
+#[cfg(feature = "storage")]
+use sequential_storage::map::PostcardValue;
 
 use crate::{
     config::{ConfigItem, ConfigPublisher, FastConfigPublisher, GLOBAL_CONFIG},
@@ -94,7 +95,7 @@ pub struct RcAdjustments {
     pub adjustment_configs: [RcAdjustmentRange; Self::MAX_RANGE_COUNT],
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for RcAdjustments {}
 
 impl RcAdjustments {
@@ -218,13 +219,15 @@ mod tests {
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     #[cfg(feature = "serde")]
-    fn is_config<T: Serialize + MaxSize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
+    fn is_serde<T: Serialize + MaxSize + for<'a> Deserialize<'a>>() {}
+    #[cfg(feature = "storage")]
+    fn is_storage<T: for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
         is_full::<RcAdjustments>();
         #[cfg(feature = "serde")]
-        is_config::<RcAdjustments>();
+        is_serde::<RcAdjustments>();
     }
     #[test]
     fn test_new() {

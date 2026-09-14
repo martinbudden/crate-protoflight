@@ -7,9 +7,10 @@ use crate::{i2c_bus::SharedI2cBus, magnetometer_sensors::magnetometer_mock::Magn
 #[cfg(feature = "serde")]
 use {
     postcard::experimental::max_size::MaxSize,
-    sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
 };
+#[cfg(feature = "storage")]
+use sequential_storage::map::PostcardValue;
 
 // Type of magnetometer used/detected
 #[allow(missing_docs)]
@@ -33,7 +34,7 @@ pub enum MagnetometerType {
     Mock = 11,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for MagnetometerType {}
 
 #[allow(unused)]
@@ -116,13 +117,15 @@ mod tests {
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     fn is_full_eq<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + Eq + PartialEq>() {}
     #[cfg(feature = "serde")]
-    fn is_config<T: Serialize + MaxSize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
+    fn is_serde<T: Serialize + MaxSize + for<'a> Deserialize<'a>>() {}
+    #[cfg(feature = "storage")]
+    fn is_storage<T: for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
         is_full::<MagnetometerMessage>();
         is_full_eq::<MagnetometerType>();
         #[cfg(feature = "serde")]
-        is_config::<MagnetometerType>();
+        is_serde::<MagnetometerType>();
     }
 }

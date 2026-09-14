@@ -1,9 +1,10 @@
 #[cfg(feature = "serde")]
 use {
     postcard::experimental::max_size::MaxSize,
-    sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
 };
+#[cfg(feature = "storage")]
+use sequential_storage::map::PostcardValue;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
@@ -15,7 +16,7 @@ pub struct PidConfig {
     pub kk: u8, // setpoint derivative gain ('kick')
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for PidConfig {}
 
 impl PidConfig {
@@ -85,7 +86,7 @@ pub struct FlightControllerFiltersConfig {
     pub rc_smoothing_feedforward_cutoff: u8,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for FlightControllerFiltersConfig {}
 
 impl Default for FlightControllerFiltersConfig {
@@ -123,7 +124,7 @@ pub struct FlightModeConfig {
     pub level_race_mode: u8, // aka "NFE(not fast enough) race mode": angle mode on roll, acro mode on pitch
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for FlightModeConfig {}
 
 impl FlightModeConfig {
@@ -151,7 +152,7 @@ pub struct TpaConfig {
     pub low_breakpoint: u16,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for TpaConfig {}
 
 impl Default for TpaConfig {
@@ -176,7 +177,7 @@ pub enum TpaMode {
     Pds = 2,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for TpaMode {}
 
 impl_try_from_u8!(TpaMode);
@@ -203,7 +204,7 @@ pub struct AntiGravityConfig {
     pub i_gain: u8,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for AntiGravityConfig {}
 
 impl Default for AntiGravityConfig {
@@ -226,7 +227,7 @@ pub struct CrashFlipConfig {
     pub auto_rearm: u8,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for CrashFlipConfig {}
 
 impl Default for CrashFlipConfig {
@@ -248,7 +249,7 @@ pub struct YawSpinRecoveryConfig {
     pub yaw_spin_recovery: u8,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for YawSpinRecoveryConfig {}
 
 impl YawSpinRecoveryConfig {
@@ -281,7 +282,7 @@ pub struct CrashRecoveryConfig {
     pub recovery: u8,            // off, on, on and beeps when it is in crash recovery mode
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for CrashRecoveryConfig {}
 
 impl Default for CrashRecoveryConfig {
@@ -315,7 +316,7 @@ pub struct ItermRelaxConfig {
     pub relax_cutoff: u8, // Cutoff frequency used by low pass filter which predicts average response of the quad to setpoint
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for ItermRelaxConfig {}
 
 impl ItermRelaxConfig {
@@ -341,7 +342,7 @@ pub struct DMaxConfig {
     pub advance: u8,    // percentage multiplier for setpoint
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for DMaxConfig {}
 
 impl Default for DMaxConfig {
@@ -395,7 +396,7 @@ pub struct GyroConfig {
     pub gyro_enabled_bitmask: u8,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for GyroConfig {}
 
 impl Default for GyroConfig {
@@ -452,7 +453,9 @@ mod tests {
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     fn is_full_eq<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + Eq + PartialEq>() {}
     #[cfg(feature = "serde")]
-    fn is_config<T: Serialize + MaxSize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
+    fn is_serde<T: Serialize + MaxSize + for<'a> Deserialize<'a>>() {}
+    #[cfg(feature = "storage")]
+    fn is_storage<T: for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
@@ -468,29 +471,36 @@ mod tests {
         is_full::<CrashRecoveryConfig>();
         is_full::<ItermRelaxConfig>();
         is_full::<DMaxConfig>();
-
-        #[cfg(feature = "serde")]
-        is_config::<PidConfig>();
-        #[cfg(feature = "serde")]
-        is_config::<FlightControllerFiltersConfig>();
-        #[cfg(feature = "serde")]
-        is_config::<FlightModeConfig>();
-        #[cfg(feature = "serde")]
-        is_config::<TpaConfig>();
-        #[cfg(feature = "serde")]
-        is_config::<CrashFlipConfig>();
-        #[cfg(feature = "serde")]
-        is_config::<AntiGravityConfig>();
-        #[cfg(feature = "serde")]
-        is_config::<CrashFlipConfig>();
-        #[cfg(feature = "serde")]
-        is_config::<YawSpinRecoveryConfig>();
-        #[cfg(feature = "serde")]
-        is_config::<CrashRecoveryConfig>();
-        #[cfg(feature = "serde")]
-        is_config::<ItermRelaxConfig>();
-        #[cfg(feature = "serde")]
-        is_config::<DMaxConfig>();
+    }
+    #[cfg(feature = "serde")]
+    #[test]
+    fn serde_types() {
+        is_serde::<PidConfig>();
+        is_serde::<FlightControllerFiltersConfig>();
+        is_serde::<FlightModeConfig>();
+        is_serde::<TpaConfig>();
+        is_serde::<CrashFlipConfig>();
+        is_serde::<AntiGravityConfig>();
+        is_serde::<CrashFlipConfig>();
+        is_serde::<YawSpinRecoveryConfig>();
+        is_serde::<CrashRecoveryConfig>();
+        is_serde::<ItermRelaxConfig>();
+        is_serde::<DMaxConfig>();
+    }
+    #[cfg(feature = "storage")]
+    #[test]
+    fn storage_types() {
+        is_storage::<PidConfig>();
+        is_storage::<FlightControllerFiltersConfig>();
+        is_storage::<FlightModeConfig>();
+        is_storage::<TpaConfig>();
+        is_storage::<CrashFlipConfig>();
+        is_storage::<AntiGravityConfig>();
+        is_storage::<CrashFlipConfig>();
+        is_storage::<YawSpinRecoveryConfig>();
+        is_storage::<CrashRecoveryConfig>();
+        is_storage::<ItermRelaxConfig>();
+        is_storage::<DMaxConfig>();
     }
     #[test]
     fn test_new() {

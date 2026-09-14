@@ -2,9 +2,10 @@ use crate::flight::PidConfig;
 #[cfg(feature = "serde")]
 use {
     postcard::experimental::max_size::MaxSize,
-    sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
 };
+#[cfg(feature = "storage")]
+use sequential_storage::map::PostcardValue;
 
 // RX Loss Policy: What to do when radio signal is lost during autopilot
 pub struct AutopilotRxLoss {}
@@ -95,7 +96,7 @@ pub struct AutopilotConfig {
     pub geofence_action: u8,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for AutopilotConfig {}
 
 impl Default for AutopilotConfig {
@@ -176,7 +177,7 @@ pub struct PositionHoldConfig {
     pub optical_flow_max_range_cm: u16,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for PositionHoldConfig {}
 
 impl Default for PositionHoldConfig {
@@ -203,16 +204,30 @@ mod test_traits {
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     #[cfg(feature = "serde")]
-    fn is_config<T: Serialize + MaxSize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
+    fn is_serde<T: Serialize + MaxSize + for<'a> Deserialize<'a>>() {}
+    #[cfg(feature = "storage")]
+    fn is_storage<T: for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
         is_full::<AutopilotConfig>();
         is_full::<PositionHoldConfig>();
         #[cfg(feature = "serde")]
-        is_config::<AutopilotConfig>();
+        is_serde::<AutopilotConfig>();
         #[cfg(feature = "serde")]
-        is_config::<PositionHoldConfig>();
+        is_serde::<PositionHoldConfig>();
+    }
+    #[cfg(feature = "serde")]
+    #[test]
+    fn serde_types() {
+        is_serde::<AutopilotConfig>();
+        is_serde::<PositionHoldConfig>();
+    }
+    #[cfg(feature = "storage")]
+    #[test]
+    fn storage_types() {
+        is_storage::<AutopilotConfig>();
+        is_storage::<PositionHoldConfig>();
     }
 }
 

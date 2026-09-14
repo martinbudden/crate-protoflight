@@ -1,9 +1,10 @@
 #[cfg(feature = "serde")]
 use {
     postcard::experimental::max_size::MaxSize,
-    sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
 };
+#[cfg(feature = "storage")]
+use sequential_storage::map::PostcardValue;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
@@ -14,7 +15,7 @@ pub struct CurrentSensorAdcConfig {
     pub offset_ma: i16,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for CurrentSensorAdcConfig {}
 
 impl Default for CurrentSensorAdcConfig {
@@ -52,7 +53,7 @@ pub struct CurrentSensorVirtualConfig {
     pub offset_centi_amps: i16,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for CurrentSensorVirtualConfig {}
 
 impl Default for CurrentSensorVirtualConfig {
@@ -79,7 +80,7 @@ pub enum CurrentMeterSource {
     Msp = 4,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for CurrentMeterSource {}
 
 impl_try_from_u8!(CurrentMeterSource);
@@ -111,7 +112,7 @@ pub enum CurrentSensorType {
     Msp,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for CurrentSensorType {}
 
 impl_try_from_u8!(CurrentSensorType);
@@ -138,7 +139,9 @@ mod test_traits {
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     fn is_full_eq<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + Eq + PartialEq>() {}
     #[cfg(feature = "serde")]
-    fn is_config<T: Serialize + MaxSize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
+    fn is_serde<T: Serialize + MaxSize + for<'a> Deserialize<'a>>() {}
+    #[cfg(feature = "storage")]
+    fn is_storage<T: for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
@@ -146,14 +149,21 @@ mod test_traits {
         is_full::<CurrentSensorVirtualConfig>();
         is_full_eq::<CurrentMeterSource>();
         is_full_eq::<CurrentSensorType>();
-
-        #[cfg(feature = "serde")]
-        is_config::<CurrentSensorAdcConfig>();
-        #[cfg(feature = "serde")]
-        is_config::<CurrentSensorVirtualConfig>();
-        #[cfg(feature = "serde")]
-        is_config::<CurrentMeterSource>();
-        #[cfg(feature = "serde")]
-        is_config::<CurrentSensorType>();
+    }
+    #[cfg(feature = "serde")]
+    #[test]
+    fn serde_types() {
+        is_serde::<CurrentSensorAdcConfig>();
+        is_serde::<CurrentSensorVirtualConfig>();
+        is_serde::<CurrentMeterSource>();
+        is_serde::<CurrentSensorType>();
+    }
+    #[cfg(feature = "storage")]
+    #[test]
+    fn storage_types() {
+        is_storage::<CurrentSensorAdcConfig>();
+        is_storage::<CurrentSensorVirtualConfig>();
+        is_storage::<CurrentMeterSource>();
+        is_storage::<CurrentSensorType>();
     }
 }

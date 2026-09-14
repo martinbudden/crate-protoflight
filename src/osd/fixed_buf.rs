@@ -6,12 +6,13 @@ use core::{
 #[cfg(feature = "serde")]
 use {
     postcard::experimental::max_size::MaxSize,
-    sequential_storage::map::PostcardValue,
     serde::{
         Deserialize, Deserializer, Serialize, Serializer,
         de::{SeqAccess, Visitor},
     },
 };
+#[cfg(feature = "storage")]
+use sequential_storage::map::PostcardValue;
 
 // In src/osd/fixed_buf.rs
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -228,7 +229,7 @@ impl<'de, const N: usize> Deserialize<'de> for FixedBuf<N> {
     }
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl<const N: usize> PostcardValue<'_> for FixedBuf<N> {}
 
 #[cfg(test)]
@@ -239,13 +240,17 @@ mod tests {
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     #[cfg(feature = "serde")]
-    fn is_config<T: Serialize + MaxSize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
+    fn is_serde<T: Serialize + MaxSize + for<'a> Deserialize<'a>>() {}
+    #[cfg(feature = "storage")]
+    fn is_storage<T: for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
         is_full::<FixedBuf<16>>();
         #[cfg(feature = "serde")]
-        is_config::<FixedBuf<16>>();
+        is_serde::<FixedBuf<16>>();
+        #[cfg(feature = "storage")]
+        is_storage::<FixedBuf<16>>();
     }
     #[test]
     fn write() {

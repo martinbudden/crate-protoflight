@@ -64,6 +64,18 @@ check-host = [
     "--no-default-features",
     "--features", "host,std,libm,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug"
 ]
+check-serde = [
+    "check",
+    "--target", "x86_64-unknown-linux-gnu",
+    "--no-default-features",
+    "--features", "host,serde"
+]
+check-storage = [
+    "check",
+    "--target", "x86_64-unknown-linux-gnu",
+    "--no-default-features",
+    "--features", "host,storage"
+]
 #check-host = "check --no-default-features --features std,libm,autopilot,barometer,battery,blackbox,gps,msp,osd,rpm_filters,rtt-debug --target x86_64-unknown-linux-gnu"
 
 # Shortcut to build specifically for the Double-Precision Cortex-M7

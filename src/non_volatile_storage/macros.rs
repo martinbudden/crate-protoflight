@@ -12,6 +12,7 @@ use $location::[<$prefix Config>];
 
 /// Generate the `load` function.
 #[allow(unused)]
+#[cfg(feature = "storage")]
 pub async fn [<load_ $prefix:lower _config>]<F, C>(
     config: &mut [<$prefix Config>],
     storage: &mut MapStorage<u16, F, C>,
@@ -35,6 +36,7 @@ where
 
 /// Generate the `store` function.
 #[allow(unused)]
+#[cfg(feature = "storage")]
 pub async fn [<save_ $prefix:lower _config>]<F, C>(
     config: &[<$prefix Config>],
     storage: &mut MapStorage<u16, F, C>
@@ -67,6 +69,7 @@ where
 
 /// Generate the `delete` function.
 #[allow(unused)]
+#[cfg(feature = "storage")]
 pub async fn [<delete_ $prefix:lower _config>]<F, C>(
     storage: &mut MapStorage<u16, F, C>
 ) -> Result<(), sequential_storage::Error<F::Error>>
