@@ -116,9 +116,9 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
         ExclusiveDevice::new(spi_bus, spi_cs_output, embassy_time::Delay)
     };
 
-    // TODO: PIO SPI
-    // --- Device 3: PIO0 Backed SPI (Auxiliary Peripheral) ---
-    // let aux_pio_spi = Err(AuxiliaryPioInitError::FeatureDisabled);
+    // TODO: PIO0 UART and SPI
+    // TODO: PIO1 Dshot motors 1-4
+    // TODO: PIO2 Dshot motors 5-8
 
     let uart0 = {
         let mut uart_config = UartConfig::default();

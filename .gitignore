@@ -1,4 +1,6 @@
 /target
+examples/target
+xtask/target
 notes/*
 *.bbl
 *.csv

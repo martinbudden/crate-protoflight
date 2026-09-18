@@ -22,7 +22,8 @@ use strum::EnumCount;
 /*
 How to add a new OSD element:
 
-1. Create a new enum, say, `MyElement`, and add it to the `OsdElementId` enumeration list below.
+1. Create a new enum, say, `MyElement`, and add it to the end of `OsdElementId` enumeration list below.
+   IMPORTANT: DO NOT ADD ELEMENTS IN THE MIDDLE, OR REORDER THE ELEMENTS
 2. Create a drawing function `draw_my_element(&mut self) -> bool`
    and optionally a background drawing function `draw_background_my_element(&mut self) -> bool`.
    for the `OsdElement` `struct`.
@@ -31,7 +32,6 @@ How to add a new OSD element:
 5. Add `OsdElementId::MyElement` to either `OSD_ELEMENT_DISPLAY_ORDER` or (if it is added conditionally at runtime) to
    the active elements in the `add_active_elements` function.
 */
-
 #[allow(unused)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, EnumCount)]
 #[repr(u8)]
@@ -126,6 +126,18 @@ pub enum OsdElementId {
     CustomSerialText,
     BatteryProfileName,
 }
+
+// Assertions to check that elements haven't been reordered, or items added in the middle.
+const _: () = assert!(OsdElementId::Rssi as u32 == 0);
+const _: () = assert!(OsdElementId::VtxChannel as u32 == 10);
+const _: () = assert!(OsdElementId::PidRateProfile as u32 == 20);
+const _: () = assert!(OsdElementId::HomeDirection as u32 == 30);
+const _: () = assert!(OsdElementId::CoreTemperature as u32 == 40);
+const _: () = assert!(OsdElementId::PilotName as u32 == 50);
+const _: () = assert!(OsdElementId::UpDownReference as u32 == 60);
+const _: () = assert!(OsdElementId::SysDistance as u32 == 70);
+const _: () = assert!(OsdElementId::Debug2 as u32 == 80);
+const _: () = assert!(OsdElementId::BatteryProfileName as u32 == 87);
 
 // element drawing functions
 impl OsdElements {

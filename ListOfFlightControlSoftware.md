@@ -22,7 +22,7 @@ Cleanflight is forked from Baseflight, Cleanflight was forked by Betaflight, Cle
 
 Cleanflight 4.x -> betaflight 4.x -> Cleanflight v2.x -> Betaflight 3.x -> Cleanflight v1.x -> Baseflight -> MultiWii
 
-## The big three
+## The big four
 
 ### [betaflight](https://betaflight.com/)
 
@@ -43,6 +43,13 @@ ArduPilot is a trusted, versatile, and open source autopilot system supporting m
 multi-copters, traditional helicopters, fixed wing aircraft, boats, submarines, rovers and more.
 The source code is developed by a large community of professionals and enthusiasts.
 [source code](https://github.com/ArduPilot/ardupilot)
+
+### [PX4 Autopilot](https://px4.io/)
+
+PX4 is an open-source autopilot stack for drones and unmanned vehicles.
+It supports multirotors, fixed-wing, VTOL, rovers, and many more experimental platforms from racing quads to industrial survey aircraft.
+It runs on NuttX, Linux, and macOS. Licensed under BSD 3-Clause.
+[source code](https://github.com/PX4/PX4-Autopilot)
 
 ## Others
 

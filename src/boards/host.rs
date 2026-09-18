@@ -11,7 +11,7 @@ use crate::{
 };
 
 use imu_sensors::{ImuMock, MockImuBus};
-use motor_mixers::{MotorDriver, MotorDriverQuadPwm};
+use motor_mixers::{MotorDriver, MotorDriverPwm};
 use radio_controllers::{Radio, RadioType};
 use static_cell::StaticCell;
 
@@ -21,8 +21,8 @@ pub type BoardImu = ImuMock<MockImuBus>;
 pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
     static I2C_BUS: StaticCell<SharedI2cBus> = StaticCell::new();
 
-    let motor_driver_pwm = MotorDriverQuadPwm::new();
-    let motor_driver = MotorDriver::QuadPwm(motor_driver_pwm);
+    let motor_driver_pwm = MotorDriverPwm::new();
+    let motor_driver = MotorDriver::DriverPwm(motor_driver_pwm);
 
     let imu = ImuMock::new(MockImuBus::new(), init.axis_order);
 
