@@ -8,6 +8,7 @@ mod board;
 mod mock_uart;
 
 mod airb_omnibus_f4;
+mod airb_omnibus_f4_sd;
 mod host;
 mod madflight_fc3;
 mod matek_f405_wte;
@@ -48,3 +49,6 @@ pub use matek_f405_wte::{BoardImu, board_hardware};
 
 #[cfg(feature = "airb_omnibus_f4")]
 pub use airb_omnibus_f4::{BoardImu, board_hardware};
+
+#[cfg(feature = "airb_omnibus_f4_sd")]
+pub use airb_omnibus_f4_sd::{BoardImu, board_hardware};

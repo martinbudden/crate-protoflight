@@ -12,20 +12,42 @@
 
 use crate::{
     barometer_sensors::Barometer,
-    boards::board::{Board, BoardInit, BoardInitError},
+    boards::board::{Board, BoardInit, BoardInitError, GpsHardware},
     gps::GpsParser,
+    i2c_bus::SharedI2cBus,
     magnetometer_sensors::Magnetometer,
     optical_flow_sensors::OpticalFlow,
     rangefinder_sensors::Rangefinder,
 };
+use embassy_executor::InterruptExecutor;
 
 use imu_sensors::{ImuAxisOrder, ImuSpiBus, Mpu6050}; // TODO: this is placeholder, change to Mpu6000 when driver is available
 use motor_mixers::{MotorDriver, MotorDriverDshot, MotorDriverPwm};
 
+static REALTIME_EXECUTOR: InterruptExecutor = InterruptExecutor::new();
+
+// SAFETY: TIM6_DAC is exclusively reserved for the RealtimeExecutor.
+// This handler is the only caller of `on_interrupt()`, and the executor
+// has been started before the interrupt is enabled.
+#[allow(non_snake_case)]
+#[interrupt]
+unsafe fn TIM6_DAC() {
+    unsafe {
+        REALTIME_EXECUTOR.on_interrupt();
+    }
+}
+
+pub fn start_realtime_executor() -> embassy_executor::SendSpawner {
+    interrupt::TIM6_DAC.set_priority(Priority::P1);
+    REALTIME_EXECUTOR.start(interrupt::TIM6_DAC)
+}
+
 use embassy_stm32::{
     bind_interrupts, dma,
     gpio::{Input, Level, Output, OutputType::PushPull, Pull, Speed},
-    i2c::{Config as I2cConfig, I2c},
+    i2c::{self, Config as I2cConfig, I2c},
+    interrupt,
+    interrupt::{InterruptExt, Priority},
     mode::Async,
     peripherals,
     spi::{Config as SpiConfig, Spi, mode::Master},
@@ -39,6 +61,7 @@ use embassy_stm32::{
 use embassy_time::Delay;
 use embedded_hal_bus::spi::ExclusiveDevice;
 use radio_controllers::Radio;
+use static_cell::StaticCell;
 
 type BoardSpi =
     ExclusiveDevice<Spi<'static, embassy_stm32::mode::Async, embassy_stm32::spi::mode::Master>, Output<'static>, Delay>;
@@ -47,14 +70,13 @@ pub type BoardImu = Mpu6050<ImuSpiBus<BoardSpi>>;
 
 pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
     // NOTE: stm32 numbers peripherals starting at 1, eg SPI1, SPI2, I2C1, I2C2 etc
-
-    let peripherals = embassy_stm32::init(Default::default());
-
     /*
     Using Betaflight naming convention. For an STM32 SPI master:
     SDO = MCU → peripheral = MOSI = TX DMA
     SDI = peripheral → MCU = MISO = RX DMA
     */
+
+    let peripherals = embassy_stm32::init(Default::default());
 
     // SPI1 - Gyroscope
     let spi1_sck = peripherals.PA5;
@@ -97,8 +119,8 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
     // UART6
     // UART6_TX PC6
     // UART6_RX PC7
-    //let uart6_tx = peripherals.PC6;
-    //let uart6_rx = peripherals.PC7;
+    let _uart6_tx = peripherals.PC6;
+    let _uart6_rx = peripherals.PC7;
 
     let spi1 = {
         let mut config = SpiConfig::default();
@@ -108,7 +130,18 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
         ExclusiveDevice::new(spi_bus, cs_output, Delay).unwrap()
     };
 
+    // No DMA on spi3
+    let spi3 = {
+        let mut config = SpiConfig::default();
+        config.frequency = embassy_stm32::time::Hertz(10_000_000);
+        let spi_bus = Spi::new_blocking(peripherals.SPI3, spi3_sck, spi3_sdo, spi3_sdi, config);
+        let cs_output = Output::new(flash_spi_cs, Level::High, Speed::VeryHigh);
+        ExclusiveDevice::new(spi_bus, cs_output, Delay).unwrap()
+    };
+
     let mut imu: BoardImu = Mpu6050::new(ImuSpiBus::new(spi1), init.axis_order);
+
+    let i2c1 = I2c::new_blocking(peripherals.I2C1, i2c1_scl, i2c1_sda, embassy_stm32::i2c::Config::default());
 
     /*timer B14 AF9
     # pin B14: TIM12 CH1 (AF9)
@@ -126,41 +159,43 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
     # pin A09: TIM1 CH2 (AF1)
     # pin A10: TIM1 CH3 (AF1)
     */
-    let pwm1 = peripherals.PB14; // TIM12 CH1 (AF2)
-    let pwm2 = peripherals.PB15; // TIM12 CH2 (AF2)
-    let pwm3 = peripherals.PC6; // TIM8 CH1 (AF1)
-    let pwm4 = peripherals.PC7; // TIM8 CH2 (AF1)
-    let pwm5 = peripherals.PC8; // TIM8 CH3 (AF2)
-    let pwm6 = peripherals.PC9; // TIM8 CH4 (AF1)
+    let m1 = peripherals.PB14; // TIM12 CH1 (AF2)
+    let m2 = peripherals.PB15; // TIM12 CH2 (AF2)
+    let m3 = peripherals.PC6; // TIM8 CH1 (AF1)
+    let m4 = peripherals.PC7; // TIM8 CH2 (AF1)
+    let m5 = peripherals.PC8; // TIM8 CH3 (AF2)
+    let m6 = peripherals.PC9; // TIM8 CH4 (AF1)
 
-    let pwm_m1_m2 = SimplePwm::new(
+    let m1_m2 = SimplePwm::new(
         peripherals.TIM12,
-        Some(PwmPin::new(pwm1, PushPull)),
-        Some(PwmPin::new(pwm2, PushPull)),
+        Some(PwmPin::new(m1, PushPull)),
+        Some(PwmPin::new(m2, PushPull)),
         None,
         None,
         Hertz(400),
         CountingMode::EdgeAlignedUp,
     );
-    let pwm_m3_m4_m5_m6 = SimplePwm::new(
+    let m3_m4_m5_m6 = SimplePwm::new(
         peripherals.TIM8,
-        Some(PwmPin::new(pwm3, PushPull)),
-        Some(PwmPin::new(pwm4, PushPull)),
-        Some(PwmPin::new(pwm5, PushPull)),
-        Some(PwmPin::new(pwm6, PushPull)),
+        Some(PwmPin::new(m3, PushPull)),
+        Some(PwmPin::new(m4, PushPull)),
+        Some(PwmPin::new(m5, PushPull)),
+        Some(PwmPin::new(m6, PushPull)),
         Hertz(400),
         CountingMode::EdgeAlignedUp,
     );
 
-    let motor_driver_pwm = MotorDriverPwm::new(pwm_m3_m4_m5_m6);
-    //let motor_driver_dshot = MotorDriverDshot::new();
+    let motor_driver_pwm = MotorDriverPwm::new(m3_m4_m5_m6);
     let motor_driver = MotorDriver::Pwm(motor_driver_pwm);
 
     let radio = Radio::new(radio_controllers::RadioType::Mock);
 
-    let barometer = Barometer::new(init.barometer_type);
-    let magnetometer = Magnetometer::new(init.magnetometer_type);
-    let gps_parser = GpsParser::new(init.gps_provider);
+    static I2C_BUS: StaticCell<SharedI2cBus> = StaticCell::new();
+    let shared_i2c = I2C_BUS.init(SharedI2cBus::new(i2c1));
+
+    let barometer = Barometer::new(init.barometer_type, shared_i2c);
+    let magnetometer = Magnetometer::new(init.magnetometer_type, shared_i2c);
+    let gps = None; //GpsParser::new(init.gps_provider);
     let rangefinder = Rangefinder::new(init.rangefinder_type);
     let optical_flow = OpticalFlow::new(init.optical_flow_type);
 
@@ -170,14 +205,9 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
         motor_driver,
         //serial_rx_uart: None,
         radio,
-        sdcard_spi: None,
-        max7456_spi: None,
-        msp_uart: None,
-        esc_sensor_uart: None,
-        sensors_i2c: None,
         barometer,
         magnetometer,
-        gps_parser,
+        gps,
         rangefinder,
         optical_flow,
     })

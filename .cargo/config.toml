@@ -141,6 +141,20 @@ check-evo = [
     "--features", "libm,sp_racing_f4_evo,autopilot"
 ]
 
+check-omnibus = [
+    "check",
+    "--target", "thumbv7em-none-eabihf",
+    "--no-default-features",
+    "--features", "libm,airb_omnibus_f4,autopilot"
+]
+
+check-omnibus-sd = [
+    "check",
+    "--target", "thumbv7em-none-eabihf",
+    "--no-default-features",
+    "--features", "libm,airb_omnibus_f4_sd,autopilot"
+]
+
 build-rp235xa = [
     "build",
     "--target", "thumbv8m.main-none-eabihf",
