@@ -2,13 +2,13 @@
 #![allow(unused)]
 
 use core::ops::{Index, IndexMut};
+#[cfg(feature = "storage")]
+use sequential_storage::map::PostcardValue;
 #[cfg(feature = "serde")]
 use {
     postcard::experimental::max_size::MaxSize,
     serde::{Deserialize, Serialize},
 };
-#[cfg(feature = "storage")]
-use sequential_storage::map::PostcardValue;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum BatteryState {

@@ -4,13 +4,13 @@
 use super::magnetometer_hmc5883::MagnetometerHmc5883;
 use crate::{i2c_bus::SharedI2cBus, magnetometer_sensors::magnetometer_mock::MagnetometerMock};
 
+#[cfg(feature = "storage")]
+use sequential_storage::map::PostcardValue;
 #[cfg(feature = "serde")]
 use {
     postcard::experimental::max_size::MaxSize,
     serde::{Deserialize, Serialize},
 };
-#[cfg(feature = "storage")]
-use sequential_storage::map::PostcardValue;
 
 // Type of magnetometer used/detected
 #[allow(missing_docs)]

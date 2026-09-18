@@ -3,6 +3,8 @@ use core::{
     ops::{Index, IndexMut, Range, RangeBounds},
 };
 // Ensure serde features are present
+#[cfg(feature = "storage")]
+use sequential_storage::map::PostcardValue;
 #[cfg(feature = "serde")]
 use {
     postcard::experimental::max_size::MaxSize,
@@ -11,8 +13,6 @@ use {
         de::{SeqAccess, Visitor},
     },
 };
-#[cfg(feature = "storage")]
-use sequential_storage::map::PostcardValue;
 
 // In src/osd/fixed_buf.rs
 #[derive(Clone, Copy, Debug, PartialEq)]

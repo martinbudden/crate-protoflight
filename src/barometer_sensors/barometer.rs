@@ -6,13 +6,13 @@ use super::{
 };
 use crate::i2c_bus::{I2cError, SharedI2cBus};
 
+#[cfg(feature = "storage")]
+use sequential_storage::map::PostcardValue;
 #[cfg(feature = "serde")]
 use {
     postcard::experimental::max_size::MaxSize,
     serde::{Deserialize, Serialize},
 };
-#[cfg(feature = "storage")]
-use sequential_storage::map::PostcardValue;
 
 #[allow(missing_docs)]
 #[allow(unused)]

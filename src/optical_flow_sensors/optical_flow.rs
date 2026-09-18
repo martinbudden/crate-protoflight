@@ -4,13 +4,13 @@ use super::optical_flow_mock::OpticalFlowMock;
 #[cfg(feature = "optical_flow")]
 use super::optical_flow_mt::OpticalFlowMt;
 
+#[cfg(feature = "storage")]
+use sequential_storage::map::PostcardValue;
 #[cfg(feature = "serde")]
 use {
     postcard::experimental::max_size::MaxSize,
     serde::{Deserialize, Serialize},
 };
-#[cfg(feature = "storage")]
-use sequential_storage::map::PostcardValue;
 
 // Type of optical_flow used/detected
 #[allow(missing_docs)]

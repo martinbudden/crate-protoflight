@@ -4,13 +4,13 @@
 use super::rangefinder_hcsr04::RangefinderHcsr04;
 use super::rangefinder_mock::RangefinderMock;
 
+#[cfg(feature = "storage")]
+use sequential_storage::map::PostcardValue;
 #[cfg(feature = "serde")]
 use {
     postcard::experimental::max_size::MaxSize,
     serde::{Deserialize, Serialize},
 };
-#[cfg(feature = "storage")]
-use sequential_storage::map::PostcardValue;
 
 // Type of rangefinder used/detected
 #[allow(missing_docs)]

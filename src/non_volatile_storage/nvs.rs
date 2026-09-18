@@ -88,16 +88,16 @@ fetch_item
 #[cfg(feature = "storage")]
 generate_config_handlers!(radio_controllers, Rates, Key::RATES, 256);
 
-#[cfg(all(feature=  "storage", feature = "barometer"))]
+#[cfg(all(feature = "storage", feature = "barometer"))]
 generate_config_handlers!(crate::barometer_sensors, Barometer, Key::BAROMETER_CONFIG, 256);
 
-#[cfg(all(feature=  "storage", feature = "battery"))]
+#[cfg(all(feature = "storage", feature = "battery"))]
 generate_config_handlers!(crate::battery_sensors, Battery, Key::BATTERY_CONFIG, 256);
 
-#[cfg(all(feature=  "storage", feature = "blackbox"))]
+#[cfg(all(feature = "storage", feature = "blackbox"))]
 generate_config_handlers!(blackbox_logger, Blackbox, Key::BLACKBOX_CONFIG, 256);
 
-#[cfg(all(feature=  "storage", feature = "osd"))]
+#[cfg(all(feature = "storage", feature = "osd"))]
 generate_config_handlers!(crate::osd, Osd, Key::OSD_CONFIG, 256);
 
 #[cfg(feature = "storage")]

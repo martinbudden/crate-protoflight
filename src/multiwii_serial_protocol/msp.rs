@@ -2,13 +2,13 @@ use radio_controllers::{Rates, RcMode, RcModes};
 use stream_buf::{StreamBufReader, StreamBufWriter};
 use vqm::Quaternion;
 
+#[cfg(feature = "storage")]
+use sequential_storage::map::PostcardValue;
 #[cfg(feature = "serde")]
 use {
     postcard::experimental::max_size::MaxSize,
     serde::{Deserialize, Serialize},
 };
-#[cfg(feature = "storage")]
-use sequential_storage::map::PostcardValue;
 
 use crate::config::{ConfigItem, ConfigPublisher, FastConfigItem, FastConfigPublisher, GLOBAL_CONFIG};
 
