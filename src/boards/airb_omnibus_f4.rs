@@ -20,7 +20,7 @@ use crate::{
 };
 
 use imu_sensors::{ImuAxisOrder, ImuSpiBus, Mpu6050}; // TODO: this is placeholder, change to Mpu6000 when driver is available
-use motor_mixers::{MotorDriver, MotorDriverQuadDshot, MotorDriverQuadPwm};
+use motor_mixers::{MotorDriver, MotorDriverDshot, MotorDriverPwm};
 
 use embassy_stm32::{
     bind_interrupts, dma,
@@ -152,9 +152,9 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
         CountingMode::EdgeAlignedUp,
     );
 
-    let motor_driver_quad_pwm = MotorDriverQuadPwm::new(pwm_m3_m4_m5_m6);
-    //let motor_driver_quad_dshot = MotorDriverQuadDshot::new();
-    let motor_driver = MotorDriver::QuadPwm(motor_driver_quad_pwm);
+    let motor_driver_pwm = MotorDriverPwm::new(pwm_m3_m4_m5_m6);
+    //let motor_driver_dshot = MotorDriverDshot::new();
+    let motor_driver = MotorDriver::Pwm(motor_driver_pwm);
 
     let radio = Radio::new(radio_controllers::RadioType::Mock);
 

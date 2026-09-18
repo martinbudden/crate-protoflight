@@ -195,7 +195,7 @@ pub fn init(config: BlackboxConfig) -> &'static mut BlackboxEncoderContext {
 }
 
 /// Blackbox encoder task.
-///
+///```text
 /// REALTIME PRIORITY                         BACKGROUND PRIORITY
 ///
 /// blackbox encoder task
@@ -225,6 +225,7 @@ pub fn init(config: BlackboxConfig) -> &'static mut BlackboxEncoderContext {
 ///                                            │
 ///                                            ▼
 ///                                         SD card
+/// ```
 #[embassy_executor::task]
 pub async fn run(ctx: &'static mut BlackboxEncoderContext) {
     log::info!("    BLACKBOX: task started");

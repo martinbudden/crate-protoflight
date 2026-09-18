@@ -1,5 +1,3 @@
-#![cfg(feature = "serde")]
-
 #[cfg(feature = "std")]
 use embedded_storage_async::nor_flash::NorFlash;
 #[cfg(feature = "std")]
@@ -9,6 +7,7 @@ use embedded_storage_file::{NorMemoryAsync, NorMemoryInFile};
 #[cfg(feature = "storage")]
 use super::nvs::{load_all_global_configs, store_all_global_configs};
 
+#[allow(unused)]
 #[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
 use {
     embassy_embedded_hal::adapter::BlockingAsync,
@@ -39,12 +38,14 @@ pub fn init_flash_driver() {}
 pub async fn load_global_configs() -> Result<(), ()> {
     #[cfg(feature = "stm32")]
     {
-        load_all_global_configs().await.map_err(|_| ())
+        //load_all_global_configs().await.map_err(|_| ())
+        Ok(())
     }
 
-    #[cfg(feature = "rp")]
+    #[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
     {
-        load_all_global_configs(board_flash()).await.map_err(|_| ())
+        //load_all_global_configs(board_flash()).await.map_err(|_| ())
+        Ok(())
     }
     #[cfg(feature = "std")]
     {

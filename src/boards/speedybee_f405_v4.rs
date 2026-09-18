@@ -20,7 +20,7 @@ use crate::{
 use embassy_executor::InterruptExecutor;
 
 use imu_sensors::{Imu426xx, ImuAxisOrder, ImuSpiBus};
-use motor_mixers::{MotorDriver, MotorDriverQuadDshot, MotorDriverQuadPwm};
+use motor_mixers::{MotorDriver, MotorDriverDshot, MotorDriverPwm};
 
 static REALTIME_EXECUTOR: InterruptExecutor = InterruptExecutor::new();
 
@@ -231,9 +231,9 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
         CountingMode::EdgeAlignedUp,
     );
 
-    let motor_driver_quad_pwm = MotorDriverQuadPwm::new2(pwm_m1_m2, pwm_m3_m4);
-    //let motor_driver_quad_dshot = MotorDriverQuadDshot::new();
-    let motor_driver = MotorDriver::QuadPwm(motor_driver_quad_pwm);
+    let motor_driver_pwm = MotorDriverPwm::new2(pwm_m1_m2, pwm_m3_m4);
+    //let motor_driver_dshot = MotorDriverDshot::new();
+    let motor_driver = MotorDriver::Pwm(motor_driver_pwm);
 
     let radio = Radio::new(radio_controllers::RadioType::Mock);
 

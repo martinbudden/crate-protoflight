@@ -23,6 +23,7 @@ pub use {
     platform_host::{GpsUartRx, GpsUartTx, I2cDeviceBlocking},
 };
 
+#[allow(unused)]
 #[cfg(any(feature = "rp235xa", feature = "rp235xb"))]
 pub use platform_rp2350::{I2cDeviceBlocking, SharedI2cBus};
 

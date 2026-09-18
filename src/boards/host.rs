@@ -22,7 +22,7 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
     static I2C_BUS: StaticCell<SharedI2cBus> = StaticCell::new();
 
     let motor_driver_pwm = MotorDriverPwm::new();
-    let motor_driver = MotorDriver::DriverPwm(motor_driver_pwm);
+    let motor_driver = MotorDriver::Pwm(motor_driver_pwm);
 
     let imu = ImuMock::new(MockImuBus::new(), init.axis_order);
 

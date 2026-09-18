@@ -9,7 +9,7 @@ use crate::{
     rangefinder_sensors::{Rangefinder, RangefinderType},
 };
 
-#[cfg(feature = "host")]
+#[cfg(feature = "gps")]
 use super::{GpsUartRx, GpsUartTx};
 
 //#[cfg(all(feature = "rp2350xa", feature = "rp2350xb"))]
@@ -73,16 +73,10 @@ pub struct Board<I: ImuDevice> {
 }
 
 #[allow(unused)]
-#[cfg(feature = "host")]
+#[cfg(feature = "gps")]
 pub struct GpsHardware {
     pub uart_rx: GpsUartRx,
     pub uart_tx: GpsUartTx,
 }
-#[cfg(feature = "rp235xa")]
-pub struct GpsHardware {}
-
-#[cfg(feature = "stm32")]
-pub struct GpsHardware {}
-
-#[cfg(feature = "esp32")]
+#[cfg(not(feature = "gps"))]
 pub struct GpsHardware {}

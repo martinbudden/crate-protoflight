@@ -33,6 +33,7 @@ default = [
     "host",
     #"rp235xa",
     #"rp235xb",
+    #"stm32f405",
     #"speedybee_f405_v4",
     #"sp_racing_f4_evo",
     #"airb_omnibus_f4",
@@ -45,7 +46,7 @@ default = [
     "blackbox",
     "debug",
     "dshot_telemetry",
-    #"eight_motors",
+    "eight_motors",
     "gps",
     "huffman",
     "magnetometer",
@@ -57,6 +58,7 @@ default = [
     "rpm_filters",
     "rtt-debug",
     "servos",
+    "serde",
     "storage",
     "vtx",
 ]
@@ -273,6 +275,10 @@ sensor-fusion = { git = "https://github.com/martinbudden/crate-sensor-fusion" }
 #blackbox-logger = { version = "0.1.10", default-features = false, optional = true }
 blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger", default-features = false, optional = true }
 #blackbox-logger = { path = "../blackbox-logger", default-features = false, optional = true }
+
+dshot-codec = { version = "0.1.0" }
+#dshot-codec = { git = "https://github.com/martinbudden/crate-dshot-codec" }
+#dshot-codec = { path = "../dshot-codec"  }
 
 #motor-mixers = { version = "0.1.6", default-features = false }
 motor-mixers = { git = "https://github.com/martinbudden/crate-motor-mixers", default-features = false }

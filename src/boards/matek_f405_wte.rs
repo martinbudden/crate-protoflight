@@ -23,7 +23,7 @@ use embassy_stm32::{
 use embassy_time::Delay;
 use embedded_hal_bus::spi::ExclusiveDevice;
 use imu_sensors::{Imu426xx, ImuAxisOrder, ImuSpiBus};
-use motor_mixers::{MotorDriver, MotorDriverQuadDshot, MotorDriverQuadPwm};
+use motor_mixers::{MotorDriver, MotorDriverDshot, MotorDriverPwm};
 use radio_controllers::Radio;
 
 type BoardSpi =
@@ -90,8 +90,8 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
         Uart::new(peripherals.USART2, uart2_rx, uart2_tx, uart2_tx_dma, uart2_rx_dma, Irqs, config)
     };
 
-    let motor_driver_quad_dshot = MotorDriverQuadDshot::new();
-    let motor_driver = MotorDriver::QuadDshot(motor_driver_quad_dshot);
+    let motor_driver_dshot = MotorDriverDshot::new();
+    let motor_driver = MotorDriver::Dshot(motor_driver_dshot);
 
     let radio = Radio::new(radio_controllers::RadioType::Mock);
 

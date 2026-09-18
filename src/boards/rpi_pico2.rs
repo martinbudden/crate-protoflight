@@ -12,8 +12,9 @@ use crate::{
     rangefinder_sensors::Rangefinder,
 };
 
+use dshot_codec::DshotSpeed;
 use imu_sensors::{Imu426xx, ImuAxisOrder, ImuSpiBus};
-use motor_mixers::{MotorDriver, MotorDriverQuadDshot, MotorDriverQuadPwm};
+use motor_mixers::{MotorDriver, MotorDriverDshot, MotorDriverPwm};
 use radio_controllers::Radio;
 
 use embassy_rp::{
@@ -21,8 +22,9 @@ use embassy_rp::{
     gpio::{Input, Level, Output, Pull},
     i2c,
     i2c::{Async as I2cAsync, Config as I2cConfig, I2c},
-    peripherals, pio,
-    pio::InterruptHandler as PioInterruptHandler,
+    peripherals,
+    peripherals::PIO1,
+    pio,
     spi::{Async as SpiAsync, Config as SpiConfig, Spi},
     uart,
     uart::{Async as UartAsync, Config as UartConfig, Uart},
@@ -48,7 +50,7 @@ static mut CORE1_STACK: Stack<4096> = Stack::new();
 pub fn start_core1_executor() -> embassy_executor::SendSpawner {}
 
 pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
-    // NOTE: rp2350 numbers peripheral starting at 0, eg SPI0, SPI1, I2C0, I2C1 etc
+    // NOTE: rp2350 numbers peripherals starting at 0, eg SPI0, SPI1, I2C0, I2C1 etc
 
     // Take ownership of the raw RP2350 hardware peripherals block
     #[allow(clippy::default_trait_access)]
@@ -88,6 +90,12 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
     let i2c0_scl = peripherals.PIN_9;
     let i2c0_sda = peripherals.PIN_8;
 
+    // Motors
+    let m1 = peripherals.PIN_2;
+    let m2 = peripherals.PIN_3;
+    let m3 = peripherals.PIN_6;
+    let m4 = peripherals.PIN_7;
+
     let spi0 = {
         let mut spi_config = SpiConfig::default();
         spi_config.frequency = 10_000_000;
@@ -116,10 +124,6 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
         ExclusiveDevice::new(spi_bus, spi_cs_output, embassy_time::Delay)
     };
 
-    // TODO: PIO0 UART and SPI
-    // TODO: PIO1 Dshot motors 1-4
-    // TODO: PIO2 Dshot motors 5-8
-
     let uart0 = {
         let mut uart_config = UartConfig::default();
         uart_config.baudrate = 115_200; // Standard telemetry link velocity [INDEX]
@@ -139,8 +143,10 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
         I2c::new_blocking(peripherals.I2C0, i2c0_scl, i2c0_sda, i2c_config)
     };
 
-    let motor_driver_quad_dshot = MotorDriverQuadDshot::new();
-    let motor_driver = MotorDriver::QuadDshot(motor_driver_quad_dshot);
+    // TODO: PIO0 UART and SPI
+    // TODO: PIO2 Dshot motors 5-8
+    let motor_driver_dshot = MotorDriverDshot::new(peripherals.PIO1, Irqs, m1, m2, m3, m4, DshotSpeed::Dshot300, 14);
+    let motor_driver = MotorDriver::Dshot(motor_driver_dshot);
 
     let radio = Radio::new(radio_controllers::RadioType::Mock);
 
@@ -149,6 +155,7 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
 
     let barometer = Barometer::new(init.barometer_type, shared_i2c);
     let magnetometer = Magnetometer::new(init.magnetometer_type, shared_i2c);
+
     let gps = None; //GpsParser::new(init.gps_provider);
     let rangefinder = Rangefinder::new(init.rangefinder_type);
     let optical_flow = OpticalFlow::new(init.optical_flow_type);
@@ -188,6 +195,8 @@ bind_interrupts!(pub struct Irqs {
 
     // Used by your 3rd PIO-backed SPI device
     PIO0_IRQ_0 => pio::InterruptHandler<peripherals::PIO0>;
+    PIO1_IRQ_0 => pio::InterruptHandler<peripherals::PIO1>;
+    PIO2_IRQ_0 => pio::InterruptHandler<peripherals::PIO2>;
     UART0_IRQ => uart::InterruptHandler<peripherals::UART0>;
     UART1_IRQ => uart::InterruptHandler<peripherals::UART1>;
     I2C0_IRQ => i2c::InterruptHandler<peripherals::I2C0>;
