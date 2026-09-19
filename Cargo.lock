@@ -1587,7 +1587,7 @@ dependencies = [
 [[package]]
 name = "motor-mixers"
 version = "0.1.6"
-source = "git+https://github.com/martinbudden/crate-motor-mixers#ebf0566b95ed592d53ab2679ba5bfe1b8a7e23b4"
+source = "git+https://github.com/martinbudden/crate-motor-mixers#8b921c76b182ea3edc8c93f06fdafd66f53d3db9"
 dependencies = [
  "dshot-codec",
  "embassy-executor",

@@ -231,7 +231,7 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
         CountingMode::EdgeAlignedUp,
     );
 
-    let motor_driver_pwm = MotorDriverPwm::new2(pwm_m1_m2, pwm_m3_m4);
+    let motor_driver_pwm = MotorDriverPwm::new(pwm_m1_m2, pwm_m3_m4);
     //let motor_driver_dshot = MotorDriverDshot::new();
     let motor_driver = MotorDriver::Pwm(motor_driver_pwm);
 

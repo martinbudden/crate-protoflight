@@ -119,8 +119,9 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
     // UART6
     // UART6_TX PC6
     // UART6_RX PC7
-    let _uart6_tx = peripherals.PC6;
-    let _uart6_rx = peripherals.PC7;
+    // PC6 used by m3, PC7 used by m4
+    // let uart6_tx = peripherals.PC6;
+    // let uart6_rx = peripherals.PC7;
 
     let spi1 = {
         let mut config = SpiConfig::default();

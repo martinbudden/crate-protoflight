@@ -200,7 +200,7 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
         CountingMode::EdgeAlignedUp,
     );
 
-    let motor_driver_pwm = MotorDriverPwm::new2(m1_m2, m4_m3);
+    let motor_driver_pwm = MotorDriverPwm::new(m1_m2, m4_m3);
     let motor_driver = MotorDriver::Pwm(motor_driver_pwm);
 
     let radio = Radio::new(radio_controllers::RadioType::Mock);

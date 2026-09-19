@@ -25,14 +25,8 @@ all-features = true
 rustc_version = "0.4.1"
 
 [features]
-#default = ["std", "libm"]
-#default = ["rp235xa", "libm"]
 default = [
-    #"libm",
-    "std",
-    "host",
-    #"rp235xa",
-    #"rp235xb",
+    "mock",
     #"stm32f405",
     #"speedybee_f405_v4",
     #"sp_racing_f4_evo",
@@ -40,28 +34,9 @@ default = [
     #"matek_f405_wte",
     #"rpi_pico2",
     #"madflight_fc3", # rp235xb board
-    "autopilot",
-    "barometer",
-    "battery",
-    "blackbox",
-    "debug",
-    "dshot_telemetry",
-    "eight_motors",
-    "gps",
-    "huffman",
-    "magnetometer",
-    #"max7456", # this doesn't compile yet
-    "msp",
-    "optical_flow",
-    "osd",
-    "rangefinder",
-    "rpm_filters",
-    "rtt-debug",
-    "servos",
-    "serde",
-    "storage",
-    "vtx",
 ]
+#default = ["std", "libm"]
+#default = ["rp235xa", "libm"]
 #default = ["rp235xa", "libm", "blackbox", "max7456", "osd", "rpm_filters", "barometer", "gps", "msp", "autopilot", "rangefinder"]
 #default = ["rp235xa", "libm", "max7456", "osd"]
 #default = ["std", "libm", "blackbox", "rpm_filters", "barometer", "msp", "autopilot"]
@@ -100,6 +75,31 @@ motors_t3_t5 = [ "motor-mixers/motors_t3_t5"]
 
 
 # Boards supported
+mock = [
+    "std",
+    "host",
+    "autopilot",
+    "barometer",
+    "battery",
+    "blackbox",
+    "debug",
+    "dshot_telemetry",
+    "eight_motors",
+    "gps",
+    "huffman",
+    "magnetometer",
+    #"max7456", # this doesn't compile yet
+    "msp",
+    "optical_flow",
+    "osd",
+    "rangefinder",
+    "rpm_filters",
+    "rtt-debug",
+    "servos",
+    "serde",
+    "storage",
+    "vtx",
+]
 rpi_pico2 = ["rp235xa"] #, "multicore"]
 madflight_fc3 = ["rp235xb"] #, "multicore"]
 matek_f405_wte = ["stm32", "stm32f405", "motors_t4_t3"]
