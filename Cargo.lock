@@ -156,14 +156,14 @@ checksum = "3ded4057c258ba199e2d26386d3af3780957ecaee6c4ef4041c6b4b8b97c0b06"
 [[package]]
 name = "blackbox-logger"
 version = "0.1.10"
-source = "git+https://github.com/martinbudden/crate-blackbox-logger#b5da411bb9fa8c0561ae96b1dd811ecbfd4805b8"
+source = "git+https://github.com/martinbudden/crate-blackbox-logger#db1e048441d12c7c891f75a88d48f180420583df"
 dependencies = [
  "embassy-futures",
  "postcard",
  "rustc_version 0.4.1",
  "sequential-storage",
  "serde",
- "simple-bitset 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "simple-bitset",
 ]
 
 [[package]]
@@ -975,15 +975,15 @@ dependencies = [
 
 [[package]]
 name = "embedded-storage"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a21dea9854beb860f3062d10228ce9b976da520a73474aed3171ec276bc0c032"
+checksum = "c815b3ed4213d85d6cfd274b871f430c0681084e28dfd4a537877f47f844ec83"
 
 [[package]]
 name = "embedded-storage-async"
-version = "0.4.1"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1763775e2323b7d5f0aa6090657f5e21cfa02ede71f5dc40eead06d64dcd15cc"
+checksum = "69aa7787b8ba0cf4e626c95839f811d853b75e24a0f7312a1eef324fedc13b21"
 dependencies = [
  "embedded-storage",
 ]
@@ -1167,9 +1167,9 @@ checksum = "ef25905e51abafe4dcea6c15fec58c57b601cdbd0ee53d22ea1d3016c587d39b"
 
 [[package]]
 name = "fixed"
-version = "1.31.0"
+version = "1.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9af2cbf772fa6d1c11358f92ef554cb6b386201210bcf0e91fb7fba8a907fb40"
+checksum = "707070ccf8c4173548210893a0186e29c266901b71ed20cd9e2ca0193dfe95c3"
 dependencies = [
  "az",
  "bytemuck",
@@ -1587,7 +1587,7 @@ dependencies = [
 [[package]]
 name = "motor-mixers"
 version = "0.1.6"
-source = "git+https://github.com/martinbudden/crate-motor-mixers#8b921c76b182ea3edc8c93f06fdafd66f53d3db9"
+source = "git+https://github.com/martinbudden/crate-motor-mixers#965ed6f3f8f330ee94dffac2da585318ab34d494"
 dependencies = [
  "dshot-codec",
  "embassy-executor",
@@ -1606,6 +1606,7 @@ dependencies = [
  "serde",
  "signal-filters",
  "vqm",
+ "xtensa-lx",
 ]
 
 [[package]]
@@ -1925,7 +1926,7 @@ dependencies = [
  "sequential-storage",
  "serde",
  "signal-filters",
- "simple-bitset 0.1.6 (git+https://github.com/martinbudden/crate-simple-bitset)",
+ "simple-bitset",
  "static_cell",
  "stream-buf",
  "strum 0.28.0",
@@ -1945,7 +1946,7 @@ dependencies = [
 [[package]]
 name = "radio-controllers"
 version = "0.1.7"
-source = "git+https://github.com/martinbudden/crate-radio-controllers#feeb14e7fb1f2865c1437946918ca39640806105"
+source = "git+https://github.com/martinbudden/crate-radio-controllers#d42ea1ec6df543e24078721f63605bb3a23b1c74"
 dependencies = [
  "embassy-executor",
  "embassy-futures",
@@ -1958,7 +1959,7 @@ dependencies = [
  "rustc_version 0.4.1",
  "sequential-storage",
  "serde",
- "simple-bitset 0.1.6 (git+https://github.com/martinbudden/crate-simple-bitset)",
+ "simple-bitset",
 ]
 
 [[package]]
@@ -2170,7 +2171,7 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 [[package]]
 name = "sensor-fusion"
 version = "0.1.10"
-source = "git+https://github.com/martinbudden/crate-sensor-fusion#8d6a29ebb593f81c2ae124a7b2e275c8bd2072ba"
+source = "git+https://github.com/martinbudden/crate-sensor-fusion#cba3e73b908cd7bafd2fc6f7c593e5668cad6d6a"
 dependencies = [
  "libm",
  "num-traits",
@@ -2279,17 +2280,9 @@ dependencies = [
 
 [[package]]
 name = "simple-bitset"
-version = "0.1.6"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17c9fa5bb21b915fe823676bb42b92d22226d8ca9b999488b0ed40546dbb5a05"
-dependencies = [
- "rustc_version 0.4.1",
-]
-
-[[package]]
-name = "simple-bitset"
-version = "0.1.6"
-source = "git+https://github.com/martinbudden/crate-simple-bitset#5c765e5a25bfc8e827f4f0f282b082d3322a68f2"
+checksum = "b1df039917eac7878e112e2eb7c7fd211a116166a9e1f30c4cec56655fa00696"
 dependencies = [
  "postcard",
  "rustc_version 0.4.1",
@@ -2410,9 +2403,9 @@ dependencies = [
 
 [[package]]
 name = "stream-buf"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a6a704c05d86ba1590be73a3f1840363cca5f06e29c18fa6fec0a244f7bc2cc"
+checksum = "f4a2dec167e6d44811f72771eff18b1daf8d739c1c04afb54f75cd43392111d6"
 
 [[package]]
 name = "string_cache"

@@ -256,10 +256,10 @@ embedded-storage-async = { version = "0.4.1", default-features = false }
 # In-memory storage simulator
 embedded-storage-file = { version = "0.2.0", default-features = false, optional = true }
 
-#simple-bitset = "0.1.6"
-simple-bitset = { git = "https://github.com/martinbudden/crate-simple-bitset" }
+simple-bitset = { version = "0.1.7", default-features = false }
+#simple-bitset = { git = "https://github.com/martinbudden/crate-simple-bitset" }
 #simple-bitset = { path = "../simple-bitset" }
-stream-buf = "0.1.2"
+stream-buf = "0.1.3"
 #stream-buf = { git = "https://github.com/martinbudden/crate-stream-buf" }
 #vqm = { version = "0.1.16" }
 vqm = { git = "https://github.com/martinbudden/crate-vector-quaternion-matrix" }

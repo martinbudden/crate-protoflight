@@ -4,7 +4,7 @@ use super::{
     {FlightModeConfig, VehicleControl},
 };
 
-use motor_mixers::MotorMixerCommon;
+use motor_mixers::MotorMixer;
 use pidsk_controller::{PidControllerf32, PidGainsf32};
 use radio_controllers::RcMode;
 use signal_filters::{Pt1FilterVector4f32, Pt1Filterf32, UpdateFilter};
@@ -271,13 +271,13 @@ impl FlightController {
 
 #[allow(unused)]
 impl FlightController {
-    pub fn motors_switch_off(&mut self, motor_mixer: &mut MotorMixerCommon) {
+    pub fn motors_switch_off(&mut self, motor_mixer: &mut MotorMixer) {
         motor_mixer.motors_switch_off();
         //self.ground_mode = true;
         self.switch_pid_integration_off();
     }
 
-    pub fn motors_switch_on(&mut self, motor_mixer: &mut MotorMixerCommon) {
+    pub fn motors_switch_on(&mut self, motor_mixer: &mut MotorMixer) {
         // don't allow motors to be switched on if the sensor fusion has not initialized
         if !self.vehicle_controller().sensor_fusion_filter_is_initializing() {
             motor_mixer.motors_switch_on();
