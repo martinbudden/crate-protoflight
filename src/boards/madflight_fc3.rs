@@ -20,12 +20,9 @@ use crate::{
     rangefinder_sensors::Rangefinder,
 };
 
-#[allow(unused)]
 use dshot_codec::DshotSpeed;
 use imu_sensors::{Imu426xx, ImuSpiBus};
-#[allow(unused)]
-use motor_mixers::{MotorDriver, MotorDriverDshot, MotorDriverPwm};
-#[allow(unused)]
+use motor_mixers::{MotorDriver, MotorDriverDshot, MotorDriverPwm, MotorProtocol};
 use radio_controllers::Radio;
 
 #[allow(unused)]
@@ -39,6 +36,7 @@ use embassy_rp::{
     peripherals,
     peripherals::PIO1,
     pio,
+    pwm::{Config as PwmConfig, Pwm},
     spi::{Async as SpiAsync, Config as SpiConfig, Spi},
     uart,
     uart::{Async as UartAsync, Config as UartConfig, Uart},
@@ -180,8 +178,27 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
 
     // TODO: PIO0 UART and SPI
     // TODO: PIO2 Dshot motors 5-8
-    let motor_driver_dshot = MotorDriverDshot::new(peripherals.PIO1, Irqs, m1, m2, m3, m4, DshotSpeed::Dshot300, 14);
-    let motor_driver = MotorDriver::Dshot(motor_driver_dshot);
+    let motor_driver = {
+        match init.motor_protocol {
+            MotorProtocol::Pwm => {
+                let config0 = PwmConfig::default();
+                let config1 = PwmConfig::default();
+
+                let pwm0 = Pwm::new_output_ab(peripherals.PWM_SLICE3, m1, m2, config0);
+                let pwm1 = Pwm::new_output_ab(peripherals.PWM_SLICE4, m3, m4, config1);
+
+                let frequency_hz = f32::from(init.motor_pwm_rate);
+                let motor_driver_pwm = MotorDriverPwm::new(pwm0, pwm1, frequency_hz);
+                MotorDriver::Pwm(motor_driver_pwm)
+            }
+            _ => {
+                let dshot_speed = DshotSpeed::try_from(init.motor_protocol).expect("Invalid Dshot protocol");
+                let motor_driver_dshot =
+                    MotorDriverDshot::new(peripherals.PIO1, Irqs, m1, m2, m3, m4, dshot_speed, init.motor_pole_count);
+                MotorDriver::Dshot(motor_driver_dshot)
+            }
+        }
+    };
 
     let radio = Radio::new(radio_controllers::RadioType::Mock);
 

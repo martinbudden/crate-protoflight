@@ -58,6 +58,9 @@ pub async fn init(spawner: Spawner) {
     let board_init = BoardInit {
         axis_order: config.imu_device.axis_order,
         radio_type: config.rx.serial_rx_provider,
+        motor_protocol: config.motor_device.motor_protocol,
+        motor_pwm_rate: config.motor_device.motor_pwm_rate,
+        motor_pole_count: config.motor.motor_pole_count,
 
         #[cfg(feature = "barometer")]
         barometer_type: config.barometer.hardware,

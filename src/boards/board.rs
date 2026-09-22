@@ -1,5 +1,5 @@
 use imu_sensors::{ImuAxisOrder, ImuDevice};
-use motor_mixers::MotorDriver;
+use motor_mixers::{MotorDriver, MotorProtocol};
 use radio_controllers::{Radio, RadioType};
 
 use crate::{
@@ -49,6 +49,9 @@ pub struct BoardInit {
     pub magnetometer_type: MagnetometerType,
     pub rangefinder_type: RangefinderType,
     pub optical_flow_type: OpticalFlowType,
+    pub motor_protocol: MotorProtocol,
+    pub motor_pwm_rate: u16,
+    pub motor_pole_count: u8,
 }
 
 #[allow(unused)]

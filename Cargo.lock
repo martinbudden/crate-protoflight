@@ -156,7 +156,7 @@ checksum = "3ded4057c258ba199e2d26386d3af3780957ecaee6c4ef4041c6b4b8b97c0b06"
 [[package]]
 name = "blackbox-logger"
 version = "0.1.10"
-source = "git+https://github.com/martinbudden/crate-blackbox-logger#db1e048441d12c7c891f75a88d48f180420583df"
+source = "git+https://github.com/martinbudden/crate-blackbox-logger#7df9589cedf41e4ede2b94b3684f13531993a7f8"
 dependencies = [
  "embassy-futures",
  "postcard",
@@ -540,8 +540,7 @@ dependencies = [
 [[package]]
 name = "dshot-codec"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "538b525bec1b76c6eb1fa038d8ee3c1d482dfd31dfb4074a4bb14e9c0646551e"
+source = "git+https://github.com/martinbudden/crate-dshot-codec#76c31f17b7ebfaa2279228d3478932b67952d5cd"
 dependencies = [
  "num-traits",
  "rustc_version 0.4.1",
@@ -1407,7 +1406,7 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 [[package]]
 name = "imu-sensors"
 version = "0.1.4"
-source = "git+https://github.com/martinbudden/crate-imu-sensors#7873ed0d7d46dcae612f768d4c385b4732acd69b"
+source = "git+https://github.com/martinbudden/crate-imu-sensors#7088622932839d17266ed247e2aa037cbc2efee0"
 dependencies = [
  "cfg-if",
  "embassy-time",
@@ -1441,9 +1440,9 @@ dependencies = [
 
 [[package]]
 name = "instability"
-version = "0.3.13"
+version = "0.3.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2bf84e73fa6f27f299dec58e13223cf70db80da872eb921d4f6138342a0eabc8"
+checksum = "4c3b5acc1e2fd9375041a388da33d1eb8aed5f7a8c0dd3543e3ea2805adfbe20"
 dependencies = [
  "darling 0.24.1",
  "indoc",
@@ -1587,7 +1586,7 @@ dependencies = [
 [[package]]
 name = "motor-mixers"
 version = "0.1.6"
-source = "git+https://github.com/martinbudden/crate-motor-mixers#965ed6f3f8f330ee94dffac2da585318ab34d494"
+source = "git+https://github.com/martinbudden/crate-motor-mixers#708cd3ef280ca3de22f4ac84c5505ca71530df3b"
 dependencies = [
  "dshot-codec",
  "embassy-executor",

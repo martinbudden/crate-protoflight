@@ -68,10 +68,11 @@ vtx = []
 multicore = []
 realtime_executor = []
 # stm32 motor timers
-motors_t3 = [ "motor-mixers/motors_t3"]
-motors_t8 = [ "motor-mixers/motors_t8"]
-motors_t4_t3 = [ "motor-mixers/motors_t4_t3"]
-motors_t3_t5 = [ "motor-mixers/motors_t3_t5"]
+pwm_t3 = [ "motor-mixers/pwm_t3"]
+pwm_t8 = [ "motor-mixers/pwm_t8"]
+pwm_t4_t3 = [ "motor-mixers/pwm_t4_t3"]
+pwm_t3_t5 = [ "motor-mixers/pwm_t3_t5"]
+dshot_t8 = [ "motor-mixers/dshot_t8"]
 
 
 # Boards supported
@@ -102,11 +103,11 @@ mock = [
 ]
 rpi_pico2 = ["rp235xa"] #, "multicore"]
 madflight_fc3 = ["rp235xb"] #, "multicore"]
-matek_f405_wte = ["stm32", "stm32f405", "motors_t4_t3"]
-speedybee_f405_v4 = ["stm32", "stm32f405", "motors_t4_t3", "realtime_executor"]
-sp_racing_f4_evo = ["stm32", "stm32f405", "motors_t3"]
-airb_omnibus_f4 = ["stm32", "stm32f405", "motors_t8"]
-airb_omnibus_f4_sd = ["stm32", "stm32f405", "motors_t3_t5"]
+matek_f405_wte = ["stm32", "stm32f405", "pwm_t4_t3"]
+speedybee_f405_v4 = ["stm32", "stm32f405", "pwm_t4_t3", "dshot_t8", "realtime_executor"]
+sp_racing_f4_evo = ["stm32", "stm32f405", "pwm_t3", "dshot_t8"]
+airb_omnibus_f4 = ["stm32", "stm32f405", "pwm_t8"]
+airb_omnibus_f4_sd = ["stm32", "stm32f405", "pwm_t3_t5"]
 
 # Core backend features declared explicitly
 # libm feature activates the optional crate named "libm", etc
@@ -277,9 +278,9 @@ sensor-fusion = { git = "https://github.com/martinbudden/crate-sensor-fusion" }
 blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger", default-features = false, optional = true }
 #blackbox-logger = { path = "../blackbox-logger", default-features = false, optional = true }
 
-dshot-codec = { version = "0.1.0" }
-#dshot-codec = { git = "https://github.com/martinbudden/crate-dshot-codec" }
-#dshot-codec = { path = "../dshot-codec"  }
+#dshot-codec = { version = "0.1.0", default-features = false }
+dshot-codec = { git = "https://github.com/martinbudden/crate-dshot-codec", default-features = false }
+#dshot-codec = { path = "../dshot-codec", default-features = false  }
 
 #motor-mixers = { version = "0.1.6", default-features = false }
 motor-mixers = { git = "https://github.com/martinbudden/crate-motor-mixers", default-features = false }

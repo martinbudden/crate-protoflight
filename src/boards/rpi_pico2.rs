@@ -14,7 +14,7 @@ use crate::{
 
 use dshot_codec::DshotSpeed;
 use imu_sensors::{Imu426xx, ImuAxisOrder, ImuSpiBus};
-use motor_mixers::{MotorDriver, MotorDriverDshot, MotorDriverPwm};
+use motor_mixers::{MotorDriver, MotorDriverDshot, MotorDriverPwm, MotorProtocol};
 use radio_controllers::Radio;
 
 use embassy_rp::{
@@ -25,6 +25,7 @@ use embassy_rp::{
     peripherals,
     peripherals::PIO1,
     pio,
+    pwm::{Config as PwmConfig, Pwm},
     spi::{Async as SpiAsync, Config as SpiConfig, Spi},
     uart,
     uart::{Async as UartAsync, Config as UartConfig, Uart},
@@ -33,10 +34,10 @@ use embassy_time::Delay;
 use embedded_hal_bus::spi::ExclusiveDevice;
 use static_cell::StaticCell;
 
-type BoardSpi =
+type BoardImuSpi =
     ExclusiveDevice<embassy_rp::spi::Spi<'static, peripherals::SPI0, embassy_rp::spi::Async>, Output<'static>, Delay>;
 
-pub type BoardImu = Imu426xx<ImuSpiBus<BoardSpi>>;
+pub type BoardImu = Imu426xx<ImuSpiBus<BoardImuSpi>>;
 
 #[cfg(feature = "multicore")]
 static EXECUTOR_CORE1: embassy_executor::InterruptExecutor = InterruptExecutor::new();
@@ -64,7 +65,7 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
     let spi0_tx_dma = peripherals.DMA_CH0;
     let spi0_rx_dma = peripherals.DMA_CH1;
     // Physical pin assigned to capture the gyroscope's INT1 signal wire
-    let spi0_interrupt_pin = peripherals.PIN_20;
+    let spi0_interrupt_pin = peripherals.PIN_22;
 
     // SPI1
     let spi1_clk = peripherals.PIN_10;
@@ -87,14 +88,14 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
     let uart1_rx_dma = peripherals.DMA_CH7;
 
     // I2C0
-    let i2c0_scl = peripherals.PIN_9;
-    let i2c0_sda = peripherals.PIN_8;
+    let i2c0_scl = peripherals.PIN_21;
+    let i2c0_sda = peripherals.PIN_20;
 
     // Motors
-    let m1 = peripherals.PIN_2;
-    let m2 = peripherals.PIN_3;
-    let m3 = peripherals.PIN_6;
-    let m4 = peripherals.PIN_7;
+    let m1 = peripherals.PIN_6;
+    let m2 = peripherals.PIN_7;
+    let m3 = peripherals.PIN_8;
+    let m4 = peripherals.PIN_9;
 
     let spi0 = {
         let mut spi_config = SpiConfig::default();
@@ -145,8 +146,28 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
 
     // TODO: PIO0 UART and SPI
     // TODO: PIO2 Dshot motors 5-8
-    let motor_driver_dshot = MotorDriverDshot::new(peripherals.PIO1, Irqs, m1, m2, m3, m4, DshotSpeed::Dshot300, 14);
-    let motor_driver = MotorDriver::Dshot(motor_driver_dshot);
+    let motor_driver = {
+        match init.motor_protocol {
+            MotorProtocol::Pwm => {
+                let config0 = PwmConfig::default();
+                let config1 = PwmConfig::default();
+                let frequency_hz = 50.0;
+
+                let pwm0 = Pwm::new_output_ab(peripherals.PWM_SLICE3, m1, m2, config0);
+                let pwm1 = Pwm::new_output_ab(peripherals.PWM_SLICE4, m3, m4, config1);
+
+                let frequency_hz = f32::from(init.motor_pwm_rate);
+                let motor_driver_pwm = MotorDriverPwm::new(pwm0, pwm1, frequency_hz);
+                MotorDriver::Pwm(motor_driver_pwm)
+            }
+            _ => {
+                let dshot_speed = DshotSpeed::try_from(init.motor_protocol).expect("Invalid Dshot protocol");
+                let motor_driver_dshot =
+                    MotorDriverDshot::new(peripherals.PIO1, Irqs, m1, m2, m3, m4, dshot_speed, init.motor_pole_count);
+                MotorDriver::Dshot(motor_driver_dshot)
+            }
+        }
+    };
 
     let radio = Radio::new(radio_controllers::RadioType::Mock);
 

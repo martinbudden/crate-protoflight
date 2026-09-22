@@ -19,8 +19,9 @@ use crate::{
 };
 use embassy_executor::InterruptExecutor;
 
+use dshot_codec::{DshotMotorMasks, DshotSpeed, DshotTiming, DshotWaveform};
 use imu_sensors::{Imu426xx, ImuAxisOrder, ImuSpiBus};
-use motor_mixers::{MotorDriver, MotorDriverDshot, MotorDriverPwm};
+use motor_mixers::{MotorDriver, MotorDriverDshot, MotorDriverPwm, MotorProtocol};
 
 static REALTIME_EXECUTOR: InterruptExecutor = InterruptExecutor::new();
 
@@ -65,6 +66,21 @@ type BoardSpi =
     ExclusiveDevice<Spi<'static, embassy_stm32::mode::Async, embassy_stm32::spi::mode::Master>, Output<'static>, Delay>;
 
 pub type BoardImu = Imu426xx<ImuSpiBus<BoardSpi>>;
+
+// TODO: ensure that the dshot buffer instance in a DMA-safe linker section, ie RAM not CCM
+//#[link_section = ".dma"]
+static DSHOT_WAVEFORM: StaticCell<DshotWaveform> = StaticCell::new();
+
+/*
+The motor pins are supplied as Embassy AnyPins.
+The GPIO port is derived from the pins.
+The BSRR address comes from Embassy's PAC rather than a magic address.
+The motor masks are derived from the actual pins.
+The DShot buffer is owned by the driver.
+The buffer lives in DMA-accessible SRAM.
+StaticCell gives us the 'static buffer without static mut references.
+The driver can safely be moved into the Embassy task via the explicit Send implementation.
+*/
 
 pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError> {
     // NOTE: stm32 numbers peripherals starting at 1, eg SPI1, SPI2, I2C1, I2C2 etc
@@ -127,8 +143,8 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
     // UART6
     let uart6_tx = peripherals.PC6;
     let uart6_rx = peripherals.PC7;
-    let uart6_tx_dma = peripherals.DMA2_CH6;
-    let uart6_rx_dma = peripherals.DMA2_CH1;
+    //et uart6_tx_dma = peripherals.DMA2_CH6;
+    //let uart6_rx_dma = peripherals.DMA2_CH1;
 
     let spi1 = {
         let mut config = SpiConfig::default();
@@ -192,11 +208,16 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
         UartRx::new_blocking(peripherals.UART5, uart5_rx, config).map_err(|_| BoardInitError::UartError)?
     };
 
-    let uart6 = {
+    /*let uart6 = {
         let mut config = embassy_stm32::usart::Config::default();
         config.baudrate = 115_200;
         Uart::new(peripherals.USART6, uart6_rx, uart6_tx, uart6_tx_dma, uart6_rx_dma, Irqs, config)
             .map_err(|_| BoardInitError::UartError)?
+    };*/
+    let uart6 = {
+        let mut config = embassy_stm32::usart::Config::default();
+        config.baudrate = 115_200;
+        Uart::new_blocking(peripherals.USART6, uart6_rx, uart6_tx, config).map_err(|_| BoardInitError::UartError)?
     };
 
     let i2c1 = I2c::new_blocking(peripherals.I2C1, i2c1_scl, i2c1_sda, embassy_stm32::i2c::Config::default());
@@ -211,29 +232,56 @@ pub fn board_hardware(init: BoardInit) -> Result<Board<BoardImu>, BoardInitError
     let m7 = peripherals.PB10;
     let m8 = peripherals.PA15;
 
-    let pwm_m1_m2 = SimplePwm::new(
-        peripherals.TIM4,
-        Some(PwmPin::new(m1, PushPull)),
-        Some(PwmPin::new(m2, PushPull)),
-        None,
-        None,
-        Hertz(400),
-        CountingMode::EdgeAlignedUp,
-    );
+    let motor_driver = {
+        match init.motor_protocol {
+            MotorProtocol::Pwm => {
+                let pwm_m1_m2 = SimplePwm::new(
+                    peripherals.TIM4,
+                    Some(PwmPin::new(m1, PushPull)),
+                    Some(PwmPin::new(m2, PushPull)),
+                    None,
+                    None,
+                    Hertz(u32::from(init.motor_pwm_rate)),
+                    CountingMode::EdgeAlignedUp,
+                );
 
-    let pwm_m3_m4 = SimplePwm::new(
-        peripherals.TIM3,
-        None,
-        None,
-        Some(PwmPin::new(m3, PushPull)),
-        Some(PwmPin::new(m4, PushPull)),
-        Hertz(400),
-        CountingMode::EdgeAlignedUp,
-    );
+                let pwm_m3_m4 = SimplePwm::new(
+                    peripherals.TIM3,
+                    None,
+                    None,
+                    Some(PwmPin::new(m3, PushPull)),
+                    Some(PwmPin::new(m4, PushPull)),
+                    Hertz(u32::from(init.motor_pwm_rate)),
+                    CountingMode::EdgeAlignedUp,
+                );
 
-    let motor_driver_pwm = MotorDriverPwm::new(pwm_m1_m2, pwm_m3_m4);
-    //let motor_driver_dshot = MotorDriverDshot::new();
-    let motor_driver = MotorDriver::Pwm(motor_driver_pwm);
+                let motor_driver_pwm = MotorDriverPwm::new(pwm_m1_m2, pwm_m3_m4, f32::from(init.motor_pwm_rate));
+                MotorDriver::Pwm(motor_driver_pwm)
+            }
+            _ => {
+                // For the F405:
+                //const F405_MOTOR_MASKS: DshotMotorMasks = DshotMotorMasks::new(6, 7, 0, 1);
+                let dshot_speed = DshotSpeed::try_from(init.motor_protocol).expect("Invalid Dshot protocol");
+                let dshot_timing = DshotTiming::new(dshot_speed);
+
+                let dshot_waveform = DSHOT_WAVEFORM.init(DshotWaveform::new());
+
+                let motor_driver_dshot = MotorDriverDshot::new(
+                    peripherals.TIM8,
+                    peripherals.DMA2_CH1,
+                    Irqs,
+                    m1,
+                    m2,
+                    m3,
+                    m4,
+                    dshot_waveform,
+                    dshot_speed,
+                    init.motor_pole_count,
+                );
+                MotorDriver::Dshot(motor_driver_dshot)
+            }
+        }
+    };
 
     let radio = Radio::new(radio_controllers::RadioType::Mock);
 
@@ -299,8 +347,14 @@ bind_interrupts!(struct Irqs {
     // -----------------------------------------------------------------------
     // USART6 — GPS
     // -----------------------------------------------------------------------
+    //DMA2_STREAM1 => dma::InterruptHandler<peripherals::DMA2_CH1>;
+    //DMA2_STREAM6 => dma::InterruptHandler<peripherals::DMA2_CH6>;
+    //USART6 => usart::InterruptHandler<peripherals::USART6>;
+
+    // -----------------------------------------------------------------------
+    // Dshot
+    // -----------------------------------------------------------------------
+    //DMA1_STREAM2 => embassy_stm32::dma::InterruptHandler<peripherals::DMA1_CH2>;
     DMA2_STREAM1 => dma::InterruptHandler<peripherals::DMA2_CH1>;
-    DMA2_STREAM6 => dma::InterruptHandler<peripherals::DMA2_CH6>;
-    USART6 => usart::InterruptHandler<peripherals::USART6>;
 
 });
