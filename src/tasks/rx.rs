@@ -4,8 +4,6 @@ use embassy_sync::{
     watch::{Receiver, Sender, Watch},
 };
 
-#[cfg(feature = "autopilot")]
-use radio_controllers::RcMode;
 use radio_controllers::{Radio, Rates, RatesConfig, RcModes, RxConfig, RxRadio};
 use static_cell::StaticCell;
 
@@ -137,6 +135,7 @@ pub async fn run(ctx: &'static mut RxContext) {
 
                     #[cfg(feature = "autopilot")]
                     if let Some(autopilot_message) = ctx.autopilot_receiver.try_changed() {
+                        use radio_controllers::RcMode;
                         if ctx.rc_modes.is_mode_active(RcMode::ALTITUDE_HOLD) {
                             rx_message.rc_controls.throttle_stick = autopilot_message.rc_controls.throttle_stick;
                         } else if ctx.rc_modes.is_mode_active(RcMode::POSITION_HOLD)
@@ -184,6 +183,68 @@ impl RxContext {
         {
             core::future::ready(()).await;
             Err(())
+        }
+    }
+}
+
+// Crucial: This trait enables the partial-read streaming behavior
+// that returns a usize count of whatever bytes are currently waiting.
+#[cfg(feature = "rp235xa")]
+use {
+    embassy_time::{Duration, with_timeout},
+    embedded_io_async::Read,
+    radio_controllers::RxFrame,
+};
+#[cfg(feature = "rp235xa")]
+pub type BufferedRadioUartRx = &'static mut embassy_rp::uart::BufferedUartRx;
+
+#[allow(unused)]
+#[cfg(feature = "rp235xa")]
+pub async fn ibus_hybrid_dma_task(mut radio: Radio, mut uart_rx: BufferedRadioUartRx) {
+    let mut read_buf = [0u8; 64]; // Fits roughly up to two bursts if processing is delayed
+    let mut rx_frame = RxFrame::new();
+
+    loop {
+        // Wrap the streaming read in a timeout to catch wire disconnects or receiver power loss
+        let read_result = with_timeout(Duration::from_millis(50), Read::read(&mut uart_rx, &mut read_buf)).await;
+
+        match read_result {
+            // Wakes up as soon as a burst of bytes lands in the ring buffer
+            Ok(Ok(bytes_read)) if bytes_read > 0 => {
+                // Stream only the newly arrived chunk into the state machine
+                for &byte in &read_buf[..bytes_read] {
+                    if radio.on_byte_received(byte) {
+                        let rx_frame = radio.rx_frame();
+                        // Check for radio-link specific loss (receiver is on, transmitter is off)
+                        /*if radio.is_receiver_failsafe() {
+                            defmt::warn!("Radio link lost! Applying safe fallback.");
+                            //active_channels = IBusChannels::safe_fallback();
+                            rx_frame = RxFrame::new();
+                        } else {
+                            // Frame is completely valid and healthy
+                            //active_channels = IBusChannels::from_raw(raw_channels);
+                            rx_frame = RxFrame::new(); // TODO: create from the raw_channels
+                        }*/
+
+                        // Ship the safe or updated channel data to your actuators
+                        //process_flight_control(&active_channels);
+                    }
+                }
+            }
+            Ok(Err(_uart_err)) => {
+                defmt::error!("UART Hardware error occurred. Forcing safe state.");
+                //active_channels = IBusChannels::safe_fallback();
+                rx_frame = RxFrame::new();
+                //process_flight_control(&active_channels);
+            }
+            Ok(Ok(_)) => {} // Zero bytes read, stay in loop
+            Err(_timeout) => {
+                // Hard physical disconnect: No bytes arrived at all for 50ms
+                defmt::error!("IBUS Wire Signal Lost! Activating Hard Failsafe.");
+                //active_channels = IBusChannels::safe_fallback();
+                rx_frame = RxFrame::new();
+                //process_flight_control(&active_channels);
+            }
         }
     }
 }

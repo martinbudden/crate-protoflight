@@ -189,16 +189,16 @@ impl Board {
         // TODO: PIO SPI
         // --- Device 3: PIO0 Backed SPI (Auxiliary Peripheral) ---
         // let aux_pio_spi = Err(AuxiliaryPioInitError::FeatureDisabled);
-        let _uart0 = {
+        let (_uart0_tx, _uart0_rx) = {
             let mut uart_config = UartConfig::default();
             uart_config.baudrate = 115_200; // Standard telemetry link velocity [INDEX]
-            Uart::new(peripherals.UART0, uart0_tx, uart0_rx, Irqs, uart0_tx_dma, uart0_rx_dma, uart_config)
+            Uart::new(peripherals.UART0, uart0_tx, uart0_rx, Irqs, uart0_tx_dma, uart0_rx_dma, uart_config).split()
         };
 
-        let uart1 = {
+        let (uart1_tx, uart1_rx) = {
             let mut uart_config = UartConfig::default();
             uart_config.baudrate = 115_200;
-            Uart::new(peripherals.UART1, uart1_tx, uart1_rx, Irqs, uart1_tx_dma, uart1_rx_dma, uart_config)
+            Uart::new(peripherals.UART1, uart1_tx, uart1_rx, Irqs, uart1_tx_dma, uart1_rx_dma, uart_config).split()
         };
 
         let i2c0 = {
@@ -245,8 +245,6 @@ impl Board {
                 }
             }
         };
-
-        let (uart1_tx, uart1_rx) = uart1.split();
 
         let radio_uart_tx = Some(RADIO_UART_TX.init(uart1_tx));
         let radio_uart_rx = Some(RADIO_UART_RX.init(uart1_rx));

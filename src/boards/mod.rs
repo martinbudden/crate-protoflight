@@ -16,7 +16,9 @@ pub use platform_host::{GpsUartRx, GpsUartTx, I2cDeviceBlocking, RadioUartRx, Ra
 
 #[allow(unused)]
 #[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
-pub use platform_rp::{GpsUartRx, GpsUartTx, I2cDeviceBlocking, RadioUartRx, RadioUartTx, SharedI2cBus};
+pub use platform_rp::{
+    BufferedRadioUartRx, GpsUartRx, GpsUartTx, I2cDeviceBlocking, RadioUartRx, RadioUartTx, SharedI2cBus,
+};
 
 #[allow(unused)]
 #[cfg(feature = "stm32")]

@@ -195,12 +195,13 @@ impl Board {
             Uart::new_blocking(peripherals.USART1, uart1_rx, uart1_tx, config).map_err(|_| BoardInitError::UartError)?
         };
 
-        let uart2 = {
+        let (uart2_tx, uart2_rx) = {
             let mut config = UsartConfig::default();
             config.baudrate = 115_200;
             Uart::new(peripherals.USART2, uart2_rx, uart2_tx, uart2_tx_dma, uart2_rx_dma, Irqs, config)
                 //Uart::new_blocking(peripherals.USART2, uart2_rx, uart2_tx, config)
                 .map_err(|_| BoardInitError::UartError)?
+                .split()
         };
 
         let uart3 = {
@@ -300,8 +301,6 @@ impl Board {
                 }
             }
         };
-
-        let (uart2_tx, uart2_rx) = uart2.split();
 
         let radio_uart_tx = Some(RADIO_UART_TX.init(uart2_tx));
         let radio_uart_rx = Some(RADIO_UART_RX.init(uart2_rx));

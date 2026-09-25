@@ -19,8 +19,6 @@ impl Board {
         let radio_uart_tx = None;
         let radio_uart_rx = None;
 
-        //let (gps_tx, gps_rx) = uart6.split();
-        //let gps = None; //Some(GpsHardware { uart_rx: gps_rx, uart_tx: gps_tx });
         let gps_uart_tx = None;
         let gps_uart_rx = None;
 

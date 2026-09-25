@@ -107,14 +107,14 @@ impl Board {
         let spi1_cs = peripherals.PIN_13;
 
         // UART0
-        let uart0_tx = peripherals.PIN_0;
-        let uart0_rx = peripherals.PIN_1;
+        let uart0_tx_pin = peripherals.PIN_0;
+        let uart0_rx_pin = peripherals.PIN_1;
         let uart0_tx_dma = peripherals.DMA_CH4;
         let uart0_rx_dma = peripherals.DMA_CH5;
 
         // UART1
-        let uart1_tx = peripherals.PIN_4;
-        let uart1_rx = peripherals.PIN_5;
+        let uart1_tx_pin = peripherals.PIN_4;
+        let uart1_rx_pin = peripherals.PIN_5;
         let uart1_tx_dma = peripherals.DMA_CH6;
         let uart1_rx_dma = peripherals.DMA_CH7;
 
@@ -159,14 +159,36 @@ impl Board {
         let uart0 = {
             let mut uart_config = UartConfig::default();
             uart_config.baudrate = 115_200; // Standard telemetry link velocity [INDEX]
-            Uart::new(peripherals.UART0, uart0_tx, uart0_rx, Irqs, uart0_tx_dma, uart0_rx_dma, uart_config)
+            Uart::new(peripherals.UART0, uart0_tx_pin, uart0_rx_pin, Irqs, uart0_tx_dma, uart0_rx_dma, uart_config)
         };
 
-        let uart1 = {
+        let (uart1_tx, uart1_rx) = {
             let mut uart_config = UartConfig::default();
             uart_config.baudrate = 115_200;
-            Uart::new(peripherals.UART1, uart1_tx, uart1_rx, Irqs, uart1_tx_dma, uart1_rx_dma, uart_config)
+            Uart::new(peripherals.UART1, uart1_tx_pin, uart1_rx_pin, Irqs, uart1_tx_dma, uart1_rx_dma, uart_config)
+                .split()
         };
+
+        /*let (uart1_tx, uart1_rx) = {
+            static RX_BUFFER: StaticCell<[u8; 256]> = StaticCell::new();
+            static TX_BUFFER: StaticCell<[u8; 16]> = StaticCell::new();
+            let rx_buf_ref = RX_BUFFER.init([0u8; 256]);
+            let tx_buf_ref = TX_BUFFER.init([0u8; 16]);
+
+            let mut uart_config = UartConfig::default();
+            uart_config.baudrate = 115_200;
+
+            uart::BufferedUart::new(
+                peripherals.UART1,
+                uart1_tx_pin,
+                uart1_rx_pin,
+                Irqs,
+                tx_buf_ref,
+                rx_buf_ref,
+                uart_config,
+            )
+            .split()
+        };*/
 
         let i2c0 = {
             let mut i2c_config = I2cConfig::default();
@@ -213,10 +235,10 @@ impl Board {
             }
         };
 
-        let (uart1_tx, uart1_rx) = uart1.split();
-
         let radio_uart_tx = Some(RADIO_UART_TX.init(uart1_tx));
         let radio_uart_rx = Some(RADIO_UART_RX.init(uart1_rx));
+        //let radio_uart_tx = None;
+        //let radio_uart_rx = None;
 
         //let gps = None; //GpsParser::new(init.gps_provider);
         let gps_uart_tx = None;
@@ -289,5 +311,6 @@ bind_interrupts!(pub struct Irqs {
     PIO2_IRQ_0 => pio::InterruptHandler<peripherals::PIO2>;
     UART0_IRQ => uart::InterruptHandler<peripherals::UART0>;
     UART1_IRQ => uart::InterruptHandler<peripherals::UART1>;
+    //UART1_IRQ => uart::BufferedInterruptHandler<peripherals::UART1>;
     I2C0_IRQ => i2c::InterruptHandler<peripherals::I2C0>;
 });

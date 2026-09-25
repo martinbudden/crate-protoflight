@@ -16,6 +16,7 @@ pub type SharedI2cBus = Mutex<NoopRawMutex, I2cDeviceBlocking>;
 //pub type I2cDevice0Async = I2c<'static, peripherals::I2C0, Async>;
 //pub type AuxiliaryPioSpiDevice = ExclusiveDevice<PioSpi<'static, peripherals::PIO0, 0>, Output<'static>, Delay>;
 
+pub type BufferedRadioUartRx = &'static mut embassy_rp::uart::BufferedUartRx;
 pub type RadioUartRx = &'static mut UartRx<'static, Async>;
 pub type RadioUartTx = &'static mut UartTx<'static, Async>;
 
