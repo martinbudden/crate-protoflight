@@ -1,12 +1,13 @@
 #![cfg(feature = "blackbox")]
-#![allow(unused)]
+
+use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel, pubsub::WaitResult};
 
 use blackbox_logger::{
     Blackbox, BlackboxConfig, BlackboxDateTime, BlackboxMainData, BlackboxSlowData, BlackboxSysInfo, FieldSelect,
     LoggerState, SliceEncoder,
 };
-use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel};
 use radio_controllers::RcMode;
+
 use static_cell::StaticCell;
 
 #[cfg(feature = "gps")]
@@ -162,7 +163,7 @@ impl BlackboxWriteBlock {
     #[inline]
     pub fn send_data_to_blackbox_writer_task(data: &[u8], overflow_counter: &mut u32) -> bool {
         let mut ret = false;
-        let overflow_counter_in = *overflow_counter;
+        let _overflow_counter_in = *overflow_counter;
         // Loop through the slice in chunks matching BlackboxWriteBlock capacity
         for chunk in data.chunks(Self::CAPACITY) {
             let block = Self::from_chunk(chunk);
@@ -183,6 +184,7 @@ impl BlackboxWriteBlock {
 
 pub enum BlackboxWriteItem {
     Data(BlackboxWriteBlock),
+    #[allow(unused)]
     Flush,
 }
 
@@ -265,7 +267,7 @@ pub async fn run(ctx: &'static mut BlackboxEncoderContext) {
 
         #[cfg(feature = "barometer")]
         if let Some(wait_result) = ctx.barometer_subscriber.try_next_message()
-            && let embassy_sync::pubsub::WaitResult::Message(event) = wait_result
+            && let WaitResult::Message(event) = wait_result
             && let barometer_message = event
         {
             ctx.barometer_altitude = barometer_message.altitude_m_i32;
@@ -274,7 +276,7 @@ pub async fn run(ctx: &'static mut BlackboxEncoderContext) {
         #[allow(clippy::cast_possible_truncation)]
         #[cfg(feature = "battery")]
         if let Some(wait_result) = ctx.battery_subscriber.try_next_message()
-            && let embassy_sync::pubsub::WaitResult::Message(event) = wait_result
+            && let WaitResult::Message(event) = wait_result
             && let battery_message = event
         {
             ctx.battery_voltage = battery_message.voltage.unfiltered_x100;
@@ -294,7 +296,7 @@ pub async fn run(ctx: &'static mut BlackboxEncoderContext) {
 
         #[cfg(feature = "gps")]
         if let Some(wait_result) = ctx.gps_subscriber.try_next_message()
-            && let embassy_sync::pubsub::WaitResult::Message(event) = wait_result
+            && let WaitResult::Message(event) = wait_result
             && let GpsMessage::Data(gps_data) = event
         {
             let gps_data = gps_data_from(gps_data);

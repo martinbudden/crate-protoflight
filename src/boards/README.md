@@ -16,11 +16,11 @@ The low level hardware is abstracted away in the BSP, partly by Protoflight and 
 
 | Hardware | Assignment                               |
 | -------- | ---------------------------------------- |
-| VCP      | MSP configuration                        |
 | SPI1     | IMU (Acc/Gyro)                           |
 | SPI2     | Blackbox                                 |
-| SPI3     | Analog OSD (MAX7456)                     |
+| SPI3     | Analog OSD (eg MAX7456)                  |
 | I2C1     | Barometer / Magnetometer                 |
+| VCP      | MSP configuration                        |
 | UART1    | Digital VTX / OSD                        |
 | UART2    | Serial Radio Receiver (ELRS / Crossfire) |
 | UART3    | GPS Module                               |
@@ -46,3 +46,15 @@ The low level hardware is abstracted away in the BSP, partly by Protoflight and 
     ├── SPI1 (Blackbox)
     └── I2C0 (Baro/Mag)
 ```
+
+--- Device 1: Hardware SPI0 (Gyroscope) ---.
+
+Tied to SPI0 running asynchronously via the DMA system.
+
+--- Device 2: Hardware SPI1 (Blackbox SD Card) ---.
+
+Tied to SPI1 running asynchronously via the DMA system.
+
+--- Device 3: PIO0 Backed SPI (Auxiliary Peripheral - MAX7456) ---.
+
+Fully concrete representation using State Machine 0 on the PIO0 block.

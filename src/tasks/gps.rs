@@ -70,10 +70,12 @@ pub struct GpsContext {
     pub gps_data: GpsSolution,
     pub gps_status_data: GpsStatus,
     pub home: Geodetic,
-    pub buf: [u8; 128],
+    pub buf: [u8; Self::BUF_SIZE],
 }
 
 impl GpsContext {
+    const BUF_SIZE: usize = 128;
+
     pub fn new(uart_rx: GpsUartRx, uart_tx: GpsUartTx, gps_provider: GpsProvider) -> Self {
         #[allow(clippy::expect_used)]
         Self {
@@ -84,7 +86,7 @@ impl GpsContext {
             gps_data: GpsSolution::new(),
             gps_status_data: GpsStatus::new(),
             home: Geodetic::new(),
-            buf: [0u8; 128],
+            buf: [0u8; Self::BUF_SIZE],
         }
     }
 }
@@ -109,7 +111,7 @@ pub async fn run(ctx: &'static mut GpsContext) {
         ticker.next().await;
         core::future::poll_fn(|_| core::task::Poll::Ready(())).await;
 
-        if let Ok(n) = ctx.uart_rx.read(&mut ctx.buf).await {
+        if let Ok(n) = ctx.read_packet().await {
             for &byte in &ctx.buf[..n] {
                 if let Some(event) = ctx.gps_parser.on_data_received(byte) {
                     process_gps_event(&mut ctx.gps_data, &mut ctx.gps_status_data, event);
@@ -221,6 +223,29 @@ fn process_gps_event(gps_data: &mut GpsSolution, gps_status: &mut GpsStatus, eve
             },
             _ => {}
         },
+    }
+}
+
+impl GpsContext {
+    /// Read data from the UART with line-idle/break detection in a target-agnostic way.
+    pub async fn read_packet(&mut self) -> Result<usize, ()> {
+        #[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
+        {
+            // embassy_rp returns a Result<usize, ReadToBreakError>
+            match self.uart_rx.read_to_break(&mut self.buf).await {
+                Ok(n) => Ok(n),
+                Err(_) => Err(()), // Map platform errors to a simple generic error
+            }
+        }
+
+        #[cfg(feature = "stm32")]
+        {
+            // embassy_stm32 returns a Result<usize, Error> via idle line detection
+            match self.uart_rx.read_until_idle(&mut self.buf).await {
+                Ok(n) => Ok(n),
+                Err(_) => Err(()),
+            }
+        }
     }
 }
 

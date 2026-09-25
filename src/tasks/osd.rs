@@ -1,7 +1,5 @@
 #![cfg(feature = "osd")]
 
-#[cfg(feature = "battery")]
-use embassy_sync::pubsub::WaitResult;
 use static_cell::StaticCell;
 use vqm::Quaternionf32;
 
@@ -114,7 +112,9 @@ pub async fn run(ctx: &'static mut OsdContext) {
             let arming_flags = ArmingFlags::new();
 
             #[cfg(feature = "battery")]
-            if let Some(WaitResult::Message(battery_data)) = ctx.battery_subscriber.try_next_message() {
+            if let Some(embassy_sync::pubsub::WaitResult::Message(battery_data)) =
+                ctx.battery_subscriber.try_next_message()
+            {
                 battery_message = battery_data;
             }
 

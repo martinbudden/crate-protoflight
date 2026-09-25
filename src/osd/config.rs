@@ -240,7 +240,7 @@ mod tests {
         is_serde::<OsdElementsConfig>();
         is_serde::<PilotConfig>();
     }
-    #[cfg(feature = "serde")]
+    #[cfg(feature = "storage")]
     #[test]
     fn storage_types() {
         is_storage::<OsdConfig>();

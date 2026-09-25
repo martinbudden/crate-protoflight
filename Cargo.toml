@@ -27,11 +27,10 @@ rustc_version = "0.4.1"
 [features]
 default = [
     "mock",
-    #"stm32f405",
     #"speedybee_f405_v4",
     #"sp_racing_f4_evo",
     #"airb_omnibus_f4",
-    #"matek_f405_wte",
+    #"airb_omnibus_f4_sd",
     #"rpi_pico2",
     #"madflight_fc3", # rp235xb board
 ]
@@ -62,7 +61,6 @@ osd_hd = []
 rangefinder = ["blackbox-logger/rangefinder"]
 rpm_filters = []
 servos = ["blackbox-logger/servos"]
-std = []
 vtx = []
 # embassy executors
 multicore = []
@@ -74,22 +72,18 @@ pwm_t4_t3 = [ "motor-mixers/pwm_t4_t3"]
 pwm_t3_t5 = [ "motor-mixers/pwm_t3_t5"]
 dshot_t8 = [ "motor-mixers/dshot_t8"]
 
-
 # Boards supported
-mock = [
-    "std",
-    "host",
+_common = [
     "autopilot",
     "barometer",
     "battery",
-    "blackbox",
+    #"blackbox",
     "debug",
     "dshot_telemetry",
-    "eight_motors",
-    "gps",
+    #"eight_motors",
+    #"gps",
     "huffman",
     "magnetometer",
-    #"max7456", # this doesn't compile yet
     "msp",
     "optical_flow",
     "osd",
@@ -98,16 +92,32 @@ mock = [
     "rtt-debug",
     "servos",
     "serde",
-    "storage",
     "vtx",
 ]
-rpi_pico2 = ["rp235xa"] #, "multicore"]
-madflight_fc3 = ["rp235xb"] #, "multicore"]
-matek_f405_wte = ["stm32", "stm32f405", "pwm_t4_t3"]
-speedybee_f405_v4 = ["stm32", "stm32f405", "pwm_t4_t3", "dshot_t8", "realtime_executor"]
-sp_racing_f4_evo = ["stm32", "stm32f405", "pwm_t3", "dshot_t8"]
-airb_omnibus_f4 = ["stm32", "stm32f405", "pwm_t8"]
-airb_omnibus_f4_sd = ["stm32", "stm32f405", "pwm_t3_t5"]
+mock = [
+    "host",
+    "_common",
+]
+rpi_pico2 = [
+    "rp235xa", 
+    "multicore",
+    "storage",
+    "_common",
+]
+madflight_fc3 = [
+    "rp235xb",
+    # "multicore",
+    "_common",
+ ]
+speedybee_f405_v4 = ["stm32", "stm32f405", "pwm_t4_t3", "dshot_t8",
+    "realtime_executor",
+    "_common",
+    "gps",
+    #"max7456", # this doesn't compile yet
+]
+sp_racing_f4_evo = ["stm32", "stm32f405", "pwm_t3", "dshot_t8", "realtime_executor", "_common"]
+airb_omnibus_f4 = ["stm32", "stm32f405", "pwm_t8", "dshot_t8", "realtime_executor", "_common"]
+airb_omnibus_f4_sd = ["stm32", "stm32f405", "pwm_t3_t5", "dshot_t8", "_common"]
 
 # Core backend features declared explicitly
 # libm feature activates the optional crate named "libm", etc
@@ -121,7 +131,7 @@ simd = ["vqm/simd", "signal-filters/simd"]
 #sequential-storage = ["dep:sequential-storage"]
 
 # Target platforms
-host = [
+std = [
     "critical-section/std",
     "derive_more/std",
     "embassy-time/std",
@@ -138,6 +148,9 @@ host = [
     "dep:env_filter"
 ]
 
+host = [
+    "std"
+]
 rp = ["dep:embassy-rp"] # combined feature for all rp variants
 rp2040 = [
     "dep:embassy-rp",
@@ -347,5 +360,7 @@ codegen-units = 1    # Allows deeper optimizations across the entire binary
 [workspace]
 members = [
     ".",
+]
+exclude = [
     "xtask",
 ]

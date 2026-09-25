@@ -1,9 +1,10 @@
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex,
+    pubsub::WaitResult,
     watch::{Receiver, Sender, Watch},
 };
-
 use embassy_time::Instant;
+
 use static_cell::StaticCell;
 
 use imu_sensors::{AccFullScale, AccUnits, GyroFullScale, GyroUnits, ImuDevice};
@@ -15,7 +16,7 @@ use simple_bitset::BitSet64;
 use motor_mixers::RpmNotchFilterBankConfig;
 
 use crate::{
-    boards::BoardImu,
+    boards::targets::BoardImu,
     config::{FastConfigItem, FastConfigSubscriber, fast_config_subscriber},
     flight::{FilterAccGyro, FlightController, ImuFilterBank, ImuFilterBankConfig, RcControls, VehicleControl},
     tasks::{
@@ -244,7 +245,7 @@ pub async fn run(ctx: &'static mut GyroPidContext<BoardImu>) {
         // try_next_message() is a simple pointer check. If there's no message, it returns None instantly,
         // so it won't mess up the 8kHz timing.
         if let Some(wait_result) = ctx.fast_config_subscriber.try_next_message()
-            && let embassy_sync::pubsub::WaitResult::Message(fast_config_item) = wait_result
+            && let WaitResult::Message(fast_config_item) = wait_result
         {
             match fast_config_item {
                 FastConfigItem::RollRate(gains) => {

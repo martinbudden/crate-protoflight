@@ -24,11 +24,6 @@ impl Default for BarometerConfig {
 }
 
 impl BarometerConfig {
-    #[cfg(feature = "host")]
-    pub const fn new() -> Self {
-        Self { hardware: BarometerType::Mock }
-    }
-    #[cfg(not(feature = "host"))]
     pub const fn new() -> Self {
         Self { hardware: BarometerType::Default }
     }

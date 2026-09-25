@@ -43,17 +43,17 @@ const _: () =
 impl BlackboxWriterContext {
     const SECTOR_SIZE: usize = 512;
 
-    #[cfg(feature = "host")]
     pub fn new() -> Self {
-        Self { sd_card: MockSdCard::new("blackbox_log.bbl"), sector_buffer: [0u8; Self::SECTOR_SIZE], sector_idx: 0 }
-    }
-    #[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
-    pub fn new() -> Self {
-        Self { spi_device, sector_buffer: [0u8; Self::SECTOR_SIZE], sector_idx: 0 }
-    }
-    #[cfg(feature = "stm32")]
-    pub fn new() -> Self {
-        Self { sector_buffer: [0u8; Self::SECTOR_SIZE], sector_idx: 0 }
+        Self {
+            #[cfg(feature = "host")]
+            sd_card: MockSdCard::new("blackbox_log.bbl"),
+
+            #[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
+            spi_device,
+
+            sector_buffer: [0u8; Self::SECTOR_SIZE],
+            sector_idx: 0,
+        }
     }
 }
 
@@ -90,6 +90,7 @@ pub async fn run(ctx: &'static mut BlackboxWriterContext) {
 }
 
 async fn append_to_sector_buffer(ctx: &mut BlackboxWriterContext, chunk: &[u8]) {
+    core::future::ready(()).await;
     let space_remaining = BlackboxWriterContext::SECTOR_SIZE - ctx.sector_idx;
 
     if chunk.len() <= space_remaining {
@@ -99,6 +100,7 @@ async fn append_to_sector_buffer(ctx: &mut BlackboxWriterContext, chunk: &[u8]) 
         ctx.sector_idx = end;
         // If exactly full, write the sector.
         if ctx.sector_idx == BlackboxWriterContext::SECTOR_SIZE {
+            #[cfg(feature = "host")]
             let _ = ctx.sd_card.write_all(&ctx.sector_buffer).await;
             ctx.sector_idx = 0;
         }
@@ -106,7 +108,10 @@ async fn append_to_sector_buffer(ctx: &mut BlackboxWriterContext, chunk: &[u8]) 
         // Chunk crosses the sector boundary.
         // Fill the remainder of the current sector.
         ctx.sector_buffer[ctx.sector_idx..].copy_from_slice(&chunk[..space_remaining]);
-        let _ = ctx.sd_card.write_all(&ctx.sector_buffer).await;
+        #[cfg(feature = "host")]
+        {
+            _ = ctx.sd_card.write_all(&ctx.sector_buffer).await;
+        }
         // Copy the remainder of the chunk into the new sector.
         let remainder = &chunk[space_remaining..];
         ctx.sector_buffer[..remainder.len()].copy_from_slice(remainder);
@@ -115,13 +120,18 @@ async fn append_to_sector_buffer(ctx: &mut BlackboxWriterContext, chunk: &[u8]) 
 }
 
 async fn flush_sector_buffer(ctx: &mut BlackboxWriterContext) {
+    core::future::ready(()).await;
     if ctx.sector_idx != 0 {
         // Pad the rest of the sector with zeros.
         ctx.sector_buffer[ctx.sector_idx..].fill(0);
-        _ = ctx.sd_card.write_all(&ctx.sector_buffer).await;
+        #[cfg(feature = "host")]
+        {
+            _ = ctx.sd_card.write_all(&ctx.sector_buffer).await;
+        }
         ctx.sector_idx = 0;
     }
 
+    #[cfg(feature = "host")]
     ctx.sd_card.flush().await;
 }
 
