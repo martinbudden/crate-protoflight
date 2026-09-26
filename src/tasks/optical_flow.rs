@@ -68,7 +68,8 @@ pub fn init(optical_flow: OpticalFlow) -> &'static mut OpticalFlowContext {
 /// Optical flow Task Placeholder.
 #[embassy_executor::task]
 pub async fn run(ctx: &'static mut OpticalFlowContext) {
-    let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(50));
+    const TASK_FREQUENCY_HZ: u64 = 50;
+    let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(TASK_FREQUENCY_HZ));
     let mut loop_count: u32 = 0;
 
     log::info!("OPTICAL_FLOW: task started");

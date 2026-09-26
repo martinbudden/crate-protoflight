@@ -10,6 +10,7 @@ use crate::{
     autopilot::Autopilot,
     flight::RxMessage,
     tasks::{
+        failsafe::{FailsafeSubscriber, failsafe_subscriber},
         gyro_pid::{GyroPidReceiver, gyro_pid_receiver},
         rx::{RxMessageReceiver, rx_message_receiver},
     },
@@ -55,6 +56,7 @@ pub fn autopilot_receiver() -> AutopilotReceiver {
 pub struct AutopilotContext {
     pub gyro_pid_receiver: GyroPidReceiver,
     pub rx_receiver: RxMessageReceiver,
+    pub failsafe_subscriber: FailsafeSubscriber,
     pub autopilot_sender: AutopilotSender,
     pub autopilot: Autopilot,
     #[cfg(feature = "barometer")]
@@ -74,6 +76,7 @@ impl AutopilotContext {
         Self {
             gyro_pid_receiver :gyro_pid_receiver(),
             rx_receiver:rx_message_receiver(),
+            failsafe_subscriber: failsafe_subscriber(),
             autopilot_sender:autopilot_sender(),
             autopilot: Autopilot::new(),
             #[cfg(feature = "barometer")] barometer_subscriber:barometer_subscriber(),
@@ -109,6 +112,8 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
         #[cfg(any(feature = "barometer", feature = "gps", feature = "optical_flow", feature = "rangefinder"))]
         {
             if let Some(gyro_pid_message) = ctx.gyro_pid_receiver.try_get() {
+                use embassy_sync::pubsub::WaitResult;
+
                 let vertical_acceleration = gyro_pid_message.acc.z;
 
                 ctx.autopilot.altitude_kalman_filter.predict(vertical_acceleration, delta_t);
@@ -123,6 +128,9 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
                             | rc_modes.test(RcMode::GPS_RESCUE)
                             | rc_modes.test(RcMode::AUTOPILOT);
                     }
+                }
+                if let Some(WaitResult::Message(failsafe_message)) = ctx.failsafe_subscriber.try_next_message() {
+                    _ = failsafe_message;
                 }
                 if altitude_hold {
                     let altitude = ctx.autopilot.altitude_kalman_filter.pos();

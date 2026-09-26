@@ -232,7 +232,7 @@ pub async fn run(ctx: &'static mut GyroPidContext<BoardImu>) {
                     ctx.rc_controls.yaw_stick_dps,
                     ctx.rc_controls.throttle_stick,
                 ];
-                setpoint_message.failsafe_phase = ctx.rc_controls.failsafe;
+                // TODO: setpoint_message.failsafe_phase = ctx.rc_controls.failsafe;
                 ctx.setpoint_sender.send(setpoint_message);
             }
         }

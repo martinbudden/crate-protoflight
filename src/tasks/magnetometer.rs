@@ -69,7 +69,8 @@ pub fn init(magnetometer: Magnetometer) -> &'static mut MagnetometerContext {
 /// Magnetometer Task Placeholder.
 #[embassy_executor::task]
 pub async fn run(ctx: &'static mut MagnetometerContext) {
-    let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(40));
+    const TASK_FREQUENCY_HZ: u64 = 40;
+    let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(TASK_FREQUENCY_HZ));
     let mut loop_count: u32 = 0;
 
     log::info!("MAGNETOMETER: task started");

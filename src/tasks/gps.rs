@@ -99,7 +99,8 @@ pub fn init(uart_rx: GpsUartRx, uart_tx: GpsUartTx, gps_provider: GpsProvider) -
 /// GPS Task Placeholder.
 #[embassy_executor::task]
 pub async fn run(ctx: &'static mut GpsContext) {
-    let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(10));
+    const TASK_FREQUENCY_HZ: u64 = 10;
+    let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(TASK_FREQUENCY_HZ));
     let mut loop_count: u32 = 0;
 
     log::info!("         GPS: task started");

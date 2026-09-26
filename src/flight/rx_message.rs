@@ -1,5 +1,6 @@
+use radio_controllers::RxChannelsLinkStatus;
 #[allow(unused)]
-use radio_controllers::{Rates, RcModes, RcSticks, RxFrame};
+use radio_controllers::{Rates, RcModes, RcSticks, RxFrame, RxLinkStatus};
 use simple_bitset::BitSet64;
 
 /// Message for communicating a radio control command between tasks.<br><br>
@@ -14,7 +15,8 @@ pub struct RcControls {
     pub roll_stick_degrees: f32,
     pub pitch_stick_degrees: f32,
     pub controls_pwm: [u16; 4],
-    pub failsafe: u8,
+    pub link_status: RxLinkStatus,
+    pub rssi: u8,
 }
 const _: () = assert!(core::mem::size_of::<RcControls>() == 40);
 
@@ -35,7 +37,8 @@ impl RcControls {
             roll_stick_degrees: 0.0,
             pitch_stick_degrees: 0.0,
             controls_pwm: [0u16; 4],
-            failsafe: 0,
+            link_status: RxLinkStatus::Ok,
+            rssi: 0,
         }
     }
 }
@@ -63,9 +66,14 @@ impl RxMessage {
 
 impl RxMessage {
     /// Create a `RadioControlMessage` from an `RxFrame`, applying rates and including `RcModes`.
-    pub fn new_from(rx_frame: &RxFrame, rates: &Rates, rc_modes: &RcModes, tick_count: u32, failsafe: u8) -> RxMessage {
+    pub fn new_from(
+        rx_channels_link_status: &RxChannelsLinkStatus,
+        rates: &Rates,
+        rc_modes: &RcModes,
+        tick_count: u32,
+    ) -> RxMessage {
         // get the stick values from the rx_frame.
-        let sticks = RcSticks::from(*rx_frame);
+        let sticks = RcSticks::from(rx_channels_link_status.channels);
 
         // apply rates to the stick values.
         let roll_stick_dps = rates.apply(Rates::ROLL, sticks.roll);
@@ -79,6 +87,13 @@ impl RxMessage {
         // Get the rc_modes (eg altitude hold, gps home) (used by the autopilot),
         // and the stabilization mode (eg STABILIZATION_MODE_RATE) (used by the flight controller).
 
+        let controls_pwm = [
+            rx_channels_link_status.channels[0],
+            rx_channels_link_status.channels[1],
+            rx_channels_link_status.channels[2],
+            rx_channels_link_status.channels[3],
+        ];
+        let link_status = rx_channels_link_status.link_status;
         RxMessage {
             rc_modes: rc_modes.active_modes,
             rc_controls: RcControls {
@@ -90,9 +105,10 @@ impl RxMessage {
                 yaw_stick_dps,
                 roll_stick_degrees,
                 pitch_stick_degrees,
-                controls_pwm: [rx_frame.channels[0], rx_frame.channels[1], rx_frame.channels[2], rx_frame.channels[3]],
+                controls_pwm,
 
-                failsafe,
+                link_status,
+                rssi: 0,
             },
         }
     }

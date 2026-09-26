@@ -127,6 +127,7 @@ pub async fn init(spawner: Spawner) {
     } else {
         None
     };
+    let failsafe_ctx = if rx_ctx.is_some() { Some(tasks::failsafe::init(&config.failsafe)) } else { None };
 
     // TODO: Initialize the MSP task context with the UART provided by the Board Support Package.
     #[cfg(feature = "msp")]
@@ -184,7 +185,7 @@ pub async fn init(spawner: Spawner) {
     let realtime_spawner = board.realtime_spawner;
     let gyro_pid_spawner = board.gyro_pid_spawner;
     let background_spawner = board.background_spawner;
-    let board = ();
+    let board = (); // so we don't inadvertently use board.
 
     #[allow(clippy::expect_used)]
     {
@@ -212,6 +213,13 @@ pub async fn init(spawner: Spawner) {
     // ======================================================
     // Spawn the background tasks.
     // ======================================================
+
+    // Run the failsafe task if its context was created.
+    if let Some(failsafe_ctx) = failsafe_ctx
+        && let Ok(failsafe_task) = tasks::failsafe::run(failsafe_ctx)
+    {
+        background_spawner.spawn(failsafe_task);
+    }
 
     // Always try and spawn the Autopilot, since if we have any sensors at all enabled it can probably
     // perform some sort of assistance.

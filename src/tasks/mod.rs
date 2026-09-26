@@ -11,6 +11,7 @@ mod barometer;
 mod battery;
 mod blackbox_encoder;
 mod blackbox_writer;
+mod failsafe;
 mod gps;
 mod gyro_pid;
 mod init;

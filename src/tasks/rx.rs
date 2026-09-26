@@ -4,7 +4,7 @@ use embassy_sync::{
     watch::{Receiver, Sender, Watch},
 };
 
-use radio_controllers::{Radio, Rates, RatesConfig, RcModes, RxConfig, RxRadio};
+use radio_controllers::{Radio, Rates, RatesConfig, RcModes, RxConfig, RxFrame, RxLinkStatus, RxRadio};
 use static_cell::StaticCell;
 
 use crate::{
@@ -14,12 +14,13 @@ use crate::{
         fast_config_publisher,
     },
     flight::{RcAdjustments, RxMessage},
+    tasks::failsafe::{FailsafeSubscriber, failsafe_subscriber},
 };
 
 static RX_CTX: StaticCell<RxContext> = StaticCell::new();
 
 // Note, we use a `Watch` rather than a `Signal` since the receiver (`gyro_pid` task) uses `try_changed` to see if the value has changed.
-const RX_WATCH_COUNT: usize = 3;
+const RX_WATCH_COUNT: usize = 4;
 static RX_WATCH: Watch<CriticalSectionRawMutex, RxMessage, RX_WATCH_COUNT> = Watch::new();
 
 type RxMessageSender = Sender<'static, CriticalSectionRawMutex, RxMessage, RX_WATCH_COUNT>;
@@ -45,6 +46,7 @@ pub struct RxContext {
     #[allow(unused)]
     pub uart_tx: RadioUartTx,
     pub rx_message_sender: RxMessageSender,
+    pub failsafe_subscriber: FailsafeSubscriber,
     pub config_subscriber: ConfigSubscriber,
     /// To publish in-flight adjustments.
     pub config_publisher: ConfigPublisher,
@@ -69,6 +71,7 @@ impl RxContext {
             uart_rx,
             uart_tx,
             rx_message_sender: rx_message_sender(),
+            failsafe_subscriber: failsafe_subscriber(),
             config_subscriber: config_subscriber(),
             config_publisher: config_publisher(),
             fast_config_publisher: fast_config_publisher(),
@@ -107,47 +110,60 @@ pub async fn run(ctx: &'static mut RxContext) {
 
     loop {
         // Fetch data from UART
+        // TODO: add timeout to read_packet in RX task.
         if let Ok(n) = ctx.read_packet().await {
             // Process the buffer byte-by-byte
             for &byte in &ctx.buf[..n] {
                 // If a frame completes, process it immediately inside the stream
-                if ctx.radio.on_byte_received(byte) {
-                    let rx_frame = ctx.radio.rx_frame();
+                if let Some(rx_frame) = ctx.radio.on_byte_received(byte) {
+                    let rx_message = match rx_frame {
+                        // Update rc_modes from the rx_frame that has just come in from the radio.
+                        RxFrame::ChannelsLink { channels_link: mut channels_link_status } => {
+                            ctx.rc_modes.update_activated_modes(&channels_link_status.channels);
+                            if channels_link_status.link_status == RxLinkStatus::Failsafe {
+                                channels_link_status.channels.set_channels_to_failsafe_values();
+                            }
+
+                            Some(RxMessage::new_from(&channels_link_status, &ctx.rates, &ctx.rc_modes, loop_count))
+                        }
+                        //RxFrame::LinkStatisticsTx { rssi_dbm, rssi_percent, link_quality, snr } => {},
+                        //RxFrame::Battery { voltage, current } => todo!(),
+                        //RxFrame::Heartbeat() => todo!(),
+                        //RxFrame::Unknown { frame_type } => todo!(),
+                        _ => None,
+                    };
 
                     // TODO: we need to do some failsafe checking here.
-                    let failsafe = 0;
+                    if let Some(WaitResult::Message(failsafe_message)) = ctx.failsafe_subscriber.try_next_message() {
+                        _ = failsafe_message;
+                    }
 
-                    // Fix 2: Flatten let-chains for Stable Rust compatibility
                     if let Some(WaitResult::Message(ConfigItem::Rates(rates_config))) =
                         ctx.config_subscriber.try_next_message()
                     {
                         ctx.rates.set(rates_config);
                     }
 
-                    // Update rc_modes from the rx_frame that has just come in from the radio.
-                    ctx.rc_modes.update_activated_modes(&rx_frame);
-
                     // Note: Ensure this .await does not introduce excessive latency to the UART parser loop
                     ctx.rc_adjustments.process_adjustments(&ctx.config_publisher, &ctx.fast_config_publisher).await;
 
-                    let mut rx_message =
-                        RxMessage::new_from(&rx_frame, &ctx.rates, &ctx.rc_modes, loop_count, failsafe);
-
-                    #[cfg(feature = "autopilot")]
-                    if let Some(autopilot_message) = ctx.autopilot_receiver.try_changed() {
-                        use radio_controllers::RcMode;
-                        if ctx.rc_modes.is_mode_active(RcMode::ALTITUDE_HOLD) {
-                            rx_message.rc_controls.throttle_stick = autopilot_message.rc_controls.throttle_stick;
-                        } else if ctx.rc_modes.is_mode_active(RcMode::POSITION_HOLD)
-                            || ctx.rc_modes.is_mode_active(RcMode::GPS_RESCUE)
-                            || ctx.rc_modes.is_mode_active(RcMode::AUTOPILOT)
-                        {
-                            rx_message.rc_controls = autopilot_message.rc_controls;
-                        }
-                    }
-
                     // Send the rx message to the gyro_pid task.
-                    ctx.rx_message_sender.send(rx_message);
+                    if let Some(mut rx_message) = rx_message {
+                        #[cfg(feature = "autopilot")]
+                        if let Some(autopilot_message) = ctx.autopilot_receiver.try_changed() {
+                            use radio_controllers::RcMode;
+                            if ctx.rc_modes.is_mode_active(RcMode::ALTITUDE_HOLD) {
+                                rx_message.rc_controls.throttle_stick = autopilot_message.rc_controls.throttle_stick;
+                            } else if ctx.rc_modes.is_mode_active(RcMode::POSITION_HOLD)
+                                || ctx.rc_modes.is_mode_active(RcMode::GPS_RESCUE)
+                                || ctx.rc_modes.is_mode_active(RcMode::AUTOPILOT)
+                            {
+                                rx_message.rc_controls = autopilot_message.rc_controls;
+                            }
+                        }
+
+                        ctx.rx_message_sender.send(rx_message);
+                    }
 
                     if loop_count.is_multiple_of(10) {
                         log::info!("              RX:       loop {loop_count}");
@@ -187,7 +203,7 @@ impl RxContext {
     }
 }
 
-// Crucial: This trait enables the partial-read streaming behavior
+/*// Crucial: This trait enables the partial-read streaming behavior
 // that returns a usize count of whatever bytes are currently waiting.
 #[cfg(feature = "rp235xa")]
 use {
@@ -248,3 +264,4 @@ pub async fn ibus_hybrid_dma_task(mut radio: Radio, mut uart_rx: BufferedRadioUa
         }
     }
 }
+*/

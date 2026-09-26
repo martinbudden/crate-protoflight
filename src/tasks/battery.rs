@@ -67,7 +67,8 @@ pub fn init() -> &'static mut BatteryContext {
 ///
 #[embassy_executor::task]
 pub async fn run(ctx: &'static mut BatteryContext) {
-    let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(50));
+    const TASK_FREQUENCY_HZ: u64 = 10;
+    let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(TASK_FREQUENCY_HZ));
     let mut loop_count: u32 = 0;
 
     log::info!("     BATTERY: task started");
