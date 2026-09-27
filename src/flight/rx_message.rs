@@ -1,4 +1,4 @@
-use radio_controllers::RxChannelsLinkStatus;
+use radio_controllers::RxChannels;
 #[allow(unused)]
 use radio_controllers::{Rates, RcModes, RcSticks, RxFrame, RxLinkStatus};
 use simple_bitset::BitSet64;
@@ -67,13 +67,15 @@ impl RxMessage {
 impl RxMessage {
     /// Create a `RadioControlMessage` from an `RxFrame`, applying rates and including `RcModes`.
     pub fn new_from(
-        rx_channels_link_status: &RxChannelsLinkStatus,
+        rx_channels: &RxChannels,
+        rx_link_status: RxLinkStatus,
         rates: &Rates,
         rc_modes: &RcModes,
         tick_count: u32,
     ) -> RxMessage {
         // get the stick values from the rx_frame.
-        let sticks = RcSticks::from(rx_channels_link_status.channels);
+        // TODO: fix this RcSticks dereference.
+        let sticks = RcSticks::from(*rx_channels);
 
         // apply rates to the stick values.
         let roll_stick_dps = rates.apply(Rates::ROLL, sticks.roll);
@@ -87,13 +89,8 @@ impl RxMessage {
         // Get the rc_modes (eg altitude hold, gps home) (used by the autopilot),
         // and the stabilization mode (eg STABILIZATION_MODE_RATE) (used by the flight controller).
 
-        let controls_pwm = [
-            rx_channels_link_status.channels[0],
-            rx_channels_link_status.channels[1],
-            rx_channels_link_status.channels[2],
-            rx_channels_link_status.channels[3],
-        ];
-        let link_status = rx_channels_link_status.link_status;
+        let controls_pwm = [rx_channels[0], rx_channels[1], rx_channels[2], rx_channels[3]];
+        let link_status = rx_link_status;
         RxMessage {
             rc_modes: rc_modes.active_modes,
             rc_controls: RcControls {

@@ -118,13 +118,13 @@ pub async fn run(ctx: &'static mut RxContext) {
                 if let Some(rx_frame) = ctx.radio.on_byte_received(byte) {
                     let rx_message = match rx_frame {
                         // Update rc_modes from the rx_frame that has just come in from the radio.
-                        RxFrame::ChannelsLink { channels_link: mut channels_link_status } => {
-                            ctx.rc_modes.update_activated_modes(&channels_link_status.channels);
-                            if channels_link_status.link_status == RxLinkStatus::Failsafe {
-                                channels_link_status.channels.set_channels_to_failsafe_values();
+                        RxFrame::ChannelsLinkStatus { mut channels, link_status } => {
+                            ctx.rc_modes.update_activated_modes(&channels);
+                            if link_status == RxLinkStatus::Failsafe {
+                                channels.set_channels_to_failsafe_values();
                             }
 
-                            Some(RxMessage::new_from(&channels_link_status, &ctx.rates, &ctx.rc_modes, loop_count))
+                            Some(RxMessage::new_from(&channels, link_status, &ctx.rates, &ctx.rc_modes, loop_count))
                         }
                         //RxFrame::LinkStatisticsTx { rssi_dbm, rssi_percent, link_quality, snr } => {},
                         //RxFrame::Battery { voltage, current } => todo!(),

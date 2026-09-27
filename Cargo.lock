@@ -2005,7 +2005,7 @@ dependencies = [
 [[package]]
 name = "radio-controllers"
 version = "0.1.7"
-source = "git+https://github.com/martinbudden/crate-radio-controllers#ddca8640ddbab56a8940ac01166a244cd901dc3b"
+source = "git+https://github.com/martinbudden/crate-radio-controllers#9f5cf58730d91d07eb2e22f8dc5a795260c8ea38"
 dependencies = [
  "postcard",
  "rustc_version 0.4.1",
@@ -2785,7 +2785,7 @@ dependencies = [
 [[package]]
 name = "vqm"
 version = "0.1.16"
-source = "git+https://github.com/martinbudden/crate-vector-quaternion-matrix#35e0bf1ff7dacb7125c31d145023fab98f518839"
+source = "git+https://github.com/martinbudden/crate-vector-quaternion-matrix#c320be9b4b1543f67d14933d95369b9d5735af23"
 dependencies = [
  "cfg-if",
  "derive_more",
