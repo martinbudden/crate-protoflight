@@ -4,14 +4,14 @@ use embassy_sync::{
     watch::{Receiver, Sender, Watch},
 };
 
-use radio_controllers::{Radio, Rates, RatesConfig, RcModes, RxConfig, RxFrame, RxLinkStatus, RxRadio};
+use radio_controllers::{Radio, Rates, RatesConfig, RcModes, RxFrame, RxLinkStatus};
 use static_cell::StaticCell;
 
 use crate::{
     boards::{RadioUartRx, RadioUartTx},
     config::{
-        ConfigItem, ConfigPublisher, ConfigSubscriber, FastConfigPublisher, config_publisher, config_subscriber,
-        fast_config_publisher,
+        ConfigItem, ConfigPublisher, ConfigSubscriber, FastConfigPublisher, RxConfig, config_publisher,
+        config_subscriber, fast_config_publisher,
     },
     flight::{RcAdjustments, RxMessage},
     tasks::failsafe::{FailsafeSubscriber, failsafe_subscriber},
@@ -76,7 +76,7 @@ impl RxContext {
             config_publisher: config_publisher(),
             fast_config_publisher: fast_config_publisher(),
             rates: Rates::new(rates_config),
-            rc_modes: RcModes::with_mac_arm(),
+            rc_modes: RcModes::new().with_mac_arm(),
             rc_adjustments: RcAdjustments::new(),
             buf: [0u8; Self::BUF_SIZE],
 
@@ -152,11 +152,11 @@ pub async fn run(ctx: &'static mut RxContext) {
                         #[cfg(feature = "autopilot")]
                         if let Some(autopilot_message) = ctx.autopilot_receiver.try_changed() {
                             use radio_controllers::RcMode;
-                            if ctx.rc_modes.is_mode_active(RcMode::ALTITUDE_HOLD) {
+                            if ctx.rc_modes.is_mode_active(RcMode::AltitudeHold) {
                                 rx_message.rc_controls.throttle_stick = autopilot_message.rc_controls.throttle_stick;
-                            } else if ctx.rc_modes.is_mode_active(RcMode::POSITION_HOLD)
-                                || ctx.rc_modes.is_mode_active(RcMode::GPS_RESCUE)
-                                || ctx.rc_modes.is_mode_active(RcMode::AUTOPILOT)
+                            } else if ctx.rc_modes.is_mode_active(RcMode::PositionHold)
+                                || ctx.rc_modes.is_mode_active(RcMode::GpsRescue)
+                                || ctx.rc_modes.is_mode_active(RcMode::Autopilot)
                             {
                                 rx_message.rc_controls = autopilot_message.rc_controls;
                             }

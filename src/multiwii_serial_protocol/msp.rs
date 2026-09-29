@@ -1,4 +1,4 @@
-use radio_controllers::{Rates, RcMode, RcModes};
+use radio_controllers::{ModeActivationConditions, Rates, RcMode, RcModeDescriptor, RcModeLogic, RxChannel};
 use stream_buf::{StreamBufReader, StreamBufWriter};
 use vqm::Quaternion;
 
@@ -10,7 +10,10 @@ use {
     serde::{Deserialize, Serialize},
 };
 
-use crate::config::{ConfigItem, ConfigPublisher, FastConfigItem, FastConfigPublisher, GLOBAL_CONFIG};
+use crate::config::{
+    ConfigItem, ConfigPublisher, FailsafeProcedure, FailsafeSwitchMode, FastConfigItem, FastConfigPublisher,
+    GLOBAL_CONFIG,
+};
 
 #[cfg(feature = "barometer")]
 use crate::barometer_sensors::BarometerType;
@@ -274,7 +277,7 @@ impl Msp {
         MspResult::Ack
     }
     async fn set_feature_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
-        // Check if enough data is even present before locking anything
+        // Check if enough data is present before locking anything
         if src.bytes_remaining() < 4 {
             return MspResult::Error;
         }
@@ -294,10 +297,12 @@ impl Msp {
             let global_config = GLOBAL_CONFIG.lock().await;
             global_config.rc_modes
         };
-        for mac in rc_modes.macs {
-            let Some(rc_mode) = RcMode::find_rc_mode_by_id(mac.mode_id) else { return MspResult::CmdUnknown };
+        for mac in rc_modes.macs.into_iter().flatten() {
+            let Some(rc_mode) = RcModeDescriptor::find_rc_mode_by_id(mac.mode_id) else {
+                return MspResult::CmdUnknown;
+            };
             dst.write_u8(rc_mode.permanent_id);
-            dst.write_u8(mac.aux_channel_index);
+            dst.write_u8(mac.channel as u8);
             dst.write_u8(mac.range.start);
             dst.write_u8(mac.range.end);
         }
@@ -308,11 +313,15 @@ impl Msp {
             let global_config = GLOBAL_CONFIG.lock().await;
             global_config.rc_modes
         };
-        for mac in rc_modes.macs {
-            let Some(rc_mode) = RcMode::find_rc_mode_by_id(mac.mode_id) else { return MspResult::CmdUnknown };
-            let Some(linked_mode) = RcMode::find_rc_mode_by_id(mac.mode_id) else { return MspResult::CmdUnknown };
+        for mac in rc_modes.macs.into_iter().flatten() {
+            let Some(rc_mode) = RcModeDescriptor::find_rc_mode_by_id(mac.mode_id) else {
+                return MspResult::CmdUnknown;
+            };
+            let Some(linked_mode) = RcModeDescriptor::find_rc_mode_by_id(mac.mode_id) else {
+                return MspResult::CmdUnknown;
+            };
             dst.write_u8(rc_mode.permanent_id);
-            dst.write_u8(mac.mode_logic);
+            dst.write_u8(mac.mode_logic as u8);
             dst.write_u8(linked_mode.permanent_id);
         }
         MspResult::Ack
@@ -325,29 +334,32 @@ impl Msp {
         let mut rc_modes = global_config.rc_modes;
 
         let mac_index = usize::from(src.read_u8());
-        if mac_index >= RcModes::MAX_MODE_ACTIVATION_CONDITION_COUNT {
+        if mac_index >= ModeActivationConditions::COUNT {
             return MspResult::Error;
         }
         let rc_mode_id = src.read_u8();
-        let Some(rc_mode) = RcMode::find_rc_mode_by_id(rc_mode_id) else { return MspResult::CmdUnknown };
+        let rc_mode = RcMode::from_u8(rc_mode_id);
+        let Some(rc_mode) = RcModeDescriptor::find_rc_mode_by_id(rc_mode) else { return MspResult::CmdUnknown };
 
-        let mut mac = rc_modes.mac(mac_index);
-        mac.mode_id = rc_mode.id;
-        mac.aux_channel_index = src.read_u8();
-        mac.range.start = src.read_u8();
-        mac.range.end = src.read_u8();
+        let mac = rc_modes.mac(mac_index);
+        if let Some(mut mac) = mac {
+            mac.mode_id = rc_mode.id;
+            mac.channel = RxChannel::from_u8(src.read_u8());
+            mac.range.start = src.read_u8();
+            mac.range.end = src.read_u8();
 
-        if src.bytes_remaining() >= 2 {
-            mac.mode_logic = src.read_u8();
-            let linked_to_index = src.read_u8();
-            let link = RcMode::find_rc_mode_by_permanent_id(linked_to_index);
-            if let Some(rc_mode) = link {
-                mac.linked_to = rc_mode.id;
+            if src.bytes_remaining() >= 2 {
+                mac.mode_logic = RcModeLogic::from_u8(src.read_u8());
+                let linked_to_index = src.read_u8();
+                let link = RcModeDescriptor::find_rc_mode_by_permanent_id(linked_to_index);
+                if let Some(rc_mode) = link {
+                    mac.linked_to = rc_mode.id as u8;
+                }
             }
-        }
 
-        rc_modes.set_mac(mac_index, mac);
-        rc_modes.analyze_macs();
+            rc_modes.set_mac(mac_index, mac);
+            rc_modes.analyze_macs();
+        }
 
         if rc_modes != global_config.rc_modes {
             global_config.rc_modes = rc_modes;
@@ -657,9 +669,9 @@ impl Msp {
         config.delay_deciseconds = src.read_u8();
         config.landing_time_seconds = src.read_u8();
         config.throttle_pwm = src.read_u16();
-        config.switch_mode = radio_controllers::FailsafeSwitchMode::from_u8(src.read_u8());
+        config.switch_mode = FailsafeSwitchMode::from_u8(src.read_u8());
         config.throttle_low_delay_deciseconds = src.read_u16();
-        config.procedure = radio_controllers::FailsafeProcedure::from_u8(src.read_u8());
+        config.procedure = FailsafeProcedure::from_u8(src.read_u8());
 
         if config != global_config.failsafe {
             global_config.failsafe = config;

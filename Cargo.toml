@@ -274,7 +274,7 @@ postcard = { version = "1.1.3", default-features = false, features = ["embedded-
 sequential-storage = { version = "8.0.1", default-features = false, optional = true, features = ["postcard"] }
 embedded-storage-async = { version = "0.4.1", default-features = false }
 # In-memory storage simulator
-embedded-storage-file = { version = "0.2.0", default-features = false, optional = true }
+embedded-storage-file = { version = "0.3.0", default-features = false, optional = true }
 
 simple-bitset = { version = "0.1.7", default-features = false }
 #simple-bitset = { git = "https://github.com/martinbudden/crate-simple-bitset" }
@@ -297,8 +297,8 @@ sensor-fusion = { git = "https://github.com/martinbudden/crate-sensor-fusion" }
 blackbox-logger = { git = "https://github.com/martinbudden/crate-blackbox-logger", default-features = false, optional = true }
 #blackbox-logger = { path = "../blackbox-logger", default-features = false, optional = true }
 
-#dshot-codec = { version = "0.1.0", default-features = false }
-dshot-codec = { git = "https://github.com/martinbudden/crate-dshot-codec", default-features = false }
+dshot-codec = { version = "0.1.0", default-features = false }
+#dshot-codec = { git = "https://github.com/martinbudden/crate-dshot-codec", default-features = false }
 #dshot-codec = { path = "../dshot-codec", default-features = false  }
 
 #motor-mixers = { version = "0.1.6", default-features = false }

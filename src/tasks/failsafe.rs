@@ -4,10 +4,11 @@ use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex,
     pubsub::{PubSubChannel, Publisher, Subscriber},
 };
-use radio_controllers::{FailsafeConfig, RxFrame, RxLinkStatus};
+use radio_controllers::{RxFrame, RxLinkStatus};
 use static_cell::StaticCell;
 
 use crate::{
+    config::FailsafeConfig,
     flight::RxMessage,
     tasks::rx::{RxMessageReceiver, rx_message_receiver},
 };
@@ -121,6 +122,17 @@ impl FailsafeMessage {
         Self { state: FailsafeState::default() }
     }
 }
+
+/*
+pub const DISARMED: u8 = 0;
+pub const IDLE: u8 = 1;
+pub const RX_LOSS_DETECTED: u8 = 2;
+pub const RX_LOSS_MONITORING: u8 = 3;
+pub const RX_LOSS_RECOVERED: u8 = 4;
+pub const LANDING: u8 = 5;
+pub const LANDED: u8 = 6;
+pub const GPS_RESCUE: u8 = 7;
+*/
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum FailsafeState {

@@ -6,12 +6,14 @@ use embassy_sync::{
 
 use imu_sensors::ImuDeviceConfig;
 use motor_mixers::{MixerConfig, MotorConfig, MotorDeviceConfig};
-use radio_controllers::{FailsafeConfig, RatesConfig, RcControlsConfig, RcModes, RxConfig};
+use radio_controllers::{RatesConfig, RcModes};
 
 use crate::{
     autopilot::{AutopilotConfig, PositionHoldConfig},
     battery_sensors::{CurrentSensorAdcConfig, CurrentSensorVirtualConfig},
-    config::{ImuConfig, SensorFlags, SystemConfig, profiles::SchemaVersion},
+    config::{
+        FailsafeConfig, ImuConfig, RcControlsConfig, RxConfig, SensorFlags, SystemConfig, profiles::SchemaVersion,
+    },
     flight::{
         AntiGravityConfig, ArmingConfig, CrashFlipConfig, CrashRecoveryConfig, DMaxConfig, FeatureFlags,
         FlightControllerFiltersConfig, GyroConfig, ImuFilterBankConfig, PidConfig, TpaConfig, YawSpinRecoveryConfig,
