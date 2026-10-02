@@ -1,5 +1,5 @@
 #![allow(unused)]
-use pidsk_controller::{PidControllerf32, PidGainsf32};
+use pidsk_controller::PidControllerf32;
 
 /// ```text
 /// [Target Position (X, Y)]
@@ -48,7 +48,7 @@ impl XyPositionDualRingPid {
         Self {
             position_pid: PidControllerf32::new(),
             // Inner loop: P for reactivity, I for wind correction, D for braking
-            speed_pid: PidControllerf32::new().with_gains(PidGainsf32::new().with_kp(0.15).with_ki(0.02).with_kd(0.01)),
+            speed_pid: PidControllerf32::new().with_kp(0.15).with_ki(0.02).with_kd(0.01),
             max_speed_setpoint_mps: 100.0,
         }
     }

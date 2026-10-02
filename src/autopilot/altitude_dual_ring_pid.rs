@@ -1,4 +1,4 @@
-use pidsk_controller::{PidControllerf32, PidGainsf32};
+use pidsk_controller::PidControllerf32;
 use vqm::Quaternionf32;
 
 /// Altitude hold uses a standard **Dual-Ring Cascaded PID Loop**.
@@ -80,7 +80,7 @@ impl AltitudeDualRingPid {
             // Initialize velocity controller (Inner Loop)
             // Highly reactive: utilizes kp, ki, and kd.
             // TODO: check default PID gains.
-            speed_pid: PidControllerf32::new().with_gains(PidGainsf32::new().with_kp(2.5).with_ki(0.05).with_kd(0.05)),
+            speed_pid: PidControllerf32::new().with_kp(2.5).with_ki(0.05).with_kd(0.05),
             max_vertical_speed_mps: 10.0, // = 36.0 km/h, effectively unlimited
             max_throttle_adjustment: 1.0, // effectively unlimited
             hover_throttle,
@@ -113,7 +113,7 @@ impl AltitudeDualRingPid {
         // --- STEP 1: Altitude Loop ---
         let vertical_speed_setpoint = self
             .altitude_pid
-            .update_sp(altitude) // just call update_sp, since ki and kd are zero.
+            .update_p(altitude) // just call update_p, since ks, ki, kd, and kk are zero.
             .clamp(-self.max_vertical_speed_mps, self.max_vertical_speed_mps);
 
         // --- STEP 2: Vertical Speed Loop ---
@@ -150,6 +150,7 @@ mod tests {
     #![allow(clippy::float_cmp)]
     use super::*;
     use crate::autopilot::MockMultirotorZ;
+    use pidsk_controller::PidGainsf32;
 
     #[test]
     fn test_new() {

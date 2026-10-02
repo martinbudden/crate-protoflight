@@ -161,10 +161,10 @@ checksum = "3ded4057c258ba199e2d26386d3af3780957ecaee6c4ef4041c6b4b8b97c0b06"
 
 [[package]]
 name = "blackbox-logger"
-version = "0.1.10"
-source = "git+https://github.com/martinbudden/crate-blackbox-logger#124a73f8427e98f6afb31af24577e217338f20e7"
+version = "0.1.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "36de546166b904496628905b42df95c62ba89fc00f899a2fd2a50afaaefbdccd"
 dependencies = [
- "embassy-futures",
  "postcard",
  "rustc_version 0.4.1",
  "sequential-storage",
@@ -586,20 +586,10 @@ dependencies = [
 
 [[package]]
 name = "dshot-codec"
-version = "0.1.0"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "538b525bec1b76c6eb1fa038d8ee3c1d482dfd31dfb4074a4bb14e9c0646551e"
+checksum = "90377f51b9aee71922ec7c24ea8e53be2921c27f1e5bb1398a94424fc23acee9"
 dependencies = [
- "num-traits",
- "rustc_version 0.4.1",
-]
-
-[[package]]
-name = "dshot-codec"
-version = "0.1.0"
-source = "git+https://github.com/martinbudden/crate-dshot-codec#76c31f17b7ebfaa2279228d3478932b67952d5cd"
-dependencies = [
- "num-traits",
  "rustc_version 0.4.1",
 ]
 
@@ -1643,9 +1633,9 @@ dependencies = [
 [[package]]
 name = "motor-mixers"
 version = "0.1.6"
-source = "git+https://github.com/martinbudden/crate-motor-mixers#9d860772e036b700eed74cd657733a422a0b36c7"
+source = "git+https://github.com/martinbudden/crate-motor-mixers#b79174bd3c564bd1ee36dbdb270552291ab7dace"
 dependencies = [
- "dshot-codec 0.1.0 (git+https://github.com/martinbudden/crate-dshot-codec)",
+ "dshot-codec",
  "embassy-executor",
  "embassy-futures",
  "embassy-rp",
@@ -1807,8 +1797,9 @@ checksum = "5be167a7af36ee22fe3115051bc51f6e6c7054c9348e28deb4f49bd6f705a315"
 
 [[package]]
 name = "pidsk-controller"
-version = "0.1.9"
-source = "git+https://github.com/martinbudden/crate-pid-controller#ca1b27040df3bda194a391a3f0dc81d6886cd018"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51ac60c322cb11bbd8b99e4054b5e19ddb90dc5ffd0073b5fc59a81632b9ba14"
 dependencies = [
  "num-traits",
  "postcard",
@@ -1960,7 +1951,7 @@ dependencies = [
  "defmt",
  "defmt-rtt",
  "derive_more",
- "dshot-codec 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "dshot-codec",
  "embassy-embedded-hal",
  "embassy-executor",
  "embassy-futures",
@@ -2232,8 +2223,9 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "sensor-fusion"
-version = "0.1.10"
-source = "git+https://github.com/martinbudden/crate-sensor-fusion#f90718f6d73dff583348c4849af0558998d8dd2d"
+version = "0.1.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7ccc9b0479e7d24f906e7540754ca292a0a73ce2ae759ced9003b43ed909d97"
 dependencies = [
  "libm",
  "num-traits",
@@ -2243,9 +2235,9 @@ dependencies = [
 
 [[package]]
 name = "sequential-storage"
-version = "8.0.1"
+version = "8.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e750f14f4f6e5a81277c66311713a56106c8df0196df62a634d1fc806556832b"
+checksum = "1550e4d0c7a6a54e2d7884309dc6bfe206d2d8884cb5498177fd936cb233616d"
 dependencies = [
  "embedded-storage-async",
  "postcard",
@@ -2328,9 +2320,9 @@ checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 
 [[package]]
 name = "signal-filters"
-version = "0.1.13"
+version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b074afddaebffb22f6459a23f58958ad9052f343bc77f3e59c280eec0c0884e"
+checksum = "16d5624443f123588dc452e0605f9a31edd2552b7f11a7db0275ccd48ff82713"
 dependencies = [
  "libm",
  "num-traits",
