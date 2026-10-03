@@ -2,7 +2,7 @@
 use pidsk_controller::{PControllerf32, PidControllerf32};
 
 /// ```text
-/// [Target Position (X, Y)]
+/// [Target Position]
 ///       │
 ///       ▼
 ///   ( + / - ) <─── [Current Position]
@@ -12,7 +12,7 @@ use pidsk_controller::{PControllerf32, PidControllerf32};
 /// │ P-Loop    │ (Outer Loop)
 /// └─────┬─────┘
 ///       │
-/// [Target Ground Velocity (Vx, Vy)]
+/// [Target Ground Velocity]
 ///       │
 ///       ▼
 ///   ( + / - ) <─── [Current Ground Velocity]
@@ -31,19 +31,19 @@ use pidsk_controller::{PControllerf32, PidControllerf32};
 /// 2. No Iterm is required because steady-state errors (like wind blowing the aircraft sideways) are handled by the inner speed loop's Iterm.
 ///
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct XyPositionDualRingPid {
+pub struct HorizontalPositionDualRingPid {
     position_pid: PControllerf32,
     speed_pid: PidControllerf32,
     max_speed_mps: f32,
 }
 
-impl Default for XyPositionDualRingPid {
+impl Default for HorizontalPositionDualRingPid {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl XyPositionDualRingPid {
+impl HorizontalPositionDualRingPid {
     pub fn new() -> Self {
         Self {
             position_pid: PControllerf32::new(),

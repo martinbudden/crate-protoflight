@@ -1,7 +1,7 @@
 #![doc = include_str!("README.md")]
 
-mod altitude_dual_ring_pid;
-mod xy_position_dual_ring_pid;
+mod dual_ring_pid_horizontal;
+mod dual_ring_pid_vertical;
 
 mod config;
 mod mock_multirotor;

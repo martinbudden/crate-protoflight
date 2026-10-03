@@ -48,7 +48,7 @@ use vqm::Quaternionf32;
 /// 2. No Iterm is required because steady-state errors (like gravity dragging the aircraft down) are handled by the inner speed loop's Iterm (adjusting throttle bias).
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct AltitudeDualRingPid {
+pub struct MultirotorAltitudeDualRingPid {
     /// Outer Loop: Input: Target Altitude -> Output: Target Vertical Speed.
     altitude_pid: PControllerf32,
     /// Inner Loop: Input: Target Vertical Speed -> Output: Throttle Adjustment.
@@ -62,13 +62,13 @@ pub struct AltitudeDualRingPid {
     hover_throttle: f32,
 }
 
-impl Default for AltitudeDualRingPid {
+impl Default for MultirotorAltitudeDualRingPid {
     fn default() -> Self {
         Self::new(0.0)
     }
 }
 
-impl AltitudeDualRingPid {
+impl MultirotorAltitudeDualRingPid {
     pub fn new(hover_throttle: f32) -> Self {
         Self {
             // Initialize altitude controller (Outer Loop)
@@ -87,7 +87,7 @@ impl AltitudeDualRingPid {
 }
 
 #[allow(unused)]
-impl AltitudeDualRingPid {
+impl MultirotorAltitudeDualRingPid {
     pub fn set_altitude_setpoint(&mut self, altitude_setpoint: f32) {
         self.altitude_pid.set_setpoint(altitude_setpoint);
     }
@@ -138,7 +138,7 @@ mod test_traits {
 
     #[test]
     fn normal_types() {
-        is_full::<AltitudeDualRingPid>();
+        is_full::<MultirotorAltitudeDualRingPid>();
     }
 }
 
@@ -151,12 +151,12 @@ mod tests {
 
     #[test]
     fn test_new() {
-        let _altitude_hold = AltitudeDualRingPid::new(0.0);
+        let _altitude_hold = MultirotorAltitudeDualRingPid::new(0.0);
     }
     #[test]
     fn test_altitude_hold_convergence() {
         let hover_throttle = 0.5; // Steady state mid-point
-        let mut controller = AltitudeDualRingPid::new(hover_throttle);
+        let mut controller = MultirotorAltitudeDualRingPid::new(hover_throttle);
         let mut multirotor = MockMultirotorZ::new(hover_throttle);
 
         // --- BALANCED TUNING FOR UNIT SIMULATION ---
