@@ -5,7 +5,7 @@ use super::{
 };
 
 use motor_mixers::MotorMixer;
-use pidsk_controller::{PidControllerf32, PidGainsf32};
+use pidsk_controller::{PidskControllerf32, PidskGainsf32};
 use radio_controllers::RcMode;
 use signal_filters::{Pt1FilterVector4f32, Pt1Filterf32, UpdateFilter};
 use simple_bitset::BitSet64;
@@ -16,9 +16,9 @@ use vqm::{Quaternionf32, Vector3f32, Vector4f32};
 pub struct FlightController {
     vehicle_controller: VehicleController,
     angle_mode_calculation_state: AngleModeCalculationState,
-    pub pids: [PidControllerf32; Self::PID_COUNT],
+    pub pids: [PidskControllerf32; Self::PID_COUNT],
     // Copy of pid gains, so that gains can be adjusted by anti-gravity and then set back to their original values
-    pub pid_gains: [PidGainsf32; Self::PID_COUNT],
+    pub pid_gains: [PidskGainsf32; Self::PID_COUNT],
     dterm_filters_0: [Pt1Filterf32; Self::PID_COUNT],
     dterm_filters_1: [Pt1Filterf32; Self::PID_COUNT],
     motor_commands_filter: Pt1FilterVector4f32,
@@ -79,8 +79,8 @@ impl FlightController {
         Self {
             vehicle_controller: VehicleController::new(),
             angle_mode_calculation_state: AngleModeCalculationState::new(),
-            pids: [PidControllerf32::new(); Self::PID_COUNT],
-            pid_gains: [PidGainsf32::new(); Self::PID_COUNT],
+            pids: [PidskControllerf32::new(); Self::PID_COUNT],
+            pid_gains: [PidskGainsf32::new(); Self::PID_COUNT],
             dterm_filters_0: [Pt1Filterf32::new(); Self::PID_COUNT],
             dterm_filters_1: [Pt1Filterf32::new(); Self::PID_COUNT],
             motor_commands_filter: Pt1FilterVector4f32::new(),

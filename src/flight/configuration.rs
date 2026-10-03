@@ -1,9 +1,9 @@
 use crate::{flight::FlightController, flight::flight_controller_config::PidConfig};
-use pidsk_controller::PidGainsf32;
+use pidsk_controller::PidskGainsf32;
 
 impl FlightController {
     // Betaflight compatible scale factors.
-    const PID_SCALE_FACTORS: PidGainsf32 = PidGainsf32 {
+    const PID_SCALE_FACTORS: PidskGainsf32 = PidskGainsf32 {
         kp: 0.032_029,
         ki: 0.244_381,
         kd: 0.000_529,
@@ -14,7 +14,7 @@ impl FlightController {
     /// Set the PID gains for the PID with the given index.
     /// Integration is switched off, so that there is no integral windup.
     pub fn set_pid_gains(&mut self, index: usize, pid_config: PidConfig) {
-        let gains = PidGainsf32 {
+        let gains = PidskGainsf32 {
             kp: f32::from(pid_config.kp) * Self::PID_SCALE_FACTORS.kp,
             ki: f32::from(pid_config.ki) * Self::PID_SCALE_FACTORS.ki,
             kd: f32::from(pid_config.kd) * Self::PID_SCALE_FACTORS.kd,

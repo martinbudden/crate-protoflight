@@ -1,5 +1,5 @@
 #![allow(unused)]
-use pidsk_controller::PidControllerf32;
+use pidsk_controller::{PControllerf32, PidControllerf32};
 
 /// ```text
 /// [Target Position (X, Y)]
@@ -32,9 +32,9 @@ use pidsk_controller::PidControllerf32;
 ///
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct XyPositionDualRingPid {
-    position_pid: PidControllerf32,
+    position_pid: PControllerf32,
     speed_pid: PidControllerf32,
-    max_speed_setpoint_mps: f32,
+    max_speed_mps: f32,
 }
 
 impl Default for XyPositionDualRingPid {
@@ -46,10 +46,10 @@ impl Default for XyPositionDualRingPid {
 impl XyPositionDualRingPid {
     pub fn new() -> Self {
         Self {
-            position_pid: PidControllerf32::new(),
+            position_pid: PControllerf32::new(),
             // Inner loop: P for reactivity, I for wind correction, D for braking
             speed_pid: PidControllerf32::new().with_kp(0.15).with_ki(0.02).with_kd(0.01),
-            max_speed_setpoint_mps: 100.0,
+            max_speed_mps: 100.0,
         }
     }
 
@@ -60,10 +60,7 @@ impl XyPositionDualRingPid {
     /// Computes the required acceleration force corrections along a single linear coordinate axis.
     pub fn update(&mut self, current_position: f32, current_velocity: f32, delta_t: f32) -> f32 {
         // Outer Loop Stage: Position Error maps directly to a target speed profile
-        let speed_setpoint = self
-            .position_pid
-            .update(current_position, delta_t)
-            .clamp(-self.max_speed_setpoint_mps, self.max_speed_setpoint_mps);
+        let speed_setpoint = self.position_pid.update(current_position).clamp(-self.max_speed_mps, self.max_speed_mps);
 
         // Inner Loop Stage: Speed Error maps directly to an output tracking Force
         self.speed_pid.set_setpoint(speed_setpoint);

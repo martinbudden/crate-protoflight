@@ -1,4 +1,4 @@
-use pidsk_controller::PidControllerf32;
+use pidsk_controller::{PControllerf32, PidskControllerf32};
 use vqm::Quaternionf32;
 
 /// Altitude hold uses a standard **Dual-Ring Cascaded PID Loop**.
@@ -49,12 +49,11 @@ use vqm::Quaternionf32;
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AltitudeDualRingPid {
-    /// Outer Loop: Inputs Target Altitude -> Output Target Vertical Speed.
-    altitude_pid: PidControllerf32,
-    /// Inner Loop: Input Target Vertical Speed -> Output Throttle Adjustment.
-    speed_pid: PidControllerf32,
+    /// Outer Loop: Input: Target Altitude -> Output: Target Vertical Speed.
+    altitude_pid: PControllerf32,
+    /// Inner Loop: Input: Target Vertical Speed -> Output: Throttle Adjustment.
+    speed_pid: PidskControllerf32,
 
-    // Core parameters
     /// max vertical speed (climb rate), m/s.
     max_vertical_speed_mps: f32,
     /// maximum allowed thrust adjustment.
@@ -72,15 +71,14 @@ impl Default for AltitudeDualRingPid {
 impl AltitudeDualRingPid {
     pub fn new(hover_throttle: f32) -> Self {
         Self {
-            // Initialize height controller (Outer Loop)
+            // Initialize altitude controller (Outer Loop)
             // Only needs Proportional (kp) to map distance error to speed:
             // because the inner loop handles the physics of acceleration,
             // the outer loop only needs Kp to calculate the vertical speed setpoint
-            altitude_pid: PidControllerf32::new(),
-            // Initialize velocity controller (Inner Loop)
-            // Highly reactive: utilizes kp, ki, and kd.
+            altitude_pid: PControllerf32::new(),
+            // Initialize vertical speed controller (Inner Loop)
             // TODO: check default PID gains.
-            speed_pid: PidControllerf32::new().with_kp(2.5).with_ki(0.05).with_kd(0.05),
+            speed_pid: PidskControllerf32::new().with_kp(2.5).with_ki(0.05).with_kd(0.05),
             max_vertical_speed_mps: 10.0, // = 36.0 km/h, effectively unlimited
             max_throttle_adjustment: 1.0, // effectively unlimited
             hover_throttle,
@@ -110,13 +108,11 @@ impl AltitudeDualRingPid {
             // craft is upside down, so cannot make adjustment
             return 0.0;
         }
-        // --- STEP 1: Altitude Loop ---
-        let vertical_speed_setpoint = self
-            .altitude_pid
-            .update_p(altitude) // just call update_p, since ks, ki, kd, and kk are zero.
-            .clamp(-self.max_vertical_speed_mps, self.max_vertical_speed_mps);
+        // Altitude Loop
+        let vertical_speed_setpoint =
+            self.altitude_pid.update(altitude).clamp(-self.max_vertical_speed_mps, self.max_vertical_speed_mps);
 
-        // --- STEP 2: Vertical Speed Loop ---
+        // Vertical Speed Loop
         self.speed_pid.set_setpoint(vertical_speed_setpoint);
 
         // calculate throttle offset, adjusting for tilt angle.
@@ -126,6 +122,7 @@ impl AltitudeDualRingPid {
 
         throttle_offset.clamp(-self.max_throttle_adjustment, self.max_throttle_adjustment)
     }
+
     pub fn reset(&mut self) {
         self.altitude_pid.reset();
         self.speed_pid.reset();
@@ -150,7 +147,7 @@ mod tests {
     #![allow(clippy::float_cmp)]
     use super::*;
     use crate::autopilot::MockMultirotorZ;
-    use pidsk_controller::PidGainsf32;
+    use pidsk_controller::{PGainsf32, PidskGainsf32};
 
     #[test]
     fn test_new() {
@@ -163,9 +160,10 @@ mod tests {
         let mut multirotor = MockMultirotorZ::new(hover_throttle);
 
         // --- BALANCED TUNING FOR UNIT SIMULATION ---
-        controller.altitude_pid.set_gains(PidGainsf32 { kp: 0.29, ki: 0.0, kd: 0.0, ks: 0.0, kk: 0.0 });
+        controller.altitude_pid.set_gains(PGainsf32 { kp: 0.29 });
         // Strong P braking, minor I, strong D damping, no kick.
-        controller.speed_pid.set_gains(PidGainsf32 { kp: 1.0, ki: 0.05, kd: 0.1, ks: 0.0, kk: 0.0 });
+        let gains = PidskGainsf32::new().with_kp(1.0).with_ki(0.05).with_kd(0.1);
+        controller.speed_pid.set_gains(gains);
 
         let altitude_setpoint = 5.0; // Want to climb to 5 meters
         controller.set_altitude_setpoint(altitude_setpoint);

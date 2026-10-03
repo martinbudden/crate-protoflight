@@ -287,7 +287,7 @@ vqm = { version = "0.1.17", default-features = false }
 signal-filters = { version = "0.1.14" }
 #signal-filters = { git = "https://github.com/martinbudden/crate-signal-filters" }
 #signal-filters = { path = "../signal-filters" }
-pidsk-controller = { version = "0.1.10" }
+pidsk-controller = { version = "0.1.11" }
 #pidsk-controller = { git = "https://github.com/martinbudden/crate-pid-controller" }
 #pidsk-controller = { path = "../pidsk-controller" }
 sensor-fusion = { version = "0.1.11" }
