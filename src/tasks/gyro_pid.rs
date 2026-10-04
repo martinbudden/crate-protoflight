@@ -5,6 +5,7 @@ use embassy_sync::{
 };
 use embassy_time::Instant;
 
+use pidsk_controller::PdGainsf32;
 use static_cell::StaticCell;
 
 use imu_sensors::{AccFullScale, AccUnits, GyroFullScale, GyroUnits, ImuDevice};
@@ -247,28 +248,53 @@ pub async fn run(ctx: &'static mut GyroPidContext<BoardImu>) {
         if let Some(wait_result) = ctx.fast_config_subscriber.try_next_message()
             && let WaitResult::Message(fast_config_item) = wait_result
         {
-            match fast_config_item {
-                FastConfigItem::RollRate(gains) => {
-                    ctx.flight_controller.set_pid_gains(FlightController::ROLL_RATE_DPS, gains);
-                }
-                FastConfigItem::PitchRate(gains) => {
-                    ctx.flight_controller.set_pid_gains(FlightController::PITCH_RATE_DPS, gains);
-                }
-                FastConfigItem::YawRate(gains) => {
-                    ctx.flight_controller.set_pid_gains(FlightController::YAW_RATE_DPS, gains);
-                }
-                FastConfigItem::RollAngle(gains) => {
-                    ctx.flight_controller.set_pid_gains(FlightController::ROLL_ANGLE_DEGREES, gains);
-                }
-                FastConfigItem::PitchAngle(gains) => {
-                    ctx.flight_controller.set_pid_gains(FlightController::PITCH_ANGLE_DEGREES, gains);
-                }
-            }
+            adjust_pid_gains(&mut ctx.flight_controller, fast_config_item);
         }
 
         if loop_count.is_multiple_of(1000) {
             log::info!("        GYRO_PID: loop {loop_count}");
         }
         loop_count = loop_count.wrapping_add(1);
+    }
+}
+
+fn adjust_pid_gains(flight_controller: &mut FlightController, fast_config_item: FastConfigItem) {
+    match fast_config_item {
+        FastConfigItem::RollRate(pid_config) => {
+            let gains = FlightController::calculate_gains(pid_config);
+            flight_controller.pid_roll_rate.set_gains(gains);
+            flight_controller.pid_roll_rate.switch_integration_off();
+            flight_controller.pid_roll_rate.set_setpoint(0.0);
+        }
+        FastConfigItem::PitchRate(pid_config) => {
+            let gains = FlightController::calculate_gains(pid_config);
+            flight_controller.pid_pitch_rate.set_gains(gains);
+            flight_controller.pid_pitch_rate.switch_integration_off();
+            flight_controller.pid_pitch_rate.set_setpoint(0.0);
+        }
+        FastConfigItem::YawRate(pid_config) => {
+            let gains = FlightController::calculate_gains(pid_config);
+            flight_controller.pid_yaw_rate.set_gains(gains);
+            flight_controller.pid_yaw_rate.switch_integration_off();
+            flight_controller.pid_yaw_rate.set_setpoint(0.0);
+        }
+        FastConfigItem::RollAngle(pid_config) => {
+            let gains = FlightController::calculate_gains(pid_config);
+            let gains = PdGainsf32 {
+                kp: gains.kp,
+                kd: gains.kd,
+            }; 
+            flight_controller.pid_roll_angle.set_gains(gains);
+            flight_controller.pid_roll_angle.set_setpoint(0.0);
+        }
+        FastConfigItem::PitchAngle(pid_config) => {
+            let gains = FlightController::calculate_gains(pid_config);
+            let gains = PdGainsf32 {
+                kp: gains.kp,
+                kd: gains.kd,
+            };
+            flight_controller.pid_pitch_angle.set_gains(gains);
+            flight_controller.pid_pitch_angle.set_setpoint(0.0);
+        }
     }
 }
