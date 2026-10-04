@@ -46,6 +46,7 @@ use vqm::Quaternionf32;
 /// 1. No Dterm is required because he inner speed loop inherently acts as the "D" (derivative) term for the outer position loop.
 ///    (Adding a D-term to the outer loop would mean calculating the derivative of velocity (acceleration), which would introduce severe sensor noise).
 /// 2. No Iterm is required because steady-state errors (like gravity dragging the aircraft down) are handled by the inner speed loop's Iterm (adjusting throttle bias).
+///    Or, phrased differently, the velocity (inner-loop) integrator provides the integral action required by the cascaded altitude system.
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MultirotorAltitudeDualRingPid {

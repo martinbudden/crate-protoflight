@@ -168,7 +168,7 @@ impl VehicleControl for FlightController {
         // This allows dterm filtering and dynamic adjustment of the iterm and dterm (iterm relaxation and dmax).
         //
         let roll_rate_dps = Self::roll_rate_ned_dps(gyro_rps);
-        let roll_iterm_error = self.calculate_iterm_error(Self::ROLL_RATE_DPS, roll_rate_dps);
+        let roll_iterm_error = self.calculate_roll_rate_iterm_error(roll_rate_dps);
         // filter the Dterm twice
         let roll_dterm = (roll_rate_dps - self.pids[Self::ROLL_RATE_DPS].previous_measurement())
             .filter_using(&mut self.dterm_filters_0[Self::ROLL_RATE_DPS])
@@ -186,7 +186,7 @@ impl VehicleControl for FlightController {
         // This allows dterm filtering and dynamic adjustment of the iterm and dterm (iterm relaxation and dmax).
         //
         let pitch_rate_dps = Self::pitch_rate_ned_dps(gyro_rps);
-        let pitch_iterm_error = self.calculate_iterm_error(Self::PITCH_RATE_DPS, pitch_rate_dps);
+        let pitch_iterm_error = self.calculate_pitch_rate_iterm_error(pitch_rate_dps);
         // filter the DTerm twice
         let pitch_dterm = (pitch_rate_dps - self.pids[Self::PITCH_RATE_DPS].previous_measurement())
             .filter_using(&mut self.dterm_filters_0[Self::PITCH_RATE_DPS])
@@ -296,6 +296,11 @@ impl FlightController {
             pid.switch_integration_off();
         }
     }
+    pub fn reset_pid_integrals(&mut self) {
+        for pid in &mut self.pids {
+            pid.reset_integral();
+        }
+    }
 
     /// Set the flight stabilization mode required my the `RcMode`.
     pub fn set_stabilization_mode(&mut self, rc_modes: BitSet64) {
@@ -328,10 +333,9 @@ impl FlightController {
             return;
         }
         self.stabilization_mode = stabilization_mode;
+
         // reset the PID integral values when we change control mode
-        for pid in &mut self.pids {
-            pid.reset_integral();
-        }
+        self.reset_pid_integrals();
     }
 
     pub fn recover_from_yaw_spin(&mut self, _gyro_rps: Vector3f32, _delta_t: f32) -> Vector4f32 {
@@ -346,8 +350,15 @@ impl FlightController {
     }
 
     #[inline]
-    pub fn calculate_iterm_error(&self, axis: usize, measurement: f32) -> f32 {
-        let setpoint = self.pids[axis].setpoint();
+    pub fn calculate_roll_rate_iterm_error(&self, measurement: f32) -> f32 {
+        let setpoint = self.pids[Self::ROLL_RATE_DPS].setpoint();
+        // iterm_error is just `setpoint - measurement`, if there is no iterm relax
+        setpoint - measurement
+    }
+
+    #[inline]
+    pub fn calculate_pitch_rate_iterm_error(&self, measurement: f32) -> f32 {
+        let setpoint = self.pids[Self::PITCH_RATE_DPS].setpoint();
         // iterm_error is just `setpoint - measurement`, if there is no iterm relax
         setpoint - measurement
     }
