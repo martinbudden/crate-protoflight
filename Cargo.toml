@@ -2,7 +2,7 @@
 name = "protoflight"
 version = "0.1.3"
 edition = "2024"
-rust-version = "1.89"
+#rust-version = "1.89"
 resolver = "2" # <-- FORCE THIS TO STOP BUILD-DEPENDENCY BLEEDING
 authors = ["Martin Budden"]
 license = "GPL-3.0-or-later"
@@ -27,11 +27,13 @@ rustc_version = "0.4.1"
 [features]
 default = [
     "mock",
+    #"stamp_s3_fly",
     #"speedybee_f405_v4",
     #"sp_racing_f4_evo",
     #"airb_omnibus_f4",
     #"airb_omnibus_f4_sd",
     #"rpi_pico2",
+    #"madflight_fc2", # esp32s3 board
     #"madflight_fc3", # rp235xb board
 ]
 #default = ["std", "libm"]
@@ -104,11 +106,25 @@ rpi_pico2 = [
     "storage",
     "_common",
 ]
+madflight_fc2 = [
+    "esp32s3",
+    "autopilot",
+    "barometer",
+    "battery",
+    "msp",
+    "serde",
+]
+stamp_s3_fly = [
+    "esp32s3",
+    "autopilot",
+    "barometer",
+    "battery",
+]
 madflight_fc3 = [
     "rp235xb",
     # "multicore",
     "_common",
- ]
+]
 speedybee_f405_v4 = ["stm32", "stm32f405", "pwm_t4_t3", "dshot_t8",
     "realtime_executor",
     "_common",
@@ -155,6 +171,7 @@ rp = ["dep:embassy-rp"] # combined feature for all rp variants
 rp2040 = [
     "dep:embassy-rp",
     "dep:cortex-m-rt",
+    "dep:panic-probe",
 
     "embassy-executor/executor-thread",
     "embassy-executor/platform-cortex-m",   # <-- Explicitly satisfies the executor's platform check
@@ -171,6 +188,7 @@ rp235xa = [
     "dep:embassy-rp",
     "dep:cortex-m-rt",
     "dep:cyw43-pio",
+    "dep:panic-probe",
 
     "embassy-executor/executor-thread",
     "embassy-executor/platform-cortex-m",
@@ -189,6 +207,7 @@ rp235xb = [
     "dep:embassy-rp",
     "dep:cortex-m-rt",
     "dep:cyw43-pio",
+    "dep:panic-probe",
 
     "embassy-executor/executor-thread",
     "embassy-executor/platform-cortex-m",
@@ -220,13 +239,17 @@ stm32f405 = [
     "embassy-stm32/stm32f405rg",
 ]
 
-esp32 = [
+esp32s3 = [
     "dep:esp-hal",
     "esp-hal/esp32s3",
+    "esp-hal/rt",
+    "esp-hal/unstable",
+    "xtensa-lx",
 
     "embassy-executor/executor-thread",
+    "embassy-executor/platform-spin",
 
-    "motor-mixers/esp32"
+    "motor-mixers/esp32s3"
 ]
 
 [dependencies]
@@ -235,8 +258,8 @@ embassy-executor = { version = "0.10.0", default-features = false }
 embassy-futures = { version = "0.1.2", default-features = false }
 embassy-time = { version = "0.5.1", default-features = false }
 embassy-sync = { version = "0.8.0", default-features = false }
-embedded-hal-async = { version = "1.0.0", default-features = false }
 embassy-embedded-hal = "0.6.0"
+embedded-hal-async = { version = "1.0.0", default-features = false }
 embedded-io-async = "0.7.0"
 static_cell = "2.1.1"
 critical-section = { version = "1.2.0" }
@@ -250,18 +273,19 @@ embedded-sdmmc = { version = "0.10.0", default-features = false, features = ["lo
 # Debug support
 defmt = { version = "1.1.1" }
 defmt-rtt = { version = "1.3.0" } # Connects defmt macros to debug probe
-# Panic handler that logs panic messages over defmt before halting
-panic-probe = { version = "1.0.0", features = ["print-defmt"] } 
 
 # Raspberry Pi Pico specific
 embassy-rp = { version = "0.10.0", default-features = false, optional = true }
 cyw43-pio = { version = "0.10.0", optional = true }
+# Panic handler that logs panic messages over defmt before halting
+panic-probe = { version = "1.0.0", features = ["print-defmt"], optional = true } 
 
 # stm32f4 specific
 embassy-stm32 = { version = "0.6.0", default-features = false, optional = true }
 # eps32 specific
-esp-hal = { version = "1.2.1", default-features = false, optional = true }
-
+esp-hal = { version = "1.2.2", default-features = false, optional = true }
+#available features: critical-section, default, defmt, esp32, esp32c2, esp32c3, esp32c5, esp32c6, esp32c61, esp32h2, esp32p4, esp32s2, esp32s3, esp32s31, exception-handler, float-save-restore, log-04, requires-unstable, rt, unstable
+xtensa-lx = { version = "0.13.0", default-features = false, optional = true }
 
 strum = { version = "0.28.0", default-features = false, features = ["derive"] }
 cfg-if = "1.0.5"
@@ -305,8 +329,8 @@ dshot-codec = { version = "0.1.2", default-features = false }
 motor-mixers = { git = "https://github.com/martinbudden/crate-motor-mixers", default-features = false }
 #motor-mixers = { path = "../motor-mixers", default-features = false }
 #radio-controllers = { version = "0.1.7", default-features = false }
-radio-controllers = { git = "https://github.com/martinbudden/crate-radio-controllers", default-features = false}
-#radio-controllers = { path = "../radio-controllers", default-features = false }
+#radio-controllers = { git = "https://github.com/martinbudden/crate-radio-controllers", default-features = false}
+radio-controllers = { path = "../radio-controllers", default-features = false }
 #imu-sensors = { version = "0.1.4", default-features = false }
 imu-sensors = { git = "https://github.com/martinbudden/crate-imu-sensors", default-features = false }
 #imu-sensors = { path = "../imu-sensors", default-features = false }

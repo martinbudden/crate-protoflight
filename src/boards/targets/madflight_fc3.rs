@@ -23,9 +23,6 @@ use motor_mixers::{MotorDriver, MotorDriverDshot, MotorDriverPwm, MotorProtocol}
 
 use static_cell::StaticCell;
 
-#[allow(unused)]
-use cyw43_pio::PioSpi;
-
 use embassy_time::Delay;
 use embedded_hal_bus::spi::ExclusiveDevice;
 
@@ -43,6 +40,9 @@ use embassy_rp::{
     uart,
     uart::{Async as UartAsync, Config as UartConfig, Uart, UartRx, UartTx},
 };
+
+#[allow(unused)]
+use cyw43_pio::PioSpi;
 
 #[cfg(feature = "multicore")]
 use {

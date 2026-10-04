@@ -154,6 +154,8 @@ check-omnibus-sd = [
     "--features", "libm,airb_omnibus_f4_sd,autopilot"
 ]
 
+check-esp32s3 = "run --manifest-path xtask/Cargo.toml -- check-esp32s3"
+
 build-rp235xa = [
     "build",
     "--target", "thumbv8m.main-none-eabihf",

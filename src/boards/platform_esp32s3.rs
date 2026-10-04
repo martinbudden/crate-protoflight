@@ -1,4 +1,4 @@
-#![cfg(feature = "host")]
+#![cfg(feature = "esp32s3")]
 #![allow(unused)]
 
 pub type I2cDeviceBlocking = crate::i2c_bus::MockI2c;

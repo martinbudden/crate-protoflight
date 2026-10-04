@@ -37,6 +37,7 @@ impl Board {
             radio_uart_tx,
             gps_uart_rx,
             gps_uart_tx,
+
             barometer,
             magnetometer,
             rangefinder,

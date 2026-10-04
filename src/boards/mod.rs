@@ -3,6 +3,7 @@
 mod platform_host;
 mod platform_rp;
 mod platform_stm32;
+mod platform_esp32s3;
 
 mod board;
 mod mock_uart;
@@ -23,3 +24,7 @@ pub use platform_rp::{
 #[allow(unused)]
 #[cfg(feature = "stm32")]
 pub use platform_stm32::{GpsUartRx, GpsUartTx, I2cDeviceBlocking, RadioUartRx, RadioUartTx, SharedI2cBus};
+
+#[allow(unused)]
+#[cfg(feature = "esp32s3")]
+pub use platform_esp32s3::{GpsUartRx, GpsUartTx, I2cDeviceBlocking, RadioUartRx, RadioUartTx, SharedI2cBus};

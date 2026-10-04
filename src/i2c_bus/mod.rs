@@ -6,5 +6,5 @@ mod mock_i2c;
 
 pub use i2c::{I2cError, SharedI2cBus, SharedI2cExt};
 
-#[cfg(feature = "host")]
+#[cfg(any(feature = "host", feature = "esp32s3"))]
 pub use mock_i2c::{MockI2c, MockI2cError};

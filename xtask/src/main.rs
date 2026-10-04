@@ -9,12 +9,35 @@ fn main() {
     match command {
         "ci" => run_ci_pipeline(),
         "check-msrv" => run_msrv_check(),
+        "check-esp32s3" => run_check_esp32s3(),
         _ => {
             eprintln!("❌ Unknown xtask command: '{}'", command);
             eprintln!("Available commands: ci, check-msrv");
             std::process::exit(1);
         }
     }
+}
+
+fn run_check_esp32s3() {
+    println!("🚀 Running: cargo +esp check --release --target xtensa-esp32s3-none-elf");
+
+    let status = Command::new("cargo")
+        .args([
+            "+esp",
+            "check",
+            "--release",
+            "--target",
+            "xtensa-esp32s3-none-elf",
+            "--no-default-features",
+            "--features",
+            "madflight_fc2,autopilot,barometer,battery,msp,serde",
+            "-Z",
+            "build-std=core",
+        ])
+        .status();
+
+    check_status(status, "check-esp32s3");
+    println!("✅ ESP32S3 check passed!");
 }
 
 fn run_ci_pipeline() {

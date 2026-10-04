@@ -75,6 +75,10 @@ pub async fn store_global_configs() -> Result<(), ()> {
     {
         Ok(())
     }
+    #[cfg(feature = "esp32s3")]
+    {
+        Ok(())
+    }
 }
 
 #[cfg(not(feature = "storage"))]

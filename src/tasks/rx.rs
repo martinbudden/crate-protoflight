@@ -195,6 +195,11 @@ impl RxContext {
                 Err(_) => Err(()),
             }
         }
+        #[cfg(feature = "esp32s3")]
+        {
+            core::future::ready(()).await;
+            Err(())
+        }
         #[cfg(feature = "host")]
         {
             core::future::ready(()).await;
