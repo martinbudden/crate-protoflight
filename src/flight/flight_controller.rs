@@ -11,33 +11,98 @@ use signal_filters::{Pt1FilterVector4f32, Pt1Filterf32, UpdateFilter};
 use simple_bitset::BitSet64;
 use vqm::{Quaternionf32, Vector3f32, Vector4f32};
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd)]
+enum FlightStabilizationMode {
+    #[default]
+    Rate = 0,
+    Angle = 1,
+    #[allow(unused)]
+    Horizon = 2,
+    LevelRace = 3,
+}
+
+impl FlightStabilizationMode {
+    /// Forgiving conversion from `u8` to `FlightStabilizationMode`, converts invalid values to default.
+    #[must_use]
+    pub fn from_u8(value: u8) -> Self {
+        match value {
+            0 => Self::Rate,
+
+            // Flight mode flags
+            1 => Self::Angle,
+            2 => Self::Horizon,
+            3 => Self::LevelRace,
+            _ => Self::default(),
+        }
+    }
+}
+
+impl TryFrom<u8> for FlightStabilizationMode {
+    type Error = ();
+
+    /// Validating conversion from `u8` to `FlightStabilizationMode`. Invalid values return error.
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        let default = Self::default();
+        if value == default as u8 {
+            Ok(default)
+        } else {
+            let ret = Self::from_u8(value);
+            if ret == default { Err(()) } else { Ok(ret) }
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct FcTilt {
+    pub rate_pid: PidskControllerf32,
+    rate_dterm_filters: [Pt1Filterf32; 2],
+    max_rate_dps: f32,
+    dmax_multiplier: f32,
+
+    pub angle_pid: PdControllerf32,
+    angle_dterm_filter: Pt1Filterf32,
+    max_angle_degrees: f32,
+}
+
+impl Default for FcTilt {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl FcTilt {
+    pub const fn new() -> Self {
+        Self {
+            rate_pid: PidskControllerf32::new(),
+            rate_dterm_filters: [Pt1Filterf32::new(); 2],
+            max_rate_dps: 1000.0,
+            dmax_multiplier: 1.0,
+
+            angle_pid: PdControllerf32::new(),
+            angle_dterm_filter: Pt1Filterf32::new(),
+            max_angle_degrees: 60.0,
+        }
+    }
+}
+
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FlightController {
     vehicle_controller: VehicleController,
     angle_mode_calculation_state: AngleModeCalculationState,
 
-    pub pid_roll_rate: PidskControllerf32,
-    pub pid_pitch_rate: PidskControllerf32,
-    pub pid_yaw_rate: PidskControllerf32,
-    pub pid_roll_angle: PdControllerf32,
-    pub pid_pitch_angle: PdControllerf32,
+    pub roll: FcTilt,
+    pub pitch: FcTilt,
+    pub yaw_rate_pid: PidskControllerf32,
 
     // Copy of pid gains, so that gains can be adjusted by anti-gravity and then set back to their original values
     //pub pid_roll_rate_gains: PidskGainsf32,
     //pub pid_pitch_rate_gains: PidskGainsf32,
-    roll_rate_dterm_filter_0: Pt1Filterf32,
-    roll_rate_dterm_filter_1: Pt1Filterf32,
-    pitch_rate_dterm_filter_0: Pt1Filterf32,
-    pitch_rate_dterm_filter_1: Pt1Filterf32,
-    roll_angle_dterm_filter: Pt1Filterf32,
-    pitch_angle_dterm_filter: Pt1Filterf32,
-
     motor_commands_filter: Pt1FilterVector4f32,
     motor_commands_throttle: f32,
     flight_mode_config: FlightModeConfig,
 
-    stabilization_mode: u8,
+    stabilization_mode: FlightStabilizationMode,
     use_angle_mode: bool,
     ground_mode: bool,
     use_level_race_mode: bool,
@@ -53,21 +118,10 @@ pub struct FlightController {
     controls_tick_count: u32,
     blackbox_active: bool,
 
-    max_roll_angle_degrees: f32,
-    max_roll_rate_dps: f32,
-    max_pitch_angle_degrees: f32,
-    max_pitch_rate_dps: f32,
-    tpa: f32,                   // Throttle PID Attenuation, reduces DTerm for large throttle values
-    dmax_multiplier_roll: f32,  // used even if dmax feature not used
-    dmax_multiplier_pitch: f32, // used even if dmax feature not used
+    tpa: f32, // Throttle PID Attenuation, reduces DTerm for large throttle values
 }
 
 impl FlightController {
-    pub const FLIGHT_STABILIZATION_MODE_RATE: u8 = 0; // aka acro mode
-    pub const FLIGHT_STABILIZATION_MODE_ANGLE: u8 = 1;
-    pub const _FLIGHT_STABILIZATION_MODE_HORIZON: u8 = 2;
-    pub const FLIGHT_STABILIZATION_MODE_LEVEL_RACE: u8 = 3;
-
     pub const FD_ROLL: usize = 0;
     pub const FD_PITCH: usize = 1;
     //const FD_YAW: usize = 2;
@@ -86,33 +140,20 @@ impl FlightController {
             vehicle_controller: VehicleController::new(),
             angle_mode_calculation_state: AngleModeCalculationState::new(),
 
-            pid_pitch_rate: PidskControllerf32::new(),
-            pid_roll_rate: PidskControllerf32::new(),
-            pid_yaw_rate: PidskControllerf32::new(),
-
-            pid_roll_angle: PdControllerf32::new(),
-            pid_pitch_angle: PdControllerf32::new(),
-
+            roll: FcTilt::new(),
+            pitch: FcTilt::new(),
+            yaw_rate_pid: PidskControllerf32::new(),
             //pid_gains: [PidskGainsf32::new(); Self::PID_COUNT],
             /*pid_pitch_angle_gains: PidskGainsf32::new(),
             pid_roll_angle_gains: PidskGainsf32::new(),
             pid_yaw_rate_gains: PidskGainsf32::new(),
-
             pid_pitch_rate_gains: PidskGainsf32::new(),
             pid_roll_rate_gains: PidskGainsf32::new(),*/
-            roll_rate_dterm_filter_0: Pt1Filterf32::new(),
-            roll_rate_dterm_filter_1: Pt1Filterf32::new(),
-            pitch_rate_dterm_filter_0: Pt1Filterf32::new(),
-            pitch_rate_dterm_filter_1: Pt1Filterf32::new(),
-
-            roll_angle_dterm_filter: Pt1Filterf32::new(),
-            pitch_angle_dterm_filter: Pt1Filterf32::new(),
-
             motor_commands_filter: Pt1FilterVector4f32::new(),
             motor_commands_throttle: 0.0,
             flight_mode_config: FlightModeConfig::new(),
 
-            stabilization_mode: 0,
+            stabilization_mode: FlightStabilizationMode::Rate,
             use_angle_mode: false,
             ground_mode: true,
             use_level_race_mode: false,
@@ -128,13 +169,7 @@ impl FlightController {
             controls_tick_count: 0,
             blackbox_active: false,
 
-            max_roll_angle_degrees: 60.0,
-            max_roll_rate_dps: 1000.0,
-            max_pitch_angle_degrees: 60.0,
-            max_pitch_rate_dps: 1000.0,
             tpa: 1.0, // Throttle PID Attenuation, reduces DTerm for large throttle values
-            dmax_multiplier_roll: 1.0,
-            dmax_multiplier_pitch: 1.0,
         }
     }
 }
@@ -146,7 +181,8 @@ impl VehicleControl for FlightController {
     fn vehicle_controller_mut(&mut self) -> &mut VehicleController {
         &mut self.vehicle_controller
     }
-    // NOTE: CALLED FROM WITHIN THE AHRS TASK
+
+    // NOTE: CALLED FROM WITHIN THE GYRO/PID TASK
     // It is typically called at frequency of between 1000Hz and 8000Hz, so it has to be FAST.
     //
     // The FlightController uses the NED (North-East-Down) coordinate convention.
@@ -160,6 +196,7 @@ impl VehicleControl for FlightController {
         rc_modes: BitSet64,
     ) -> (Vector4f32, bool) {
         let mut setpoints_updated: bool = false;
+
         if controls.tick_count > self.controls_tick_count {
             // we have a new set of values from the receiver, so update the setpoints.
             self.controls_tick_count = controls.tick_count;
@@ -168,25 +205,24 @@ impl VehicleControl for FlightController {
         }
 
         if self.crash_flip_mode_active {
-            return (self.apply_crash_flip_to_motors(gyro_rps, delta_t), true);
+            setpoints_updated = true;
+            return (self.apply_crash_flip_to_motors(gyro_rps, delta_t), setpoints_updated);
         }
 
         if self.yaw_spin_recovery {
-            return (self.recover_from_yaw_spin(gyro_rps, delta_t), true);
+            setpoints_updated = true;
+            return (self.recover_from_yaw_spin(gyro_rps, delta_t), setpoints_updated);
         }
-
-        self.calculate_dmax_multipliers();
 
         if self.use_angle_mode {
             self.update_rate_setpoints_for_angle_mode(orientation, delta_t);
         }
+
+        self.calculate_dmax_multipliers();
+
         // Use the PIDs to calculate the outputs for each axis.
         // Note that the delta-values (ie the DTerms) are filtered:
         // this is because they are especially noisy, being the derivative of a noisy value.
-
-        // The output from the PIDs is filtered.
-        // This smooths the output, but also accumulates the output in the filter,
-        // so the values influence the output even when `output_to_motors` is not called.
 
         //
         // Roll axis.
@@ -194,17 +230,16 @@ impl VehicleControl for FlightController {
         // This allows dterm filtering and dynamic adjustment of the iterm and dterm (iterm relaxation and dmax).
         //
         let roll_rate_dps = Self::roll_rate_ned_dps(gyro_rps);
-        let roll_iterm_error = self.calculate_roll_rate_iterm_error(roll_rate_dps);
+        let roll_rate_iterm_error = self.calculate_roll_rate_iterm_error(roll_rate_dps);
         // filter the Dterm twice
-        let roll_dterm = (roll_rate_dps - self.pid_roll_rate.previous_measurement())
-            .filter_using(&mut self.roll_rate_dterm_filter_0)
-            .filter_using(&mut self.roll_rate_dterm_filter_1)
-            * self.dmax_multiplier_roll
+        let roll_rate_dterm = (roll_rate_dps - self.roll.rate_pid.previous_measurement())
+            .filter_using(&mut self.roll.rate_dterm_filters[0])
+            .filter_using(&mut self.roll.rate_dterm_filters[1])
+            * self.roll.dmax_multiplier
             * self.tpa;
 
         let motor_command_roll_dps =
-            self.pid_roll_rate.update_delta_iterm(roll_rate_dps, roll_dterm, roll_iterm_error, delta_t);
-        //.filter_using(&mut self.motor_command_filters[Self::FD_ROLL]);
+            self.roll.rate_pid.update_delta_iterm(roll_rate_dps, roll_rate_dterm, roll_rate_iterm_error, delta_t);
 
         //
         // Pitch axis
@@ -212,27 +247,26 @@ impl VehicleControl for FlightController {
         // This allows dterm filtering and dynamic adjustment of the iterm and dterm (iterm relaxation and dmax).
         //
         let pitch_rate_dps = Self::pitch_rate_ned_dps(gyro_rps);
-        let pitch_iterm_error = self.calculate_pitch_rate_iterm_error(pitch_rate_dps);
+        let pitch_rate_iterm_error = self.calculate_pitch_rate_iterm_error(pitch_rate_dps);
         // filter the DTerm twice
-        let pitch_dterm = (pitch_rate_dps - self.pid_pitch_rate.previous_measurement())
-            .filter_using(&mut self.pitch_rate_dterm_filter_0)
-            .filter_using(&mut self.pitch_rate_dterm_filter_1)
-            * self.dmax_multiplier_pitch
+        let pitch_rate_dterm = (pitch_rate_dps - self.pitch.rate_pid.previous_measurement())
+            .filter_using(&mut self.pitch.rate_dterm_filters[0])
+            .filter_using(&mut self.pitch.rate_dterm_filters[1])
+            * self.pitch.dmax_multiplier
             * self.tpa;
 
         let motor_command_pitch_dps =
-            self.pid_pitch_rate.update_delta_iterm(pitch_rate_dps, pitch_dterm, pitch_iterm_error, delta_t);
-        //.filter_using(&mut self.motor_command_filters[FD_PITCH]);
+            self.pitch.rate_pid.update_delta_iterm(pitch_rate_dps, pitch_rate_dterm, pitch_rate_iterm_error, delta_t);
 
         //
         // Yaw axis
-        // Dterm is zero for yaw_rate, so call adjust_using_spi() with no Dterm filtering, no TPA, no dmax, no iterm relaxation, and no Kterm (kick).
+        // Dterm is zero for yaw_rate, so call adjust_using_spi()
+        // with no Dterm filtering, no TPA, no dmax_multiplier, no Iterm relaxation, and no Kterm (kick).
         //
         let yaw_rate_dps = Self::yaw_rate_ned_dps(gyro_rps);
-        let motor_command_yaw_dps = self.pid_yaw_rate.update_spi(yaw_rate_dps, delta_t);
-        //.filter_using(&mut self.motor_command_filters[FD_YAW]);
+        let motor_command_yaw_dps = self.yaw_rate_pid.update_spi(yaw_rate_dps, delta_t);
 
-        // Throttle.
+        // Put the motor commands into a vector, so that we can filter them all at once.
         let motor_commands = Vector4f32 {
             x: motor_command_roll_dps,
             y: motor_command_pitch_dps,
@@ -240,6 +274,9 @@ impl VehicleControl for FlightController {
             t: self.motor_commands_throttle,
         };
 
+        // Filter the motor commands.
+        // This smooths the output, but also accumulates the output in the filter,
+        // so the values influence the output even when `output_to_motors` is not called.
         (motor_commands.filter_using(&mut self.motor_commands_filter), setpoints_updated)
     }
 }
@@ -311,80 +348,73 @@ impl FlightController {
             self.switch_pid_integration_on();
         }
     }
+
     pub fn switch_pid_integration_on(&mut self) {
-        self.pid_roll_rate.switch_integration_on();
-        self.pid_pitch_rate.switch_integration_on();
-        self.pid_yaw_rate.switch_integration_on();
+        self.roll.rate_pid.switch_integration_on();
+        self.pitch.rate_pid.switch_integration_on();
+        self.yaw_rate_pid.switch_integration_on();
     }
 
     pub fn switch_pid_integration_off(&mut self) {
-        self.pid_roll_rate.switch_integration_off();
-        self.pid_pitch_rate.switch_integration_off();
-        self.pid_yaw_rate.switch_integration_off();
+        self.roll.rate_pid.switch_integration_off();
+        self.pitch.rate_pid.switch_integration_off();
+        self.yaw_rate_pid.switch_integration_off();
     }
+
     pub fn reset_pid_integrals(&mut self) {
-        self.pid_roll_rate.reset_integral();
-        self.pid_pitch_rate.reset_integral();
-        self.pid_yaw_rate.reset_integral();
+        self.roll.rate_pid.reset_integral();
+        self.pitch.rate_pid.reset_integral();
+        self.yaw_rate_pid.reset_integral();
     }
 
     /// Set the flight stabilization mode required my the `RcMode`.
     pub fn set_stabilization_mode(&mut self, rc_modes: BitSet64) {
-        let mut stabilization_mode = Self::FLIGHT_STABILIZATION_MODE_RATE;
+        const ANGLE_MODES: u64 = (1u64 << RcMode::ANGLE)
+            | (1u64 << RcMode::ALTITUDE_HOLD)
+            | (1u64 << RcMode::POSITION_HOLD)
+            | (1u64 << RcMode::FAILSAFE)
+            | (1u64 << RcMode::GPS_RESCUE)
+            | (1u64 << RcMode::AUTOPILOT);
 
-        if rc_modes.test(RcMode::ANGLE) {
-            stabilization_mode = Self::FLIGHT_STABILIZATION_MODE_ANGLE;
-        }
-        if rc_modes.test(RcMode::HORIZON) {
-            // we don't support horizon mode, instead we use the horizon mode setting to invoke level race mode
-            stabilization_mode = Self::FLIGHT_STABILIZATION_MODE_LEVEL_RACE;
-        }
-        if rc_modes.test(RcMode::ALTITUDE_HOLD) {
-            stabilization_mode = Self::FLIGHT_STABILIZATION_MODE_ANGLE;
-        }
-        if rc_modes.test(RcMode::POSITION_HOLD) {
-            stabilization_mode = Self::FLIGHT_STABILIZATION_MODE_ANGLE;
-        }
-        if rc_modes.test(RcMode::FAILSAFE) {
-            stabilization_mode = Self::FLIGHT_STABILIZATION_MODE_ANGLE;
-        }
-        if rc_modes.test(RcMode::GPS_RESCUE) {
-            stabilization_mode = Self::FLIGHT_STABILIZATION_MODE_ANGLE;
-        }
-        if rc_modes.test(RcMode::AUTOPILOT) {
-            stabilization_mode = Self::FLIGHT_STABILIZATION_MODE_ANGLE;
-        }
+        let stabilization_mode = if rc_modes.test(RcMode::HORIZON) {
+            FlightStabilizationMode::LevelRace
+        } else if rc_modes.contains_any(ANGLE_MODES) {
+            FlightStabilizationMode::Angle
+        } else {
+            FlightStabilizationMode::Rate
+        };
 
-        if stabilization_mode == self.stabilization_mode {
-            return;
+        if stabilization_mode != self.stabilization_mode {
+            self.stabilization_mode = stabilization_mode;
+            self.reset_pid_integrals();
         }
-        self.stabilization_mode = stabilization_mode;
-
-        // reset the PID integral values when we change control mode
-        self.reset_pid_integrals();
     }
 
-    pub fn recover_from_yaw_spin(&mut self, _gyro_rps: Vector3f32, _delta_t: f32) -> Vector4f32 {
+    pub fn recover_from_yaw_spin(&mut self, gyro_rps: Vector3f32, delta_t: f32) -> Vector4f32 {
         _ = self;
+        _ = gyro_rps;
+        _ = delta_t;
         Vector4f32::default()
     }
 
     #[inline]
     pub fn calculate_dmax_multipliers(&mut self) {
-        self.dmax_multiplier_roll = 1.0;
-        self.dmax_multiplier_pitch = 1.0;
+        self.roll.dmax_multiplier = 1.0;
+        self.pitch.dmax_multiplier = 1.0;
     }
 
+    // Placeholder for future implementation.
     #[inline]
     pub fn calculate_roll_rate_iterm_error(&self, measurement: f32) -> f32 {
-        let setpoint = self.pid_roll_rate.setpoint();
+        let setpoint = self.roll.rate_pid.setpoint();
         // iterm_error is just `setpoint - measurement`, if there is no iterm relax
         setpoint - measurement
     }
 
+    // Placeholder for future implementation.
     #[inline]
     pub fn calculate_pitch_rate_iterm_error(&self, measurement: f32) -> f32 {
-        let setpoint = self.pid_pitch_rate.setpoint();
+        let setpoint = self.pitch.rate_pid.setpoint();
         // iterm_error is just `setpoint - measurement`, if there is no iterm relax
         setpoint - measurement
     }
@@ -415,9 +445,9 @@ impl FlightController {
         // For NED left side up is positive roll, so sign of setpoint is same sign as roll_stick.
         // So sign of _roll_stick is left unchanged.
         if !self.use_angle_mode {
-            self.pid_roll_rate.set_setpoint(controls.roll_stick_dps);
+            self.roll.rate_pid.set_setpoint(controls.roll_stick_dps);
         }
-        self.pid_roll_angle.set_setpoint(controls.roll_stick_degrees);
+        self.roll.angle_pid.set_setpoint(controls.roll_stick_degrees);
         //
         // Pitch axis
         //
@@ -425,9 +455,9 @@ impl FlightController {
         // For NED nose down is negative pitch, so sign of setpoint is opposite sign as _pitch_stick.
         // So sign of _pitch_stick is negated.
         if !self.use_angle_mode {
-            self.pid_pitch_rate.set_setpoint(-controls.pitch_stick_dps);
+            self.pitch.rate_pid.set_setpoint(-controls.pitch_stick_dps);
         }
-        self.pid_pitch_angle.set_setpoint(-controls.pitch_stick_degrees);
+        self.pitch.angle_pid.set_setpoint(-controls.pitch_stick_degrees);
 
         //
         // Yaw axis
@@ -435,7 +465,7 @@ impl FlightController {
         // Pushing the YAW stick to the right gives a positive value of _yaw_stick and we want this to be nose right.
         // For NED nose left is positive yaw, so sign of setpoint is same as sign of _yaw_stick.
         // So sign of _yaw_stick is left unchanged.
-        self.pid_yaw_rate.set_setpoint(controls.yaw_stick_dps);
+        self.yaw_rate_pid.set_setpoint(controls.yaw_stick_dps);
 
         //
         // Modes
@@ -460,27 +490,32 @@ impl FlightController {
         // Angle Mode is used if the control_mode is set to angle mode, or failsafe is on.
         // Angle Mode is prevented when in Ground Mode, so the aircraft doesn't try and self-level while it is still on the ground.
         // This value is cached here, to avoid evaluating a reasonably complex condition in update_outputs_using_pids()
-        self.use_angle_mode = (self.stabilization_mode >= Self::FLIGHT_STABILIZATION_MODE_ANGLE) && !self.ground_mode;
-        self.use_level_race_mode = (self.stabilization_mode == Self::FLIGHT_STABILIZATION_MODE_LEVEL_RACE)
+        self.use_angle_mode = (self.stabilization_mode >= FlightStabilizationMode::Angle) && !self.ground_mode;
+
+        self.use_level_race_mode = (self.stabilization_mode == FlightStabilizationMode::LevelRace)
             || (self.flight_mode_config.level_race_mode != 0);
     }
 }
 
 impl FlightController {
-    /// NOTE: CALLED FROM WITHIN THE AHRS TASK.
+    /// NOTE: CALLED FROM WITHIN THE GYRO/PID TASK.
     ///
     /// In angle mode, the roll and pitch angles are used to set the setpoints for the rollRate and pitchRate PIDs.
     /// Level Race Mode (aka NFE(Not Fast Enough) mode) is equivalent to angle mode on roll and acro mode on pitch.
+    #[inline]
     fn update_rate_setpoints_for_angle_mode(&mut self, orientation: Quaternionf32, delta_t: f32) {
-        _ = self;
-        _ = orientation;
-        _ = delta_t;
-        //self.angle_mode_calculation_state.update(&mut self, orientation, self.stabilization_mode, delta_t)
+        self.angle_mode_calculation_state.update(
+            &mut self.roll,
+            &mut self.pitch,
+            orientation,
+            self.stabilization_mode,
+            delta_t,
+        );
     }
 }
 
 /// State machine to calculate setpoints for angle mode.
-/// Calculates one axis per iteration.
+/// Calculates alternates between roll and pitch axis on each iteration.
 #[derive(Clone, Copy, Default, Debug, PartialEq)]
 pub enum AngleModeCalculationState {
     #[default]
@@ -497,72 +532,81 @@ impl AngleModeCalculationState {
 #[allow(unused)]
 impl AngleModeCalculationState {
     /// Perform one step of the state machine.
-    fn update(&mut self, fc: &mut FlightController, orientation: Quaternionf32, stabilization_mode: u8, delta_t: f32) {
-        match core::mem::take(self) {
-            AngleModeCalculationState::CalculateRoll => {
+    /// Alternates between roll and pitch axis on each step.
+    fn update(
+        &mut self,
+        roll: &mut FcTilt,
+        pitch: &mut FcTilt,
+        orientation: Quaternionf32,
+        stabilization_mode: FlightStabilizationMode,
+        dt: f32,
+    ) {
+        *self = match core::mem::take(self) {
+            Self::CalculateRoll => {
                 let roll_angle_degrees = FlightController::roll_angle_degrees_ned(orientation);
-                //let roll_angle_delta = fc.dterm_filters_0[ROLL_ANGLE_DEGREES]
-                //    .update(roll_angle_degrees - fc.pids[ROLL_ANGLE_DEGREES].previous_measurement());
-                let roll_angle_delta = (roll_angle_degrees - fc.pid_roll_angle.previous_measurement())
-                    .filter_using(&mut fc.roll_angle_dterm_filter);
+                let roll_angle_delta = (roll_angle_degrees - roll.angle_pid.previous_measurement())
+                    .filter_using(&mut roll.angle_dterm_filter);
 
-                // calculate roll rate setpoint in degrees, range is [-_max_roll_angle_degrees, _max_roll_angle_degrees], typically [-60, 60]
-                //let roll_rate_setpoint_degrees =
-                //    roll_angle_degrees.adjust_using_d(&mut fc.pid_roll_angle, roll_angle_delta, delta_t);
-                let roll_rate_setpoint_degrees =
-                    fc.pid_roll_angle.update_delta(roll_angle_degrees, roll_angle_delta, delta_t);
+                // calculate roll rate setpoint in degrees, range is [-roll.max_angle_degrees, roll.max_angle_degrees], typically [-60, 60]
+                let roll_rate_setpoint_degrees = roll.angle_pid.update_delta(roll_angle_degrees, roll_angle_delta, dt);
 
-                // convert to value in range [-1.0, 1.0] to be used for the ROLL_RATE_DPS setpoint
+                // convert to value in range [-1.0, 1.0] to be used for the roll rate setpoint
                 let roll_rate_setpoint_dps =
-                    (roll_rate_setpoint_degrees / fc.max_roll_angle_degrees).clamp(-1.0, 1.0) * fc.max_roll_rate_dps;
+                    (roll_rate_setpoint_degrees / roll.max_angle_degrees).clamp(-1.0, 1.0) * roll.max_rate_dps;
 
-                fc.pid_roll_rate.set_setpoint(roll_rate_setpoint_dps);
+                roll.rate_pid.set_setpoint(roll_rate_setpoint_dps);
 
-                // in level race mode we use angle mode on roll, acro mode on pitch, so keep state as CalculateRoll
-                if stabilization_mode != FlightController::FLIGHT_STABILIZATION_MODE_LEVEL_RACE {
-                    *self = AngleModeCalculationState::CalculatePitch;
+                if stabilization_mode == FlightStabilizationMode::LevelRace {
+                    // in level race mode we use angle mode on roll, acro mode on pitch, so keep state as CalculateRoll
+                    Self::CalculateRoll
+                } else {
+                    Self::CalculatePitch
                 }
             }
 
-            AngleModeCalculationState::CalculatePitch => {
+            Self::CalculatePitch => {
                 let pitch_angle_degrees = FlightController::pitch_angle_degrees_ned(orientation);
-                let pitch_angle_delta = (pitch_angle_degrees - fc.pid_pitch_angle.previous_measurement())
-                    .filter_using(&mut fc.pitch_angle_dterm_filter);
+                let pitch_angle_delta = (pitch_angle_degrees - pitch.angle_pid.previous_measurement())
+                    .filter_using(&mut pitch.angle_dterm_filter);
 
-                // calculate pitch rate setpoint in degrees, range is [-_max_pitch_angle_degrees, _max_pitch_angle_degrees], typically [-60, 60]
-                //let pitch_rate_setpoint_degrees =
-                //    pitch_angle_degrees.adjust_using_d(&mut fc.pid_pitch_angle, pitch_angle_delta, delta_t);
+                // calculate pitch rate setpoint in degrees, range is [-pitch.max_angle_degrees, pitch.max_angle_degrees], typically [-60, 60]
                 let pitch_rate_setpoint_degrees =
-                    fc.pid_pitch_angle.update_delta(pitch_angle_degrees, pitch_angle_delta, delta_t);
+                    pitch.angle_pid.update_delta(pitch_angle_degrees, pitch_angle_delta, dt);
 
-                // convert to value in range [-1.0, 1.0] to be used for the PITCH_RATE_DPS setpoint
+                // convert to value in range [-1.0, 1.0] to be used for the pitch rate setpoint
                 let pitch_rate_setpoint_dps =
-                    (pitch_rate_setpoint_degrees / fc.max_pitch_angle_degrees).clamp(-1.0, 1.0) * fc.max_pitch_rate_dps;
+                    (pitch_rate_setpoint_degrees / pitch.max_angle_degrees).clamp(-1.0, 1.0) * pitch.max_rate_dps;
 
-                fc.pid_pitch_rate.set_setpoint(pitch_rate_setpoint_dps);
+                pitch.rate_pid.set_setpoint(pitch_rate_setpoint_dps);
 
-                *self = AngleModeCalculationState::CalculateRoll;
+                Self::CalculateRoll
             }
         }
     }
 }
 
 #[cfg(test)]
-mod tests {
+mod test_traits {
     use super::*;
 
-    #[allow(unused)]
-    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
-    #[allow(unused)]
+    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
 
     #[test]
     fn normal_types() {
         is_full::<FlightController>();
+        is_full::<FlightStabilizationMode>();
+        is_full::<FcTilt>();
+        is_full::<AngleModeCalculationState>();
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
     #[test]
     fn test_new() {
         let flight_controller = FlightController::new();
-        assert_eq!(0, flight_controller.stabilization_mode);
+        assert_eq!(FlightStabilizationMode::Rate, flight_controller.stabilization_mode);
     }
 }

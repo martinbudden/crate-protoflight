@@ -22,15 +22,15 @@ use embassy_time::Delay;
 use embedded_hal_bus::spi::ExclusiveDevice;
 
 use esp_hal::{
-    peripherals,
     gpio::{AnyPin, DriveMode, Output},
     ledc::{
         Ledc, LowSpeed,
         channel::{self, Channel, ChannelIFace},
-        timer::{self, TimerIFace,LSClockSource},
+        timer::{self, LSClockSource, TimerIFace},
     },
-    time::Rate,
+    peripherals,
     spi::slave::Spi,
+    time::Rate,
 };
 
 pub type BoardImu = ImuMock<MockImuBus>;

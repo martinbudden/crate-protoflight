@@ -1,9 +1,9 @@
 #![doc = include_str!("README.md")]
 
+mod platform_esp32s3;
 mod platform_host;
 mod platform_rp;
 mod platform_stm32;
-mod platform_esp32s3;
 
 mod board;
 mod mock_uart;

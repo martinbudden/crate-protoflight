@@ -161,9 +161,9 @@ checksum = "3ded4057c258ba199e2d26386d3af3780957ecaee6c4ef4041c6b4b8b97c0b06"
 
 [[package]]
 name = "blackbox-logger"
-version = "0.1.11"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "36de546166b904496628905b42df95c62ba89fc00f899a2fd2a50afaaefbdccd"
+checksum = "6c8764db3ad837721a1f02afa1b9f86aa0f8316ba5de59584c00090fef2a2d7a"
 dependencies = [
  "postcard",
  "rustc_version 0.4.1",
@@ -1619,7 +1619,7 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 [[package]]
 name = "imu-sensors"
 version = "0.1.4"
-source = "git+https://github.com/martinbudden/crate-imu-sensors#d82a9d54c9cee2ca9767a6fddfd2ee9d895666e6"
+source = "git+https://github.com/martinbudden/crate-imu-sensors#2e0ccadbe0dc191f17dac81d5c6de5ec6406ba9b"
 dependencies = [
  "cfg-if",
  "embassy-time",
@@ -2386,9 +2386,9 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
 name = "sdio"
-version = "0.5.1"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f7328e9dbad1337ef2d94a8404428a42d77a9916cda7c2e51287a1998da9afb"
+checksum = "02f8dcf75e0f6aeeda4819e3adea9a2c0705c2f109970abcc07edcfef372b68a"
 dependencies = [
  "aligned",
  "block-device-driver",
@@ -2537,9 +2537,9 @@ dependencies = [
 
 [[package]]
 name = "simple-bitset"
-version = "0.1.7"
+version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1df039917eac7878e112e2eb7c7fd211a116166a9e1f30c4cec56655fa00696"
+checksum = "56054486d060e5b6204a109a85e97a4d824acb4f19c4791dd3a7ccafe8f9678e"
 dependencies = [
  "postcard",
  "rustc_version 0.4.1",
