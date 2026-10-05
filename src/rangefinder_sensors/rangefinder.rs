@@ -43,8 +43,7 @@ impl PostcardValue<'_> for RangefinderType {}
 
 #[allow(unused)]
 impl RangefinderType {
-    pub const COUNT: u8 = 14;
-
+    /// Forgiving conversion from u8 to `RangefinderType`, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {

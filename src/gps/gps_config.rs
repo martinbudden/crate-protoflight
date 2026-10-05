@@ -66,7 +66,7 @@ pub enum GpsProvider {
 
 #[allow(unused)]
 impl GpsProvider {
-    /// Forgiving conversion, converts invalid values to default.
+    /// Forgiving conversion from u8 to `GpsProvider`, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {
@@ -102,7 +102,7 @@ impl PostcardValue<'_> for GpsModel {}
 
 #[allow(unused)]
 impl GpsModel {
-    /// Forgiving conversion, converts invalid values to default.
+    /// Forgiving conversion from u8 to `GpsModel`, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {
@@ -138,7 +138,7 @@ impl PostcardValue<'_> for UtcStandard {}
 
 #[allow(unused)]
 impl UtcStandard {
-    /// Forgiving conversion, converts invalid values to default.
+    /// Forgiving conversion from u8 to `UtcStandard`, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {
@@ -169,7 +169,7 @@ pub enum SbasMode {
 
 #[allow(unused)]
 impl SbasMode {
-    /// Forgiving conversion, converts invalid values to default.
+    /// Forgiving conversion from u8 to `SbasMode`, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {
@@ -196,7 +196,7 @@ pub enum GpsOffOn {
 
 #[allow(unused)]
 impl GpsOffOn {
-    /// Forgiving conversion, converts invalid values to default.
+    /// Forgiving conversion from u8 to `GpsOffOn`, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {

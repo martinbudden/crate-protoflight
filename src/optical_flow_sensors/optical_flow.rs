@@ -29,8 +29,7 @@ pub enum OpticalFlowType {
 
 #[allow(unused)]
 impl OpticalFlowType {
-    pub const COUNT: u8 = 4;
-
+    /// Forgiving conversion from u8 to `OpticalFlowType`, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {

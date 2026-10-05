@@ -83,7 +83,7 @@ pub enum UbxAckState {
 
 #[allow(unused)]
 impl UbxAckState {
-    /// Forgiving conversion, converts invalid values to default.
+    /// Forgiving conversion from u8 to `UbxAckState`, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {

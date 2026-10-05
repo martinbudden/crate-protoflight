@@ -62,6 +62,7 @@ impl PostcardValue<'_> for FailsafeProcedure {}
 impl_try_from_u8!(FailsafeProcedure);
 
 impl FailsafeProcedure {
+    /// Forgiving conversion from u8 to `FailsafeProcedure`, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {
@@ -89,6 +90,7 @@ impl PostcardValue<'_> for FailsafeSwitchMode {}
 impl_try_from_u8!(FailsafeSwitchMode);
 
 impl FailsafeSwitchMode {
+    /// Forgiving conversion from u8 to `FailsafeSwitchMode`, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {
