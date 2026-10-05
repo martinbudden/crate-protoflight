@@ -27,6 +27,8 @@ rustc_version = "0.4.1"
 [features]
 default = [
     "mock",
+    #"openfc_lite",
+    #"openfc_lite_mini",
     #"stamp_s3_fly",
     #"speedybee_f405_v4",
     #"sp_racing_f4_evo",
@@ -122,6 +124,16 @@ stamp_s3_fly = [
 ]
 madflight_fc3 = [
     "rp235xb",
+    # "multicore",
+    "_common",
+]
+openfc_lite = [
+    "rp235xb",
+    # "multicore",
+    "_common",
+]
+openfc_lite_mini = [
+    "rp235xa",
     # "multicore",
     "_common",
 ]
@@ -288,7 +300,6 @@ esp-hal = { version = "1.2.2", default-features = false, optional = true }
 xtensa-lx = { version = "0.13.0", default-features = false, optional = true }
 
 strum = { version = "0.28.0", default-features = false, features = ["derive"] }
-cfg-if = "1.0.5"
 derive_more = { version = "2.1.1", default-features = false, features = ["display"] }
 num-traits = { version = "0.2.19", default-features = false }
 libm = { version = "0.2.16", optional = true }
@@ -328,9 +339,9 @@ dshot-codec = { version = "0.1.2", default-features = false }
 #motor-mixers = { version = "0.1.6", default-features = false }
 motor-mixers = { git = "https://github.com/martinbudden/crate-motor-mixers", default-features = false }
 #motor-mixers = { path = "../motor-mixers", default-features = false }
-#radio-controllers = { version = "0.1.7", default-features = false }
+radio-controllers = { version = "0.1.8", default-features = false }
 #radio-controllers = { git = "https://github.com/martinbudden/crate-radio-controllers", default-features = false}
-radio-controllers = { path = "../radio-controllers", default-features = false }
+#radio-controllers = { path = "../radio-controllers", default-features = false }
 #imu-sensors = { version = "0.1.4", default-features = false }
 imu-sensors = { git = "https://github.com/martinbudden/crate-imu-sensors", default-features = false }
 #imu-sensors = { path = "../imu-sensors", default-features = false }

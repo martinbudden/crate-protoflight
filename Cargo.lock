@@ -1619,7 +1619,7 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 [[package]]
 name = "imu-sensors"
 version = "0.1.4"
-source = "git+https://github.com/martinbudden/crate-imu-sensors#2e0ccadbe0dc191f17dac81d5c6de5ec6406ba9b"
+source = "git+https://github.com/martinbudden/crate-imu-sensors#fd02f46f3b139fa386f7424b6f2ad44ddd0f113e"
 dependencies = [
  "cfg-if",
  "embassy-time",
@@ -2111,7 +2111,6 @@ version = "0.1.3"
 dependencies = [
  "approx",
  "blackbox-logger",
- "cfg-if",
  "cortex-m-rt",
  "critical-section",
  "cyw43-pio",
@@ -2173,7 +2172,9 @@ dependencies = [
 
 [[package]]
 name = "radio-controllers"
-version = "0.1.7"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e020e16d4a9b8bb746e900f9d9ccc5d176e3d4a85ee4656988a7b218bf5e3d99"
 dependencies = [
  "postcard",
  "rustc_version 0.4.1",

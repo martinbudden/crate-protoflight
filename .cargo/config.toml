@@ -119,6 +119,22 @@ check-madflight = [
     #"rp2350,libm,autopilot,barometer,battery,blackbox,msp,osd,rpm_filters,rtt-debug"
 ]
 
+check-openfc-lite = [
+    "check",
+    "--target", "thumbv8m.main-none-eabihf",
+    "--no-default-features",
+    "--features",
+    "libm,openfc_lite,autopilot,barometer",
+]
+
+check-openfc-lite-mini = [
+    "check",
+    "--target", "thumbv8m.main-none-eabihf",
+    "--no-default-features",
+    "--features",
+    "libm,openfc_lite_mini,autopilot,barometer",
+]
+
 check-speedybee = [
     "check",
     "--target", "thumbv7em-none-eabihf",

@@ -3,6 +3,8 @@ mod airb_omnibus_f4_sd;
 mod host;
 mod madflight_fc2;
 mod madflight_fc3;
+mod openfc_lite;
+mod openfc_lite_mini;
 mod rpi_pico2;
 mod sp_racing_f4_evo;
 mod speedybee_f405_v4;
@@ -34,3 +36,9 @@ pub use airb_omnibus_f4_sd::{Board, BoardImu};
 
 #[cfg(feature = "stamp_s3_fly")]
 pub use stamp_s3_fly::{Board, BoardImu};
+
+#[cfg(feature = "openfc_lite")]
+pub use openfc_lite::{Board, BoardImu};
+
+#[cfg(feature = "openfc_lite_mini")]
+pub use openfc_lite_mini::{Board, BoardImu};
