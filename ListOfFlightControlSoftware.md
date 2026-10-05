@@ -152,3 +152,11 @@ See especially:
 [Bi-directional DShot](https://github.com/markusgritsch/SilF4ware/blob/master/SilF4ware/drv_dshot_bidir.c)
 
 [Angle Mode Error calculation](https://github.com/markusgritsch/SilF4ware/blob/master/SilF4ware/stick_vector.c)
+
+## [Cortex](https://github.com/sergiovirahonda/cortex)
+
+A professional-grade ESP32-S3 flight controller for DIY quadcopter drones, featuring real-time attitude stabilization,
+DShot ESC control, and wireless command reception.
+This project pairs with [Synapse](https://github.com/sergiovirahonda/synapse), the transmitter controller that sends flight commands via joystick.
+
+See also [Building a Drone Flight Controller from Scratch: A Software Engineer’s Guide to Clean C++](https://medium.com/@svirahonda/building-a-drone-flight-controller-from-scratch-a-software-engineers-guide-to-clean-c-644a2bd392c4)
