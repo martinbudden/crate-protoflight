@@ -149,7 +149,9 @@ fn open_storage() {
 
         // Open the volume. This underlying library call executes the low-speed
         // handshakes (CMD0, ACMD41) and locks the card hardware into its Transfer State!
-        let _volume = volume_mgr.open_volume(VolumeIdx(0)).unwrap();
+        let _volume = volume_mgr.open_volume(VolumeIdx(0)).expect(
+            "SD CARD ERR: Low-speed boot handshake failed (CMD0/ACMD41 timeout). Is the card missing or loose?",
+        );
     }
 
     log::info!("SD CARD: Handshake verified. Shifting master clock registers to 20 MHz...");
@@ -158,15 +160,22 @@ fn open_storage() {
     // Re-mount the entire framework. Everything from here forward runs at full 20 MHz data rates.
     let sd_card = SdCard::new(&mut spi_device, embassy_time::Delay);
     let volume_mgr = VolumeManager::new(sd_card, VehicleTimeSource);
-    let volume = volume_mgr.open_volume(VolumeIdx(0)).unwrap();
-    let mut root_dir = volume.open_root_dir().unwrap();
+
+    let volume = volume_mgr
+        .open_volume(VolumeIdx(0))
+        .expect("SD CARD ERR: Failed to reopen volume at 20 MHz high-speed. Signal integrity issue or cross-talk?");
+
+    let mut root_dir =
+        volume.open_root_dir().expect("SD CARD ERR: Failed to parse FAT file system root directory structure.");
 
     // Scan directory and generate the log index at 20 MHz speed
     let next_index = find_next_log_index(&mut root_dir);
     let mut filename_buf = [0u8; 12];
     let filename_str = format_log_filename(next_index, &mut filename_buf);
 
-    let log_file = root_dir.open_file_in_dir(filename_str, Mode::ReadWriteCreateOrAppend).unwrap();
+    let log_file = root_dir
+        .open_file_in_dir(filename_str, Mode::ReadWriteCreateOrAppend)
+        .expect("SD CARD ERR: Failed to create or open active log file on the file system.");
 }
 
 /// Scans the root directory by inspecting raw filename bytes directly.

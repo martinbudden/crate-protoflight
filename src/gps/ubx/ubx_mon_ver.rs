@@ -36,8 +36,8 @@ impl UbxMonVer {
         // `unwrap` is safe, since we have checked payload.len().
         #[allow(clippy::unwrap_used)]
         Some(UbxMonVer {
-            software_version: payload[0..30].try_into().unwrap(),
-            hardware_version: payload[30..40].try_into().unwrap(),
+            software_version: payload[0..30].try_into().ok()?,
+            hardware_version: payload[30..40].try_into().ok()?,
         })
     }
 }

@@ -134,7 +134,7 @@ impl Board {
             let spi_bus =
                 Spi::new(peripherals.SPI0, spi0_clk, spi0_mosi, spi0_miso, spi0_tx_dma, spi0_rx_dma, Irqs, spi_config);
             let spi_cs_output = Output::new(spi0_cs, Level::High);
-            ExclusiveDevice::new(spi_bus, spi_cs_output, embassy_time::Delay).unwrap()
+            ExclusiveDevice::new(spi_bus, spi_cs_output, embassy_time::Delay).expect("SPI_0 init failed")
         };
         // Trick to find type of spi
         //let spi1_type: () = spi1;
@@ -153,7 +153,7 @@ impl Board {
             let spi_bus =
                 Spi::new(peripherals.SPI1, spi1_clk, spi1_mosi, spi1_miso, spi1_tx_dma, spi1_rx_dma, Irqs, spi_config);
             let spi_cs_output = Output::new(spi1_cs, Level::High);
-            ExclusiveDevice::new(spi_bus, spi_cs_output, embassy_time::Delay)
+            ExclusiveDevice::new(spi_bus, spi_cs_output, embassy_time::Delay).expect("SPI_1 init failed")
         };
 
         let uart0 = {

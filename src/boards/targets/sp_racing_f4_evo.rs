@@ -155,7 +155,7 @@ impl Board {
             let spi_bus =
                 Spi::new(peripherals.SPI1, spi1_sck, spi1_sdo, spi1_sdi, spi1_tx_dma, spi1_rx_dma, Irqs, config);
             let cs_output = Output::new(gyro1_spi_cs, Level::High, Speed::VeryHigh);
-            ExclusiveDevice::new(spi_bus, cs_output, Delay).unwrap()
+            ExclusiveDevice::new(spi_bus, cs_output, Delay).expect("SPI_1 init failed")
         };
 
         let mut imu: BoardImu = Imu426xx::new(ImuSpiBus::new(spi1), init.axis_order);
@@ -169,7 +169,7 @@ impl Board {
             config.frequency = Hertz(400_000);
             let spi_bus = Spi::new_blocking(peripherals.SPI2, spi2_sck, spi2_sdo, spi2_sdi, config);
             let cs_output = Output::new(max7456_spi_cs, Level::High, Speed::VeryHigh);
-            ExclusiveDevice::new(spi_bus, cs_output, Delay)
+            ExclusiveDevice::new(spi_bus, cs_output, Delay).expect("SPI_2 init failed")
         };
 
         let spi3 = {
@@ -178,7 +178,7 @@ impl Board {
             let spi_bus =
                 Spi::new(peripherals.SPI3, spi3_sck, spi3_sdo, spi3_sdi, spi3_tx_dma, spi3_rx_dma, Irqs, config);
             let cs_output = Output::new(sdcard_spi_cs, Level::High, Speed::VeryHigh);
-            ExclusiveDevice::new(spi_bus, cs_output, Delay)
+            ExclusiveDevice::new(spi_bus, cs_output, Delay).expect("SPI_3 init failed")
         };
 
         let uart1 = {

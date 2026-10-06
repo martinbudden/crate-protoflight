@@ -152,7 +152,7 @@ impl Board {
             let spi_bus =
                 Spi::new(peripherals.SPI1, spi1_clk, spi1_mosi, spi1_miso, spi1_tx_dma, spi1_rx_dma, Irqs, spi_config);
             let spi_cs_output = Output::new(gyro_cs_pin, Level::High);
-            ExclusiveDevice::new(spi_bus, spi_cs_output, embassy_time::Delay).unwrap()
+            ExclusiveDevice::new(spi_bus, spi_cs_output, embassy_time::Delay).expect("SPI_1 init failed")
         };
 
         let _spi1_interrupt = Input::new(gyro_exti_pin, embassy_rp::gpio::Pull::Up);
@@ -169,7 +169,7 @@ impl Board {
             let spi_bus =
                 Spi::new(peripherals.SPI0, spi0_clk, spi0_mosi, spi0_miso, spi0_tx_dma, spi0_rx_dma, Irqs, spi_config);
             let spi_cs_output = Output::new(sdcard_cs_pin, Level::High);
-            ExclusiveDevice::new(spi_bus, spi_cs_output, embassy_time::Delay).unwrap()
+            ExclusiveDevice::new(spi_bus, spi_cs_output, embassy_time::Delay).expect("SPI_0 init failed")
         };
 
         let (_uart0_tx, _uart0_rx) = {

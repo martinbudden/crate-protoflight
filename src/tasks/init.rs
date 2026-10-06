@@ -15,11 +15,11 @@ use crate::{
 /// 7. Spawns the realtime tasks.
 /// 8. Spawns any background tasks that have been configured to run.
 ///
-/// `panic()`, `.unwrap()` and `.expect()` are allowed during initialization
+/// `panic()` and `.expect()` are allowed during initialization
 /// since if anything fails during initialization there is no possibility of recovery
 /// and so there is no point continuing.
 ///
-/// Once initialization is complete `panic()`, `.unwrap()` and `.expect()` are NOT allowed.
+/// Once initialization is complete `panic()` and `.expect()` are NOT allowed.
 ///
 /// This function is quite long, but it is long for a good reason, and its organization is clear.
 ///

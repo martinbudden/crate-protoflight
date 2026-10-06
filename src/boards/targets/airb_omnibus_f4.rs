@@ -150,7 +150,7 @@ impl Board {
             let spi_bus =
                 Spi::new(peripherals.SPI1, spi1_sck, spi1_sdo, spi1_sdi, spi1_tx_dma, spi1_rx_dma, Irqs, config);
             let cs_output = Output::new(gyro1_spi_cs, Level::High, Speed::VeryHigh);
-            ExclusiveDevice::new(spi_bus, cs_output, Delay).unwrap()
+            ExclusiveDevice::new(spi_bus, cs_output, Delay).expect("SPI_1 init failed")
         };
 
         // No DMA on spi3
@@ -159,7 +159,7 @@ impl Board {
             config.frequency = Hertz(10_000_000);
             let spi_bus = Spi::new_blocking(peripherals.SPI3, spi3_sck, spi3_sdo, spi3_sdi, config);
             let cs_output = Output::new(flash_spi_cs, Level::High, Speed::VeryHigh);
-            ExclusiveDevice::new(spi_bus, cs_output, Delay).unwrap()
+            ExclusiveDevice::new(spi_bus, cs_output, Delay).expect("SPI_3 init failed")
         };
 
         let mut imu: BoardImu = Mpu6050::new(ImuSpiBus::new(spi1), init.axis_order);
