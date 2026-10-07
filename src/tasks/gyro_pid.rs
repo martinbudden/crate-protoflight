@@ -3,7 +3,6 @@ use embassy_sync::{
     pubsub::WaitResult,
     watch::{Receiver, Sender, Watch},
 };
-use embassy_time::Instant;
 
 use pidsk_controller::PdGainsf32;
 use static_cell::StaticCell;
@@ -202,6 +201,12 @@ async fn gyro_pid_loop_iteration(ctx: &mut GyroPidContext<BoardImu>, delta_t: f3
     // This will be picked up by the Blackbox and the OSD.
     ctx.gyro_pid_send_count += 1;
 
+    #[cfg(not(any(feature = "blackbox", feature = "osd")))]
+    {
+        // Use up unused variables.
+        _ = gyro_rps_unfiltered;
+        _ = setpoints_updated;
+    }
     #[cfg(any(feature = "blackbox", feature = "osd"))]
     if ctx.gyro_pid_send_count >= ctx.gyro_pid_denominator {
         ctx.gyro_pid_send_count = 0;
@@ -213,7 +218,7 @@ async fn gyro_pid_loop_iteration(ctx: &mut GyroPidContext<BoardImu>, delta_t: f3
         let pid_errors_i = [roll_errors.i, pitch_errors.i, yaw_errors.i];
         let pid_errors_d = [roll_errors.d, pitch_errors.d];
 
-        let time_us = Instant::now().as_micros();
+        let time_us = embassy_time::Instant::now().as_micros();
         let gyro_pid_message = GyroPidMessage {
             orientation,
             motor_commands,

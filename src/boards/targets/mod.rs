@@ -17,6 +17,7 @@ pub use host::{Board, BoardImu};
 #[cfg(feature = "rpi_pico2")]
 pub use rpi_pico2::{Board, BoardImu, SdCardSpiDevice};
 
+#[allow(unused)]
 #[cfg(feature = "madflight_fc2")]
 pub use madflight_fc2::{Board, BoardImu, SdCardSpiDevice};
 

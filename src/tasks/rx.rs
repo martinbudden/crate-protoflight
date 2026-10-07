@@ -148,6 +148,7 @@ pub async fn run(ctx: &'static mut RxContext) {
                     ctx.rc_adjustments.process_adjustments(&ctx.config_publisher, &ctx.fast_config_publisher).await;
 
                     // Send the rx message to the gyro_pid task.
+                    #[allow(unused_mut)]
                     if let Some(mut rx_message) = rx_message {
                         #[cfg(feature = "autopilot")]
                         if let Some(autopilot_message) = ctx.autopilot_receiver.try_changed() {

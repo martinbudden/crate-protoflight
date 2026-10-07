@@ -12,6 +12,7 @@ mod system_config;
 #[allow(unused)] // used by MSP
 pub use global_config::{config_publisher, fast_config_publisher};
 
+#[allow(unused)]
 pub use failsafe::{FailsafeConfig, FailsafeProcedure, FailsafeSwitchMode};
 pub use global_config::GLOBAL_CONFIG;
 pub use global_config::{ConfigItem, ConfigPublisher, ConfigSubscriber, config_subscriber};

@@ -12,7 +12,7 @@ use crate::boards::{
 };
 
 use dshot_codec::DshotSpeed;
-use imu_sensors::{Imu426xx, ImuSpiBus};
+use imu_sensors::{Imu426xx, ImuMock, ImuSpiBus, MockImuBus};
 use motor_mixers::{MotorDriver, MotorDriverDshot, MotorDriverPwm, MotorProtocol};
 
 use static_cell::StaticCell;
@@ -30,10 +30,13 @@ use esp_hal::{
     peripherals,
     spi::slave::Spi,
     time::Rate,
+    uart::{UartRx, UartTx},
 };
 
 pub type BoardImu = ImuMock<MockImuBus>;
 pub type Board = BoardHardware<BoardImu>;
+
+pub type SdCardSpiDevice = ();
 
 impl Board {
     #[allow(clippy::too_many_lines, clippy::similar_names, clippy::no_effect_underscore_binding)]
@@ -42,8 +45,8 @@ impl Board {
         let imu = ImuMock::new(MockImuBus::new(), init.axis_order);
 
         static I2C_BUS: StaticCell<SharedI2cBus> = StaticCell::new();
-        static RADIO_UART_TX: StaticCell<UartTx<'static, UartAsync>> = StaticCell::new();
-        static RADIO_UART_RX: StaticCell<UartRx<'static, UartAsync>> = StaticCell::new();
+        //static RADIO_UART_TX: StaticCell<UartTx<'static, UartTx>> = StaticCell::new();
+        //static RADIO_UART_RX: StaticCell<UartRx<'static, UartRx>> = StaticCell::new();
         static LEDC_TIMER: static_cell::StaticCell<timer::Timer<'static, LowSpeed>> = static_cell::StaticCell::new();
 
         // Take ownership of the hardware peripherals block
