@@ -199,7 +199,7 @@ async fn gyro_pid_loop_iteration(ctx: &mut GyroPidContext<BoardImu>, delta_t: f3
     MOTOR_MIXER_SIGNAL.signal(MotorMixerMessage::from(motor_commands));
 
     // Send the GyroPidMessage on a denominator (e.g., 1/8 = 1kHz)
-    // This will be picked up by the Blackbox, the OSD and anyone else who is listening.
+    // This will be picked up by the Blackbox and the OSD.
     ctx.gyro_pid_send_count += 1;
 
     #[cfg(any(feature = "blackbox", feature = "osd"))]
@@ -228,7 +228,7 @@ async fn gyro_pid_loop_iteration(ctx: &mut GyroPidContext<BoardImu>, delta_t: f3
         ctx.gyro_pid_sender.send(gyro_pid_message);
 
         if setpoints_updated {
-            // Only send a setpoint_message when the setpoints have actually been updated
+            // Only send a setpoint_message when the setpoints have actually been updated.
             // This is picked up by the Blackbox.
             // TODO fill out missing SetpointMessage fields.
             let pid_errors_s = [roll_errors.s, pitch_errors.s, yaw_errors.s];
@@ -245,10 +245,12 @@ async fn gyro_pid_loop_iteration(ctx: &mut GyroPidContext<BoardImu>, delta_t: f3
                 pid_errors_s,
                 pid_errors_k,
                 rc_commands: ctx.rc_controls.controls_pwm,
+
                 #[cfg(feature = "dshot_telemetry")]
                 motor_rpm_d2: [0i16; SetpointMessage::MAX_SUPPORTED_MOTOR_COUNT],
                 #[cfg(feature = "servos")]
                 servos: [0i16; SetpointMessage::MAX_SUPPORTED_SERVO_COUNT],
+
                 gps_state_flags: 0,
                 failsafe_phase: 0,
                 rx_signal_received: true,
@@ -296,14 +298,14 @@ fn adjust_pid_gains(flight_controller: &mut FlightController, fast_config_item: 
         }
         FastConfigItem::RollAngle(pid_config) => {
             let gains = FlightController::calculate_gains(pid_config);
-            let gains = PdGainsf32 { kp: gains.kp, kd: gains.kd };
-            flight_controller.roll.angle_pid.set_gains(gains);
+            let pd_gains = PdGainsf32 { kp: gains.kp, kd: gains.kd };
+            flight_controller.roll.angle_pid.set_gains(pd_gains);
             flight_controller.roll.angle_pid.set_setpoint(0.0);
         }
         FastConfigItem::PitchAngle(pid_config) => {
             let gains = FlightController::calculate_gains(pid_config);
-            let gains = PdGainsf32 { kp: gains.kp, kd: gains.kd };
-            flight_controller.pitch.angle_pid.set_gains(gains);
+            let pd_gains = PdGainsf32 { kp: gains.kp, kd: gains.kd };
+            flight_controller.pitch.angle_pid.set_gains(pd_gains);
             flight_controller.pitch.angle_pid.set_setpoint(0.0);
         }
     }

@@ -95,7 +95,7 @@ impl Board {
         // Take ownership of the hardware peripherals block
         let peripherals = embassy_stm32::init(Stm32Config::default());
 
-        // SPI1 - Gyroscope
+        // SPI1 - IMU
         let spi1_sck = peripherals.PA5;
         let spi1_sdi = peripherals.PA6;
         let spi1_sdo = peripherals.PA7;
@@ -350,7 +350,7 @@ impl Board {
 // This creates the type validation struct "Irqs" required by Spi::new.
 bind_interrupts!(struct Irqs {
     // -----------------------------------------------------------------------
-    // SPI1 — Gyroscope
+    // SPI1 — IMU
     // -----------------------------------------------------------------------
     DMA2_STREAM2 => dma::InterruptHandler<peripherals::DMA2_CH2>;
     DMA2_STREAM3 => dma::InterruptHandler<peripherals::DMA2_CH3>;

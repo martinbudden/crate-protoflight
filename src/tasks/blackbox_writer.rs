@@ -7,6 +7,7 @@ use {
     embedded_sdmmc::{Directory, File, Mode},
 };
 
+use embassy_futures::yield_now;
 use static_cell::StaticCell;
 
 use crate::boards::SdCardVolume;
@@ -149,6 +150,7 @@ pub async fn run(ctx: &'static mut BlackboxWriterContext) {
                     &block.data[..block.len],
                     &mut ctx.file,
                 );
+                yield_now().await;
                 if loop_count.is_multiple_of(10) {
                     log::info!(" BLACKBOXw:loop {loop_count},{0}", block.len);
                 }
@@ -157,6 +159,7 @@ pub async fn run(ctx: &'static mut BlackboxWriterContext) {
                 #[cfg(any(feature = "host", feature = "sdcard"))]
                 flush_sector_buffer(&mut ctx.sector_buffer, ctx.sector_idx, &mut ctx.file);
                 ctx.sector_idx = 0;
+                yield_now().await;
                 log::info!(" BLACKBOXf:loop {loop_count}");
                 break;
             }
@@ -166,6 +169,7 @@ pub async fn run(ctx: &'static mut BlackboxWriterContext) {
 }
 
 #[cfg(any(feature = "host", feature = "sdcard"))]
+#[inline]
 fn append_to_sector_buffer(
     sector_buffer: &mut [u8; BlackboxWriterContext::SECTOR_SIZE],
     sector_idx: &mut usize,
@@ -198,6 +202,7 @@ fn append_to_sector_buffer(
 }
 
 #[cfg(any(feature = "host", feature = "sdcard"))]
+#[inline]
 fn flush_sector_buffer(
     sector_buffer: &mut [u8; BlackboxWriterContext::SECTOR_SIZE],
     sector_idx: usize,

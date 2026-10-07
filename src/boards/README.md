@@ -42,12 +42,12 @@ The low level hardware is abstracted away in the BSP, partly by Protoflight and 
     ├── USB VCP (Configurator)     ├── SM 0 (GPS TX)         ├── SM 0 (Motor 1)    ├── SM 0 (Motor 5)
     ├── UART1 (Radio)              ├── SM 1 (GPS RX)         ├── SM 1 (Motor 2)    ├── SM 1 (Motor 6)
     ├── UART0 (VTX/Digital OSD)    ├── SM 2 (SPI Analog OSD) ├── SM 2 (Motor 3)    ├── SM 2 (Motor 7)
-    ├── SPI0 (Gyro)                └── SM 3 (Spare)          └── SM 3 (Motor 4)    └── SM 3 (Motor 8)
+    ├── SPI0 (IMU)                └── SM 3 (Spare)          └── SM 3 (Motor 4)    └── SM 3 (Motor 8)
     ├── SPI1 (Blackbox)
     └── I2C0 (Baro/Mag)
 ```
 
---- Device 1: Hardware SPI0 (Gyroscope) ---.
+--- Device 1: Hardware SPI0 (IMU) ---.
 
 Tied to SPI0 running asynchronously via the DMA system.
 
