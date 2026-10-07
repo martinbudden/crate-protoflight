@@ -3,7 +3,7 @@
 
 // ESP32 S3
 // see https://madflight.com/Board-ESP-FC2/
-// pins: https://github.com/qqqlab/madflight/blob/main/src/brd/madflight_FC3.h
+// pins: https://github.com/qqqlab/madflight/blob/main/src/brd/madflight_FC2.h
 // schematic: https://madflight.com/img/madflight-ESP-FC2.pdf
 
 use crate::boards::{
@@ -12,8 +12,7 @@ use crate::boards::{
 };
 
 use dshot_codec::DshotSpeed;
-use imu_sensors::{ImuMock, MockImuBus};
-// use imu_sensors::{Imu426xx, ImuSpiBus};
+use imu_sensors::{Imu426xx, ImuSpiBus};
 use motor_mixers::{MotorDriver, MotorDriverDshot, MotorDriverPwm, MotorProtocol};
 
 use static_cell::StaticCell;
@@ -39,11 +38,12 @@ pub type Board = BoardHardware<BoardImu>;
 impl Board {
     #[allow(clippy::too_many_lines, clippy::similar_names, clippy::no_effect_underscore_binding)]
     pub fn new(init: &BoardInit) -> Result<Self, BoardInitError> {
+        // NOTE: resp32 numbers peripherals starting at 0, eg SPI0, SPI1, I2C0, I2C1 etc
         let imu = ImuMock::new(MockImuBus::new(), init.axis_order);
 
         static I2C_BUS: StaticCell<SharedI2cBus> = StaticCell::new();
-        //static RADIO_UART_TX: StaticCell<UartTx<'static, UartAsync>> = StaticCell::new();
-        //static RADIO_UART_RX: StaticCell<UartRx<'static, UartAsync>> = StaticCell::new();
+        static RADIO_UART_TX: StaticCell<UartTx<'static, UartAsync>> = StaticCell::new();
+        static RADIO_UART_RX: StaticCell<UartRx<'static, UartAsync>> = StaticCell::new();
         static LEDC_TIMER: static_cell::StaticCell<timer::Timer<'static, LowSpeed>> = static_cell::StaticCell::new();
 
         // Take ownership of the hardware peripherals block
@@ -52,14 +52,11 @@ impl Board {
         let peripherals = esp_hal::init(Default::default());
 
         // SPI0
-        // #define SPI_0_PINS spi_pins_t{.cs=17,.sck=16,.cipo=14,.copi=15,.irq=13}
-        // #define SD_MMC_PINS mmc_pins_t{.dat=37,.clk=36,.cmd=35}
         let spi0_clk = peripherals.GPIO16;
         let spi0_mosi = peripherals.GPIO15;
         let spi0_miso = peripherals.GPIO14;
-        // Physical pin assigned to capture the gyroscope's INT1 signal wire
-        let gyro_cs_pin = peripherals.GPIO17;
-        let gyro_exti_pin = peripherals.GPIO13;
+        let imu_cs_pin = peripherals.GPIO17;
+        let imu_exti_pin = peripherals.GPIO13;
 
         // UART0
         // #define UART_0_PINS uart_pins_t{.rx=7,.tx=21}
@@ -82,6 +79,7 @@ impl Board {
         let _i2c1_sda = peripherals.GPIO33;
 
         // #define MOTOR_PINS  motor_pins_t{.m0=1,.m1=2,.m2=3,.m3=4} // BR, TR, BL, TL
+        // Motors
         let m1 = peripherals.GPIO1;
         let m2 = peripherals.GPIO2;
         let m3 = peripherals.GPIO3;
@@ -124,6 +122,8 @@ impl Board {
         let gps_uart_tx = None;
         let gps_uart_rx = None;
 
+        let sdcard_volume = None;
+
         let barometer = None;
         let magnetometer = None;
         let rangefinder = None;
@@ -140,7 +140,7 @@ impl Board {
             radio_uart_tx,
             gps_uart_rx,
             gps_uart_tx,
-
+            sdcard_volume,
             barometer,
             magnetometer,
             rangefinder,

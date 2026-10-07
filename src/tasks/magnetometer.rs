@@ -52,18 +52,13 @@ pub struct MagnetometerContext {
     pub magnetometer_publisher: MagnetometerPublisher,
 }
 
-impl MagnetometerContext {
-    pub fn new(magnetometer: Magnetometer) -> Self {
-        #[allow(clippy::expect_used)]
-        Self {
-            magnetometer,
-            magnetometer_publisher: MAGNETOMETER_PUB_SUB_CHANNEL.publisher().expect("magnetometer_publisher failed"),
-        }
-    }
-}
-
 pub fn init(magnetometer: Magnetometer) -> &'static mut MagnetometerContext {
-    MAGNETOMETER_CTX.init(MagnetometerContext::new(magnetometer))
+    let ctx = MagnetometerContext {
+        magnetometer,
+        #[allow(clippy::expect_used)]
+        magnetometer_publisher: MAGNETOMETER_PUB_SUB_CHANNEL.publisher().expect("magnetometer_publisher failed"),
+    };
+    MAGNETOMETER_CTX.init(ctx)
 }
 
 /// Magnetometer Task Placeholder.

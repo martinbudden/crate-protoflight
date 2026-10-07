@@ -52,18 +52,13 @@ pub struct BarometerContext {
     pub barometer_publisher: BarometerPublisher,
 }
 
-impl BarometerContext {
-    pub fn new(barometer: Barometer) -> Self {
-        #[allow(clippy::expect_used)]
-        Self {
-            barometer,
-            barometer_publisher: BAROMETER_PUB_SUB_CHANNEL.publisher().expect("barometer_publisher failed"),
-        }
-    }
-}
-
 pub fn init(barometer: Barometer) -> &'static mut BarometerContext {
-    BAROMETER_CTX.init(BarometerContext::new(barometer))
+    let ctx = BarometerContext {
+        barometer,
+        #[allow(clippy::expect_used)]
+        barometer_publisher: BAROMETER_PUB_SUB_CHANNEL.publisher().expect("barometer_publisher failed"),
+    };
+    BAROMETER_CTX.init(ctx)
 }
 
 /// Barometer Task Placeholder.

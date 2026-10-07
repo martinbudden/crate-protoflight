@@ -6,6 +6,7 @@
 use crate::boards::{
     SharedI2cBus,
     board::{BoardHardware, BoardInit, BoardInitError},
+    open_volume,
 };
 
 use crate::barometer_sensors::Barometer;
@@ -21,7 +22,12 @@ use motor_mixers::{MotorDriver, MotorDriverDshot, MotorDriverPwm, MotorProtocol}
 use static_cell::StaticCell;
 
 use embassy_time::Delay;
+// use embedded_hal::delay::DelayNs;
 use embedded_hal_bus::spi::ExclusiveDevice;
+
+// The `SdMmcSpi` is used for block level access to the card.
+// And the `VolumeManager` gives access to the FAT filesystem functions.
+// use embedded_sdmmc::{SdCard, VolumeIdx, VolumeManager};
 
 #[allow(unused)]
 use embassy_rp::{
@@ -38,25 +44,26 @@ use embassy_rp::{
     uart::{Async as UartAsync, Config as UartConfig, Uart, UartRx, UartTx},
 };
 
-#[allow(unused)]
-use cyw43_pio::PioSpi;
-
 #[cfg(feature = "multicore")]
 use {
     core::cell::Cell,
     critical_section::Mutex,
     embassy_executor::{Executor, SendSpawner},
     embassy_rp::{
+        Peri,
         multicore::{Stack, spawn_core1},
         peripherals::CORE1,
     },
 };
 
 // IMU is on SPI_0
-type BoardImuSpi = ExclusiveDevice<embassy_rp::spi::Spi<'static, peripherals::SPI0, SpiAsync>, Output<'static>, Delay>;
+type BoardImuSpi = ExclusiveDevice<Spi<'static, peripherals::SPI0, SpiAsync>, Output<'static>, Delay>;
 
 pub type BoardImu = Bmi270<ImuSpiBus<BoardImuSpi>>;
 pub type Board = BoardHardware<BoardImu>;
+
+// SdCard is on SPI_1
+pub type SdCardSpiDevice = ExclusiveDevice<Spi<'static, peripherals::SPI1, SpiAsync>, Output<'static>, Delay>;
 
 impl Board {
     #[cfg(feature = "multicore")]
@@ -92,9 +99,10 @@ impl Board {
         // NOTE: rp2350 numbers peripherals starting at 0, eg SPI0, SPI1, I2C0, I2C1 etc
 
         static I2C_BUS: StaticCell<SharedI2cBus> = StaticCell::new();
+        static SDCARD_SPI_DEVICE: StaticCell<SdCardSpiDevice> = StaticCell::new();
+
         static _RADIO_UART_TX: StaticCell<UartTx<'static, UartAsync>> = StaticCell::new();
         static _RADIO_UART_RX: StaticCell<UartRx<'static, UartAsync>> = StaticCell::new();
-
         // Take ownership of the hardware peripherals block
         #[allow(clippy::default_trait_access)]
         let peripherals = embassy_rp::init(Default::default());
@@ -105,9 +113,9 @@ impl Board {
         let spi0_miso = peripherals.PIN_20;
         let spi0_tx_dma = peripherals.DMA_CH2;
         let spi0_rx_dma = peripherals.DMA_CH3;
-        let gyro_exti_pin = peripherals.PIN_13;
-        let gyro_cs_pin = peripherals.PIN_14;
-        let _gyro_clk_in_pin = peripherals.PIN_15;
+        let imu_exti_pin = peripherals.PIN_13;
+        let imu_cs_pin = peripherals.PIN_14;
+        let _imu_clk_in_pin = peripherals.PIN_15;
 
         // SPI1, SD card
         let spi1_clk = peripherals.PIN_42;
@@ -141,13 +149,11 @@ impl Board {
         let i2c0_scl = peripherals.PIN_17;
         let i2c0_sda = peripherals.PIN_16;
 
+        // Motors
         let m1 = peripherals.PIN_31;
         let m2 = peripherals.PIN_30;
         let m3 = peripherals.PIN_29;
         let m4 = peripherals.PIN_28;
-
-        // Trick to find type of spi
-        //let spi0_type: () = spi0;
 
         // NOTE: IMU is on SPI_0
         let spi0 = {
@@ -156,15 +162,15 @@ impl Board {
             // TODO: increase SPI frequency to 20_000_000 after initialization.
             let spi_bus =
                 Spi::new(peripherals.SPI0, spi0_clk, spi0_mosi, spi0_miso, spi0_tx_dma, spi0_rx_dma, Irqs, spi_config);
-            let spi_cs_output = Output::new(gyro_cs_pin, Level::High);
+            let spi_cs_output = Output::new(imu_cs_pin, Level::High);
             ExclusiveDevice::new(spi_bus, spi_cs_output, embassy_time::Delay).expect("SPI_0 init failed")
         };
 
-        let _spi0_interrupt = Input::new(gyro_exti_pin, embassy_rp::gpio::Pull::Up);
+        let _spi0_interrupt = Input::new(imu_exti_pin, embassy_rp::gpio::Pull::Up);
         let imu: BoardImu = Bmi270::new(ImuSpiBus::new(spi0), init.axis_order);
 
         // NOTE: SD card is on SPI_1
-        let _spi1 = {
+        let spi1: SdCardSpiDevice = {
             let mut spi_config = SpiConfig::default();
             // When an SD card boots up, it starts in native SD mode.
             // To force it into SPI mode, the driver sends raw command sequences (CMD0, CMD8, ACMD41).
@@ -175,8 +181,10 @@ impl Board {
             let spi_bus =
                 Spi::new(peripherals.SPI1, spi1_clk, spi1_mosi, spi1_miso, spi1_tx_dma, spi1_rx_dma, Irqs, spi_config);
             let spi_cs_output = Output::new(sdcard_cs_pin, Level::High);
-            ExclusiveDevice::new(spi_bus, spi_cs_output, embassy_time::Delay).expect("SPI_0 init failed")
+            ExclusiveDevice::new(spi_bus, spi_cs_output, embassy_time::Delay).expect("SPI_1 init failed")
         };
+        //Trick to find type of spi
+        //let spi1_type: () = spi1;
 
         // TODO: PIO SPI
         // --- Device 3: PIO0 Backed SPI (Auxiliary Peripheral) ---
@@ -191,6 +199,16 @@ impl Board {
             let mut uart_config = UartConfig::default();
             uart_config.baudrate = 115_200;
             Uart::new(peripherals.UART1, uart1_tx, uart1_rx, Irqs, uart1_tx_dma, uart1_rx_dma, uart_config).split()
+        };
+
+        let sdcard = SDCARD_SPI_DEVICE.init(spi1);
+
+        let sdcard_volume = match open_volume(sdcard) {
+            Ok(volume) => Some(volume),
+            Err(e) => {
+                log::error!("SD Card initialization failed: {e:?}");
+                None
+            }
         };
 
         let i2c0 = {
@@ -277,7 +295,7 @@ impl Board {
             radio_uart_tx,
             gps_uart_rx,
             gps_uart_tx,
-
+            sdcard_volume,
             barometer,
             magnetometer,
             rangefinder,

@@ -75,25 +75,22 @@ pub struct GpsContext {
 
 impl GpsContext {
     const BUF_SIZE: usize = 128;
-
-    pub fn new(uart_rx: GpsUartRx, uart_tx: GpsUartTx, gps_provider: GpsProvider) -> Self {
-        #[allow(clippy::expect_used)]
-        Self {
-            uart_rx,
-            uart_tx,
-            gps_parser: GpsParser::new_unwrapped(gps_provider),
-            gps_publisher: GPS_PUB_SUB_CHANNEL.publisher().expect("gps_publisher failed"),
-            gps_data: GpsSolution::new(),
-            gps_status_data: GpsStatus::new(),
-            home: Geodetic::new(),
-            buf: [0u8; Self::BUF_SIZE],
-        }
-    }
 }
 
 #[allow(unused)]
 pub fn init(uart_rx: GpsUartRx, uart_tx: GpsUartTx, gps_provider: GpsProvider) -> &'static mut GpsContext {
-    GPS_CTX.init(GpsContext::new(uart_rx, uart_tx, gps_provider))
+    let ctx = GpsContext {
+        uart_rx,
+        uart_tx,
+        gps_parser: GpsParser::new_unwrapped(gps_provider),
+        #[allow(clippy::expect_used)]
+        gps_publisher: GPS_PUB_SUB_CHANNEL.publisher().expect("gps_publisher failed"),
+        gps_data: GpsSolution::new(),
+        gps_status_data: GpsStatus::new(),
+        home: Geodetic::new(),
+        buf: [0u8; GpsContext::BUF_SIZE],
+    };
+    GPS_CTX.init(ctx)
 }
 
 /// GPS Task Placeholder.
@@ -156,12 +153,24 @@ async fn initialize(uart_tx: &mut GpsUartTx) {
     drop(global_config);
 
     // TODO: initialize GPS before main task loop.
-    let nav5 = UbxCfgNav5::new(gps_config.gps_ublox_acquire_model as u8);
-    let _ = uart_tx.write(&nav5.make_frame()).await;
-    let pms = UbxCfgPms::default();
-    let _ = uart_tx.write(&pms.make_frame()).await;
-    let rate = UbxCfgRate::default();
-    let _ = uart_tx.write(&rate.make_frame()).await;
+    #[cfg(not(feature = "host"))]
+    {
+        let nav5 = UbxCfgNav5::new(gps_config.gps_ublox_acquire_model as u8);
+        _ = uart_tx.write(&nav5.make_frame()).await;
+        let pms = UbxCfgPms::default();
+        _ = uart_tx.write(&pms.make_frame()).await;
+        let rate = UbxCfgRate::default();
+        _ = uart_tx.write(&rate.make_frame()).await;
+    }
+    #[cfg(feature = "host")]
+    {
+        // Use up the unused items.
+        let &mut () = uart_tx;
+        _ = gps_config;
+        _ = UbxCfgNav5::default();
+        _ = UbxCfgPms::default();
+        _ = UbxCfgRate::default();
+    }
 }
 
 fn process_gps_event(gps_data: &mut GpsSolution, gps_status: &mut GpsStatus, event: GpsParserEvent<'_>) {
@@ -246,6 +255,11 @@ impl GpsContext {
                 Ok(n) => Ok(n),
                 Err(_) => Err(()),
             }
+        }
+        #[cfg(feature = "host")]
+        {
+            core::future::ready(()).await;
+            Err(())
         }
     }
 }

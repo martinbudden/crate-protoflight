@@ -7,10 +7,20 @@ mod platform_stm32;
 
 mod board;
 mod mock_uart;
+mod no_sdcard;
+mod sd_card;
 
 pub mod targets;
 
 pub use board::BoardInit;
+
+#[allow(unused)]
+#[cfg(feature = "sdcard")]
+pub use sd_card::{SdCardBlockDevice, SdCardTimeSource, SdCardVolume, StorageError, StorageVolumeError, open_volume};
+
+#[allow(unused)]
+#[cfg(not(feature = "sdcard"))]
+pub use no_sdcard::SdCardVolume;
 
 #[cfg(feature = "host")]
 pub use platform_host::{GpsUartRx, GpsUartTx, I2cDeviceBlocking, RadioUartRx, RadioUartTx};

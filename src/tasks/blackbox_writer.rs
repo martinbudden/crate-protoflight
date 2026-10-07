@@ -1,86 +1,162 @@
 #![cfg(feature = "blackbox")]
 
-use static_cell::StaticCell;
-
-use crate::tasks::blackbox_encoder::{BLACKBOX_WRITE_QUEUE, BlackboxWriteItem};
-
-#[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
+#[cfg(all(not(feature = "host"), feature = "sdcard"))]
 use {
-    //crate::boards::rp2350::BlackboxSpiDevice,
-    embedded_sdmmc::{Directory, Mode, SdCard, VolumeIdx, VolumeManager},
+    crate::boards::{SdCardBlockDevice, SdCardTimeSource},
+    core::ops::ControlFlow,
+    embedded_sdmmc::{Directory, File, Mode},
 };
 
+use static_cell::StaticCell;
+
+use crate::boards::SdCardVolume;
+use crate::tasks::blackbox_encoder::{BLACKBOX_WRITE_QUEUE, BlackboxWriteItem};
+
+/// Type alias for the persistent SD card Directory.
+#[cfg(all(not(feature = "host"), feature = "sdcard"))]
+pub type SdCardDirectory<'a> = Directory<
+    'a,
+    SdCardBlockDevice,
+    SdCardTimeSource,
+    1, // MAX_DIRS
+    1, // MAX_FILES
+    1, // MAX_VOLUMES
+>;
+#[cfg(any(feature = "host", not(feature = "sdcard")))]
+pub type SdCardDirectory<'a> = ();
+
+// Type alias for the persistent File matching our limits
+#[cfg(all(not(feature = "host"), feature = "sdcard"))]
+pub type SdCardFile<'a> = File<
+    'a,
+    SdCardBlockDevice,
+    SdCardTimeSource,
+    1, // MAX_DIRS
+    1, // MAX_FILES
+    1, // MAX_VOLUMES
+>;
+#[cfg(all(not(feature = "host"), not(feature = "sdcard")))]
+pub type SdCardFile<'a> = ();
 #[cfg(feature = "host")]
-use crate::drivers::sd_card::{MockSdCard, SdStorage};
+pub type SdCardFile<'a> = std::fs::File;
 
-/// Dummy time source required by the embedded-sdmmc library.
+/// System execution context for the blackbox writer.
 #[allow(unused)]
-#[cfg(not(feature = "std"))]
-pub struct VehicleTimeSource;
-
-#[cfg(not(feature = "std"))]
-impl embedded_sdmmc::TimeSource for VehicleTimeSource {
-    fn get_timestamp(&self) -> embedded_sdmmc::Timestamp {
-        // Returns a fixed default time; can be mapped to an RTC later
-        embedded_sdmmc::Timestamp::from_fat(0, 0)
-    }
-}
-/// System execution context for the background storage worker pipeline.
 pub struct BlackboxWriterContext {
-    #[cfg(feature = "host")]
-    pub sd_card: MockSdCard,
-    #[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
-    pub spi_device: BlackboxSpiDevice,
+    pub volume: SdCardVolume,
+    pub root_dir: SdCardDirectory<'static>,
+    pub file: SdCardFile<'static>,
     /// 512-byte cache matching SD physical sector boundaries.
     pub sector_buffer: [u8; Self::SECTOR_SIZE],
     pub sector_idx: usize,
 }
 
-// A single BlackboxWriteBlock must always fit within one SD sector.
-const _: () =
-    assert!(crate::tasks::blackbox_encoder::BlackboxWriteBlock::CAPACITY <= BlackboxWriterContext::SECTOR_SIZE);
-
 impl BlackboxWriterContext {
     const SECTOR_SIZE: usize = 512;
-
-    pub fn new() -> Self {
-        Self {
-            #[cfg(feature = "host")]
-            sd_card: MockSdCard::new("blackbox_log.bbl"),
-
-            #[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
-            spi_device,
-
-            sector_buffer: [0u8; Self::SECTOR_SIZE],
-            sector_idx: 0,
-        }
-    }
 }
 
 static BLACKBOX_WRITER_CTX: StaticCell<BlackboxWriterContext> = StaticCell::new();
 
-pub fn init() -> &'static mut BlackboxWriterContext {
-    BLACKBOX_WRITER_CTX.init(BlackboxWriterContext::new())
+/// Attempts to create the blackbox writer context.
+/// Returns `None` if the hardware or filesystem fails to mount.
+#[cfg(all(not(feature = "host"), feature = "sdcard"))]
+pub fn init(volume: SdCardVolume) -> Option<&'static mut BlackboxWriterContext> {
+    // Open the root directory directly out of the 'static volume
+    let mut root_dir = match volume.open_root_dir() {
+        Ok(dir) => dir,
+        Err(e) => {
+            log::error!("BLACKBOX: Root directory initialization failed: {e:?}");
+            return None;
+        }
+    };
+
+    // Scan directory and generate the log index
+    let next_index = find_next_log_index(&mut root_dir);
+    let mut filename_buf = [0u8; 12];
+    let filename_str = format_log_filename(next_index, &mut filename_buf);
+
+    // Open the file out of the root directory context
+    let file = match root_dir.open_file_in_dir(filename_str, Mode::ReadWriteCreateOrAppend) {
+        Ok(f) => f,
+        Err(e) => {
+            log::error!("BLACKBOX: File creation failed: {e:?}");
+            return None;
+        }
+    };
+
+    let ctx = BlackboxWriterContext {
+        volume,
+        root_dir,
+        file,
+        sector_buffer: [0u8; BlackboxWriterContext::SECTOR_SIZE],
+        sector_idx: 0,
+    };
+
+    Some(BLACKBOX_WRITER_CTX.init(ctx))
+}
+
+#[cfg(all(not(feature = "host"), not(feature = "sdcard")))]
+pub fn init(_volume: SdCardVolume) -> Option<&'static mut BlackboxWriterContext> {
+    let ctx = BlackboxWriterContext {
+        volume: (),
+        root_dir: (),
+        file: (),
+        sector_buffer: [0u8; BlackboxWriterContext::SECTOR_SIZE],
+        sector_idx: 0,
+    };
+
+    Some(BLACKBOX_WRITER_CTX.init(ctx))
+}
+
+#[cfg(feature = "host")]
+pub fn init(_volume: SdCardVolume) -> Option<&'static mut BlackboxWriterContext> {
+    use std::fs::OpenOptions;
+
+    log::info!("BLACKBOX: Running on host environment. Target file: blackbox_log.bbl");
+
+    // Open or create the hardcoded file on your local machine
+    let file = match OpenOptions::new().read(true).create(true).append(true).open("blackbox_log.bbl") {
+        Ok(f) => f,
+        Err(e) => {
+            log::error!("BLACKBOX HOST ERR: Failed to open/create 'blackbox_log.bbl': {e:?}");
+            return None;
+        }
+    };
+
+    let ctx = BlackboxWriterContext {
+        volume: (),
+        root_dir: (),
+        file,
+        sector_buffer: [0u8; BlackboxWriterContext::SECTOR_SIZE],
+        sector_idx: 0,
+    };
+
+    Some(BLACKBOX_WRITER_CTX.init(ctx))
 }
 
 #[embassy_executor::task]
 pub async fn run(ctx: &'static mut BlackboxWriterContext) {
-    log::info!("BLACKBOX WRITER: task started");
-
-    open_storage();
+    log::info!("BLACKBOX WRITER: task started. Log file is armed.");
 
     let mut loop_count: u32 = 0;
     loop {
         match BLACKBOX_WRITE_QUEUE.receive().await {
             BlackboxWriteItem::Data(block) => {
-                let chunk = &block.data[..block.len];
-                append_to_sector_buffer(ctx, chunk).await;
+                #[cfg(any(feature = "host", feature = "sdcard"))]
+                append_to_sector_buffer(
+                    &mut ctx.sector_buffer,
+                    &mut ctx.sector_idx,
+                    &block.data[..block.len],
+                    &mut ctx.file,
+                );
                 if loop_count.is_multiple_of(10) {
                     log::info!(" BLACKBOXw:loop {loop_count},{0}", block.len);
                 }
             }
             BlackboxWriteItem::Flush => {
-                flush_sector_buffer(ctx).await;
+                #[cfg(any(feature = "host", feature = "sdcard"))]
+                flush_sector_buffer(&mut ctx.sector_buffer, ctx.sector_idx, &mut ctx.file);
+                ctx.sector_idx = 0;
                 log::info!(" BLACKBOXf:loop {loop_count}");
                 break;
             }
@@ -89,97 +165,55 @@ pub async fn run(ctx: &'static mut BlackboxWriterContext) {
     }
 }
 
-async fn append_to_sector_buffer(ctx: &mut BlackboxWriterContext, chunk: &[u8]) {
-    core::future::ready(()).await;
-    let space_remaining = BlackboxWriterContext::SECTOR_SIZE - ctx.sector_idx;
+#[cfg(any(feature = "host", feature = "sdcard"))]
+fn append_to_sector_buffer(
+    sector_buffer: &mut [u8; BlackboxWriterContext::SECTOR_SIZE],
+    sector_idx: &mut usize,
+    chunk: &[u8],
+    file: &mut SdCardFile<'static>,
+) {
+    // Bring std::io::Write into scope ONLY on the host so .write() works exactly like the embedded variant
+    #[cfg(feature = "host")]
+    use std::io::Write as _;
+
+    let space_remaining = BlackboxWriterContext::SECTOR_SIZE - *sector_idx;
 
     if chunk.len() <= space_remaining {
-        // Entire chunk fits in the current sector.
-        let end = ctx.sector_idx + chunk.len();
-        ctx.sector_buffer[ctx.sector_idx..end].copy_from_slice(chunk);
-        ctx.sector_idx = end;
-        // If exactly full, write the sector.
-        if ctx.sector_idx == BlackboxWriterContext::SECTOR_SIZE {
-            #[cfg(feature = "host")]
-            let _ = ctx.sd_card.write_all(&ctx.sector_buffer).await;
-            ctx.sector_idx = 0;
+        let end = *sector_idx + chunk.len();
+        sector_buffer[*sector_idx..end].copy_from_slice(chunk);
+        *sector_idx = end;
+
+        if *sector_idx == BlackboxWriterContext::SECTOR_SIZE {
+            _ = file.write(sector_buffer);
+            *sector_idx = 0;
         }
     } else {
-        // Chunk crosses the sector boundary.
-        // Fill the remainder of the current sector.
-        ctx.sector_buffer[ctx.sector_idx..].copy_from_slice(&chunk[..space_remaining]);
-        #[cfg(feature = "host")]
-        {
-            _ = ctx.sd_card.write_all(&ctx.sector_buffer).await;
-        }
-        // Copy the remainder of the chunk into the new sector.
+        sector_buffer[*sector_idx..].copy_from_slice(&chunk[..space_remaining]);
+        _ = file.write(sector_buffer);
+
         let remainder = &chunk[space_remaining..];
-        ctx.sector_buffer[..remainder.len()].copy_from_slice(remainder);
-        ctx.sector_idx = remainder.len();
+        sector_buffer[..remainder.len()].copy_from_slice(remainder);
+        *sector_idx = remainder.len();
     }
 }
 
-async fn flush_sector_buffer(ctx: &mut BlackboxWriterContext) {
-    core::future::ready(()).await;
-    if ctx.sector_idx != 0 {
-        // Pad the rest of the sector with zeros.
-        ctx.sector_buffer[ctx.sector_idx..].fill(0);
-        #[cfg(feature = "host")]
-        {
-            _ = ctx.sd_card.write_all(&ctx.sector_buffer).await;
-        }
-        ctx.sector_idx = 0;
-    }
-
+#[cfg(any(feature = "host", feature = "sdcard"))]
+fn flush_sector_buffer(
+    sector_buffer: &mut [u8; BlackboxWriterContext::SECTOR_SIZE],
+    sector_idx: usize,
+    file: &mut SdCardFile<'static>,
+) {
     #[cfg(feature = "host")]
-    ctx.sd_card.flush().await;
-}
-
-#[cfg(not(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb")))]
-fn open_storage() {}
-
-#[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
-fn open_storage() {
-    // TODO: add spi_device parameter to open_storage
-    // LOW-SPEED BOOT HARDWARE HANDSHAKE ---
-    {
-        // Mount the card container at the mandatory safe boot speed (400 kHz)
-        let sd_card = SdCard::new(&mut spi_device, embassy_time::Delay);
-        let volume_mgr = VolumeManager::new(sd_card, VehicleTimeSource);
-
-        // Open the volume. This underlying library call executes the low-speed
-        // handshakes (CMD0, ACMD41) and locks the card hardware into its Transfer State!
-        let _volume = volume_mgr.open_volume(VolumeIdx(0)).expect(
-            "SD CARD ERR: Low-speed boot handshake failed (CMD0/ACMD41 timeout). Is the card missing or loose?",
-        );
+    use std::io::Write as _;
+    if sector_idx != 0 {
+        sector_buffer[sector_idx..].fill(0);
+        _ = file.write(sector_buffer);
     }
-
-    log::info!("SD CARD: Handshake verified. Shifting master clock registers to 20 MHz...");
-    spi_device.bus_mut().set_frequency(20_000_000);
-
-    // Re-mount the entire framework. Everything from here forward runs at full 20 MHz data rates.
-    let sd_card = SdCard::new(&mut spi_device, embassy_time::Delay);
-    let volume_mgr = VolumeManager::new(sd_card, VehicleTimeSource);
-
-    let volume = volume_mgr
-        .open_volume(VolumeIdx(0))
-        .expect("SD CARD ERR: Failed to reopen volume at 20 MHz high-speed. Signal integrity issue or cross-talk?");
-
-    let mut root_dir =
-        volume.open_root_dir().expect("SD CARD ERR: Failed to parse FAT file system root directory structure.");
-
-    // Scan directory and generate the log index at 20 MHz speed
-    let next_index = find_next_log_index(&mut root_dir);
-    let mut filename_buf = [0u8; 12];
-    let filename_str = format_log_filename(next_index, &mut filename_buf);
-
-    let log_file = root_dir
-        .open_file_in_dir(filename_str, Mode::ReadWriteCreateOrAppend)
-        .expect("SD CARD ERR: Failed to create or open active log file on the file system.");
+    _ = file.flush();
 }
 
-/// Scans the root directory by inspecting raw filename bytes directly.
-#[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
+/// Scans the root directory by inspecting raw filename bytes.
+#[cfg(feature = "sdcard")]
 pub fn find_next_log_index<D, T, const DIR: usize, const FILE: usize, const VOL: usize>(
     root_dir: &mut Directory<'_, D, T, DIR, FILE, VOL>,
 ) -> u16
@@ -190,25 +224,20 @@ where
     let mut highest_idx = 0;
 
     _ = root_dir.iterate_dir(|entry| {
-        let base = entry.name.base_name(); // Returns &[u8; 8]
-        let ext = entry.name.extension(); // Returns &[u8; 3]
+        let base = entry.name.base_name();
+        let ext = entry.name.extension();
 
-        // 1. Verify the extension matches "BIN"
-        if ext == b"BIN" {
-            // 2. Verify the base starts with "LOG_"
-            if &base[0..4] == b"LOG_" {
-                // 3. Extract the 3 numeric characters from indices 4 to 7 safely
-                if let Ok(num_str) = core::str::from_utf8(&base[4..7]) {
-                    if let Ok(idx) = u16::from_str_radix(num_str, 10) {
-                        if idx > highest_idx {
-                            highest_idx = idx;
-                        }
-                    }
-                }
+        // Verify the extension is "BBL" and the base starts with "LOG_"
+        if ext == b"BBL" && base.starts_with(b"LOG_") && base.len() >= 7 {
+            // Extract the 3 numeric characters from indices 4 to 7.
+            if let Ok(num_str) = core::str::from_utf8(&base[4..7])
+                && let Ok(idx) = num_str.parse::<u16>()
+            {
+                highest_idx = highest_idx.max(idx);
             }
         }
+        ControlFlow::Continue(())
     });
-
     if highest_idx >= 999 { 0 } else { highest_idx + 1 }
 }
 
@@ -216,9 +245,9 @@ where
 #[allow(unused)]
 fn format_log_filename(index: u16, buf: &mut [u8; 12]) -> &str {
     buf[0..4].copy_from_slice(b"LOG_");
-    buf[7..12].copy_from_slice(b".BIN");
+    buf[7..12].copy_from_slice(b".BBL");
     buf[4] = ((index / 100) % 10) as u8 + b'0';
     buf[5] = ((index / 10) % 10) as u8 + b'0';
     buf[6] = (index % 10) as u8 + b'0';
-    core::str::from_utf8(buf).unwrap_or("LOG_000.BIN")
+    core::str::from_utf8(buf).unwrap_or("LOG_000.BBL")
 }

@@ -51,18 +51,13 @@ pub struct OpticalFlowContext {
     pub optical_flow_publisher: OpticalFlowPublisher,
 }
 
-impl OpticalFlowContext {
-    pub fn new(optical_flow: OpticalFlow) -> Self {
-        #[allow(clippy::expect_used)]
-        Self {
-            optical_flow,
-            optical_flow_publisher: OPTICAL_FLOW_PUB_SUB_CHANNEL.publisher().expect("optical_flow_publisher failed"),
-        }
-    }
-}
-
 pub fn init(optical_flow: OpticalFlow) -> &'static mut OpticalFlowContext {
-    OPTICAL_FLOW_CTX.init(OpticalFlowContext::new(optical_flow))
+    let ctx = OpticalFlowContext {
+        optical_flow,
+        #[allow(clippy::expect_used)]
+        optical_flow_publisher: OPTICAL_FLOW_PUB_SUB_CHANNEL.publisher().expect("optical_flow_publisher failed"),
+    };
+    OPTICAL_FLOW_CTX.init(ctx)
 }
 
 /// Optical flow Task Placeholder.

@@ -142,13 +142,6 @@ check-speedybee = [
     "--features", "libm,speedybee_f405_v4,autopilot,barometer,magnetometer,osd,rangefinder"
 ]
 
-check-matek = [
-    "check",
-    "--target", "thumbv7em-none-eabihf",
-    "--no-default-features",
-    "--features", "libm,stm32f405,matek_f405_wte"
-]
-
 check-evo = [
     "check",
     "--target", "thumbv7em-none-eabihf",

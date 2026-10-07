@@ -58,24 +58,6 @@ pub struct MspContext {
 impl MspContext {
     const READ_BUF_SIZE: usize = 256;
     const WRITE_BUF_SIZE: usize = 512;
-
-    #[allow(clippy::too_many_arguments)]
-    #[rustfmt::skip]
-    pub fn new() -> Self {
-        Self {
-            msp: Msp::new(),
-            fast_config_publisher: fast_config_publisher(),
-            config_publisher: config_publisher(),
-            #[cfg(feature = "barometer")] barometer_subscriber: barometer_subscriber(),
-            #[cfg(feature = "battery")] battery_subscriber: battery_subscriber(),
-            #[cfg(feature = "gps")] gps_subscriber: gps_subscriber(),
-            #[cfg(feature = "magnetometer")] magnetometer_subscriber: magnetometer_subscriber(),
-            #[cfg(feature = "optical_flow")] optical_flow_subscriber: optical_flow_subscriber(),
-            #[cfg(feature = "rangefinder")] rangefinder_subscriber: rangefinder_subscriber(),
-            read_buf: [0u8; Self::READ_BUF_SIZE],
-            write_buf: [0u8; Self::WRITE_BUF_SIZE],
-        }
-    }
 }
 
 impl MspContext {
@@ -91,7 +73,23 @@ impl MspContext {
 }
 
 pub fn init() -> &'static mut MspContext {
-    MSP_CTX.init(MspContext::new())
+    #[rustfmt::skip]
+    let ctx = MspContext {
+        msp: Msp::new(),
+        fast_config_publisher: fast_config_publisher(),
+        config_publisher: config_publisher(),
+
+        #[cfg(feature = "barometer")] barometer_subscriber: barometer_subscriber(),
+        #[cfg(feature = "battery")] battery_subscriber: battery_subscriber(),
+        #[cfg(feature = "gps")] gps_subscriber: gps_subscriber(),
+        #[cfg(feature = "magnetometer")] magnetometer_subscriber: magnetometer_subscriber(),
+        #[cfg(feature = "optical_flow")] optical_flow_subscriber: optical_flow_subscriber(),
+        #[cfg(feature = "rangefinder")] rangefinder_subscriber: rangefinder_subscriber(),
+
+        read_buf: [0u8; MspContext::READ_BUF_SIZE],
+        write_buf: [0u8; MspContext::WRITE_BUF_SIZE],
+    };
+    MSP_CTX.init(ctx)
 }
 
 /// MSP task Placeholder.

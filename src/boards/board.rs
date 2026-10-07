@@ -1,4 +1,4 @@
-use super::{GpsUartRx, GpsUartTx, RadioUartRx, RadioUartTx};
+use super::{GpsUartRx, GpsUartTx, RadioUartRx, RadioUartTx, SdCardVolume};
 
 use crate::barometer_sensors::{Barometer, BarometerType};
 use crate::magnetometer_sensors::{Magnetometer, MagnetometerType};
@@ -59,10 +59,12 @@ pub struct BoardHardware<I: ImuDevice> {
     pub gyro_pid_spawner: embassy_executor::SendSpawner,
     #[cfg(not(feature = "multicore"))]
     pub gyro_pid_spawner: embassy_executor::Spawner,
+
     #[cfg(feature = "realtime_executor")]
     pub realtime_spawner: embassy_executor::SendSpawner,
     #[cfg(not(feature = "realtime_executor"))]
     pub realtime_spawner: embassy_executor::Spawner,
+
     pub background_spawner: embassy_executor::Spawner,
 
     pub motor_driver: MotorDriver,
@@ -73,9 +75,9 @@ pub struct BoardHardware<I: ImuDevice> {
     pub gps_uart_rx: Option<GpsUartRx>,
     pub gps_uart_tx: Option<GpsUartTx>,
 
-    //pub max7456_spi: Option<SpiDeviceBlocking>,
-    //pub sdcard_spi: Option<SpiDeviceAsync>,
+    pub sdcard_volume: Option<SdCardVolume>,
 
+    //pub max7456_spi: Option<SpiDeviceBlocking>,
     //pub msp_uart: Option<UartDevice>,
     //pub esc_sensor_uart: Option<UartDevice>,
     pub barometer: Option<Barometer>,

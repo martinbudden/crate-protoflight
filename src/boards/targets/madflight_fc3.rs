@@ -10,6 +10,7 @@
 use crate::boards::{
     SharedI2cBus,
     board::{BoardHardware, BoardInit, BoardInitError},
+    open_volume,
 };
 
 use crate::barometer_sensors::Barometer;
@@ -41,9 +42,6 @@ use embassy_rp::{
     uart::{Async as UartAsync, Config as UartConfig, Uart, UartRx, UartTx},
 };
 
-#[allow(unused)]
-use cyw43_pio::PioSpi;
-
 #[cfg(feature = "multicore")]
 use {
     core::cell::Cell,
@@ -60,6 +58,9 @@ type BoardImuSpi = ExclusiveDevice<embassy_rp::spi::Spi<'static, peripherals::SP
 
 pub type BoardImu = Imu426xx<ImuSpiBus<BoardImuSpi>>;
 pub type Board = BoardHardware<BoardImu>;
+
+// SdCard is on SPI_0
+pub type SdCardSpiDevice = ExclusiveDevice<Spi<'static, peripherals::SPI0, SpiAsync>, Output<'static>, Delay>;
 
 impl Board {
     #[cfg(feature = "multicore")]
@@ -95,6 +96,7 @@ impl Board {
         // NOTE: rp2350 numbers peripherals starting at 0, eg SPI0, SPI1, I2C0, I2C1 etc
 
         static I2C_BUS: StaticCell<SharedI2cBus> = StaticCell::new();
+        static SDCARD_SPI_DEVICE: StaticCell<SdCardSpiDevice> = StaticCell::new();
         static RADIO_UART_TX: StaticCell<UartTx<'static, UartAsync>> = StaticCell::new();
         static RADIO_UART_RX: StaticCell<UartRx<'static, UartAsync>> = StaticCell::new();
 
@@ -118,10 +120,9 @@ impl Board {
         let spi1_miso = peripherals.PIN_28;
         let spi1_tx_dma = peripherals.DMA_CH0;
         let spi1_rx_dma = peripherals.DMA_CH1;
-        // Physical pin assigned to capture the gyroscope's INT1 signal wire
-        let gyro_cs_pin = peripherals.PIN_29;
-        let gyro_exti_pin = peripherals.PIN_27;
-        //let gyro_clkin_pin = peripherals.PIN_26; // needed for for ICM42688P,ICP45686
+        let imu_cs_pin = peripherals.PIN_29;
+        let imu_exti_pin = peripherals.PIN_27;
+        //let imu_clkin_pin = peripherals.PIN_26; // needed for for ICM42688P,ICP45686
 
         // UART0
         // #define UART_0_PINS uart_pins_t{.rx=1,.tx=0}
@@ -148,6 +149,7 @@ impl Board {
         let _i2c1_sda = peripherals.PIN_2;
 
         // #define MOTOR_PINS motor_pins_t{.m0=6,.m1=7,.m2=8,.m3=9} // BR, TR, BL, TL
+        // Motors
         let m1 = peripherals.PIN_6;
         let m2 = peripherals.PIN_7;
         let m3 = peripherals.PIN_8;
@@ -163,16 +165,16 @@ impl Board {
             spi_config.frequency = 10_000_000;
             let spi_bus =
                 Spi::new(peripherals.SPI1, spi1_clk, spi1_mosi, spi1_miso, spi1_tx_dma, spi1_rx_dma, Irqs, spi_config);
-            let spi_cs_output = Output::new(gyro_cs_pin, Level::High);
+            let spi_cs_output = Output::new(imu_cs_pin, Level::High);
             ExclusiveDevice::new(spi_bus, spi_cs_output, embassy_time::Delay).expect("SPI_1 init failed")
         };
         // Trick to find type of spi
         //let spi1_type: () = spi1;
 
-        let _spi1_interrupt = Input::new(gyro_exti_pin, embassy_rp::gpio::Pull::Up);
+        let _spi1_interrupt = Input::new(imu_exti_pin, embassy_rp::gpio::Pull::Up);
         let imu: BoardImu = Imu426xx::new(ImuSpiBus::new(spi1), init.axis_order);
 
-        let _spi0 = {
+        let spi0 = {
             let mut spi_config = SpiConfig::default();
             // When an SD card boots up, it starts in native SD mode.
             // To force it into SPI mode, the driver sends raw command sequences (CMD0, CMD8, ACMD41).
@@ -199,6 +201,16 @@ impl Board {
             let mut uart_config = UartConfig::default();
             uart_config.baudrate = 115_200;
             Uart::new(peripherals.UART1, uart1_tx, uart1_rx, Irqs, uart1_tx_dma, uart1_rx_dma, uart_config).split()
+        };
+
+        let sdcard = SDCARD_SPI_DEVICE.init(spi0);
+
+        let sdcard_volume = match open_volume(sdcard) {
+            Ok(volume) => Some(volume),
+            Err(e) => {
+                log::error!("SD Card initialization failed: {e:?}");
+                None
+            }
         };
 
         let i2c0 = {
@@ -285,7 +297,7 @@ impl Board {
             radio_uart_tx,
             gps_uart_rx,
             gps_uart_tx,
-
+            sdcard_volume,
             barometer,
             magnetometer,
             rangefinder,

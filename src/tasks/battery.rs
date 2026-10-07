@@ -53,16 +53,15 @@ pub struct BatteryContext {
     pub battery_publisher: BatteryPublisher,
 }
 
-impl BatteryContext {
-    pub fn new() -> Self {
+pub fn init() -> &'static mut BatteryContext {
+    #[allow(clippy::expect_used)]
+    let ctx = BatteryContext {
         #[allow(clippy::expect_used)]
-        Self { battery_publisher: BATTERY_PUB_SUB_CHANNEL.publisher().expect("battery_publisher failed") }
-    }
+        battery_publisher: BATTERY_PUB_SUB_CHANNEL.publisher().expect("battery_publisher failed"),
+    };
+    BATTERY_CTX.init(ctx)
 }
 
-pub fn init() -> &'static mut BatteryContext {
-    BATTERY_CTX.init(BatteryContext::new())
-}
 /// Battery Task Placeholder.
 ///
 #[embassy_executor::task]

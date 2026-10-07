@@ -134,11 +134,10 @@ pub async fn init(spawner: Spawner) {
     let msp_ctx = Some(tasks::msp::init());
 
     #[cfg(feature = "blackbox")]
-    let blackbox_encoder_ctx = tasks::blackbox_encoder::init(config.blackbox);
-
-    // TODO: Initialize the blackbox writer context with the storage provided by the Board Support Package.
+    let blackbox_writer_ctx =
+        if let Some(sdcard_volume) = board.sdcard_volume { tasks::blackbox_writer::init(sdcard_volume) } else { None };
     #[cfg(feature = "blackbox")]
-    let blackbox_writer_ctx = Some(tasks::blackbox_writer::init());
+    let blackbox_encoder_ctx = tasks::blackbox_encoder::init(config.blackbox);
 
     #[cfg(feature = "autopilot")]
     let autopilot_ctx = tasks::autopilot::init();

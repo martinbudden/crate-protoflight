@@ -7,6 +7,7 @@
 use crate::boards::{
     SharedI2cBus,
     board::{BoardHardware, BoardInit, BoardInitError},
+    open_volume,
 };
 
 use crate::barometer_sensors::Barometer;
@@ -37,7 +38,7 @@ use embassy_stm32::{
     },
     usart::{Config as UsartConfig, Uart, UartRx, UartTx},
 };
-#[cfg(feature = "realtime_executor")]
+
 #[cfg(feature = "realtime_executor")]
 use {
     embassy_executor::{InterruptExecutor, SendSpawner},
@@ -66,6 +67,7 @@ type BoardSpi = ExclusiveDevice<Spi<'static, ModeAsync, SpiMaster>, Output<'stat
 pub type BoardImu = Imu426xx<ImuSpiBus<BoardSpi>>;
 pub type Board = BoardHardware<BoardImu>;
 
+pub type SdCardSpiDevice = ExclusiveDevice<Spi<'static, ModeAsync, SpiMaster>, Output<'static>, Delay>;
 // TODO: ensure that the dshot buffer instance in a DMA-safe linker section, ie RAM not CCM
 //#[link_section = ".dma"]
 static DSHOT_WAVEFORM: StaticCell<DshotWaveform> = StaticCell::new();
@@ -86,6 +88,7 @@ impl Board {
         SDI = peripheral → MCU = MISO = RX DMA
         */
         static I2C_BUS: StaticCell<SharedI2cBus> = StaticCell::new();
+        static SDCARD_SPI_DEVICE: StaticCell<SdCardSpiDevice> = StaticCell::new();
         static RADIO_UART_TX: StaticCell<UartTx<'static, ModeAsync>> = StaticCell::new();
         static RADIO_UART_RX: StaticCell<UartRx<'static, ModeAsync>> = StaticCell::new();
 
@@ -98,8 +101,8 @@ impl Board {
         let spi1_sdo = peripherals.PA7;
         let spi1_tx_dma = peripherals.DMA2_CH3;
         let spi1_rx_dma = peripherals.DMA2_CH2;
-        let gyro1_spi_cs = peripherals.PA4;
-        let gyro1_exti = peripherals.PC4;
+        let imu_spi_cs = peripherals.PA4;
+        let imu_exti = peripherals.PC4;
 
         // SPI2 - MAX7456
         let spi2_sck = peripherals.PB13;
@@ -154,7 +157,7 @@ impl Board {
             config.frequency = Hertz(10_000_000);
             let spi_bus =
                 Spi::new(peripherals.SPI1, spi1_sck, spi1_sdo, spi1_sdi, spi1_tx_dma, spi1_rx_dma, Irqs, config);
-            let cs_output = Output::new(gyro1_spi_cs, Level::High, Speed::VeryHigh);
+            let cs_output = Output::new(imu_spi_cs, Level::High, Speed::VeryHigh);
             ExclusiveDevice::new(spi_bus, cs_output, Delay).expect("SPI_1 init failed")
         };
 
@@ -212,9 +215,20 @@ impl Board {
             UartRx::new_blocking(peripherals.UART5, uart5_rx, config).map_err(|_| BoardInitError::UartError)?
         };
 
+        let sdcard = SDCARD_SPI_DEVICE.init(spi3);
+
+        let sdcard_volume = match open_volume(sdcard) {
+            Ok(volume) => Some(volume),
+            Err(e) => {
+                log::error!("SD Card initialization failed: {e:?}");
+                None
+            }
+        };
+
         let i2c1 = I2c::new_blocking(peripherals.I2C1, i2c1_scl, i2c1_sda, I2cConfig::default());
         //let i2c1 = I2c::(peripherals.I2C1, i2c1_scl, i2c1_sda, i2c1_tx_dma, i2c1_rx_dma, Irqs, I2cConfig::default());
 
+        // Motors
         let m1 = peripherals.PC6;
         let m2 = peripherals.PC7;
         let m3 = peripherals.PC9;
@@ -324,6 +338,7 @@ impl Board {
             radio_uart_tx,
             gps_uart_rx,
             gps_uart_tx,
+            sdcard_volume,
             barometer,
             magnetometer,
             rangefinder,

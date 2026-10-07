@@ -62,20 +62,15 @@ pub struct FailsafeContext {
     rx_message_receiver: RxMessageReceiver,
 }
 
-impl FailsafeContext {
-    pub fn new(config: &FailsafeConfig) -> Self {
-        Self {
-            #[allow(clippy::expect_used)]
-            failsafe_publisher: FAILSAFE_PUB_SUB_CHANNEL.publisher().expect("failsafe_publisher failed"),
-            failsafe_handler: FailsafeHandler::new(config),
-            rx_message: RxMessage::new(),
-            rx_message_receiver: rx_message_receiver(),
-        }
-    }
-}
-
 pub fn init(config: &FailsafeConfig) -> &'static mut FailsafeContext {
-    FAILSAFE_CTX.init(FailsafeContext::new(config))
+    let ctx = FailsafeContext {
+        #[allow(clippy::expect_used)]
+        failsafe_publisher: FAILSAFE_PUB_SUB_CHANNEL.publisher().expect("failsafe_publisher failed"),
+        failsafe_handler: FailsafeHandler::new(config),
+        rx_message: RxMessage::new(),
+        rx_message_receiver: rx_message_receiver(),
+    };
+    FAILSAFE_CTX.init(ctx)
 }
 
 /// Failsafe Task.

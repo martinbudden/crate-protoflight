@@ -22,6 +22,7 @@ impl Board {
         let gps_uart_tx = None;
         let gps_uart_rx = None;
 
+        let sdcard_volume = None;
         let barometer = None;
         let magnetometer = None;
         let rangefinder = None;
@@ -37,6 +38,7 @@ impl Board {
             radio_uart_tx,
             gps_uart_rx,
             gps_uart_tx,
+            sdcard_volume,
 
             barometer,
             magnetometer,

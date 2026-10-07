@@ -2,7 +2,7 @@
 
 // For Betaflight configuration files:
 // see <https://github.com/betaflight/unified-targets/blob/master/configs/default/AIRB-OMNIBUSF4SD.config>
-// and <https://github.com/betaflight/config/blob/master/configs/AIRB/OMNIBUSF4/config.h>.
+// and <https://github.com/betaflight/config/blob/master/configs/AIRB/OMNIBUSF4SD/config.h>.
 
 // This board has onboard flash and no SD card slot.
 // The Omnibus F4 SD has an SD card slot, but no MAX7465 chip.
@@ -10,6 +10,7 @@
 use crate::boards::{
     SharedI2cBus,
     board::{BoardHardware, BoardInit, BoardInitError},
+    open_volume,
 };
 
 use crate::barometer_sensors::Barometer;
@@ -30,7 +31,7 @@ use embassy_stm32::{
     Config as Stm32Config, bind_interrupts, dma,
     gpio::{Level, Output, OutputType::PushPull, Speed},
     i2c::{Config as I2cConfig, I2c},
-    mode::Async as ModeAsync,
+    mode::{Async as ModeAsync, Blocking as ModeBlocking},
     peripherals,
     spi::{Config as SpiConfig, Spi, mode::Master as SpiMaster},
     time::Hertz,
@@ -68,6 +69,8 @@ type BoardSpi = ExclusiveDevice<Spi<'static, ModeAsync, SpiMaster>, Output<'stat
 pub type BoardImu = Mpu6050<ImuSpiBus<BoardSpi>>;
 pub type Board = BoardHardware<BoardImu>;
 
+pub type SdCardSpiDevice = ExclusiveDevice<Spi<'static, ModeBlocking, SpiMaster>, Output<'static>, Delay>;
+
 // TODO: ensure that the dshot buffer instance in a DMA-safe linker section, ie RAM not CCM
 //#[link_section = ".dma"]
 static DSHOT_WAVEFORM: StaticCell<DshotWaveform> = StaticCell::new();
@@ -88,6 +91,7 @@ impl Board {
         SDI = peripheral → MCU = MISO = RX DMA
         */
         static I2C_BUS: StaticCell<SharedI2cBus> = StaticCell::new();
+        static SDCARD_SPI_DEVICE: StaticCell<SdCardSpiDevice> = StaticCell::new();
         static RADIO_UART_TX: StaticCell<UartTx<'static, ModeAsync>> = StaticCell::new();
         static RADIO_UART_RX: StaticCell<UartRx<'static, ModeAsync>> = StaticCell::new();
 
@@ -100,20 +104,20 @@ impl Board {
         let spi1_sdo = peripherals.PA7;
         let spi1_tx_dma = peripherals.DMA2_CH3;
         let spi1_rx_dma = peripherals.DMA2_CH2;
-        let gyro1_spi_cs = peripherals.PA4;
-        let gyro1_exti = peripherals.PC4;
+        let imu_spi_cs = peripherals.PA4;
+        let imu_exti = peripherals.PC4;
 
         let spi2_sck = peripherals.PB13;
         let spi2_sdi = peripherals.PB14;
         let spi2_sdo = peripherals.PB15;
+        let sdcard_spi_cs = peripherals.PB12;
+        let sdcard_detect = peripherals.PB7;
 
         let spi3_sck = peripherals.PC10;
         let spi3_sdi = peripherals.PC11;
         let spi3_sdo = peripherals.PC12;
+        let max7456_spi_cs = peripherals.PA15;
 
-        let sdcard_spi_cs = peripherals.PB12;
-        let sdcard_detect = peripherals.PB7;
-        let osd_cs = peripherals.PA15;
         // I2C1
         let i2c1_scl = peripherals.PB8;
         let i2c1_sda = peripherals.PB9;
@@ -142,25 +146,46 @@ impl Board {
         let uart6_tx = peripherals.PC6;
         let uart6_rx = peripherals.PC7;
 
+        // NOTE: IMU is on SPI_1
         let spi1 = {
             let mut config = SpiConfig::default();
             config.frequency = Hertz(10_000_000);
             let spi_bus =
                 Spi::new(peripherals.SPI1, spi1_sck, spi1_sdo, spi1_sdi, spi1_tx_dma, spi1_rx_dma, Irqs, config);
-            let cs_output = Output::new(gyro1_spi_cs, Level::High, Speed::VeryHigh);
+            let cs_output = Output::new(imu_spi_cs, Level::High, Speed::VeryHigh);
             ExclusiveDevice::new(spi_bus, cs_output, Delay).expect("SPI_1 init failed")
         };
 
-        // No DMA on spi3
-        let spi3 = {
+        // NOTE: SD card is on SPI_2
+        let spi2 = {
             let mut config = SpiConfig::default();
             config.frequency = Hertz(10_000_000);
-            let spi_bus = Spi::new_blocking(peripherals.SPI3, spi3_sck, spi3_sdo, spi3_sdi, config);
+            let spi_bus = Spi::new_blocking(peripherals.SPI2, spi2_sck, spi2_sdo, spi2_sdi, config);
             let cs_output = Output::new(sdcard_spi_cs, Level::High, Speed::VeryHigh);
             ExclusiveDevice::new(spi_bus, cs_output, Delay).expect("SPI_3 init failed")
         };
 
+        // No DMA on spi3
+        // NOTE: MAX7456 is on SPI_1
+        let spi3 = {
+            let mut config = SpiConfig::default();
+            config.frequency = Hertz(10_000_000);
+            let spi_bus = Spi::new_blocking(peripherals.SPI3, spi3_sck, spi3_sdo, spi3_sdi, config);
+            let cs_output = Output::new(max7456_spi_cs, Level::High, Speed::VeryHigh);
+            ExclusiveDevice::new(spi_bus, cs_output, Delay).expect("SPI_3 init failed")
+        };
+
         let mut imu: BoardImu = Mpu6050::new(ImuSpiBus::new(spi1), init.axis_order);
+
+        let sdcard = SDCARD_SPI_DEVICE.init(spi2);
+
+        let sdcard_volume = match open_volume(sdcard) {
+            Ok(volume) => Some(volume),
+            Err(e) => {
+                log::error!("SD Card initialization failed: {e:?}");
+                None
+            }
+        };
 
         let i2c1 = I2c::new_blocking(peripherals.I2C1, i2c1_scl, i2c1_sda, I2cConfig::default());
 
@@ -182,6 +207,7 @@ impl Board {
         # pin A10: TIM1 CH3 (AF1)
             */
 
+        // Motors
         let m1 = peripherals.PB0; // TIM3 CH3 (AF2)
         let m2 = peripherals.PB1; // TIM3 CH4 (AF2)
         let m3 = peripherals.PA3; // ITM2 CH4 (AF1)
@@ -295,6 +321,7 @@ impl Board {
             radio_uart_tx,
             gps_uart_rx,
             gps_uart_tx,
+            sdcard_volume,
             barometer,
             magnetometer,
             rangefinder,

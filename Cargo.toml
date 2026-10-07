@@ -48,7 +48,8 @@ default = [
 autopilot = []
 barometer = ["blackbox-logger/barometer"]
 battery = []
-blackbox = ["dep:blackbox-logger", "dep:embedded-sdmmc"]
+blackbox = ["dep:blackbox-logger"]
+sdcard = ["dep:embedded-sdmmc"]
 cms = []
 dashboard = []
 debug = ["blackbox-logger/debug"]
@@ -81,11 +82,11 @@ _common = [
     "autopilot",
     "barometer",
     "battery",
-    #"blackbox",
+    "blackbox",
     "debug",
     "dshot_telemetry",
     #"eight_motors",
-    #"gps",
+    "gps",
     "huffman",
     "magnetometer",
     "msp",
@@ -105,6 +106,7 @@ mock = [
 rpi_pico2 = [
     "rp235xa", 
     "multicore",
+    "sdcard",
     "storage",
     "_common",
 ]
@@ -125,27 +127,31 @@ stamp_s3_fly = [
 madflight_fc3 = [
     "rp235xb",
     # "multicore",
+    "sdcard",
     "_common",
 ]
 openfc_lite = [
     "rp235xb",
     # "multicore",
+    "sdcard",
     "_common",
 ]
 openfc_lite_mini = [
     "rp235xa",
     # "multicore",
+    "sdcard",
     "_common",
 ]
 speedybee_f405_v4 = ["stm32", "stm32f405", "pwm_t4_t3", "dshot_t8",
     "realtime_executor",
     "_common",
+    "sdcard",
     "gps",
     #"max7456", # this doesn't compile yet
 ]
-sp_racing_f4_evo = ["stm32", "stm32f405", "pwm_t3", "dshot_t8", "realtime_executor", "_common"]
+sp_racing_f4_evo = ["stm32", "stm32f405", "pwm_t3", "dshot_t8", "realtime_executor", "_common", "sdcard"]
 airb_omnibus_f4 = ["stm32", "stm32f405", "pwm_t8", "dshot_t8", "realtime_executor", "_common"]
-airb_omnibus_f4_sd = ["stm32", "stm32f405", "pwm_t3_t5", "dshot_t8", "_common"]
+airb_omnibus_f4_sd = ["stm32", "stm32f405", "pwm_t3_t5", "dshot_t8", "_common", "sdcard"]
 
 # Core backend features declared explicitly
 # libm feature activates the optional crate named "libm", etc

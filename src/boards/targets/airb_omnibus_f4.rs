@@ -63,10 +63,14 @@ unsafe fn TIM6_DAC() {
 #[cfg(feature = "realtime_executor")]
 static REALTIME_EXECUTOR: InterruptExecutor = InterruptExecutor::new();
 
-type BoardSpi = ExclusiveDevice<Spi<'static, ModeAsync, SpiMaster>, Output<'static>, Delay>;
+type BoardImuSpi = ExclusiveDevice<Spi<'static, ModeAsync, SpiMaster>, Output<'static>, Delay>;
 
-pub type BoardImu = Mpu6050<ImuSpiBus<BoardSpi>>;
+pub type BoardImu = Mpu6050<ImuSpiBus<BoardImuSpi>>;
 pub type Board = BoardHardware<BoardImu>;
+
+// No SdCard
+#[allow(unused)]
+pub type SdCardSpiDevice = ();
 
 // TODO: ensure that the dshot buffer instance in a DMA-safe linker section, ie RAM not CCM
 //#[link_section = ".dma"]
@@ -100,8 +104,8 @@ impl Board {
         let spi1_sdo = peripherals.PA7;
         let spi1_tx_dma = peripherals.DMA2_CH3;
         let spi1_rx_dma = peripherals.DMA2_CH2;
-        let gyro1_spi_cs = peripherals.PA4;
-        let gyro1_exti = peripherals.PC4;
+        let imu_spi_cs = peripherals.PA4;
+        let imu_exti = peripherals.PC4;
 
         // SPI3 - MAX7456 and Flash
         let spi3_sck = peripherals.PC10;
@@ -144,12 +148,13 @@ impl Board {
         // let uart6_tx = peripherals.PC6;
         // let uart6_rx = peripherals.PC7;
 
+        // NOTE: IMU is on SPI_1
         let spi1 = {
             let mut config = SpiConfig::default();
             config.frequency = Hertz(10_000_000);
             let spi_bus =
                 Spi::new(peripherals.SPI1, spi1_sck, spi1_sdo, spi1_sdi, spi1_tx_dma, spi1_rx_dma, Irqs, config);
-            let cs_output = Output::new(gyro1_spi_cs, Level::High, Speed::VeryHigh);
+            let cs_output = Output::new(imu_spi_cs, Level::High, Speed::VeryHigh);
             ExclusiveDevice::new(spi_bus, cs_output, Delay).expect("SPI_1 init failed")
         };
 
@@ -182,6 +187,8 @@ impl Board {
         # pin A09: TIM1 CH2 (AF1)
         # pin A10: TIM1 CH3 (AF1)
         */
+
+        // Motors
         let m1 = peripherals.PB14; // TIM12 CH1 (AF2)
         let m2 = peripherals.PB15; // TIM12 CH2 (AF2)
         let m3 = peripherals.PC6; // TIM8 CH1 (AF1)
@@ -255,6 +262,8 @@ impl Board {
         let gps_uart_tx = None;
         let gps_uart_rx = None;
 
+        let sdcard_volume = None;
+
         let shared_i2c = I2C_BUS.init(SharedI2cBus::new(i2c1));
         let barometer = if let Some(barometer_type) = init.barometer_type {
             Barometer::new(barometer_type, shared_i2c)
@@ -288,6 +297,7 @@ impl Board {
             radio_uart_tx,
             gps_uart_rx,
             gps_uart_tx,
+            sdcard_volume,
             barometer,
             magnetometer,
             rangefinder,

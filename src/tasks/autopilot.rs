@@ -52,43 +52,33 @@ pub fn autopilot_receiver() -> AutopilotReceiver {
 }
 
 /// Context for Autopilot task.
-#[allow(unused)]
+#[rustfmt::skip]
 pub struct AutopilotContext {
     pub gyro_pid_receiver: GyroPidReceiver,
     pub rx_receiver: RxMessageReceiver,
     pub failsafe_subscriber: FailsafeSubscriber,
     pub autopilot_sender: AutopilotSender,
     pub autopilot: Autopilot,
-    #[cfg(feature = "barometer")]
-    pub barometer_subscriber: BarometerSubscriber,
-    #[cfg(feature = "gps")]
-    pub gps_subscriber: GpsSubscriber,
-    #[allow(unused)]
-    #[cfg(feature = "optical_flow")]
-    pub optical_flow_subscriber: OpticalFlowSubscriber,
-    #[cfg(feature = "rangefinder")]
-    pub rangefinder_subscriber: RangefinderSubscriber,
-}
-
-impl AutopilotContext {
-    #[rustfmt::skip]
-    pub fn new() -> Self {
-        Self {
-            gyro_pid_receiver :gyro_pid_receiver(),
-            rx_receiver:rx_message_receiver(),
-            failsafe_subscriber: failsafe_subscriber(),
-            autopilot_sender:autopilot_sender(),
-            autopilot: Autopilot::new(),
-            #[cfg(feature = "barometer")] barometer_subscriber:barometer_subscriber(),
-            #[cfg(feature = "gps")] gps_subscriber:gps_subscriber(),
-            #[cfg(feature = "optical_flow")] optical_flow_subscriber:optical_flow_subscriber(),
-            #[cfg(feature = "rangefinder")] rangefinder_subscriber: rangefinder_subscriber(),
-        }
-    }
+    #[cfg(feature = "barometer")] pub barometer_subscriber: BarometerSubscriber,
+    #[cfg(feature = "gps")] pub gps_subscriber: GpsSubscriber,
+    #[cfg(feature = "optical_flow")] pub optical_flow_subscriber: OpticalFlowSubscriber,
+    #[cfg(feature = "rangefinder")] pub rangefinder_subscriber: RangefinderSubscriber,
 }
 
 pub fn init() -> &'static mut AutopilotContext {
-    AUTOPILOT_CTX.init(AutopilotContext::new())
+    #[rustfmt::skip]
+    let ctx = AutopilotContext {
+        gyro_pid_receiver: gyro_pid_receiver(),
+        rx_receiver: rx_message_receiver(),
+        failsafe_subscriber: failsafe_subscriber(),
+        autopilot_sender: autopilot_sender(),
+        autopilot: Autopilot::new(),
+        #[cfg(feature = "barometer")] barometer_subscriber: barometer_subscriber(),
+        #[cfg(feature = "gps")] gps_subscriber: gps_subscriber(),
+        #[cfg(feature = "optical_flow")] optical_flow_subscriber: optical_flow_subscriber(),
+        #[cfg(feature = "rangefinder")] rangefinder_subscriber: rangefinder_subscriber(),
+    };
+    AUTOPILOT_CTX.init(ctx)
 }
 
 /// Autopilot Placeholder.
@@ -190,6 +180,13 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
                 // Message type of interest to other subscribers, but not to me so intentionally do nothing,
                 // this consumes the message and removes it from the queue.
             }
+        }
+
+        #[cfg(feature = "optical_flow")]
+        if let Some(wait_result) = ctx.optical_flow_subscriber.try_next_message()
+            && let embassy_sync::pubsub::WaitResult::Message(optical_flow_message) = wait_result
+        {
+            _ = optical_flow_message;
         }
 
         if loop_count.is_multiple_of(200) {

@@ -85,51 +85,37 @@ pub struct GyroPidContext<I: ImuDevice> {
     pub gyro_pid_denominator: u32,
 }
 
-//#[rustfmt::skip]
-impl<I: ImuDevice> GyroPidContext<I> {
-    pub fn new(
-        imu: I,
-        imu_filter_bank_config: ImuFilterBankConfig,
-        #[cfg(feature = "rpm_filters")] rpm_notch_filter_bank_config: RpmNotchFilterBankConfig,
-        #[cfg(feature = "rpm_filters")] looptime_seconds: f32,
-    ) -> Self {
-        Self {
-            imu,
-            rx_receiver: rx_message_receiver(),
-            gyro_pid_sender: gyro_pid_sender(),
-            setpoint_sender: setpoint_sender(),
-            fast_config_subscriber: fast_config_subscriber(),
-            #[cfg(feature = "rpm_filters")]
-            imu_filters: ImuFilterBank::with_config_and_notch(
-                imu_filter_bank_config,
-                rpm_notch_filter_bank_config,
-                looptime_seconds,
-            ),
-            #[cfg(not(feature = "rpm_filters"))]
-            imu_filters: ImuFilterBank::with_config(imu_filter_bank_config),
-            sensor_fusion: MadgwickFilterf32::new(),
-            flight_controller: FlightController::new(),
-            rc_controls: RcControls::new(),
-            rc_modes: BitSet64::new(),
-            gyro_pid_send_count: 0,
-            gyro_pid_denominator: 10,
-        }
-    }
-}
-
-#[rustfmt::skip]
 pub fn init(
     imu: BoardImu,
     imu_filter_bank_config: ImuFilterBankConfig,
     #[cfg(feature = "rpm_filters")] rpm_notch_filter_bank_config: RpmNotchFilterBankConfig,
     #[cfg(feature = "rpm_filters")] looptime_seconds: f32,
 ) -> &'static mut GyroPidContext<BoardImu> {
-    GYRO_PID_CTX.init(GyroPidContext::new(
+    let ctx = GyroPidContext {
         imu,
-        imu_filter_bank_config,
-        #[cfg(feature = "rpm_filters")] rpm_notch_filter_bank_config,
-        #[cfg(feature = "rpm_filters")] looptime_seconds,
-    ))
+        rx_receiver: rx_message_receiver(),
+        gyro_pid_sender: gyro_pid_sender(),
+        setpoint_sender: setpoint_sender(),
+        fast_config_subscriber: fast_config_subscriber(),
+
+        #[cfg(feature = "rpm_filters")]
+        imu_filters: ImuFilterBank::with_config_and_notch(
+            imu_filter_bank_config,
+            rpm_notch_filter_bank_config,
+            looptime_seconds,
+        ),
+        #[cfg(not(feature = "rpm_filters"))]
+        imu_filters: ImuFilterBank::with_config(imu_filter_bank_config),
+
+        sensor_fusion: MadgwickFilterf32::new(),
+        flight_controller: FlightController::new(),
+        rc_controls: RcControls::new(),
+        rc_modes: BitSet64::new(),
+        gyro_pid_send_count: 0,
+        gyro_pid_denominator: 10,
+    };
+
+    GYRO_PID_CTX.init(ctx)
 }
 
 /// The GYRO/PID task.

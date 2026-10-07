@@ -1,4 +1,5 @@
 #![cfg(all(feature = "host", feature = "blackbox"))]
+#![allow(unused)]
 
 use embassy_futures::yield_now;
 #[cfg(feature = "std")]

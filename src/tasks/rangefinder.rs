@@ -52,18 +52,13 @@ pub struct RangefinderContext {
     pub rangefinder_publisher: RangefinderPublisher,
 }
 
-impl RangefinderContext {
-    pub fn new(rangefinder: Rangefinder) -> Self {
-        #[allow(clippy::expect_used)]
-        Self {
-            rangefinder,
-            rangefinder_publisher: RANGEFINDER_PUB_SUB_CHANNEL.publisher().expect("rangefinder_publisher failed"),
-        }
-    }
-}
-
 pub fn init(rangefinder: Rangefinder) -> &'static mut RangefinderContext {
-    RANGEFINDER_CTX.init(RangefinderContext::new(rangefinder))
+    let ctx = RangefinderContext {
+        rangefinder,
+        #[allow(clippy::expect_used)]
+        rangefinder_publisher: RANGEFINDER_PUB_SUB_CHANNEL.publisher().expect("rangefinder_publisher failed"),
+    };
+    RANGEFINDER_CTX.init(ctx)
 }
 
 /// Rangefinder Task Placeholder.

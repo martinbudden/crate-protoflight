@@ -24,7 +24,7 @@ use crate::tasks::barometer::{BarometerSubscriber, barometer_subscriber};
 use crate::tasks::battery::{BatterySubscriber, battery_subscriber};
 
 #[cfg(feature = "debug")]
-use crate::tasks::{DebugMode, GLOBAL_DEBUG};
+use crate::tasks::GLOBAL_DEBUG;
 
 #[cfg(feature = "gps")]
 use {
@@ -32,7 +32,7 @@ use {
         gps::{GpsMessage, GpsSolution},
         tasks::gps::GpsSubscriber,
     },
-    blackbox_logger::{BlackboxGpsData, BlackboxGpsPosition},
+    blackbox_logger::BlackboxGpsData,
 };
 
 static BLACKBOX_ENCODER_CTX: StaticCell<BlackboxEncoderContext> = StaticCell::new();
@@ -58,75 +58,6 @@ pub struct BlackboxEncoderContext {
 
 impl BlackboxEncoderContext {
     const BUFFER_CAPACITY: usize = 1024;
-
-    #[rustfmt::skip]
-    pub fn new(config: BlackboxConfig) -> Self {
-        //let mut blackbox_config = blackbox_config;
-        //blackbox_config.huffman_compress = true;
-
-        //nvs::load_blackbox_config(&mut config.blackbox, &mut flash_driver, config_flash_range.clone());
-        let mut config = config;
-        config.fields_disabled_mask = FieldSelect::PID_STERM_ROLL
-        | FieldSelect::PID_STERM_PITCH
-        | FieldSelect::PID_STERM_YAW
-        | FieldSelect::PID_KTERM
-        //| FieldSelect::PID
-        | FieldSelect::RSSI
-        //| FieldSelect::SETPOINT
-        //| FieldSelect::GYRO_UNFILTERED
-        //| FieldSelect::MOTOR_RPM
-        | FieldSelect::BATTERY_VOLTAGE
-        | FieldSelect::BATTERY_CURRENT
-        | FieldSelect::BAROMETER
-        | FieldSelect::RANGEFINDER
-        | FieldSelect::ATTITUDE
-        //| FieldSelect::ACCELEROMETER
-        //| FieldSelect::GYRO
-        //| FieldSelect::RC_COMMANDS
-        //| FieldSelect::MOTOR
-        | FieldSelect::MAGNETOMETER;
-
-        // TODO: derive blackbox sys info from config.
-        let sys_info = BlackboxSysInfo {
-            features: 541_130_760,
-            gyro_scale: 0x3f80_0000,
-            looptime: 125, // 125us = 8kHz gyro/pid loop
-            gyro_sync_denom: 1,
-            pid_process_denom: 1,
-            acc_1g: 4096,
-            motor_output_min: 48,
-            motor_output_max: 2047,
-            vbat_scale: 0,
-            vbat_min_cell_voltage: 330,
-            vbat_warning_cell_voltage: 350,
-            vbat_max_cell_voltage: 430,
-            current_sensor_scale: 0,
-            current_sensor_offset: 250,
-            date_time: BlackboxDateTime::new(),
-            motor_pole_count: 14,
-        };
-
-        // NRVO (Named Return Value Optimization) ensures blackbox is created in place and not copied.
-        let mut blackbox = Blackbox::new(config, sys_info);
-        blackbox.init();
-
-        Self {
-            gyro_pid_receiver: gyro_pid_receiver(),
-            setpoint_receiver: setpoint_receiver(),
-            setpoint_message: SetpointMessage::new(),
-            barometer_altitude: 0,
-            battery_current: 0,
-            battery_voltage: 0,
-            range_raw: 0,
-            rssi: 0,
-            #[cfg(feature = "barometer")] barometer_subscriber: barometer_subscriber(),
-            #[cfg(feature = "battery")] battery_subscriber: battery_subscriber(),
-            #[cfg(feature = "gps")] gps_subscriber: gps_subscriber(),
-            blackbox,
-            buffer: [0u8; Self::BUFFER_CAPACITY],
-            overflow_counter: 0,
-        }
-    }
 }
 
 /// A fixed-size message container used to send blackbox chunks from this task to the `blackbox_writer` task.
@@ -163,7 +94,7 @@ impl BlackboxWriteBlock {
     #[inline]
     pub fn send_data_to_blackbox_writer_task(data: &[u8], overflow_counter: &mut u32) -> bool {
         let mut ret = false;
-        let _overflow_counter_in = *overflow_counter;
+        //let _overflow_counter_in = *overflow_counter;
         // Loop through the slice in chunks matching BlackboxWriteBlock capacity
         for chunk in data.chunks(Self::CAPACITY) {
             let block = Self::from_chunk(chunk);
@@ -193,7 +124,73 @@ pub static BLACKBOX_WRITE_QUEUE: Channel<CriticalSectionRawMutex, BlackboxWriteI
     Channel::new();
 
 pub fn init(config: BlackboxConfig) -> &'static mut BlackboxEncoderContext {
-    BLACKBOX_ENCODER_CTX.init(BlackboxEncoderContext::new(config))
+    //let mut blackbox_config = blackbox_config;
+    //blackbox_config.huffman_compress = true;
+
+    //nvs::load_blackbox_config(&mut config.blackbox, &mut flash_driver, config_flash_range.clone());
+    let mut config = config;
+    config.fields_disabled_mask = FieldSelect::PID_STERM_ROLL
+        | FieldSelect::PID_STERM_PITCH
+        | FieldSelect::PID_STERM_YAW
+        | FieldSelect::PID_KTERM
+        //| FieldSelect::PID
+        | FieldSelect::RSSI
+        //| FieldSelect::SETPOINT
+        //| FieldSelect::GYRO_UNFILTERED
+        //| FieldSelect::MOTOR_RPM
+        | FieldSelect::BATTERY_VOLTAGE
+        | FieldSelect::BATTERY_CURRENT
+        | FieldSelect::BAROMETER
+        | FieldSelect::RANGEFINDER
+        | FieldSelect::ATTITUDE
+        //| FieldSelect::ACCELEROMETER
+        //| FieldSelect::GYRO
+        //| FieldSelect::RC_COMMANDS
+        //| FieldSelect::MOTOR
+        | FieldSelect::MAGNETOMETER;
+
+    // TODO: derive blackbox sys info from config.
+    let sys_info = BlackboxSysInfo {
+        features: 541_130_760,
+        gyro_scale: 0x3f80_0000,
+        looptime: 125, // 125us = 8kHz gyro/pid loop
+        gyro_sync_denom: 1,
+        pid_process_denom: 1,
+        acc_1g: 4096,
+        motor_output_min: 48,
+        motor_output_max: 2047,
+        vbat_scale: 0,
+        vbat_min_cell_voltage: 330,
+        vbat_warning_cell_voltage: 350,
+        vbat_max_cell_voltage: 430,
+        current_sensor_scale: 0,
+        current_sensor_offset: 250,
+        date_time: BlackboxDateTime::new(),
+        motor_pole_count: 14,
+    };
+
+    // NRVO (Named Return Value Optimization) ensures blackbox is created in place and not copied.
+    let mut blackbox = Blackbox::new(config, sys_info);
+    blackbox.init();
+
+    #[rustfmt::skip]
+    let ctx = BlackboxEncoderContext {
+        gyro_pid_receiver: gyro_pid_receiver(),
+        setpoint_receiver: setpoint_receiver(),
+        setpoint_message: SetpointMessage::new(),
+        barometer_altitude: 0,
+        battery_current: 0,
+        battery_voltage: 0,
+        range_raw: 0,
+        rssi: 0,
+        #[cfg(feature = "barometer")] barometer_subscriber: barometer_subscriber(),
+        #[cfg(feature = "battery")] battery_subscriber: battery_subscriber(),
+        #[cfg(feature = "gps")] gps_subscriber: gps_subscriber(),
+        blackbox,
+        buffer: [0u8; BlackboxEncoderContext::BUFFER_CAPACITY],
+        overflow_counter: 0,
+    };
+    BLACKBOX_ENCODER_CTX.init(ctx)
 }
 
 /// Blackbox encoder task.

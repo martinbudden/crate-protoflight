@@ -51,9 +51,8 @@ impl Board {
         let spi0_clk = peripherals.GPIO44;
         let spi0_mosi = peripherals.GPIO14;
         let spi0_miso = peripherals.GPIO43;
-        let gyro_cs_pin = peripherals.GPIO46;
-        // Physical pin assigned to capture the gyroscope's INT1 signal wire
-        let gyro_exti_pin = peripherals.GPIO11;
+        let imu_cs_pin = peripherals.GPIO46;
+        let imu_exti_pin = peripherals.GPIO11;
 
         // I2C0
         // #define I2C_X_PINS i2c_pins_t{.sda=3,.scl=4,.irq=BusI2c::IRQ_NOT_SET}
@@ -64,6 +63,7 @@ impl Board {
         // #define OPTICAL_FLOW_PINS spi_pins_t{.cs=12,.sck=44,.cipo=43,.copi=14,.irq=0xFF}
 
         // #define MOTOR_PINS motor_pins_t{.m0=5,.m1=10,.m2=42,.m3=41} // BR, FR, BL, FL
+        // Motors
         let m1 = peripherals.GPIO5;
         let m2 = peripherals.GPIO10;
         let m3 = peripherals.GPIO42;
@@ -106,6 +106,8 @@ impl Board {
         let gps_uart_tx = None;
         let gps_uart_rx = None;
 
+        let sdcard_volume = None;
+
         let barometer = None;
         let magnetometer = None;
         let rangefinder = None;
@@ -122,7 +124,7 @@ impl Board {
             radio_uart_tx,
             gps_uart_rx,
             gps_uart_tx,
-
+            sdcard_volume,
             barometer,
             magnetometer,
             rangefinder,

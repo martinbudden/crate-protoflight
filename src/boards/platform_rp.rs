@@ -2,15 +2,14 @@
 
 use embassy_sync::{blocking_mutex::raw::NoopRawMutex, mutex::Mutex};
 
-// Bus = raw hardware peripheral
-// Device = bus + chip select + transaction locking
-
 use embassy_rp::{
     i2c::{Blocking, I2c},
     peripherals,
     uart::{Async, UartRx, UartTx},
 };
 
+// Bus = raw hardware peripheral
+// Device = bus + chip select + transaction locking
 pub type I2cDeviceBlocking = I2c<'static, peripherals::I2C0, Blocking>;
 pub type SharedI2cBus = Mutex<NoopRawMutex, I2cDeviceBlocking>;
 //pub type I2cDevice0Async = I2c<'static, peripherals::I2C0, Async>;
