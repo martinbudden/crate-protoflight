@@ -342,8 +342,8 @@ dshot-codec = { version = "0.1.2", default-features = false }
 #dshot-codec = { git = "https://github.com/martinbudden/crate-dshot-codec", default-features = false }
 #dshot-codec = { path = "../dshot-codec", default-features = false  }
 
-#motor-mixers = { version = "0.1.6", default-features = false }
-motor-mixers = { git = "https://github.com/martinbudden/crate-motor-mixers", default-features = false }
+motor-mixers = { version = "0.1.7", default-features = false }
+#motor-mixers = { git = "https://github.com/martinbudden/crate-motor-mixers", default-features = false }
 #motor-mixers = { path = "../motor-mixers", default-features = false }
 radio-controllers = { version = "0.1.8", default-features = false }
 #radio-controllers = { git = "https://github.com/martinbudden/crate-radio-controllers", default-features = false}
