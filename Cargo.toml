@@ -300,9 +300,10 @@ panic-probe = { version = "1.0.0", features = ["print-defmt"], optional = true }
 
 # stm32f4 specific
 embassy-stm32 = { version = "0.6.0", default-features = false, optional = true }
+
 # eps32 specific
 esp-hal = { version = "1.2.2", default-features = false, optional = true }
-#available features: critical-section, default, defmt, esp32, esp32c2, esp32c3, esp32c5, esp32c6, esp32c61, esp32h2, esp32p4, esp32s2, esp32s3, esp32s31, exception-handler, float-save-restore, log-04, requires-unstable, rt, unstable
+# available features: critical-section, default, defmt, esp32, esp32c2, esp32c3, esp32c5, esp32c6, esp32c61, esp32h2, esp32p4, esp32s2, esp32s3, esp32s31, exception-handler, float-save-restore, log-04, requires-unstable, rt, unstable
 xtensa-lx = { version = "0.13.0", default-features = false, optional = true }
 
 strum = { version = "0.28.0", default-features = false, features = ["derive"] }
@@ -348,8 +349,8 @@ motor-mixers = { version = "0.1.7", default-features = false }
 radio-controllers = { version = "0.1.8", default-features = false }
 #radio-controllers = { git = "https://github.com/martinbudden/crate-radio-controllers", default-features = false}
 #radio-controllers = { path = "../radio-controllers", default-features = false }
-#imu-sensors = { version = "0.1.4", default-features = false }
-imu-sensors = { git = "https://github.com/martinbudden/crate-imu-sensors", default-features = false }
+imu-sensors = { version = "0.1.5", default-features = false }
+#imu-sensors = { git = "https://github.com/martinbudden/crate-imu-sensors", default-features = false }
 #imu-sensors = { path = "../imu-sensors", default-features = false }
 
 paste = { version = "1.0.15", default-features = false }

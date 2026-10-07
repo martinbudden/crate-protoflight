@@ -1618,8 +1618,9 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 
 [[package]]
 name = "imu-sensors"
-version = "0.1.4"
-source = "git+https://github.com/martinbudden/crate-imu-sensors#fd02f46f3b139fa386f7424b6f2ad44ddd0f113e"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f3bf75d801b0a5f4ab37afc9c3e41bbed6be798feaacc41c20d9af96ac4aceea"
 dependencies = [
  "cfg-if",
  "embassy-time",

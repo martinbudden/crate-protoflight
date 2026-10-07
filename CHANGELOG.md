@@ -9,19 +9,15 @@ that is each release may contain incompatible API changes.
 
 Once the API has stabilized this project will adopt semantic versioning, the first release to do so will be `0.2.0`.
 
-## [Unreleased]
+## [0.1.4] - 2026-10-07
 
 ### Added
 
+- many improvements.
+
 ### Changed
 
-### Removed
-
-### Deprecated
-
-### Fixed
-
-### Security
+- Updated to latest crates.
 
 ## [0.1.3] - 2026-09-09
 
