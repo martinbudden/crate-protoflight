@@ -1,19 +1,16 @@
 use std::{env, fs::File, io::Write, path::PathBuf};
 
-fn main() {
-    let out = PathBuf::from(env::var_os("OUT_DIR").expect("OUT_DIR environment variable not found"));
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let out_dir = env::var_os("OUT_DIR").ok_or("OUT_DIR environment variable is not set")?;
+    let out = PathBuf::from(out_dir);
 
     // 1. Write the custom memory mappings into the compiler path
-    File::create(out.join("memory.x"))
-        .expect("Failed to create memory.x")
-        .write_all(include_bytes!("memory.x"))
-        .expect("Failed to write memory.x");
+    File::create(out.join("memory.x"))?.write_all(include_bytes!("memory.x"))?;
 
     // 2. FORCE GENERATION: Generate a clean defmt template locally.
     // This provides the structural mapping sections defmt needs,
     // ensuring rust-lld never fails with "cannot find linker script defmt.x".
-    File::create(out.join("defmt.x"))
-        .expect("Failed to create defmt.x")
+    File::create(out.join("defmt.x"))?
         .write_all(
             b"SECTIONS {
             .defmt 1 (INFO) : {
@@ -36,4 +33,6 @@ fn main() {
 
     println!("cargo:rerun-if-changed=memory.x");
     println!("cargo:rerun-if-changed=build.rs");
+
+    Ok(())
 }

@@ -524,20 +524,21 @@ mod tests {
         let mut buf = [0u8; 32];
 
         // Example: MSP_IDENT (Cmd 100) request with no payload
-        let size = MspStream::serialize_packet(
+        let result = MspStream::serialize_packet(
             MspVersion::V1,
             MspPacketType::Command,
             100,
             0,
             &[], // Empty payload
             &mut buf,
-        )
-        .expect("Serialization failed");
-
-        // Expected: $M< (3) + Size (0) + Cmd (100) + XOR (100)
-        // Checksum: 0 ^ 100 = 100
-        let expected = [b'$', b'M', b'<', 0, 100, 100];
-        assert_eq!(&buf[..size], &expected);
+        );
+        assert!(result.is_ok());
+        if let Ok(size) = result {
+            // Expected: $M< (3) + Size (0) + Cmd (100) + XOR (100)
+            // Checksum: 0 ^ 100 = 100
+            let expected = [b'$', b'M', b'<', 0, 100, 100];
+            assert_eq!(&buf[..size], &expected);
+        }
     }
 
     #[test]
@@ -546,46 +547,49 @@ mod tests {
 
         // Example: Command 100 with payload [1, 2]
         let payload = [1, 2];
-        let size = MspStream::serialize_packet(MspVersion::V1, MspPacketType::Command, 100, 0, &payload, &mut buf)
-            .expect("Serialization failed");
-
-        // Expected: $M< (3) + Size (2) + Cmd (100) + Payload (1, 2) + XOR
-        // Checksum: 2 ^ 100 ^ 1 ^ 2 = 101
-        let expected = [b'$', b'M', b'<', 2, 100, 1, 2, 101];
-        assert_eq!(&buf[..size], &expected);
+        let result = MspStream::serialize_packet(MspVersion::V1, MspPacketType::Command, 100, 0, &payload, &mut buf);
+        assert!(result.is_ok());
+        if let Ok(size) = result {
+            // Expected: $M< (3) + Size (2) + Cmd (100) + Payload (1, 2) + XOR
+            // Checksum: 2 ^ 100 ^ 1 ^ 2 = 101
+            let expected = [b'$', b'M', b'<', 2, 100, 1, 2, 101];
+            assert_eq!(&buf[..size], &expected);
+        }
     }
     #[test]
     fn test_serialize_v2_over_v1() {
         let mut buf = [0u8; 64];
         let payload = [0xAA, 0xBB];
 
-        let size = MspStream::serialize_packet(
+        let result = MspStream::serialize_packet(
             MspVersion::V2overV1,
             MspPacketType::Command,
             0x0102, // Cmd
             0,      // Flags
             &payload,
             &mut buf,
-        )
-        .expect("Serialization failed");
+        );
 
-        // Breakdown of the expected 13 bytes:
-        // [0..3]   Header: $M<
-        // [3]      V1 Size: 8
-        // [4]      V1 Cmd: 255
-        // [5..10]  V2 Header: 0, 2, 1, 2, 0 (Flags, CmdL, CmdH, SizeL, SizeH)
-        // [10..12] V2 Payload: 0xAA, 0xBB
-        // [12]     V2 CRC8: 19
-        // [13]     V1 XOR: 244
-        let expected = [
-            b'$', b'M', b'<', 8, 255, // V1 Wrapper
-            0, 2, 1, 2, 0, // V2 Header
-            0xAA, 0xBB, // V2 Data
-            19,   // V2 CRC
-            244,  // V1 XOR
-        ];
+        assert!(result.is_ok());
+        if let Ok(size) = result {
+            // Breakdown of the expected 13 bytes:
+            // [0..3]   Header: $M<
+            // [3]      V1 Size: 8
+            // [4]      V1 Cmd: 255
+            // [5..10]  V2 Header: 0, 2, 1, 2, 0 (Flags, CmdL, CmdH, SizeL, SizeH)
+            // [10..12] V2 Payload: 0xAA, 0xBB
+            // [12]     V2 CRC8: 19
+            // [13]     V1 XOR: 244
+            let expected = [
+                b'$', b'M', b'<', 8, 255, // V1 Wrapper
+                0, 2, 1, 2, 0, // V2 Header
+                0xAA, 0xBB, // V2 Data
+                19,   // V2 CRC
+                244,  // V1 XOR
+            ];
 
-        assert_eq!(size, 14); // 3 (hdr) + 11 (data/checksums) = 14 total bytes
-        assert_eq!(&buf[..size], &expected);
+            assert_eq!(size, 14); // 3 (hdr) + 11 (data/checksums) = 14 total bytes
+            assert_eq!(&buf[..size], &expected);
+        }
     }
 }

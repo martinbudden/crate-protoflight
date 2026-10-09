@@ -269,7 +269,6 @@ impl GpsContext {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::expect_used)]
     use crate::gps::{UbxMessage, make_realistic_nav_pvt_payload};
 
     use super::*;

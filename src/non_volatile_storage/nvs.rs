@@ -278,7 +278,6 @@ where
 
 #[cfg(all(test, feature = "std", feature = "storage"))]
 mod tests {
-    #![allow(clippy::expect_used)]
     use embedded_storage_file::{NorMemoryAsync, NorMemoryInFile};
 
     use super::*;
@@ -346,9 +345,9 @@ mod tests {
 
             let capacity_bytes = 1024 * 1024;
 
-            let inner_sync_nor =
-                NorMemoryInFile::<4, 4, 4096>::new(path, capacity_bytes).expect("Failed to create test mock flash");
-
+            let result = NorMemoryInFile::<4, 4, 4096>::new(path, capacity_bytes);
+            assert!(result.is_ok());
+            let inner_sync_nor = result.expect("Failed to create test mock flash");
             let flash_driver = NorMemoryAsync::new(inner_sync_nor);
 
             #[allow(clippy::cast_possible_truncation)]
@@ -362,7 +361,8 @@ mod tests {
             let default_config = ArmingConfig::default();
             let mut config = ArmingConfig::default();
 
-            load_arming_config(&mut config, &mut storage).await.expect("Failed to load initial arming config");
+            let result = load_arming_config(&mut config, &mut storage).await;
+            assert!(result.is_ok());
 
             assert_eq!(config, ArmingConfig::default());
 
@@ -372,47 +372,53 @@ mod tests {
             assert_ne!(default_config, test_config);
 
             // Save it.
-            save_arming_config(&test_config, &mut storage).await.expect("Failed to save arming config");
+            let result = save_arming_config(&test_config, &mut storage).await;
+            assert!(result.is_ok());
 
             // Load it back.
             let mut loaded_config = ArmingConfig::default();
 
-            load_arming_config(&mut loaded_config, &mut storage).await.expect("Failed to reload arming config");
+            let result = load_arming_config(&mut loaded_config, &mut storage).await;
+            assert!(result.is_ok());
 
             // Verify the round trip.
             assert_eq!(loaded_config, test_config);
 
             // Save the same configuration again.
-            save_arming_config(&test_config, &mut storage).await.expect("Failed to save arming config");
+            let result = save_arming_config(&test_config, &mut storage).await;
+            assert!(result.is_ok());
 
             // Load it again.
             let mut loaded_config = ArmingConfig::default();
 
-            load_arming_config(&mut loaded_config, &mut storage).await.expect("Failed to reload arming config");
+            let result = load_arming_config(&mut loaded_config, &mut storage).await;
+            assert!(result.is_ok());
 
             assert_eq!(loaded_config, test_config);
 
             // Saving the default configuration should delete the stored configuration.
             let default_config = ArmingConfig::default();
 
-            save_arming_config(&default_config, &mut storage).await.expect("Failed to save default arming config");
+            let result = save_arming_config(&default_config, &mut storage).await;
+            assert!(result.is_ok());
 
             // Loading after deletion should return the default.
             let mut loaded_config = ArmingConfig::default();
 
-            load_arming_config(&mut loaded_config, &mut storage)
-                .await
-                .expect("Failed to load arming config after deletion");
+            let result = load_arming_config(&mut loaded_config, &mut storage).await;
+            assert!(result.is_ok());
 
             assert_eq!(loaded_config, ArmingConfig::default());
 
             // Saving the default configuration again should do nothing.
-            save_arming_config(&default_config, &mut storage).await.expect("Failed to save default arming config");
+            let result = save_arming_config(&default_config, &mut storage).await;
+            assert!(result.is_ok());
 
             // It should still load as the default configuration.
             let mut loaded_config = ArmingConfig::default();
 
-            load_arming_config(&mut loaded_config, &mut storage).await.expect("Failed to load arming config");
+            let result = load_arming_config(&mut loaded_config, &mut storage).await;
+            assert!(result.is_ok());
 
             assert_eq!(loaded_config, ArmingConfig::default());
 
@@ -420,12 +426,14 @@ mod tests {
             let new_test_config =
                 ArmingConfig { gyro_calibrate_on_first_arm: 1, auto_disarm_delay: 20, prearm_allow_rearm: 0 };
 
-            save_arming_config(&new_test_config, &mut storage).await.expect("Failed to save new arming config");
+            let result = save_arming_config(&new_test_config, &mut storage).await;
+            assert!(result.is_ok());
 
             // Loading should now return the new configuration.
             let mut loaded_config = ArmingConfig::default();
 
-            load_arming_config(&mut loaded_config, &mut storage).await.expect("Failed to load new arming config");
+            let result = load_arming_config(&mut loaded_config, &mut storage).await;
+            assert!(result.is_ok());
 
             assert_eq!(loaded_config, new_test_config);
 

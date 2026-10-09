@@ -114,33 +114,36 @@ impl NmeaRmc {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::expect_used)]
     use super::*;
 
     #[test]
     fn parse_rmc_record_extracts_navigation_data() {
         let record = b"GPRMC,123519.00,A,4916.45,N,12311.12,W,022.4,084.4,230394,,,";
 
-        let result = NmeaRmc::parse(record).expect("RMC record should parse");
+        let option = NmeaRmc::parse(record);
+        assert!(option.is_some());
+        if let Some(result) = option {
+            assert_eq!(result.time_of_day_ms, 45_319_000);
 
-        assert_eq!(result.time_of_day_ms, 45_319_000);
+            assert_eq!(result.latitude_degrees_x1e7, 492_741_667);
 
-        assert_eq!(result.latitude_degrees_x1e7, 492_741_667);
+            assert_eq!(result.longitude_degrees_x1e7, -1_231_853_333);
 
-        assert_eq!(result.longitude_degrees_x1e7, -1_231_853_333);
+            assert_eq!(result.ground_speed_cmps, 1_152);
+            assert_eq!(result.heading_deci_degrees, 844);
 
-        assert_eq!(result.ground_speed_cmps, 1_152);
-        assert_eq!(result.heading_deci_degrees, 844);
-
-        assert_eq!(result.is_healthy, 1);
+            assert_eq!(result.is_healthy, 1);
+        }
     }
     #[test]
     fn parse_rmc_record_marks_invalid_fix_unhealthy() {
         let record = b"GPRMC,123519.00,V,4916.45,N,12311.12,W,022.4,084.4,230394,,,";
 
-        let result = NmeaRmc::parse(record).expect("RMC record should parse");
-
-        assert_eq!(result.is_healthy, 0);
+        let option = NmeaRmc::parse(record);
+        assert!(option.is_some());
+        if let Some(result) = option {
+            assert_eq!(result.is_healthy, 0);
+        }
     }
     #[test]
     fn parse_rmc_record_accepts_different_talker_ids() {

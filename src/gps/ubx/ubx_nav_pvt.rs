@@ -241,7 +241,6 @@ pub(crate) fn make_realistic_nav_pvt_payload() -> [u8; UbxNavPvt::PAYLOAD_LEN] {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::expect_used)]
     use crate::gps::{GpsSolution, UbxParser};
 
     use super::*;
@@ -259,9 +258,11 @@ mod tests {
         let itow = 123_456_789u32;
         payload[0..4].copy_from_slice(&itow.to_le_bytes());
 
-        let result = UbxNavPvt::parse(&payload).expect("NAV-PVT should parse");
-
-        assert_eq!(result.time_of_week_ms, itow);
+        let option = UbxNavPvt::parse(&payload);
+        assert!(option.is_some());
+        if let Some(result) = option {
+            assert_eq!(result.time_of_week_ms, itow);
+        }
     }
     #[test]
     fn parse_nav_pvt_rejects_wrong_payload_length() {
@@ -285,15 +286,17 @@ mod tests {
         payload[22] = 0x02; // example flags2
         payload[23] = 12; // satellites
 
-        let result = UbxNavPvt::parse(&payload).expect("NAV-PVT should parse");
-
-        assert_eq!(result.valid, 0x07);
-        assert_eq!(result.time_accuracy_ns, 123_456);
-        assert_eq!(result.nano, -123_456_789);
-        assert_eq!(result.fix_type, 3);
-        assert_eq!(result.flags, 0x05);
-        assert_eq!(result.flags2, 0x02);
-        assert_eq!(result.satellite_count, 12);
+        let option = UbxNavPvt::parse(&payload);
+        assert!(option.is_some());
+        if let Some(result) = option {
+            assert_eq!(result.valid, 0x07);
+            assert_eq!(result.time_accuracy_ns, 123_456);
+            assert_eq!(result.nano, -123_456_789);
+            assert_eq!(result.fix_type, 3);
+            assert_eq!(result.flags, 0x05);
+            assert_eq!(result.flags2, 0x02);
+            assert_eq!(result.satellite_count, 12);
+        }
     }
     #[test]
     fn parse_nav_pvt_extracts_position() {
@@ -315,14 +318,16 @@ mod tests {
         payload[40..44].copy_from_slice(&horizontal_accuracy.to_le_bytes());
         payload[44..48].copy_from_slice(&vertical_accuracy.to_le_bytes());
 
-        let result = UbxNavPvt::parse(&payload).expect("NAV-PVT should parse");
-
-        assert_eq!(result.longitude_degrees_x1e7, longitude);
-        assert_eq!(result.latitude_degrees_x1e7, latitude);
-        assert_eq!(result.height_ellipsoid_mm, height_ellipsoid);
-        assert_eq!(result.height_msl_mm, height_msl);
-        assert_eq!(result.horizontal_accuracy_mm, horizontal_accuracy);
-        assert_eq!(result.vertical_accuracy_mm, vertical_accuracy);
+        let option = UbxNavPvt::parse(&payload);
+        assert!(option.is_some());
+        if let Some(result) = option {
+            assert_eq!(result.longitude_degrees_x1e7, longitude);
+            assert_eq!(result.latitude_degrees_x1e7, latitude);
+            assert_eq!(result.height_ellipsoid_mm, height_ellipsoid);
+            assert_eq!(result.height_msl_mm, height_msl);
+            assert_eq!(result.horizontal_accuracy_mm, horizontal_accuracy);
+            assert_eq!(result.vertical_accuracy_mm, vertical_accuracy);
+        }
     }
     #[test]
     fn parse_nav_pvt_extracts_velocity_and_heading() {
@@ -340,13 +345,15 @@ mod tests {
         payload[60..64].copy_from_slice(&ground_speed.to_le_bytes());
         payload[64..68].copy_from_slice(&heading.to_le_bytes());
 
-        let result = UbxNavPvt::parse(&payload).expect("NAV-PVT should parse");
-
-        assert_eq!(result.velocity_north_mmps, velocity_north);
-        assert_eq!(result.velocity_east_mmps, velocity_east);
-        assert_eq!(result.velocity_down_mmps, velocity_down);
-        assert_eq!(result.ground_speed_mmps, ground_speed);
-        assert_eq!(result.heading_degrees_x1e5, heading);
+        let option = UbxNavPvt::parse(&payload);
+        assert!(option.is_some());
+        if let Some(result) = option {
+            assert_eq!(result.velocity_north_mmps, velocity_north);
+            assert_eq!(result.velocity_east_mmps, velocity_east);
+            assert_eq!(result.velocity_down_mmps, velocity_down);
+            assert_eq!(result.ground_speed_mmps, ground_speed);
+            assert_eq!(result.heading_degrees_x1e5, heading);
+        }
     }
     #[allow(unused)]
     fn test_nav_pvt() -> UbxNavPvt {
@@ -417,26 +424,30 @@ mod tests {
             if let Some(message) = parser.on_data_received(byte) {
                 assert_eq!(message.class, UbxClassId::Nav);
                 assert_eq!(message.id, 0x07);
-                let nav = UbxNavPvt::parse(message.payload).expect("NAV-PVT payload should parse");
-                gps.amend_with_ubx_nav_pvt(nav);
-                break;
+
+                let option = UbxNavPvt::parse(message.payload);
+
+                assert!(option.is_some());
+                if let Some(nav) = option {
+                    gps.amend_with_ubx_nav_pvt(nav);
+
+                    assert_eq!(gps.time_of_week_ms, 45_296_789);
+                    assert_eq!(gps.longitude_degrees_x1e7, -12_345_678);
+                    assert_eq!(gps.latitude_degrees_x1e7, 512_345_678);
+                    assert_eq!(gps.altitude_cm, 10_000);
+                    assert_eq!(gps.geoid_separation_cm, 2_345);
+
+                    assert_eq!(gps.satellite_count, 12);
+                    assert_eq!(gps.fix, 3);
+                    assert_eq!(gps.is_healthy, 1);
+
+                    assert_eq!(gps.velocity_north_cmps, 123);
+                    assert_eq!(gps.velocity_east_cmps, -45);
+                    assert_eq!(gps.velocity_down_cmps, 12);
+                    assert_eq!(gps.ground_speed_cmps, 131);
+                    assert_eq!(gps.heading_deci_degrees, 1_234);
+                }
             }
         }
-
-        assert_eq!(gps.time_of_week_ms, 45_296_789);
-        assert_eq!(gps.longitude_degrees_x1e7, -12_345_678);
-        assert_eq!(gps.latitude_degrees_x1e7, 512_345_678);
-        assert_eq!(gps.altitude_cm, 10_000);
-        assert_eq!(gps.geoid_separation_cm, 2_345);
-
-        assert_eq!(gps.satellite_count, 12);
-        assert_eq!(gps.fix, 3);
-        assert_eq!(gps.is_healthy, 1);
-
-        assert_eq!(gps.velocity_north_cmps, 123);
-        assert_eq!(gps.velocity_east_cmps, -45);
-        assert_eq!(gps.velocity_down_cmps, 12);
-        assert_eq!(gps.ground_speed_cmps, 131);
-        assert_eq!(gps.heading_deci_degrees, 1_234);
     }
 }

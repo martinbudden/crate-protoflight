@@ -122,28 +122,29 @@ impl NmeaGga {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::expect_used)]
     use super::*;
 
     #[test]
     fn parse_gga_record_extracts_position_and_fix() {
         let record = b"GPGGA,123519.500,4916.45,N,12311.12,W,1,08,0.9,545.4,M,46.9,M,,";
 
-        let result = NmeaGga::parse(record).expect("GGA record should parse");
+        let option = NmeaGga::parse(record);
+        assert!(option.is_some());
+        if let Some(result) = option {
+            assert_eq!(result.time_of_day_ms, 45_319_500);
 
-        assert_eq!(result.time_of_day_ms, 45_319_500);
+            assert_eq!(result.latitude_degrees_x1e7, 492_741_667);
 
-        assert_eq!(result.latitude_degrees_x1e7, 492_741_667);
+            assert_eq!(result.longitude_degrees_x1e7, -1_231_853_333);
 
-        assert_eq!(result.longitude_degrees_x1e7, -1_231_853_333);
+            assert_eq!(result.altitude_cm, 54_540);
 
-        assert_eq!(result.altitude_cm, 54_540);
+            assert_eq!(result.hdop_x100, 9);
 
-        assert_eq!(result.hdop_x100, 9);
-
-        assert_eq!(result.fix, 1);
-        assert_eq!(result.satellite_count, 8);
-        assert_eq!(result.geoid_separation_cm, 4_690);
+            assert_eq!(result.fix, 1);
+            assert_eq!(result.satellite_count, 8);
+            assert_eq!(result.geoid_separation_cm, 4_690);
+        }
     }
     #[test]
     fn parse_gga_record_rejects_invalid_latitude() {
@@ -161,9 +162,11 @@ mod tests {
     fn parse_gga_record_handles_negative_geoid_separation() {
         let record = b"GPGGA,123519.500,4916.45,N,12311.12,W,1,08,0.9,545.4,M,-46.9,M,,";
 
-        let result = NmeaGga::parse(record).expect("GGA record should parse");
-
-        assert_eq!(result.altitude_cm, 54_540);
-        assert_eq!(result.geoid_separation_cm, -4_690);
+        let option = NmeaGga::parse(record);
+        assert!(option.is_some());
+        if let Some(result) = option {
+            assert_eq!(result.altitude_cm, 54_540);
+            assert_eq!(result.geoid_separation_cm, -4_690);
+        }
     }
 }

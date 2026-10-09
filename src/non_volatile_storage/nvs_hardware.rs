@@ -24,9 +24,9 @@ pub fn init_flash_driver() -> impl NorFlash {
     let path = "pc_mock_flash.nor";
     let capacity_bytes = 1024 * 1024; // 1MB 
 
+    let result = NorMemoryInFile::<4, 4, 4096>::new(path, capacity_bytes);
     #[allow(clippy::expect_used)]
-    let inner_sync_nor =
-        NorMemoryInFile::<4, 4, 4096>::new(path, capacity_bytes).expect("Failed to create synchronous mock flash file");
+    let inner_sync_nor = result.expect("Failed to create synchronous mock flash file");
 
     NorMemoryAsync::new(inner_sync_nor)
 }

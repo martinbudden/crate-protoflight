@@ -151,30 +151,33 @@ impl NmeaGsa {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::expect_used)]
     use super::*;
 
     #[test]
     fn parse_gsa_record_extracts_fix_and_dop() {
         let record = b"GPGSA,A,3,04,05,09,12,24,25,29,31,,,,,1.8,1.0,1.5";
 
-        let result = NmeaGsa::parse(record).expect("GSA record should parse");
+        let option = NmeaGsa::parse(record);
+        assert!(option.is_some());
+        if let Some(result) = option {
+            assert_eq!(result.fix_type, 3);
+            assert_eq!(result.satellites_used, 8);
 
-        assert_eq!(result.fix_type, 3);
-        assert_eq!(result.satellites_used, 8);
-
-        assert_eq!(result.pdop, 18);
-        assert_eq!(result.hdop, 10);
-        assert_eq!(result.vdop, 15);
+            assert_eq!(result.pdop, 18);
+            assert_eq!(result.hdop, 10);
+            assert_eq!(result.vdop, 15);
+        }
     }
     #[test]
     fn parse_gsa_record_accepts_no_fix() {
         let record = b"GPGSA,A,1,,,,,,,,,,,,,1.8,1.0,1.5";
 
-        let result = NmeaGsa::parse(record).expect("GSA record should parse");
-
-        assert_eq!(result.fix_type, 1);
-        assert_eq!(result.satellites_used, 0);
+        let option = NmeaGsa::parse(record);
+        assert!(option.is_some());
+        if let Some(result) = option {
+            assert_eq!(result.fix_type, 1);
+            assert_eq!(result.satellites_used, 0);
+        }
     }
     #[test]
     fn parse_gsa_record_rejects_invalid_fix_type() {
