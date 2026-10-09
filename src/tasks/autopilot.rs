@@ -10,6 +10,7 @@ use crate::{
     autopilot::Autopilot,
     flight::RxMessage,
     tasks::{
+        errors::TaskContextInitError,
         failsafe::{FailsafeSubscriber, failsafe_subscriber},
         gyro_pid::{GyroPidReceiver, gyro_pid_receiver},
         rx::{RxMessageReceiver, rx_message_receiver},
@@ -46,9 +47,8 @@ pub fn autopilot_sender() -> AutopilotSender {
 
 pub type AutopilotReceiver = Receiver<'static, CriticalSectionRawMutex, RxMessage, AUTOPILOT_WATCH_COUNT>;
 
-#[allow(clippy::expect_used)]
-pub fn autopilot_receiver() -> AutopilotReceiver {
-    AUTOPILOT_WATCH.receiver().expect("autopilot_receiver failed")
+pub fn autopilot_receiver() -> Result<AutopilotReceiver, TaskContextInitError> {
+    AUTOPILOT_WATCH.receiver().ok_or(TaskContextInitError::TooManyAutopilotReceivers)
 }
 
 /// Context for Autopilot task.
@@ -65,20 +65,20 @@ pub struct AutopilotContext {
     #[cfg(feature = "rangefinder")] pub rangefinder_subscriber: RangefinderSubscriber,
 }
 
-pub fn init() -> &'static mut AutopilotContext {
+pub fn init() -> Result<&'static mut AutopilotContext, TaskContextInitError> {
     #[rustfmt::skip]
     let ctx = AutopilotContext {
-        gyro_pid_receiver: gyro_pid_receiver(),
-        rx_receiver: rx_message_receiver(),
-        failsafe_subscriber: failsafe_subscriber(),
+        gyro_pid_receiver: gyro_pid_receiver()?,
+        rx_receiver: rx_message_receiver()?,
+        failsafe_subscriber: failsafe_subscriber()?,
         autopilot_sender: autopilot_sender(),
         autopilot: Autopilot::new(),
-        #[cfg(feature = "barometer")] barometer_subscriber: barometer_subscriber(),
-        #[cfg(feature = "gps")] gps_subscriber: gps_subscriber(),
-        #[cfg(feature = "optical_flow")] optical_flow_subscriber: optical_flow_subscriber(),
-        #[cfg(feature = "rangefinder")] rangefinder_subscriber: rangefinder_subscriber(),
+        #[cfg(feature = "barometer")] barometer_subscriber: barometer_subscriber()?,
+        #[cfg(feature = "gps")] gps_subscriber: gps_subscriber()?,
+        #[cfg(feature = "optical_flow")] optical_flow_subscriber: optical_flow_subscriber()?,
+        #[cfg(feature = "rangefinder")] rangefinder_subscriber: rangefinder_subscriber()?,
     };
-    AUTOPILOT_CTX.init(ctx)
+    Ok(AUTOPILOT_CTX.init(ctx))
 }
 
 /// Autopilot Placeholder.

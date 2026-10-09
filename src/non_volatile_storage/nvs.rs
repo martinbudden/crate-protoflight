@@ -346,7 +346,6 @@ mod tests {
 
             let capacity_bytes = 1024 * 1024;
 
-            #[allow(clippy::expect_used)]
             let inner_sync_nor =
                 NorMemoryInFile::<4, 4, 4096>::new(path, capacity_bytes).expect("Failed to create test mock flash");
 

@@ -434,7 +434,6 @@ mod test_traits {
         is_full::<MspError>();
     }
 }
-#[allow(clippy::expect_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

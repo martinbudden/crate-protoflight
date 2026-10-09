@@ -6,6 +6,7 @@ mod platform_rp;
 mod platform_stm32;
 
 mod board;
+mod board_init_error;
 mod mock_uart;
 mod no_sdcard;
 mod sd_card;
@@ -13,6 +14,7 @@ mod sd_card;
 pub mod targets;
 
 pub use board::BoardInit;
+pub use board_init_error::BoardInitError;
 
 #[allow(unused)]
 #[cfg(feature = "sdcard")]

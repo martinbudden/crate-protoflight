@@ -14,6 +14,7 @@ use static_cell::StaticCell;
 use crate::tasks::gps::gps_subscriber;
 use crate::tasks::{
     GyroPidMessage, SetpointMessage,
+    errors::TaskContextInitError,
     gyro_pid::{GyroPidReceiver, SetpointReceiver, gyro_pid_receiver, setpoint_receiver},
 };
 
@@ -123,7 +124,7 @@ const BLACKBOX_WRITE_QUEUE_COUNT: usize = 256;
 pub static BLACKBOX_WRITE_QUEUE: Channel<CriticalSectionRawMutex, BlackboxWriteItem, BLACKBOX_WRITE_QUEUE_COUNT> =
     Channel::new();
 
-pub fn init(config: BlackboxConfig) -> &'static mut BlackboxEncoderContext {
+pub fn init(config: BlackboxConfig) -> Result<&'static mut BlackboxEncoderContext, TaskContextInitError> {
     //let mut blackbox_config = blackbox_config;
     //blackbox_config.huffman_compress = true;
 
@@ -175,22 +176,22 @@ pub fn init(config: BlackboxConfig) -> &'static mut BlackboxEncoderContext {
 
     #[rustfmt::skip]
     let ctx = BlackboxEncoderContext {
-        gyro_pid_receiver: gyro_pid_receiver(),
-        setpoint_receiver: setpoint_receiver(),
+        gyro_pid_receiver: gyro_pid_receiver()?,
+        setpoint_receiver: setpoint_receiver()?,
         setpoint_message: SetpointMessage::new(),
         barometer_altitude: 0,
         battery_current: 0,
         battery_voltage: 0,
         range_raw: 0,
         rssi: 0,
-        #[cfg(feature = "barometer")] barometer_subscriber: barometer_subscriber(),
-        #[cfg(feature = "battery")] battery_subscriber: battery_subscriber(),
-        #[cfg(feature = "gps")] gps_subscriber: gps_subscriber(),
+        #[cfg(feature = "barometer")] barometer_subscriber: barometer_subscriber()?,
+        #[cfg(feature = "battery")] battery_subscriber: battery_subscriber()?,
+        #[cfg(feature = "gps")] gps_subscriber: gps_subscriber()?,
         blackbox,
         buffer: [0u8; BlackboxEncoderContext::BUFFER_CAPACITY],
         overflow_counter: 0,
     };
-    BLACKBOX_ENCODER_CTX.init(ctx)
+    Ok(BLACKBOX_ENCODER_CTX.init(ctx))
 }
 
 /// Blackbox encoder task.

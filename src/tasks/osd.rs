@@ -12,6 +12,7 @@ use crate::{
     display::{Display, DisplayPortLayer, DisplayPortMutex},
     flight::{ArmingFlags, RxMessage},
     osd::{Osd, OsdDrawContext, OsdElements, OsdState},
+    tasks::errors::TaskContextInitError,
 };
 
 #[cfg(feature = "optical_flow")]
@@ -56,27 +57,29 @@ pub struct OsdContext {
     pub display_port_mutex: &'static DisplayPortMutex,
 }
 
-pub async fn init(display_port_mutex: &'static DisplayPortMutex) -> &'static mut OsdContext {
+pub async fn init(
+    display_port_mutex: &'static DisplayPortMutex,
+) -> Result<&'static mut OsdContext, TaskContextInitError> {
     let display_port = display_port_mutex.lock().await;
     let background_layer_supported = display_port.layer_supported(DisplayPortLayer::Background);
 
     #[rustfmt::skip]
     let ctx = OsdContext {
-        gyro_pid_receiver: gyro_pid_receiver(),
-        setpoint_receiver: setpoint_receiver(),
-        rx_receiver: rx_message_receiver(),
-        #[cfg(feature = "barometer")] barometer_subscriber: barometer_subscriber(),
-        #[cfg(feature = "battery")] battery_subscriber: battery_subscriber(),
-        #[cfg(feature = "gps")] gps_subscriber: gps_subscriber(),
-        #[cfg(feature = "optical_flow")] optical_flow_subscriber: optical_flow_subscriber(),
-        #[cfg(feature = "rangefinder")] rangefinder_subscriber: rangefinder_subscriber(),
+        gyro_pid_receiver: gyro_pid_receiver()?,
+        setpoint_receiver: setpoint_receiver()?,
+        rx_receiver: rx_message_receiver()?,
+        #[cfg(feature = "barometer")] barometer_subscriber: barometer_subscriber()?,
+        #[cfg(feature = "battery")] battery_subscriber: battery_subscriber()?,
+        #[cfg(feature = "gps")] gps_subscriber: gps_subscriber()?,
+        #[cfg(feature = "optical_flow")] optical_flow_subscriber: optical_flow_subscriber()?,
+        #[cfg(feature = "rangefinder")] rangefinder_subscriber: rangefinder_subscriber()?,
         osd: Osd::new(),
         osd_state: OsdState::default(),
         osd_elements: OsdElements::new(background_layer_supported),
         display_port_mutex,
     };
 
-    OSD_CTX.init(ctx)
+    Ok(OSD_CTX.init(ctx))
 }
 
 /// OSD Task Placeholder.

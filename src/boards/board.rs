@@ -11,32 +11,6 @@ use motor_mixers::{MotorDriver, MotorProtocol};
 //#[cfg(all(feature = "rp2350xa", feature = "rp2350xb"))]
 //compile_error!("rp2350xa and rp2350xb are mutually exclusive");
 
-#[allow(unused)]
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum BoardInitError {
-    ImuNotAvailable,
-    ImuError,
-    GyroInterruptNotAvailable,
-    GyroInterruptError,
-    SdCardNotAvailable,
-    SdCardError,
-    Max7456NotAvailable,
-    Max7456Error,
-    SerialRxUartNotAvailable,
-    SerialRxUartError,
-    MspUartNotAvailable,
-    MspUartError,
-    EscSensorUartNotAvailable,
-    EscSensorUartError,
-    SensorsI2cNotAvailable,
-    SensorsI2cError,
-    MotorDriverNotAvailable,
-    MotorDriverError,
-    MotorProtocolNotSupported,
-    UartNotAvailable,
-    UartError,
-}
-
 /// Parameters for `board_hardware`.
 #[allow(unused)]
 pub struct BoardInit {

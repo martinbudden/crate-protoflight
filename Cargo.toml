@@ -102,6 +102,7 @@ _common = [
 mock = [
     "host",
     "_common",
+    "storage",
 ]
 rpi_pico2 = [
     "rp235xa", 

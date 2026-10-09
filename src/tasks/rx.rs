@@ -14,7 +14,10 @@ use crate::{
         config_subscriber, fast_config_publisher,
     },
     flight::{RcAdjustments, RxMessage},
-    tasks::failsafe::{FailsafeSubscriber, failsafe_subscriber},
+    tasks::{
+        errors::TaskContextInitError,
+        failsafe::{FailsafeSubscriber, failsafe_subscriber},
+    },
 };
 
 static RX_CTX: StaticCell<RxContext> = StaticCell::new();
@@ -30,9 +33,8 @@ fn rx_message_sender() -> RxMessageSender {
 
 pub type RxMessageReceiver = Receiver<'static, CriticalSectionRawMutex, RxMessage, RX_WATCH_COUNT>;
 
-#[allow(clippy::expect_used)]
-pub fn rx_message_receiver() -> RxMessageReceiver {
-    RX_WATCH.receiver().expect("rx_receiver failed")
+pub fn rx_message_receiver() -> Result<RxMessageReceiver, TaskContextInitError> {
+    RX_WATCH.receiver().ok_or(TaskContextInitError::TooManyRxMessageReceivers)
 }
 
 #[cfg(feature = "autopilot")]
@@ -63,27 +65,6 @@ pub struct RxContext {
 
 impl RxContext {
     const BUF_SIZE: usize = 128;
-
-    pub fn new(uart_rx: RadioUartRx, uart_tx: RadioUartTx, rx_config: RxConfig, rates_config: RatesConfig) -> Self {
-        let radio = Radio::new(rx_config.serial_rx_provider);
-        Self {
-            radio,
-            uart_rx,
-            uart_tx,
-            rx_message_sender: rx_message_sender(),
-            failsafe_subscriber: failsafe_subscriber(),
-            config_subscriber: config_subscriber(),
-            config_publisher: config_publisher(),
-            fast_config_publisher: fast_config_publisher(),
-            rates: Rates::new(rates_config),
-            rc_modes: RcModes::new().with_mac_arm(),
-            rc_adjustments: RcAdjustments::new(),
-            buf: [0u8; Self::BUF_SIZE],
-
-            #[cfg(feature = "autopilot")]
-            autopilot_receiver: autopilot_receiver(),
-        }
-    }
 }
 
 pub fn init(
@@ -91,8 +72,27 @@ pub fn init(
     uart_tx: RadioUartTx,
     rx_config: RxConfig,
     rates: RatesConfig,
-) -> &'static mut RxContext {
-    RX_CTX.init(RxContext::new(uart_rx, uart_tx, rx_config, rates))
+) -> Result<&'static mut RxContext, TaskContextInitError> {
+    let radio = Radio::new(rx_config.serial_rx_provider);
+    let ctx = RxContext {
+        radio,
+        uart_rx,
+        uart_tx,
+        rx_message_sender: rx_message_sender(),
+        failsafe_subscriber: failsafe_subscriber()?,
+        config_subscriber: config_subscriber()?,
+        config_publisher: config_publisher()?,
+        fast_config_publisher: fast_config_publisher()?,
+        rates: Rates::new(rates),
+        rc_modes: RcModes::new().with_mac_arm(),
+        rc_adjustments: RcAdjustments::new(),
+        buf: [0u8; RxContext::BUF_SIZE],
+
+        #[cfg(feature = "autopilot")]
+        autopilot_receiver: autopilot_receiver()?,
+    };
+
+    Ok(RX_CTX.init(ctx))
 }
 
 /// The rx task waits (with a timeout) for a packet from the radio and when one arrives it:

@@ -6,7 +6,10 @@ use embassy_sync::{
 };
 use static_cell::StaticCell;
 
-use crate::optical_flow_sensors::{OpticalFlow, OpticalFlowDevice, OpticalFlowMessage};
+use crate::{
+    optical_flow_sensors::{OpticalFlow, OpticalFlowDevice, OpticalFlowMessage},
+    tasks::errors::TaskContextInitError,
+};
 
 const MAX_OPTICAL_FLOW_SUBSCRIBER_COUNT: usize = 4;
 const OPTICAL_FLOW_PUBLISHER_COUNT: usize = 1;
@@ -39,9 +42,8 @@ pub type OpticalFlowSubscriber = Subscriber<
     OPTICAL_FLOW_PUBLISHER_COUNT,
 >;
 
-#[allow(clippy::expect_used)]
-pub fn optical_flow_subscriber() -> OpticalFlowSubscriber {
-    OPTICAL_FLOW_PUB_SUB_CHANNEL.subscriber().expect("optical_flow_subscriber failed")
+pub fn optical_flow_subscriber() -> Result<OpticalFlowSubscriber, TaskContextInitError> {
+    OPTICAL_FLOW_PUB_SUB_CHANNEL.subscriber().map_err(|_| TaskContextInitError::OpticalFlowSubscriberFailed)
 }
 
 static OPTICAL_FLOW_CTX: StaticCell<OpticalFlowContext> = StaticCell::new();
@@ -51,13 +53,14 @@ pub struct OpticalFlowContext {
     pub optical_flow_publisher: OpticalFlowPublisher,
 }
 
-pub fn init(optical_flow: OpticalFlow) -> &'static mut OpticalFlowContext {
+pub fn init(optical_flow: OpticalFlow) -> Result<&'static mut OpticalFlowContext, TaskContextInitError> {
     let ctx = OpticalFlowContext {
         optical_flow,
-        #[allow(clippy::expect_used)]
-        optical_flow_publisher: OPTICAL_FLOW_PUB_SUB_CHANNEL.publisher().expect("optical_flow_publisher failed"),
+        optical_flow_publisher: OPTICAL_FLOW_PUB_SUB_CHANNEL
+            .publisher()
+            .map_err(|_| TaskContextInitError::OpticalFlowPublisherFailed)?,
     };
-    OPTICAL_FLOW_CTX.init(ctx)
+    Ok(OPTICAL_FLOW_CTX.init(ctx))
 }
 
 /// Optical flow Task Placeholder.

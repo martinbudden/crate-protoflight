@@ -6,7 +6,10 @@ use embassy_sync::{
 };
 use static_cell::StaticCell;
 
-use crate::magnetometer_sensors::{Magnetometer, MagnetometerMessage, RxMagnetometer};
+use crate::{
+    magnetometer_sensors::{Magnetometer, MagnetometerMessage, RxMagnetometer},
+    tasks::errors::TaskContextInitError,
+};
 
 static MAGNETOMETER_CTX: StaticCell<MagnetometerContext> = StaticCell::new();
 
@@ -41,9 +44,8 @@ pub type MagnetometerSubscriber = Subscriber<
     MAGNETOMETER_PUBLISHER_COUNT,
 >;
 
-#[allow(unused, clippy::expect_used)]
-pub fn magnetometer_subscriber() -> MagnetometerSubscriber {
-    MAGNETOMETER_PUB_SUB_CHANNEL.subscriber().expect("magnetometer_subscriber failed")
+pub fn magnetometer_subscriber() -> Result<MagnetometerSubscriber, TaskContextInitError> {
+    MAGNETOMETER_PUB_SUB_CHANNEL.subscriber().map_err(|_| TaskContextInitError::MagnetometerSubscriberFailed)
 }
 
 /// Context for Magnetometer task.
@@ -52,13 +54,14 @@ pub struct MagnetometerContext {
     pub magnetometer_publisher: MagnetometerPublisher,
 }
 
-pub fn init(magnetometer: Magnetometer) -> &'static mut MagnetometerContext {
+pub fn init(magnetometer: Magnetometer) -> Result<&'static mut MagnetometerContext, TaskContextInitError> {
     let ctx = MagnetometerContext {
         magnetometer,
-        #[allow(clippy::expect_used)]
-        magnetometer_publisher: MAGNETOMETER_PUB_SUB_CHANNEL.publisher().expect("magnetometer_publisher failed"),
+        magnetometer_publisher: MAGNETOMETER_PUB_SUB_CHANNEL
+            .publisher()
+            .map_err(|_| TaskContextInitError::MagnetometerPublisherFailed)?,
     };
-    MAGNETOMETER_CTX.init(ctx)
+    Ok(MAGNETOMETER_CTX.init(ctx))
 }
 
 /// Magnetometer Task Placeholder.

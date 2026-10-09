@@ -6,7 +6,10 @@ use embassy_sync::{
 };
 use static_cell::StaticCell;
 
-use crate::rangefinder_sensors::{Rangefinder, RangefinderDevice, RangefinderMessage};
+use crate::{
+    rangefinder_sensors::{Rangefinder, RangefinderDevice, RangefinderMessage},
+    tasks::errors::TaskContextInitError,
+};
 
 const MAX_RANGEFINDER_SUBSCRIBER_COUNT: usize = 4;
 const RANGEFINDER_PUBLISHER_COUNT: usize = 1;
@@ -39,9 +42,8 @@ pub type RangefinderSubscriber = Subscriber<
     RANGEFINDER_PUBLISHER_COUNT,
 >;
 
-#[allow(clippy::expect_used)]
-pub fn rangefinder_subscriber() -> RangefinderSubscriber {
-    RANGEFINDER_PUB_SUB_CHANNEL.subscriber().expect("rangefinder_subscriber failed")
+pub fn rangefinder_subscriber() -> Result<RangefinderSubscriber, TaskContextInitError> {
+    RANGEFINDER_PUB_SUB_CHANNEL.subscriber().map_err(|_| TaskContextInitError::RangefinderSubscriberFailed)
 }
 
 static RANGEFINDER_CTX: StaticCell<RangefinderContext> = StaticCell::new();
@@ -52,13 +54,14 @@ pub struct RangefinderContext {
     pub rangefinder_publisher: RangefinderPublisher,
 }
 
-pub fn init(rangefinder: Rangefinder) -> &'static mut RangefinderContext {
+pub fn init(rangefinder: Rangefinder) -> Result<&'static mut RangefinderContext, TaskContextInitError> {
     let ctx = RangefinderContext {
         rangefinder,
-        #[allow(clippy::expect_used)]
-        rangefinder_publisher: RANGEFINDER_PUB_SUB_CHANNEL.publisher().expect("rangefinder_publisher failed"),
+        rangefinder_publisher: RANGEFINDER_PUB_SUB_CHANNEL
+            .publisher()
+            .map_err(|_| TaskContextInitError::RangefinderPublisherFailed)?,
     };
-    RANGEFINDER_CTX.init(ctx)
+    Ok(RANGEFINDER_CTX.init(ctx))
 }
 
 /// Rangefinder Task Placeholder.

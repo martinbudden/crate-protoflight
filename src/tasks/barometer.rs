@@ -6,7 +6,10 @@ use embassy_sync::{
 };
 use static_cell::StaticCell;
 
-use crate::barometer_sensors::{Barometer, BarometerDevice, BarometerMessage};
+use crate::{
+    barometer_sensors::{Barometer, BarometerDevice, BarometerMessage},
+    tasks::errors::TaskContextInitError,
+};
 
 static BAROMETER_CTX: StaticCell<BarometerContext> = StaticCell::new();
 
@@ -41,9 +44,8 @@ pub type BarometerSubscriber = Subscriber<
     BAROMETER_PUBLISHER_COUNT,
 >;
 
-#[allow(clippy::expect_used)]
-pub fn barometer_subscriber() -> BarometerSubscriber {
-    BAROMETER_PUB_SUB_CHANNEL.subscriber().expect("barometer_subscriber failed")
+pub fn barometer_subscriber() -> Result<BarometerSubscriber, TaskContextInitError> {
+    BAROMETER_PUB_SUB_CHANNEL.subscriber().map_err(|_| TaskContextInitError::BarometerSubscriberFailed)
 }
 
 /// Context for Barometer task.
@@ -52,13 +54,14 @@ pub struct BarometerContext {
     pub barometer_publisher: BarometerPublisher,
 }
 
-pub fn init(barometer: Barometer) -> &'static mut BarometerContext {
+pub fn init(barometer: Barometer) -> Result<&'static mut BarometerContext, TaskContextInitError> {
     let ctx = BarometerContext {
         barometer,
-        #[allow(clippy::expect_used)]
-        barometer_publisher: BAROMETER_PUB_SUB_CHANNEL.publisher().expect("barometer_publisher failed"),
+        barometer_publisher: BAROMETER_PUB_SUB_CHANNEL
+            .publisher()
+            .map_err(|_| TaskContextInitError::BarometerPublisherFailed)?,
     };
-    BAROMETER_CTX.init(ctx)
+    Ok(BAROMETER_CTX.init(ctx))
 }
 
 /// Barometer Task Placeholder.

@@ -11,6 +11,7 @@ mod barometer;
 mod battery;
 mod blackbox_encoder;
 mod blackbox_writer;
+mod errors;
 mod failsafe;
 mod gps;
 mod gyro_pid;
@@ -24,6 +25,7 @@ mod osd;
 mod rangefinder;
 mod rx;
 
+pub use errors::TaskContextInitError;
 pub use init::init;
 pub use messages::{GyroPidMessage, SetpointMessage};
 

@@ -21,6 +21,7 @@ use crate::{
     flight::{FilterAccGyro, FlightController, ImuFilterBank, ImuFilterBankConfig, RcControls, VehicleControl},
     tasks::{
         GyroPidMessage, SetpointMessage,
+        errors::TaskContextInitError,
         motor_mixer::MOTOR_MIXER_SIGNAL,
         rx::{RxMessageReceiver, rx_message_receiver},
     },
@@ -44,9 +45,8 @@ pub fn gyro_pid_sender() -> GyroPidSender {
 pub type GyroPidReceiver = Receiver<'static, CriticalSectionRawMutex, GyroPidMessage, GYRO_PID_WATCH_COUNT>;
 
 #[allow(unused)]
-#[allow(clippy::expect_used)]
-pub fn gyro_pid_receiver() -> GyroPidReceiver {
-    GYRO_PID_WATCH.receiver().expect("gyro_pid receiver failed")
+pub fn gyro_pid_receiver() -> Result<GyroPidReceiver, TaskContextInitError> {
+    GYRO_PID_WATCH.receiver().ok_or(TaskContextInitError::TooManyGyroPidReceivers)
 }
 
 const SETPOINT_WATCH_COUNT: usize = 3;
@@ -60,9 +60,8 @@ pub fn setpoint_sender() -> SetpointSender {
 pub type SetpointReceiver = Receiver<'static, CriticalSectionRawMutex, SetpointMessage, SETPOINT_WATCH_COUNT>;
 
 #[allow(unused)]
-#[allow(clippy::expect_used)]
-pub fn setpoint_receiver() -> SetpointReceiver {
-    SETPOINT_WATCH.receiver().expect("setpoint receiver failed")
+pub fn setpoint_receiver() -> Result<SetpointReceiver, TaskContextInitError> {
+    SETPOINT_WATCH.receiver().ok_or(TaskContextInitError::TooManySetpointReceivers)
 }
 
 static GYRO_PID_CTX: StaticCell<GyroPidContext<BoardImu>> = StaticCell::new();
@@ -89,13 +88,13 @@ pub fn init(
     imu_filter_bank_config: ImuFilterBankConfig,
     #[cfg(feature = "rpm_filters")] rpm_notch_filter_bank_config: RpmNotchFilterBankConfig,
     #[cfg(feature = "rpm_filters")] looptime_seconds: f32,
-) -> &'static mut GyroPidContext<BoardImu> {
+) -> Result<&'static mut GyroPidContext<BoardImu>, TaskContextInitError> {
     let ctx = GyroPidContext {
         imu,
-        rx_receiver: rx_message_receiver(),
+        rx_receiver: rx_message_receiver()?,
         gyro_pid_sender: gyro_pid_sender(),
         setpoint_sender: setpoint_sender(),
-        fast_config_subscriber: fast_config_subscriber(),
+        fast_config_subscriber: fast_config_subscriber()?,
 
         #[cfg(feature = "rpm_filters")]
         imu_filters: ImuFilterBank::with_config_and_notch(
@@ -114,7 +113,7 @@ pub fn init(
         gyro_pid_denominator: 10,
     };
 
-    GYRO_PID_CTX.init(ctx)
+    Ok(GYRO_PID_CTX.init(ctx))
 }
 
 /// The GYRO/PID task.

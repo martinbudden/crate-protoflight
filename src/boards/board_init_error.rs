@@ -1,0 +1,25 @@
+#[allow(unused)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum BoardInitError {
+    ImuNotAvailable,
+    ImuError,
+    GyroInterruptNotAvailable,
+    GyroInterruptError,
+    SdCardNotAvailable,
+    SdCardError,
+    Max7456NotAvailable,
+    Max7456Error,
+    SerialRxUartNotAvailable,
+    SerialRxUartError,
+    MspUartNotAvailable,
+    MspUartError,
+    EscSensorUartNotAvailable,
+    EscSensorUartError,
+    SensorsI2cNotAvailable,
+    SensorsI2cError,
+    MotorDriverNotAvailable,
+    MotorDriverError,
+    MotorProtocolNotSupported,
+    UartNotAvailable,
+    UartError,
+}

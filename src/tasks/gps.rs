@@ -18,6 +18,7 @@ use crate::{
             UbxAckId, UbxCfgId, UbxCfgNav5, UbxCfgPms, UbxCfgRate, UbxClassId, UbxMonId, UbxNavDop, UbxNavId, UbxNavPvt,
         },
     },
+    tasks::errors::TaskContextInitError,
 };
 
 static GPS_CTX: StaticCell<GpsContext> = StaticCell::new();
@@ -53,9 +54,8 @@ pub type GpsSubscriber = Subscriber<
     GPS_PUBLISHER_COUNT,
 >;
 
-#[allow(clippy::expect_used)]
-pub fn gps_subscriber() -> GpsSubscriber {
-    GPS_PUB_SUB_CHANNEL.subscriber().expect("gps_subscriber failed")
+pub fn gps_subscriber() -> Result<GpsSubscriber, TaskContextInitError> {
+    GPS_PUB_SUB_CHANNEL.subscriber().map_err(|_| TaskContextInitError::GpsSubscriberFailed)
 }
 
 pub static GPS_YAW_HEADING_SIGNAL: Signal<CriticalSectionRawMutex, GpsYawHeadingMessage> = Signal::new();
@@ -78,19 +78,22 @@ impl GpsContext {
 }
 
 #[allow(unused)]
-pub fn init(uart_rx: GpsUartRx, uart_tx: GpsUartTx, gps_provider: GpsProvider) -> &'static mut GpsContext {
+pub fn init(
+    uart_rx: GpsUartRx,
+    uart_tx: GpsUartTx,
+    gps_provider: GpsProvider,
+) -> Result<&'static mut GpsContext, TaskContextInitError> {
     let ctx = GpsContext {
         uart_rx,
         uart_tx,
         gps_parser: GpsParser::new_unwrapped(gps_provider),
-        #[allow(clippy::expect_used)]
-        gps_publisher: GPS_PUB_SUB_CHANNEL.publisher().expect("gps_publisher failed"),
+        gps_publisher: GPS_PUB_SUB_CHANNEL.publisher().map_err(|_| TaskContextInitError::GpsPublisherFailed)?,
         gps_data: GpsSolution::new(),
         gps_status_data: GpsStatus::new(),
         home: Geodetic::new(),
         buf: [0u8; GpsContext::BUF_SIZE],
     };
-    GPS_CTX.init(ctx)
+    Ok(GPS_CTX.init(ctx))
 }
 
 /// GPS Task Placeholder.

@@ -3,6 +3,7 @@ use embassy_executor::Spawner;
 use crate::{
     boards::{BoardInit, targets::Board},
     config::GLOBAL_CONFIG,
+    tasks::errors::TaskContextInitError,
 };
 
 /// Protoflight initialization, called directly from main.
@@ -28,7 +29,7 @@ use crate::{
 ///
 #[allow(unused)]
 #[allow(clippy::too_many_lines)]
-pub async fn init(spawner: Spawner) {
+pub async fn init(spawner: Spawner) -> Result<(), TaskContextInitError> {
     use crate::tasks;
 
     // Initialize env_logger for logging to stdout on desktop platforms.
@@ -186,19 +187,17 @@ pub async fn init(spawner: Spawner) {
     let background_spawner = board.background_spawner;
     let board = (); // so we don't inadvertently use board.
 
-    #[allow(clippy::expect_used)]
-    {
-        gyro_pid_spawner.spawn(tasks::gyro_pid::run(gyro_pid_ctx).expect("Failed to create GYRO PID task"));
-        realtime_spawner.spawn(tasks::motor_mixer::run(motor_mixer_ctx).expect("Failed to create MOTOR MIXER task"));
-        if let Some(rx_ctx) = rx_ctx {
-            realtime_spawner.spawn(tasks::rx::run(rx_ctx).expect("Failed to create RX task"));
-        }
+    gyro_pid_spawner.spawn(tasks::gyro_pid::run(gyro_pid_ctx?).map_err(|_| TaskContextInitError::GyroPidSpawnFailed)?);
+    realtime_spawner
+        .spawn(tasks::motor_mixer::run(motor_mixer_ctx).map_err(|_| TaskContextInitError::MotorMixerSpawnFailed)?);
+    if let Some(rx_ctx) = rx_ctx {
+        realtime_spawner.spawn(tasks::rx::run(rx_ctx?).map_err(|_| TaskContextInitError::RxSpawnFailed)?);
     }
     #[cfg(feature = "blackbox")]
     {
         // The blackbox_encoder runs on the realtime executor, the blackbox_writer runs on the background executor.
         if let Some(blackbox_writer_ctx) = blackbox_writer_ctx
-            && let Ok(blackbox_encoder_task) = tasks::blackbox_encoder::run(blackbox_encoder_ctx)
+            && let Ok(blackbox_encoder_task) = tasks::blackbox_encoder::run(blackbox_encoder_ctx?)
             && let Ok(blackbox_writer_task) = tasks::blackbox_writer::run(blackbox_writer_ctx)
         {
             realtime_spawner.spawn(blackbox_encoder_task);
@@ -215,7 +214,7 @@ pub async fn init(spawner: Spawner) {
 
     // Run the failsafe task if its context was created.
     if let Some(failsafe_ctx) = failsafe_ctx
-        && let Ok(failsafe_task) = tasks::failsafe::run(failsafe_ctx)
+        && let Ok(failsafe_task) = tasks::failsafe::run(failsafe_ctx?)
     {
         background_spawner.spawn(failsafe_task);
     }
@@ -223,63 +222,65 @@ pub async fn init(spawner: Spawner) {
     // Always try and spawn the Autopilot, since if we have any sensors at all enabled it can probably
     // perform some sort of assistance.
     #[cfg(feature = "autopilot")]
-    if let Ok(autopilot_task) = tasks::autopilot::run(autopilot_ctx) {
+    if let Ok(autopilot_task) = tasks::autopilot::run(autopilot_ctx?) {
         background_spawner.spawn(autopilot_task);
     }
 
     #[cfg(feature = "barometer")]
     if let Some(barometer_ctx) = barometer_ctx
-        && let Ok(barometer_task) = tasks::barometer::run(barometer_ctx)
+        && let Ok(barometer_task) = tasks::barometer::run(barometer_ctx?)
     {
         background_spawner.spawn(barometer_task);
     }
 
     #[cfg(feature = "battery")]
     if let Some(battery_ctx) = battery_ctx
-        && let Ok(battery_task) = tasks::battery::run(battery_ctx)
+        && let Ok(battery_task) = tasks::battery::run(battery_ctx?)
     {
         background_spawner.spawn(battery_task);
     }
 
     #[cfg(feature = "gps")]
     if let Some(gps_ctx) = gps_ctx
-        && let Ok(gps_task) = tasks::gps::run(gps_ctx)
+        && let Ok(gps_task) = tasks::gps::run(gps_ctx?)
     {
         background_spawner.spawn(gps_task);
     }
 
     #[cfg(feature = "magnetometer")]
     if let Some(magnetometer_ctx) = magnetometer_ctx
-        && let Ok(magnetometer_task) = tasks::magnetometer::run(magnetometer_ctx)
+        && let Ok(magnetometer_task) = tasks::magnetometer::run(magnetometer_ctx?)
     {
         background_spawner.spawn(magnetometer_task);
     }
 
     #[cfg(feature = "msp")]
     if let Some(msp_ctx) = msp_ctx
-        && let Ok(msp_task) = tasks::msp::run(msp_ctx)
+        && let Ok(msp_task) = tasks::msp::run(msp_ctx?)
     {
         background_spawner.spawn(msp_task);
     }
 
     #[cfg(feature = "optical_flow")]
     if let Some(optical_flow_ctx) = optical_flow_ctx
-        && let Ok(optical_flow_task) = tasks::optical_flow::run(optical_flow_ctx)
+        && let Ok(optical_flow_task) = tasks::optical_flow::run(optical_flow_ctx?)
     {
         background_spawner.spawn(optical_flow_task);
     }
 
     #[cfg(feature = "osd")]
     if let Some(osd_ctx) = osd_ctx
-        && let Ok(osd_task) = tasks::osd::run(osd_ctx)
+        && let Ok(osd_task) = tasks::osd::run(osd_ctx?)
     {
         background_spawner.spawn(osd_task);
     }
 
     #[cfg(feature = "rangefinder")]
     if let Some(rangefinder_ctx) = rangefinder_ctx
-        && let Ok(rangefinder_task) = tasks::rangefinder::run(rangefinder_ctx)
+        && let Ok(rangefinder_task) = tasks::rangefinder::run(rangefinder_ctx?)
     {
         background_spawner.spawn(rangefinder_task);
     }
+
+    Ok(())
 }

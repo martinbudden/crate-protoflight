@@ -1,6 +1,7 @@
 #![cfg(feature = "host")]
 
-use crate::boards::board::{BoardHardware, BoardInit, BoardInitError};
+use crate::boards::board::BoardHardware;
+use crate::boards::{BoardInit, BoardInitError};
 
 use imu_sensors::{ImuMock, MockImuBus};
 use motor_mixers::{MotorDriver, MotorDriverPwm};

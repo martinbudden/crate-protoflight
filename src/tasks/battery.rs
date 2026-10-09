@@ -6,7 +6,7 @@ use embassy_sync::{
 };
 use static_cell::StaticCell;
 
-use crate::battery_sensors::BatteryMessage;
+use crate::{battery_sensors::BatteryMessage, tasks::errors::TaskContextInitError};
 
 static BATTERY_CTX: StaticCell<BatteryContext> = StaticCell::new();
 
@@ -42,10 +42,9 @@ pub type BatterySubscriber = Subscriber<
     BATTERY_PUBLISHER_COUNT,
 >;
 
-#[allow(clippy::expect_used)]
 #[allow(unused)]
-pub fn battery_subscriber() -> BatterySubscriber {
-    BATTERY_PUB_SUB_CHANNEL.subscriber().expect("battery_subscriber failed")
+pub fn battery_subscriber() -> Result<BatterySubscriber, TaskContextInitError> {
+    BATTERY_PUB_SUB_CHANNEL.subscriber().map_err(|_| TaskContextInitError::BatterySubscriberFailed)
 }
 
 /// Context for Battery task.
@@ -53,13 +52,13 @@ pub struct BatteryContext {
     pub battery_publisher: BatteryPublisher,
 }
 
-pub fn init() -> &'static mut BatteryContext {
-    #[allow(clippy::expect_used)]
+pub fn init() -> Result<&'static mut BatteryContext, TaskContextInitError> {
     let ctx = BatteryContext {
-        #[allow(clippy::expect_used)]
-        battery_publisher: BATTERY_PUB_SUB_CHANNEL.publisher().expect("battery_publisher failed"),
+        battery_publisher: BATTERY_PUB_SUB_CHANNEL
+            .publisher()
+            .map_err(|_| TaskContextInitError::BatteryPublisherFailed)?,
     };
-    BATTERY_CTX.init(ctx)
+    Ok(BATTERY_CTX.init(ctx))
 }
 
 /// Battery Task Placeholder.

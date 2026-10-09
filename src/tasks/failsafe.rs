@@ -10,7 +10,10 @@ use static_cell::StaticCell;
 use crate::{
     config::FailsafeConfig,
     flight::RxMessage,
-    tasks::rx::{RxMessageReceiver, rx_message_receiver},
+    tasks::{
+        errors::TaskContextInitError,
+        rx::{RxMessageReceiver, rx_message_receiver},
+    },
 };
 
 static FAILSAFE_CTX: StaticCell<FailsafeContext> = StaticCell::new();
@@ -48,10 +51,8 @@ pub type FailsafeSubscriber = Subscriber<
     FAILSAFE_PUBLISHER_COUNT,
 >;
 
-#[allow(clippy::expect_used)]
-#[allow(unused)]
-pub fn failsafe_subscriber() -> FailsafeSubscriber {
-    FAILSAFE_PUB_SUB_CHANNEL.subscriber().expect("failsafe_subscriber failed")
+pub fn failsafe_subscriber() -> Result<FailsafeSubscriber, TaskContextInitError> {
+    FAILSAFE_PUB_SUB_CHANNEL.subscriber().map_err(|_| TaskContextInitError::FailsafeSubscriberFailed)
 }
 
 /// Context for Failsafe task.
@@ -62,15 +63,16 @@ pub struct FailsafeContext {
     rx_message_receiver: RxMessageReceiver,
 }
 
-pub fn init(config: &FailsafeConfig) -> &'static mut FailsafeContext {
+pub fn init(config: &FailsafeConfig) -> Result<&'static mut FailsafeContext, TaskContextInitError> {
     let ctx = FailsafeContext {
-        #[allow(clippy::expect_used)]
-        failsafe_publisher: FAILSAFE_PUB_SUB_CHANNEL.publisher().expect("failsafe_publisher failed"),
-        failsafe_handler: FailsafeHandler::new(config),
+        failsafe_publisher: FAILSAFE_PUB_SUB_CHANNEL
+            .publisher()
+            .map_err(|_| TaskContextInitError::FailsafePublisherFailed)?,
+        failsafe_handler: FailsafeHandler::new(config)?,
         rx_message: RxMessage::new(),
-        rx_message_receiver: rx_message_receiver(),
+        rx_message_receiver: rx_message_receiver()?,
     };
-    FAILSAFE_CTX.init(ctx)
+    Ok(FAILSAFE_CTX.init(ctx))
 }
 
 /// Failsafe Task.
@@ -147,8 +149,8 @@ pub struct FailsafeHandler {
 }
 
 impl FailsafeHandler {
-    pub fn new(config: &FailsafeConfig) -> Self {
-        Self { state: FailsafeState::Idle, rx_receiver: rx_message_receiver(), loss_detected_at: 0 }
+    pub fn new(config: &FailsafeConfig) -> Result<Self, TaskContextInitError> {
+        Ok(Self { state: FailsafeState::Idle, rx_receiver: rx_message_receiver()?, loss_detected_at: 0 })
     }
 }
 

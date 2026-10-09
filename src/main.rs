@@ -47,5 +47,12 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
 
 #[embassy_executor::main]
 async fn main(spawner: embassy_executor::Spawner) {
-    crate::tasks::init(spawner).await;
+    if let Err(e) = crate::tasks::init(spawner).await {
+        // {:?} uses the derived Debug name automatically
+        defmt::error!("Init error: {}", e.as_str());
+        #[allow(clippy::panic)]
+        {
+            panic!("Initialization failed");
+        }
+    }
 }
