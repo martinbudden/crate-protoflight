@@ -25,7 +25,7 @@ mod osd;
 mod rangefinder;
 mod rx;
 
-pub use errors::TaskContextInitError;
+pub use errors::TaskInitError;
 pub use init::init;
 pub use messages::{GyroPidMessage, SetpointMessage};
 

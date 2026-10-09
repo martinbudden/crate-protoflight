@@ -21,7 +21,7 @@ use crate::{
     flight::{FilterAccGyro, FlightController, ImuFilterBank, ImuFilterBankConfig, RcControls, VehicleControl},
     tasks::{
         GyroPidMessage, SetpointMessage,
-        errors::TaskContextInitError,
+        errors::TaskInitError,
         motor_mixer::MOTOR_MIXER_SIGNAL,
         rx::{RxMessageReceiver, rx_message_receiver},
     },
@@ -45,8 +45,8 @@ pub fn gyro_pid_sender() -> GyroPidSender {
 pub type GyroPidReceiver = Receiver<'static, CriticalSectionRawMutex, GyroPidMessage, GYRO_PID_WATCH_COUNT>;
 
 #[allow(unused)]
-pub fn gyro_pid_receiver() -> Result<GyroPidReceiver, TaskContextInitError> {
-    GYRO_PID_WATCH.receiver().ok_or(TaskContextInitError::TooManyGyroPidReceivers)
+pub fn gyro_pid_receiver() -> Result<GyroPidReceiver, TaskInitError> {
+    GYRO_PID_WATCH.receiver().ok_or(TaskInitError::TooManyGyroPidReceivers)
 }
 
 const SETPOINT_WATCH_COUNT: usize = 3;
@@ -60,8 +60,8 @@ pub fn setpoint_sender() -> SetpointSender {
 pub type SetpointReceiver = Receiver<'static, CriticalSectionRawMutex, SetpointMessage, SETPOINT_WATCH_COUNT>;
 
 #[allow(unused)]
-pub fn setpoint_receiver() -> Result<SetpointReceiver, TaskContextInitError> {
-    SETPOINT_WATCH.receiver().ok_or(TaskContextInitError::TooManySetpointReceivers)
+pub fn setpoint_receiver() -> Result<SetpointReceiver, TaskInitError> {
+    SETPOINT_WATCH.receiver().ok_or(TaskInitError::TooManySetpointReceivers)
 }
 
 static GYRO_PID_CTX: StaticCell<GyroPidContext<BoardImu>> = StaticCell::new();
@@ -88,7 +88,7 @@ pub fn init(
     imu_filter_bank_config: ImuFilterBankConfig,
     #[cfg(feature = "rpm_filters")] rpm_notch_filter_bank_config: RpmNotchFilterBankConfig,
     #[cfg(feature = "rpm_filters")] looptime_seconds: f32,
-) -> Result<&'static mut GyroPidContext<BoardImu>, TaskContextInitError> {
+) -> Result<&'static mut GyroPidContext<BoardImu>, TaskInitError> {
     let ctx = GyroPidContext {
         imu,
         rx_receiver: rx_message_receiver()?,

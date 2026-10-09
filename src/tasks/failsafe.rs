@@ -11,7 +11,7 @@ use crate::{
     config::FailsafeConfig,
     flight::RxMessage,
     tasks::{
-        errors::TaskContextInitError,
+        errors::TaskInitError,
         rx::{RxMessageReceiver, rx_message_receiver},
     },
 };
@@ -51,8 +51,8 @@ pub type FailsafeSubscriber = Subscriber<
     FAILSAFE_PUBLISHER_COUNT,
 >;
 
-pub fn failsafe_subscriber() -> Result<FailsafeSubscriber, TaskContextInitError> {
-    FAILSAFE_PUB_SUB_CHANNEL.subscriber().map_err(|_| TaskContextInitError::FailsafeSubscriberFailed)
+pub fn failsafe_subscriber() -> Result<FailsafeSubscriber, TaskInitError> {
+    FAILSAFE_PUB_SUB_CHANNEL.subscriber().map_err(|_| TaskInitError::FailsafeSubscriberFailed)
 }
 
 /// Context for Failsafe task.
@@ -63,11 +63,9 @@ pub struct FailsafeContext {
     rx_message_receiver: RxMessageReceiver,
 }
 
-pub fn init(config: &FailsafeConfig) -> Result<&'static mut FailsafeContext, TaskContextInitError> {
+pub fn init(config: &FailsafeConfig) -> Result<&'static mut FailsafeContext, TaskInitError> {
     let ctx = FailsafeContext {
-        failsafe_publisher: FAILSAFE_PUB_SUB_CHANNEL
-            .publisher()
-            .map_err(|_| TaskContextInitError::FailsafePublisherFailed)?,
+        failsafe_publisher: FAILSAFE_PUB_SUB_CHANNEL.publisher().map_err(|_| TaskInitError::FailsafePublisherFailed)?,
         failsafe_handler: FailsafeHandler::new(config)?,
         rx_message: RxMessage::new(),
         rx_message_receiver: rx_message_receiver()?,
@@ -149,7 +147,7 @@ pub struct FailsafeHandler {
 }
 
 impl FailsafeHandler {
-    pub fn new(config: &FailsafeConfig) -> Result<Self, TaskContextInitError> {
+    pub fn new(config: &FailsafeConfig) -> Result<Self, TaskInitError> {
         Ok(Self { state: FailsafeState::Idle, rx_receiver: rx_message_receiver()?, loss_detected_at: 0 })
     }
 }

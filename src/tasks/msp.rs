@@ -9,7 +9,7 @@ use {
 use crate::{
     config::{ConfigPublisher, FastConfigPublisher, config_publisher, fast_config_publisher},
     multiwii_serial_protocol::{Msp, MspSensorData, MspStream},
-    tasks::errors::TaskContextInitError,
+    tasks::errors::TaskInitError,
 };
 
 #[cfg(feature = "barometer")]
@@ -73,7 +73,7 @@ impl MspContext {
     }
 }
 
-pub fn init() -> Result<&'static mut MspContext, TaskContextInitError> {
+pub fn init() -> Result<&'static mut MspContext, TaskInitError> {
     #[rustfmt::skip]
     let ctx = MspContext {
         msp: Msp::new(),

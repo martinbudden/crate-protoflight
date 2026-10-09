@@ -8,7 +8,7 @@ use static_cell::StaticCell;
 
 use crate::{
     magnetometer_sensors::{Magnetometer, MagnetometerMessage, RxMagnetometer},
-    tasks::errors::TaskContextInitError,
+    tasks::errors::TaskInitError,
 };
 
 static MAGNETOMETER_CTX: StaticCell<MagnetometerContext> = StaticCell::new();
@@ -44,8 +44,8 @@ pub type MagnetometerSubscriber = Subscriber<
     MAGNETOMETER_PUBLISHER_COUNT,
 >;
 
-pub fn magnetometer_subscriber() -> Result<MagnetometerSubscriber, TaskContextInitError> {
-    MAGNETOMETER_PUB_SUB_CHANNEL.subscriber().map_err(|_| TaskContextInitError::MagnetometerSubscriberFailed)
+pub fn magnetometer_subscriber() -> Result<MagnetometerSubscriber, TaskInitError> {
+    MAGNETOMETER_PUB_SUB_CHANNEL.subscriber().map_err(|_| TaskInitError::MagnetometerSubscriberFailed)
 }
 
 /// Context for Magnetometer task.
@@ -54,12 +54,12 @@ pub struct MagnetometerContext {
     pub magnetometer_publisher: MagnetometerPublisher,
 }
 
-pub fn init(magnetometer: Magnetometer) -> Result<&'static mut MagnetometerContext, TaskContextInitError> {
+pub fn init(magnetometer: Magnetometer) -> Result<&'static mut MagnetometerContext, TaskInitError> {
     let ctx = MagnetometerContext {
         magnetometer,
         magnetometer_publisher: MAGNETOMETER_PUB_SUB_CHANNEL
             .publisher()
-            .map_err(|_| TaskContextInitError::MagnetometerPublisherFailed)?,
+            .map_err(|_| TaskInitError::MagnetometerPublisherFailed)?,
     };
     Ok(MAGNETOMETER_CTX.init(ctx))
 }

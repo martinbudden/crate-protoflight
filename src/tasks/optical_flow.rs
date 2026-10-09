@@ -8,7 +8,7 @@ use static_cell::StaticCell;
 
 use crate::{
     optical_flow_sensors::{OpticalFlow, OpticalFlowDevice, OpticalFlowMessage},
-    tasks::errors::TaskContextInitError,
+    tasks::errors::TaskInitError,
 };
 
 const MAX_OPTICAL_FLOW_SUBSCRIBER_COUNT: usize = 4;
@@ -42,8 +42,8 @@ pub type OpticalFlowSubscriber = Subscriber<
     OPTICAL_FLOW_PUBLISHER_COUNT,
 >;
 
-pub fn optical_flow_subscriber() -> Result<OpticalFlowSubscriber, TaskContextInitError> {
-    OPTICAL_FLOW_PUB_SUB_CHANNEL.subscriber().map_err(|_| TaskContextInitError::OpticalFlowSubscriberFailed)
+pub fn optical_flow_subscriber() -> Result<OpticalFlowSubscriber, TaskInitError> {
+    OPTICAL_FLOW_PUB_SUB_CHANNEL.subscriber().map_err(|_| TaskInitError::OpticalFlowSubscriberFailed)
 }
 
 static OPTICAL_FLOW_CTX: StaticCell<OpticalFlowContext> = StaticCell::new();
@@ -53,12 +53,12 @@ pub struct OpticalFlowContext {
     pub optical_flow_publisher: OpticalFlowPublisher,
 }
 
-pub fn init(optical_flow: OpticalFlow) -> Result<&'static mut OpticalFlowContext, TaskContextInitError> {
+pub fn init(optical_flow: OpticalFlow) -> Result<&'static mut OpticalFlowContext, TaskInitError> {
     let ctx = OpticalFlowContext {
         optical_flow,
         optical_flow_publisher: OPTICAL_FLOW_PUB_SUB_CHANNEL
             .publisher()
-            .map_err(|_| TaskContextInitError::OpticalFlowPublisherFailed)?,
+            .map_err(|_| TaskInitError::OpticalFlowPublisherFailed)?,
     };
     Ok(OPTICAL_FLOW_CTX.init(ctx))
 }

@@ -35,9 +35,14 @@ pub struct BoardHardware<I: ImuDevice> {
     pub gyro_pid_spawner: embassy_executor::Spawner,
 
     #[cfg(feature = "realtime_executor")]
-    pub realtime_spawner: embassy_executor::SendSpawner,
+    pub motor_mixer_spawner: embassy_executor::SendSpawner,
     #[cfg(not(feature = "realtime_executor"))]
-    pub realtime_spawner: embassy_executor::Spawner,
+    pub motor_mixer_spawner: embassy_executor::Spawner,
+
+    #[cfg(feature = "realtime_executor")]
+    pub rx_spawner: embassy_executor::SendSpawner,
+    #[cfg(not(feature = "realtime_executor"))]
+    pub rx_spawner: embassy_executor::Spawner,
 
     pub background_spawner: embassy_executor::Spawner,
 

@@ -8,7 +8,7 @@ use static_cell::StaticCell;
 
 use crate::{
     rangefinder_sensors::{Rangefinder, RangefinderDevice, RangefinderMessage},
-    tasks::errors::TaskContextInitError,
+    tasks::errors::TaskInitError,
 };
 
 const MAX_RANGEFINDER_SUBSCRIBER_COUNT: usize = 4;
@@ -42,8 +42,8 @@ pub type RangefinderSubscriber = Subscriber<
     RANGEFINDER_PUBLISHER_COUNT,
 >;
 
-pub fn rangefinder_subscriber() -> Result<RangefinderSubscriber, TaskContextInitError> {
-    RANGEFINDER_PUB_SUB_CHANNEL.subscriber().map_err(|_| TaskContextInitError::RangefinderSubscriberFailed)
+pub fn rangefinder_subscriber() -> Result<RangefinderSubscriber, TaskInitError> {
+    RANGEFINDER_PUB_SUB_CHANNEL.subscriber().map_err(|_| TaskInitError::RangefinderSubscriberFailed)
 }
 
 static RANGEFINDER_CTX: StaticCell<RangefinderContext> = StaticCell::new();
@@ -54,12 +54,12 @@ pub struct RangefinderContext {
     pub rangefinder_publisher: RangefinderPublisher,
 }
 
-pub fn init(rangefinder: Rangefinder) -> Result<&'static mut RangefinderContext, TaskContextInitError> {
+pub fn init(rangefinder: Rangefinder) -> Result<&'static mut RangefinderContext, TaskInitError> {
     let ctx = RangefinderContext {
         rangefinder,
         rangefinder_publisher: RANGEFINDER_PUB_SUB_CHANNEL
             .publisher()
-            .map_err(|_| TaskContextInitError::RangefinderPublisherFailed)?,
+            .map_err(|_| TaskInitError::RangefinderPublisherFailed)?,
     };
     Ok(RANGEFINDER_CTX.init(ctx))
 }

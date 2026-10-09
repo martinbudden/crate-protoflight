@@ -15,7 +15,7 @@ use crate::{
     },
     flight::{RcAdjustments, RxMessage},
     tasks::{
-        errors::TaskContextInitError,
+        errors::TaskInitError,
         failsafe::{FailsafeSubscriber, failsafe_subscriber},
     },
 };
@@ -33,8 +33,8 @@ fn rx_message_sender() -> RxMessageSender {
 
 pub type RxMessageReceiver = Receiver<'static, CriticalSectionRawMutex, RxMessage, RX_WATCH_COUNT>;
 
-pub fn rx_message_receiver() -> Result<RxMessageReceiver, TaskContextInitError> {
-    RX_WATCH.receiver().ok_or(TaskContextInitError::TooManyRxMessageReceivers)
+pub fn rx_message_receiver() -> Result<RxMessageReceiver, TaskInitError> {
+    RX_WATCH.receiver().ok_or(TaskInitError::TooManyRxMessageReceivers)
 }
 
 #[cfg(feature = "autopilot")]
@@ -72,7 +72,7 @@ pub fn init(
     uart_tx: RadioUartTx,
     rx_config: RxConfig,
     rates: RatesConfig,
-) -> Result<&'static mut RxContext, TaskContextInitError> {
+) -> Result<&'static mut RxContext, TaskInitError> {
     let radio = Radio::new(rx_config.serial_rx_provider);
     let ctx = RxContext {
         radio,

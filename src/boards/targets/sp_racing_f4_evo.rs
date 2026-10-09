@@ -4,11 +4,7 @@
 // see <https://github.com/betaflight/unified-targets/blob/master/configs/default/SPRO-SPRACINGF4EVO.config>,
 // and <https://github.com/betaflight/config/blob/master/configs/SPRO/SPRACINGF4EVO/config.h>.
 
-use crate::boards::{
-    SharedI2cBus,
-    board::{BoardHardware, BoardInit, BoardInitError},
-    open_volume,
-};
+use crate::boards::{BoardHardware, BoardInit, BoardInitError, SharedI2cBus, open_volume};
 
 use crate::barometer_sensors::Barometer;
 use crate::magnetometer_sensors::Magnetometer;
@@ -158,7 +154,7 @@ impl Board {
             let spi_bus =
                 Spi::new(peripherals.SPI1, spi1_sck, spi1_sdo, spi1_sdi, spi1_tx_dma, spi1_rx_dma, Irqs, config);
             let cs_output = Output::new(imu_spi_cs, Level::High, Speed::VeryHigh);
-            ExclusiveDevice::new(spi_bus, cs_output, Delay).expect("SPI_1 init failed")
+            ExclusiveDevice::new(spi_bus, cs_output, Delay).map_err(|_| BoardInitError::Spi1InitFailed)?
         };
 
         let mut imu: BoardImu = Imu426xx::new(ImuSpiBus::new(spi1), init.axis_order);
@@ -172,7 +168,7 @@ impl Board {
             config.frequency = Hertz(400_000);
             let spi_bus = Spi::new_blocking(peripherals.SPI2, spi2_sck, spi2_sdo, spi2_sdi, config);
             let cs_output = Output::new(max7456_spi_cs, Level::High, Speed::VeryHigh);
-            ExclusiveDevice::new(spi_bus, cs_output, Delay).expect("SPI_2 init failed")
+            ExclusiveDevice::new(spi_bus, cs_output, Delay).map_err(|_| BoardInitError::Spi2InitFailed)?
         };
 
         let spi3 = {
@@ -181,7 +177,7 @@ impl Board {
             let spi_bus =
                 Spi::new(peripherals.SPI3, spi3_sck, spi3_sdo, spi3_sdi, spi3_tx_dma, spi3_rx_dma, Irqs, config);
             let cs_output = Output::new(sdcard_spi_cs, Level::High, Speed::VeryHigh);
-            ExclusiveDevice::new(spi_bus, cs_output, Delay).expect("SPI_3 init failed")
+            ExclusiveDevice::new(spi_bus, cs_output, Delay).map_err(|_| BoardInitError::Spi3InitFailed)?
         };
 
         let uart1 = {
@@ -328,9 +324,13 @@ impl Board {
         Ok(Self {
             gyro_pid_spawner: init.spawner,
             #[cfg(feature = "realtime_executor")]
-            realtime_spawner: Self::realtime_spawner(),
+            motor_mixer_spawner: Self::realtime_spawner(),
             #[cfg(not(feature = "realtime_executor"))]
-            realtime_spawner: init.spawner,
+            motor_mixer_spawner: init.spawner,
+            #[cfg(feature = "realtime_executor")]
+            rx_spawner: Self::realtime_spawner(),
+            #[cfg(not(feature = "realtime_executor"))]
+            rx_spawner: init.spawner,
             background_spawner: init.spawner,
             imu,
             motor_driver,

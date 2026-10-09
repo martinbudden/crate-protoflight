@@ -18,7 +18,7 @@ use crate::{
             UbxAckId, UbxCfgId, UbxCfgNav5, UbxCfgPms, UbxCfgRate, UbxClassId, UbxMonId, UbxNavDop, UbxNavId, UbxNavPvt,
         },
     },
-    tasks::errors::TaskContextInitError,
+    tasks::errors::TaskInitError,
 };
 
 static GPS_CTX: StaticCell<GpsContext> = StaticCell::new();
@@ -54,8 +54,8 @@ pub type GpsSubscriber = Subscriber<
     GPS_PUBLISHER_COUNT,
 >;
 
-pub fn gps_subscriber() -> Result<GpsSubscriber, TaskContextInitError> {
-    GPS_PUB_SUB_CHANNEL.subscriber().map_err(|_| TaskContextInitError::GpsSubscriberFailed)
+pub fn gps_subscriber() -> Result<GpsSubscriber, TaskInitError> {
+    GPS_PUB_SUB_CHANNEL.subscriber().map_err(|_| TaskInitError::GpsSubscriberFailed)
 }
 
 pub static GPS_YAW_HEADING_SIGNAL: Signal<CriticalSectionRawMutex, GpsYawHeadingMessage> = Signal::new();
@@ -82,12 +82,12 @@ pub fn init(
     uart_rx: GpsUartRx,
     uart_tx: GpsUartTx,
     gps_provider: GpsProvider,
-) -> Result<&'static mut GpsContext, TaskContextInitError> {
+) -> Result<&'static mut GpsContext, TaskInitError> {
     let ctx = GpsContext {
         uart_rx,
         uart_tx,
         gps_parser: GpsParser::new_unwrapped(gps_provider),
-        gps_publisher: GPS_PUB_SUB_CHANNEL.publisher().map_err(|_| TaskContextInitError::GpsPublisherFailed)?,
+        gps_publisher: GPS_PUB_SUB_CHANNEL.publisher().map_err(|_| TaskInitError::GpsPublisherFailed)?,
         gps_data: GpsSolution::new(),
         gps_status_data: GpsStatus::new(),
         home: Geodetic::new(),

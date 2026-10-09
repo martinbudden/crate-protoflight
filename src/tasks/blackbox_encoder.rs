@@ -14,7 +14,7 @@ use static_cell::StaticCell;
 use crate::tasks::gps::gps_subscriber;
 use crate::tasks::{
     GyroPidMessage, SetpointMessage,
-    errors::TaskContextInitError,
+    errors::TaskInitError,
     gyro_pid::{GyroPidReceiver, SetpointReceiver, gyro_pid_receiver, setpoint_receiver},
 };
 
@@ -124,7 +124,7 @@ const BLACKBOX_WRITE_QUEUE_COUNT: usize = 256;
 pub static BLACKBOX_WRITE_QUEUE: Channel<CriticalSectionRawMutex, BlackboxWriteItem, BLACKBOX_WRITE_QUEUE_COUNT> =
     Channel::new();
 
-pub fn init(config: BlackboxConfig) -> Result<&'static mut BlackboxEncoderContext, TaskContextInitError> {
+pub fn init(config: BlackboxConfig) -> Result<&'static mut BlackboxEncoderContext, TaskInitError> {
     //let mut blackbox_config = blackbox_config;
     //blackbox_config.huffman_compress = true;
 

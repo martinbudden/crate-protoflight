@@ -1,10 +1,6 @@
 #![cfg(feature = "rpi_pico2")]
 
-use crate::boards::{
-    SharedI2cBus,
-    board::{BoardHardware, BoardInit, BoardInitError},
-    open_volume,
-};
+use crate::boards::{BoardHardware, BoardInit, BoardInitError, SharedI2cBus, open_volume};
 
 use crate::barometer_sensors::Barometer;
 use crate::magnetometer_sensors::Magnetometer;
@@ -38,16 +34,7 @@ use embassy_rp::{
 };
 
 #[cfg(feature = "multicore")]
-use {
-    core::cell::Cell,
-    critical_section::Mutex,
-    embassy_executor::{Executor, SendSpawner},
-    embassy_rp::{
-        Peri,
-        multicore::{Stack, spawn_core1},
-        peripherals::CORE1,
-    },
-};
+use crate::boards::start_core1_executor;
 
 // IMU is on SPI_0
 type BoardImuSpi = ExclusiveDevice<Spi<'static, peripherals::SPI0, SpiAsync>, Output<'static>, Delay>;
@@ -59,34 +46,6 @@ pub type Board = BoardHardware<BoardImu>;
 pub type SdCardSpiDevice = ExclusiveDevice<Spi<'static, peripherals::SPI1, SpiAsync>, Output<'static>, Delay>;
 
 impl Board {
-    #[cfg(feature = "multicore")]
-    pub fn start_core1_executor(core1: Peri<'static, CORE1>) -> SendSpawner {
-        static EXECUTOR_CORE1: StaticCell<Executor> = StaticCell::new();
-        static mut CORE1_STACK: Stack<4096> = Stack::new();
-        static SPAWNER_SLOT: Mutex<Cell<Option<SendSpawner>>> = Mutex::new(Cell::new(None));
-
-        // Spawn core1. The closure doesn't capture any local variables except the Send-safe `core1`.
-        spawn_core1(core1, unsafe { &mut *core::ptr::addr_of_mut!(CORE1_STACK) }, move || {
-            // Initialize the executor directly on Core 1
-            let executor = EXECUTOR_CORE1.init(Executor::new());
-
-            // Start the executor loop
-            executor.run(|spawner| {
-                // Convert to a SendSpawner and pass it back through our safe global slot
-                critical_section::with(|cs| {
-                    SPAWNER_SLOT.borrow(cs).set(Some(spawner.make_send()));
-                });
-            });
-        });
-
-        // Back on Core 0, spin-wait until Core 1 writes the spawner into the slot
-        loop {
-            if let Some(spawner) = critical_section::with(|cs| SPAWNER_SLOT.borrow(cs).take()) {
-                return spawner;
-            }
-        }
-    }
-
     #[allow(clippy::too_many_lines, clippy::similar_names, unused)]
     pub fn new(init: &BoardInit) -> Result<Self, BoardInitError> {
         // NOTE: rp2350 numbers peripherals starting at 0, eg SPI0, SPI1, I2C0, I2C1 etc
@@ -147,7 +106,8 @@ impl Board {
             let spi_bus =
                 Spi::new(peripherals.SPI0, spi0_clk, spi0_mosi, spi0_miso, spi0_tx_dma, spi0_rx_dma, Irqs, spi_config);
             let spi_cs_output = Output::new(imu_cs_pin, Level::High);
-            ExclusiveDevice::new(spi_bus, spi_cs_output, embassy_time::Delay).expect("SPI_0 init failed")
+            ExclusiveDevice::new(spi_bus, spi_cs_output, embassy_time::Delay)
+                .map_err(|_| BoardInitError::Spi0InitFailed)?
         };
 
         let spi0_interrupt = Input::new(imu_exti_pin, Pull::Up);
@@ -165,7 +125,8 @@ impl Board {
             let spi_bus =
                 Spi::new(peripherals.SPI1, spi1_clk, spi1_mosi, spi1_miso, spi1_tx_dma, spi1_rx_dma, Irqs, spi_config);
             let spi_cs_output = Output::new(sdcard_cs_pin, Level::High);
-            ExclusiveDevice::new(spi_bus, spi_cs_output, embassy_time::Delay).expect("SPI_1 init failed")
+            ExclusiveDevice::new(spi_bus, spi_cs_output, embassy_time::Delay)
+                .map_err(|_| BoardInitError::Spi1InitFailed)?
         };
         //Trick to find type of spi
         //let spi1_type: () = spi1;
@@ -290,10 +251,11 @@ impl Board {
         // Map physical device names to logical device names and return.
         Ok(Self {
             #[cfg(feature = "multicore")]
-            gyro_pid_spawner: Self::start_core1_executor(peripherals.CORE1),
+            gyro_pid_spawner: start_core1_executor(peripherals.CORE1),
             #[cfg(not(feature = "multicore"))]
             gyro_pid_spawner: init.spawner,
-            realtime_spawner: init.spawner,
+            motor_mixer_spawner: init.spawner,
+            rx_spawner: init.spawner,
             background_spawner: init.spawner,
             imu,
             motor_driver,

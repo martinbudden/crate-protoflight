@@ -10,7 +10,7 @@ use crate::{
     autopilot::Autopilot,
     flight::RxMessage,
     tasks::{
-        errors::TaskContextInitError,
+        errors::TaskInitError,
         failsafe::{FailsafeSubscriber, failsafe_subscriber},
         gyro_pid::{GyroPidReceiver, gyro_pid_receiver},
         rx::{RxMessageReceiver, rx_message_receiver},
@@ -47,8 +47,8 @@ pub fn autopilot_sender() -> AutopilotSender {
 
 pub type AutopilotReceiver = Receiver<'static, CriticalSectionRawMutex, RxMessage, AUTOPILOT_WATCH_COUNT>;
 
-pub fn autopilot_receiver() -> Result<AutopilotReceiver, TaskContextInitError> {
-    AUTOPILOT_WATCH.receiver().ok_or(TaskContextInitError::TooManyAutopilotReceivers)
+pub fn autopilot_receiver() -> Result<AutopilotReceiver, TaskInitError> {
+    AUTOPILOT_WATCH.receiver().ok_or(TaskInitError::TooManyAutopilotReceivers)
 }
 
 /// Context for Autopilot task.
@@ -65,7 +65,7 @@ pub struct AutopilotContext {
     #[cfg(feature = "rangefinder")] pub rangefinder_subscriber: RangefinderSubscriber,
 }
 
-pub fn init() -> Result<&'static mut AutopilotContext, TaskContextInitError> {
+pub fn init() -> Result<&'static mut AutopilotContext, TaskInitError> {
     #[rustfmt::skip]
     let ctx = AutopilotContext {
         gyro_pid_receiver: gyro_pid_receiver()?,

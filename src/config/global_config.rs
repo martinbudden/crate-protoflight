@@ -18,7 +18,7 @@ use crate::{
         AntiGravityConfig, ArmingConfig, CrashFlipConfig, CrashRecoveryConfig, DMaxConfig, FeatureFlags,
         FlightControllerFiltersConfig, GyroConfig, ImuFilterBankConfig, PidConfig, TpaConfig, YawSpinRecoveryConfig,
     },
-    tasks::TaskContextInitError,
+    tasks::TaskInitError,
 };
 
 #[cfg(feature = "barometer")]
@@ -78,8 +78,8 @@ pub type ConfigPublisher = Publisher<
 >;
 
 #[allow(unused)]
-pub fn config_publisher() -> Result<ConfigPublisher, TaskContextInitError> {
-    CONFIG_PUB_SUB_CHANNEL.publisher().map_err(|_| TaskContextInitError::ConfigPublisherFailed)
+pub fn config_publisher() -> Result<ConfigPublisher, TaskInitError> {
+    CONFIG_PUB_SUB_CHANNEL.publisher().map_err(|_| TaskInitError::ConfigPublisherFailed)
 }
 
 pub type ConfigSubscriber = Subscriber<
@@ -91,8 +91,8 @@ pub type ConfigSubscriber = Subscriber<
     CONFIG_PUBLISHER_COUNT,
 >;
 
-pub fn config_subscriber() -> Result<ConfigSubscriber, TaskContextInitError> {
-    CONFIG_PUB_SUB_CHANNEL.subscriber().map_err(|_| TaskContextInitError::ConfigSubscriberFailed)
+pub fn config_subscriber() -> Result<ConfigSubscriber, TaskInitError> {
+    CONFIG_PUB_SUB_CHANNEL.subscriber().map_err(|_| TaskInitError::ConfigSubscriberFailed)
 }
 
 /// The only subscriber is the `gyro_pid_task`.
@@ -119,8 +119,8 @@ pub type FastConfigPublisher = Publisher<
 >;
 
 #[allow(unused)]
-pub fn fast_config_publisher() -> Result<FastConfigPublisher, TaskContextInitError> {
-    FAST_CONFIG_PUB_SUB_CHANNEL.publisher().map_err(|_| TaskContextInitError::FastConfigPublisherFailed)
+pub fn fast_config_publisher() -> Result<FastConfigPublisher, TaskInitError> {
+    FAST_CONFIG_PUB_SUB_CHANNEL.publisher().map_err(|_| TaskInitError::FastConfigPublisherFailed)
 }
 
 pub type FastConfigSubscriber = Subscriber<
@@ -132,8 +132,8 @@ pub type FastConfigSubscriber = Subscriber<
     FAST_CONFIG_PUBLISHER_COUNT,
 >;
 
-pub fn fast_config_subscriber() -> Result<FastConfigSubscriber, TaskContextInitError> {
-    FAST_CONFIG_PUB_SUB_CHANNEL.subscriber().map_err(|_| TaskContextInitError::FastConfigSubscriberFailed)
+pub fn fast_config_subscriber() -> Result<FastConfigSubscriber, TaskInitError> {
+    FAST_CONFIG_PUB_SUB_CHANNEL.subscriber().map_err(|_| TaskInitError::FastConfigSubscriberFailed)
 }
 
 /// Macro to generate the `GlobalConfig` struct.<br>

@@ -8,7 +8,7 @@ use static_cell::StaticCell;
 
 use crate::{
     barometer_sensors::{Barometer, BarometerDevice, BarometerMessage},
-    tasks::errors::TaskContextInitError,
+    tasks::errors::TaskInitError,
 };
 
 static BAROMETER_CTX: StaticCell<BarometerContext> = StaticCell::new();
@@ -44,8 +44,8 @@ pub type BarometerSubscriber = Subscriber<
     BAROMETER_PUBLISHER_COUNT,
 >;
 
-pub fn barometer_subscriber() -> Result<BarometerSubscriber, TaskContextInitError> {
-    BAROMETER_PUB_SUB_CHANNEL.subscriber().map_err(|_| TaskContextInitError::BarometerSubscriberFailed)
+pub fn barometer_subscriber() -> Result<BarometerSubscriber, TaskInitError> {
+    BAROMETER_PUB_SUB_CHANNEL.subscriber().map_err(|_| TaskInitError::BarometerSubscriberFailed)
 }
 
 /// Context for Barometer task.
@@ -54,12 +54,12 @@ pub struct BarometerContext {
     pub barometer_publisher: BarometerPublisher,
 }
 
-pub fn init(barometer: Barometer) -> Result<&'static mut BarometerContext, TaskContextInitError> {
+pub fn init(barometer: Barometer) -> Result<&'static mut BarometerContext, TaskInitError> {
     let ctx = BarometerContext {
         barometer,
         barometer_publisher: BAROMETER_PUB_SUB_CHANNEL
             .publisher()
-            .map_err(|_| TaskContextInitError::BarometerPublisherFailed)?,
+            .map_err(|_| TaskInitError::BarometerPublisherFailed)?,
     };
     Ok(BAROMETER_CTX.init(ctx))
 }

@@ -1,6 +1,7 @@
 #[allow(unused)]
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum TaskContextInitError {
+pub enum TaskInitError {
+    BoardInitError,
     GyroPidSpawnFailed,
     MotorMixerSpawnFailed,
     RxSpawnFailed,
@@ -38,9 +39,11 @@ pub enum TaskContextInitError {
     RangefinderSubscriberFailed,
 }
 
-impl TaskContextInitError {
+impl TaskInitError {
+    #[allow(unused)]
     pub fn as_str(self) -> &'static str {
         match self {
+            Self::BoardInitError => "BoardInitError",
             Self::GyroPidSpawnFailed => "GyroPidSpawnFailed",
             Self::MotorMixerSpawnFailed => "MotorMixerSpawnFailed",
             Self::RxSpawnFailed => "RxSpawnFailed",

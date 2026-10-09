@@ -6,10 +6,7 @@
 // pins: https://github.com/qqqlab/madflight/blob/main/src/brd/madflight_FC2.h
 // schematic: https://madflight.com/img/madflight-ESP-FC2.pdf
 
-use crate::boards::{
-    SharedI2cBus,
-    board::{BoardHardware, BoardInit, BoardInitError},
-};
+use crate::boards::{BoardHardware, BoardInit, BoardInitError, SharedI2cBus};
 
 use dshot_codec::DshotSpeed;
 use imu_sensors::{Imu426xx, ImuMock, ImuSpiBus, MockImuBus};
@@ -99,7 +96,7 @@ impl Board {
                 clock_source: LSClockSource::APBClk,
                 frequency: Rate::from_hz(frequency_hz),
             })
-            .expect("failed to configure LEDC timer");
+            .map_err(|_| BoardInitError::LedcTimerConfigFailed)?;
 
         let mut ch0 = ledc.channel(channel::Number::Channel0, m1);
         let mut ch1 = ledc.channel(channel::Number::Channel1, m2);
@@ -107,13 +104,13 @@ impl Board {
         let mut ch3 = ledc.channel(channel::Number::Channel3, m4);
 
         ch0.configure(channel::config::Config { timer, duty_pct: 0, drive_mode: DriveMode::PushPull })
-            .expect("failed to configure LEDC channel 0");
+            .map_err(|_| BoardInitError::LedcChannel0ConfigFailed)?;
         ch1.configure(channel::config::Config { timer, duty_pct: 0, drive_mode: DriveMode::PushPull })
-            .expect("failed to configure LEDC channel 1");
+            .map_err(|_| BoardInitError::LedcChannel1ConfigFailed)?;
         ch2.configure(channel::config::Config { timer, duty_pct: 0, drive_mode: DriveMode::PushPull })
-            .expect("failed to configure LEDC channel 2");
+            .map_err(|_| BoardInitError::LedcChannel2ConfigFailed)?;
         ch3.configure(channel::config::Config { timer, duty_pct: 0, drive_mode: DriveMode::PushPull })
-            .expect("failed to configure LEDC channel 3");
+            .map_err(|_| BoardInitError::LedcChannel3ConfigFailed)?;
 
         let frequency_hz = f32::from(init.motor_pwm_rate);
         let motor_driver_pwm = MotorDriverPwm::new(ch0, ch1, ch2, ch3, frequency_hz);
@@ -135,7 +132,8 @@ impl Board {
         // Map physical device names to logical device names and return.
         Ok(Self {
             gyro_pid_spawner: init.spawner,
-            realtime_spawner: init.spawner,
+            motor_mixer_spawner: init.spawner,
+            rx_spawner: init.spawner,
             background_spawner: init.spawner,
             imu,
             motor_driver,

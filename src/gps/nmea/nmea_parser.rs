@@ -516,7 +516,6 @@ impl<'a> Iterator for NmeaFields<'a> {
 
 #[cfg(test)]
 mod tests_record_type {
-    #![allow(clippy::expect_used)]
     use super::*;
     #[test]
     fn identifies_gga_record() {
@@ -548,7 +547,6 @@ mod tests_record_type {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::expect_used)]
     use super::*;
 
     #[test]

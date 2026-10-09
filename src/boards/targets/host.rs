@@ -1,7 +1,6 @@
 #![cfg(feature = "host")]
 
-use crate::boards::board::BoardHardware;
-use crate::boards::{BoardInit, BoardInitError};
+use crate::boards::{BoardHardware, BoardInit, BoardInitError};
 
 use imu_sensors::{ImuMock, MockImuBus};
 use motor_mixers::{MotorDriver, MotorDriverPwm};
@@ -31,7 +30,8 @@ impl Board {
 
         Ok(Self {
             gyro_pid_spawner: init.spawner,
-            realtime_spawner: init.spawner,
+            motor_mixer_spawner: init.spawner,
+            rx_spawner: init.spawner,
             background_spawner: init.spawner,
             imu,
             motor_driver,

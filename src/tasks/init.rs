@@ -3,7 +3,7 @@ use embassy_executor::Spawner;
 use crate::{
     boards::{BoardInit, targets::Board},
     config::GLOBAL_CONFIG,
-    tasks::errors::TaskContextInitError,
+    tasks::errors::TaskInitError,
 };
 
 /// Protoflight initialization, called directly from main.
@@ -16,12 +16,6 @@ use crate::{
 /// 7. Spawns the realtime tasks.
 /// 8. Spawns any background tasks that have been configured to run.
 ///
-/// `panic()` and `.expect()` are allowed during initialization
-/// since if anything fails during initialization there is no possibility of recovery
-/// and so there is no point continuing.
-///
-/// Once initialization is complete `panic()` and `.expect()` are NOT allowed.
-///
 /// This function is quite long, but it is long for a good reason, and its organization is clear.
 ///
 /// Replacing this one understandable 250-line function with (say) five 50-line functions would mean
@@ -29,7 +23,7 @@ use crate::{
 ///
 #[allow(unused)]
 #[allow(clippy::too_many_lines)]
-pub async fn init(spawner: Spawner) -> Result<(), TaskContextInitError> {
+pub async fn init(spawner: Spawner) -> Result<(), TaskInitError> {
     use crate::tasks;
 
     // Initialize env_logger for logging to stdout on desktop platforms.
@@ -84,9 +78,12 @@ pub async fn init(spawner: Spawner) -> Result<(), TaskContextInitError> {
         optical_flow_type: None,
     };
 
-    #[allow(clippy::panic)]
-    let Ok(board) = Board::new(&board_init) else {
-        panic!("board_init failed");
+    let board = match Board::new(&board_init) {
+        Ok(board) => board,
+        Err(e) => {
+            defmt::error!("Board initialization error: {}", e as u32);
+            return Err(TaskInitError::BoardInitError);
+        }
     };
 
     // ======================================================
@@ -182,17 +179,29 @@ pub async fn init(spawner: Spawner) -> Result<(), TaskContextInitError> {
     // Spawn the realtime tasks.
     // ======================================================
 
-    let realtime_spawner = board.realtime_spawner;
     let gyro_pid_spawner = board.gyro_pid_spawner;
+    let motor_mixer_spawner = board.motor_mixer_spawner;
+    let rx_spawner = board.motor_mixer_spawner;
     let background_spawner = board.background_spawner;
-    let board = (); // so we don't inadvertently use board.
+    let board = (); // so we don't inadvertently reuse board.
 
-    gyro_pid_spawner.spawn(tasks::gyro_pid::run(gyro_pid_ctx?).map_err(|_| TaskContextInitError::GyroPidSpawnFailed)?);
-    realtime_spawner
-        .spawn(tasks::motor_mixer::run(motor_mixer_ctx).map_err(|_| TaskContextInitError::MotorMixerSpawnFailed)?);
+    gyro_pid_spawner.spawn(tasks::gyro_pid::run(gyro_pid_ctx?).map_err(|_| TaskInitError::GyroPidSpawnFailed)?);
+    let gyro_pid_spawner = (); // prevent gyro_pid_spawner from being inadvertently reused
+
+    motor_mixer_spawner
+        .spawn(tasks::motor_mixer::run(motor_mixer_ctx).map_err(|_| TaskInitError::MotorMixerSpawnFailed)?);
     if let Some(rx_ctx) = rx_ctx {
-        realtime_spawner.spawn(tasks::rx::run(rx_ctx?).map_err(|_| TaskContextInitError::RxSpawnFailed)?);
+        rx_spawner.spawn(tasks::rx::run(rx_ctx?).map_err(|_| TaskInitError::RxSpawnFailed)?);
     }
+    // Run the failsafe task if its context was created.
+    if let Some(failsafe_ctx) = failsafe_ctx
+        && let Ok(failsafe_task) = tasks::failsafe::run(failsafe_ctx?)
+    {
+        rx_spawner.spawn(failsafe_task);
+    }
+
+    let rx_spawner = (); // prevent rx_spawner from being inadvertently reused
+
     #[cfg(feature = "blackbox")]
     {
         // The blackbox_encoder runs on the realtime executor, the blackbox_writer runs on the background executor.
@@ -200,24 +209,15 @@ pub async fn init(spawner: Spawner) -> Result<(), TaskContextInitError> {
             && let Ok(blackbox_encoder_task) = tasks::blackbox_encoder::run(blackbox_encoder_ctx?)
             && let Ok(blackbox_writer_task) = tasks::blackbox_writer::run(blackbox_writer_ctx)
         {
-            realtime_spawner.spawn(blackbox_encoder_task);
+            motor_mixer_spawner.spawn(blackbox_encoder_task);
             background_spawner.spawn(blackbox_writer_task);
         }
     }
-
-    let realtime_spawner = ();
-    let gyro_pid_spawner = ();
+    let motor_mixer_spawner = (); // prevent motor_mixer_spawner from being inadvertently reused
 
     // ======================================================
     // Spawn the background tasks.
     // ======================================================
-
-    // Run the failsafe task if its context was created.
-    if let Some(failsafe_ctx) = failsafe_ctx
-        && let Ok(failsafe_task) = tasks::failsafe::run(failsafe_ctx?)
-    {
-        background_spawner.spawn(failsafe_task);
-    }
 
     // Always try and spawn the Autopilot, since if we have any sensors at all enabled it can probably
     // perform some sort of assistance.

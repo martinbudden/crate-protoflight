@@ -12,7 +12,7 @@ use crate::{
     display::{Display, DisplayPortLayer, DisplayPortMutex},
     flight::{ArmingFlags, RxMessage},
     osd::{Osd, OsdDrawContext, OsdElements, OsdState},
-    tasks::errors::TaskContextInitError,
+    tasks::errors::TaskInitError,
 };
 
 #[cfg(feature = "optical_flow")]
@@ -57,9 +57,7 @@ pub struct OsdContext {
     pub display_port_mutex: &'static DisplayPortMutex,
 }
 
-pub async fn init(
-    display_port_mutex: &'static DisplayPortMutex,
-) -> Result<&'static mut OsdContext, TaskContextInitError> {
+pub async fn init(display_port_mutex: &'static DisplayPortMutex) -> Result<&'static mut OsdContext, TaskInitError> {
     let display_port = display_port_mutex.lock().await;
     let background_layer_supported = display_port.layer_supported(DisplayPortLayer::Background);
 

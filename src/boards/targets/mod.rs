@@ -37,6 +37,7 @@ pub use airb_omnibus_f4::{Board, BoardImu, SdCardSpiDevice};
 #[cfg(feature = "airb_omnibus_f4_sd")]
 pub use airb_omnibus_f4_sd::{Board, BoardImu, SdCardSpiDevice};
 
+#[allow(unused_imports)]
 #[cfg(feature = "stamp_s3_fly")]
 pub use stamp_s3_fly::{Board, BoardImu, SdCardSpiDevice};
 

@@ -6,7 +6,7 @@ use embassy_sync::{
 };
 use static_cell::StaticCell;
 
-use crate::{battery_sensors::BatteryMessage, tasks::errors::TaskContextInitError};
+use crate::{battery_sensors::BatteryMessage, tasks::errors::TaskInitError};
 
 static BATTERY_CTX: StaticCell<BatteryContext> = StaticCell::new();
 
@@ -43,8 +43,8 @@ pub type BatterySubscriber = Subscriber<
 >;
 
 #[allow(unused)]
-pub fn battery_subscriber() -> Result<BatterySubscriber, TaskContextInitError> {
-    BATTERY_PUB_SUB_CHANNEL.subscriber().map_err(|_| TaskContextInitError::BatterySubscriberFailed)
+pub fn battery_subscriber() -> Result<BatterySubscriber, TaskInitError> {
+    BATTERY_PUB_SUB_CHANNEL.subscriber().map_err(|_| TaskInitError::BatterySubscriberFailed)
 }
 
 /// Context for Battery task.
@@ -52,11 +52,9 @@ pub struct BatteryContext {
     pub battery_publisher: BatteryPublisher,
 }
 
-pub fn init() -> Result<&'static mut BatteryContext, TaskContextInitError> {
+pub fn init() -> Result<&'static mut BatteryContext, TaskInitError> {
     let ctx = BatteryContext {
-        battery_publisher: BATTERY_PUB_SUB_CHANNEL
-            .publisher()
-            .map_err(|_| TaskContextInitError::BatteryPublisherFailed)?,
+        battery_publisher: BATTERY_PUB_SUB_CHANNEL.publisher().map_err(|_| TaskInitError::BatteryPublisherFailed)?,
     };
     Ok(BATTERY_CTX.init(ctx))
 }

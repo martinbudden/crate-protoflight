@@ -8,13 +8,18 @@ mod platform_stm32;
 mod board;
 mod board_init_error;
 mod mock_uart;
+mod multicore_executor;
 mod no_sdcard;
 mod sd_card;
 
 pub mod targets;
 
-pub use board::BoardInit;
+pub use board::{BoardHardware, BoardInit};
 pub use board_init_error::BoardInitError;
+
+#[allow(unused)]
+#[cfg(feature = "multicore")]
+pub use multicore_executor::start_core1_executor;
 
 #[allow(unused)]
 #[cfg(feature = "sdcard")]
