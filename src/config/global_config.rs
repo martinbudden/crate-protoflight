@@ -16,7 +16,8 @@ use crate::{
     },
     flight::{
         AntiGravityConfig, ArmingConfig, CrashFlipConfig, CrashRecoveryConfig, DMaxConfig, FeatureFlags,
-        FlightControllerFiltersConfig, GyroConfig, ImuFilterBankConfig, PidConfig, TpaConfig, YawSpinRecoveryConfig,
+        FlightControllerFiltersConfig, GyroConfig, ImuFilterBankConfig, ItermRelaxConfig, PidConfig, TpaConfig,
+        YawSpinRecoveryConfig,
     },
     tasks::TaskInitError,
 };
@@ -219,6 +220,7 @@ define_configs!(
         (CrashRecovery, crash_recovery, CrashRecoveryConfig),
         (AntiGravity, anti_gravity, AntiGravityConfig),
         (DMax, dmax, DMaxConfig),
+        (ItermRelax, iterm_relax, ItermRelaxConfig),
         (Rx, rx, RxConfig),
         (RcModes, rc_modes, RcModes),
         (RcControls, rc_controls, RcControlsConfig),

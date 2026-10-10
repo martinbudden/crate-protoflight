@@ -34,7 +34,7 @@ fn rx_message_sender() -> RxMessageSender {
 pub type RxMessageReceiver = Receiver<'static, CriticalSectionRawMutex, RxMessage, RX_WATCH_COUNT>;
 
 pub fn rx_message_receiver() -> Result<RxMessageReceiver, TaskInitError> {
-    RX_WATCH.receiver().ok_or(TaskInitError::TooManyRxMessageReceivers)
+    RX_WATCH.receiver().ok_or(TaskInitError::RxWatchCountTooLow)
 }
 
 #[cfg(feature = "autopilot")]

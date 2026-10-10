@@ -74,6 +74,12 @@ impl GlobalDebug {
         }
     }
 
+    /// Set a f32 value completely lock-free.
+    pub fn set_f32(&self, mode: DebugMode, index: usize, value: f32) {
+        #[allow(clippy::cast_possible_truncation)]
+        self.set(mode, index, value as i16);
+    }
+
     /// Return value at given index.
     pub fn _value(&self, index: usize) -> i16 {
         if index < Self::COUNT { self.values[index].load(Ordering::Relaxed) } else { 0 }
@@ -196,4 +202,120 @@ pub enum DebugMode {
     PositionNav,
     #[allow(clippy::upper_case_acronyms)]
     COUNT,
+}
+
+impl_try_from_u8!(DebugMode);
+
+#[allow(unused)]
+impl DebugMode {
+    /// Forgiving conversion from u8 to `DebugMode`, converts invalid values to default.
+    #[allow(clippy::too_many_lines)]
+    #[must_use]
+    pub fn from_u8(value: u8) -> Self {
+        match value {
+            0 => Self::None,
+            1 => Self::CycleTime,
+            2 => Self::Battery,
+            3 => Self::GyroFiltered,
+            4 => Self::Accelerometer,
+            5 => Self::PidLoop,
+            6 => Self::RcInterpolation,
+            7 => Self::AngleRate,
+            8 => Self::EscSensor,
+            9 => Self::Scheduler,
+            10 => Self::Stack,
+            11 => Self::EscSensorRpm,
+            12 => Self::EscSensorTmp,
+            13 => Self::Altitude,
+            14 => Self::Fft,
+            15 => Self::FftTime,
+            16 => Self::FftFreq,
+            17 => Self::RxFrskySpi,
+            18 => Self::RxSfhssSpi,
+            19 => Self::GyroRaw,
+            20 => Self::MultiGyroRaw,
+            21 => Self::MultiGyroDiff,
+            22 => Self::Max7456Signal,
+            23 => Self::Max7456SpiClock,
+            24 => Self::Sbus,
+            25 => Self::Fport,
+            26 => Self::Rangefinder,
+            27 => Self::RangefinderQuality,
+            28 => Self::OpticalFlow,
+            29 => Self::LidarTf,
+            30 => Self::AdcInternal,
+            31 => Self::RunawayTakeoff,
+            32 => Self::Sdio,
+            33 => Self::CurrentSensor,
+            34 => Self::Usb,
+            35 => Self::SmartAudio,
+            36 => Self::Rth,
+            37 => Self::ItermRelax,
+            38 => Self::AcroTrainer,
+            39 => Self::RcSmoothing,
+            40 => Self::RxSignalLoss,
+            41 => Self::RcSmoothingRate,
+            42 => Self::AntiGravity,
+            43 => Self::DynLpf,
+            44 => Self::RxSpektrumSpi,
+            45 => Self::DshotRpmTelemetry,
+            46 => Self::RpmFilter,
+            47 => Self::DMax,
+            48 => Self::AcCorrection,
+            49 => Self::AcError,
+            50 => Self::MultiGyroScaled,
+            51 => Self::DshotRpmErrors,
+            52 => Self::CrsfLinkStatisticsUplink,
+            53 => Self::CrsfLinkStatisticsPwr,
+            54 => Self::CrsfLinkStatisticsDown,
+            55 => Self::Baro,
+            56 => Self::AutopilotAltitude,
+            57 => Self::DynIdle,
+            58 => Self::FeedforwardLimit,
+            59 => Self::Feedforward,
+            60 => Self::BlackboxOutput,
+            61 => Self::GyroSample,
+            62 => Self::RxTiming,
+            63 => Self::DLpf,
+            64 => Self::VtxTramp,
+            65 => Self::Ghst,
+            66 => Self::GhstMsp,
+            67 => Self::SchedulerDeterminism,
+            68 => Self::TimingAccuracy,
+            69 => Self::RxExpresslrsSpi,
+            70 => Self::RxExpresslrsPhaselock,
+            71 => Self::RxStateTime,
+            72 => Self::GpsRescueVelocity,
+            73 => Self::GpsRescueHeading,
+            74 => Self::GpsRescueTracking,
+            75 => Self::GpsConnection,
+            76 => Self::Attitude,
+            77 => Self::VtxMsp,
+            78 => Self::GpsDop,
+            79 => Self::Failsafe,
+            80 => Self::GyroCalibration,
+            81 => Self::AngleMode,
+            82 => Self::AngleTarget,
+            83 => Self::CurrentAngle,
+            84 => Self::DshotTelemetryCounts,
+            85 => Self::RpmLimit,
+            86 => Self::RcStats,
+            87 => Self::MagCalibration,
+            88 => Self::MagTaskRate,
+            89 => Self::Ezlanding,
+            90 => Self::Tpa,
+            91 => Self::STerm,
+            92 => Self::Spa,
+            93 => Self::Task,
+            94 => Self::Gimbal,
+            95 => Self::WingSetpoint,
+            96 => Self::AutopilotPosition,
+            97 => Self::Chirp,
+            98 => Self::FlashTestPrbs,
+            99 => Self::MavlinkTelemetry,
+            100 => Self::AutopilotPid,
+            101 => Self::PositionNav,
+            _ => Self::default(),
+        }
+    }
 }

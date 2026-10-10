@@ -46,7 +46,7 @@ pub type GyroPidReceiver = Receiver<'static, CriticalSectionRawMutex, GyroPidMes
 
 #[allow(unused)]
 pub fn gyro_pid_receiver() -> Result<GyroPidReceiver, TaskInitError> {
-    GYRO_PID_WATCH.receiver().ok_or(TaskInitError::TooManyGyroPidReceivers)
+    GYRO_PID_WATCH.receiver().ok_or(TaskInitError::GyroPidWatchCountTooLow)
 }
 
 const SETPOINT_WATCH_COUNT: usize = 3;
@@ -61,7 +61,7 @@ pub type SetpointReceiver = Receiver<'static, CriticalSectionRawMutex, SetpointM
 
 #[allow(unused)]
 pub fn setpoint_receiver() -> Result<SetpointReceiver, TaskInitError> {
-    SETPOINT_WATCH.receiver().ok_or(TaskInitError::TooManySetpointReceivers)
+    SETPOINT_WATCH.receiver().ok_or(TaskInitError::SetpointWatchCountTooLow)
 }
 
 static GYRO_PID_CTX: StaticCell<GyroPidContext<BoardImu>> = StaticCell::new();

@@ -6,10 +6,10 @@ pub enum TaskInitError {
     MotorMixerSpawnFailed,
     RxSpawnFailed,
 
-    TooManyGyroPidReceivers,
-    TooManyRxMessageReceivers,
-    TooManySetpointReceivers,
-    TooManyAutopilotReceivers,
+    GyroPidWatchCountTooLow,
+    RxWatchCountTooLow,
+    SetpointWatchCountTooLow,
+    AutopilotWatchCountTooLow,
 
     ConfigPublisherFailed,
     ConfigSubscriberFailed,
@@ -44,13 +44,15 @@ impl TaskInitError {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::BoardInitError => "BoardInitError",
+
             Self::GyroPidSpawnFailed => "GyroPidSpawnFailed",
             Self::MotorMixerSpawnFailed => "MotorMixerSpawnFailed",
             Self::RxSpawnFailed => "RxSpawnFailed",
-            Self::TooManyGyroPidReceivers => "TooManyGyroPidReceivers",
-            Self::TooManyRxMessageReceivers => "TooManyRxMessageReceivers",
-            Self::TooManySetpointReceivers => "TooManySetpointReceivers",
-            Self::TooManyAutopilotReceivers => "TooManyAutopilotReceivers",
+
+            Self::GyroPidWatchCountTooLow => "GyroPidWatchCountTooLow",
+            Self::RxWatchCountTooLow => "RxWatchCountTooLow",
+            Self::SetpointWatchCountTooLow => "SetpointWatchCountTooLow",
+            Self::AutopilotWatchCountTooLow => "AutopilotWatchCountTooLow",
 
             Self::ConfigPublisherFailed => "ConfigPublisherFailed",
             Self::ConfigSubscriberFailed => "ConfigSubscriberFailed",

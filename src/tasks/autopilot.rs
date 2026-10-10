@@ -48,7 +48,7 @@ pub fn autopilot_sender() -> AutopilotSender {
 pub type AutopilotReceiver = Receiver<'static, CriticalSectionRawMutex, RxMessage, AUTOPILOT_WATCH_COUNT>;
 
 pub fn autopilot_receiver() -> Result<AutopilotReceiver, TaskInitError> {
-    AUTOPILOT_WATCH.receiver().ok_or(TaskInitError::TooManyAutopilotReceivers)
+    AUTOPILOT_WATCH.receiver().ok_or(TaskInitError::AutopilotWatchCountTooLow)
 }
 
 /// Context for Autopilot task.

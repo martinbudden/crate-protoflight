@@ -1,6 +1,6 @@
 # Tasks
 
-Protoflight has three realtime tasks (`imu`, `gyro_pid`, `motor_mixer`, and `rx`) and a varying number of other background tasks,
+Protoflight has three realtime tasks (`gyro_pid`, `motor_mixer`, and `rx`) and a varying number of other background tasks,
 depending on the configuration.
 
 Protoflight uses the [embassy](https://embassy.dev/book/) framework for task scheduling, task synchronization and inter-task
@@ -10,7 +10,7 @@ Embassy has cooperative scheduling within an executor, and pre-emptive schedulin
 
 Protoflight uses two embassy executors, and three distinct "execution contexts.":
 
-1. Executor A (Core 1 - The "Hot" Core): A dedicated executor running only `imu` and `gyro_pid`.
+1. Executor A (Core 1 - The "Hot" Core): A dedicated executor running only `gyro_pid`.
 2. Executor B (Core 0 - The "Main" Core): The standard Embassy executor.
 3. Interrupt Context (Core 0): This is for the high-speed logic for the `motor_mixer` and `rx` tasks.
 

@@ -72,7 +72,7 @@ impl<const N: usize> FixedBuf<N> {
     where
         R: RangeBounds<usize>,
     {
-        // 1. Resolve start and end bounds into concrete indices
+        // Resolve start and end bounds into concrete indices
         let start = match range.start_bound() {
             core::ops::Bound::Included(&s) => s,
             core::ops::Bound::Excluded(&s) => s + 1,
@@ -84,12 +84,12 @@ impl<const N: usize> FixedBuf<N> {
             core::ops::Bound::Unbounded => self.length,
         };
 
-        // 2. Bound check against the logical active length
+        // Bound check against the logical active length
         if start > end || end > self.length {
             return Err(());
         }
 
-        // 3. Perform the fill operations safely without panicking
+        // Perform the fill operations safely without panicking
         self.bytes[start..end].fill(value);
         Ok(())
     }

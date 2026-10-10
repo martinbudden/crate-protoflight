@@ -153,6 +153,7 @@ impl Msp {
             Msp::BLACKBOX_CONFIG => Self::blackbox_config(dst).await,
             Msp::ADVANCED_CONFIG => Self::advanced_config(dst).await,
             Msp::FILTER_CONFIG => Self::filter_config(dst).await,
+            Msp::PID_ADVANCED => Self::pid_advanced(dst).await,
             Msp::SENSOR_CONFIG => Self::sensor_config(dst).await,
             Msp::STATUS => Self::status(dst).await,
             Msp::RAW_IMU => Self::raw_imu(dst, sensor_data),
@@ -243,6 +244,7 @@ impl Msp {
             Msp::SET_BLACKBOX_CONFIG => Self::set_blackbox_config(src, config_publisher).await,
             Msp::SET_ADVANCED_CONFIG => Self::set_advanced_config(src, config_publisher).await,
             Msp::SET_FILTER_CONFIG => Self::set_filter_config(src, config_publisher).await,
+            Msp::SET_PID_ADVANCED => Self::set_pid_advanced(src, config_publisher).await,
             Msp::SET_SENSOR_CONFIG => Self::set_sensor_config(src, config_publisher).await,
             Msp::SET_PID => Self::set_pid(src, fast_config_publisher).await,
             Msp::SET_RC_TUNING => Self::set_rc_tuning(src, config_publisher).await,
@@ -523,7 +525,7 @@ impl Msp {
         MspResult::Ack
     }
     async fn set_rssi_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
-        // 1. Check if enough data is even present before locking anything
+        // Check if enough data is even present before locking anything
         if src.bytes_remaining() < 1 {
             return MspResult::Error;
         }
@@ -967,7 +969,7 @@ impl Msp {
         MspResult::Ack
     }
     async fn set_filter_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
-        // 1. Check if enough data is even present before locking anything
+        // Check if enough data is even present before locking anything
         if src.bytes_remaining() < 8 {
             return MspResult::Error;
         }
@@ -1052,6 +1054,198 @@ impl Msp {
         if imu_filters != global_config.imu_filter_bank {
             global_config.imu_filter_bank = imu_filters;
             publisher.publish(ConfigItem::ImuFilters(imu_filters)).await;
+        }
+
+        MspResult::Ack
+    }
+
+    async fn pid_advanced(dst: &mut StreamBufWriter<'_>) -> MspResult {
+        _ = dst;
+        let (dmax, iterm_relax) = {
+            let global_config = GLOBAL_CONFIG.lock().await;
+            (global_config.dmax, global_config.iterm_relax)
+        };
+        dst.write_u16(0);
+        dst.write_u16(0);
+        dst.write_u16(0); // was pidProfile.yaw_p_limit
+        dst.write_u8(0); // reserved
+        dst.write_u8(0); // was vbatPidCompensation
+        dst.write_u8(0); //currentPidProfile->feedforward_transition);
+        dst.write_u8(0); // was low byte of currentPidProfile->dtermSetpointWeight
+        dst.write_u8(0); // reserved
+        dst.write_u8(0); // reserved
+        dst.write_u8(0); // reserved
+        dst.write_u16(0); //currentPidProfile->rateAccelLimit);
+        dst.write_u16(0); //currentPidProfile->yawRateAccelLimit);
+        dst.write_u8(0); //currentPidProfile->angle_limit);
+        dst.write_u8(0); // was pidProfile.levelSensitivity
+        dst.write_u16(0); // was currentPidProfile->itermThrottleThreshold
+        dst.write_u16(0); //currentPidProfile->anti_gravity_gain);
+        dst.write_u16(0); // was currentPidProfile->dtermSetpointWeight
+        dst.write_u8(0); //currentPidProfile->iterm_rotation);
+        dst.write_u8(0); // was currentPidProfile->smart_feedforward
+        dst.write_u8(0); //iterm_relax);
+        dst.write_u8(iterm_relax.relax_type);
+        dst.write_u8(0); //currentPidProfile->abs_control_gain);
+        dst.write_u8(0); //currentPidProfile->throttle_boost);
+        dst.write_u8(0); //currentPidProfile->acro_trainer_angle_limit);
+        dst.write_u16(0); //currentPidProfile->pid[PID_ROLL].F);
+        dst.write_u16(0); //currentPidProfile->pid[PID_PITCH].F);
+        dst.write_u16(0); //currentPidProfile->pid[PID_YAW].F);
+        dst.write_u8(0); // was currentPidProfile->antiGravityMode
+        dst.write_u8(0); //currentPidProfile->d_max[PID_ROLL]);
+        dst.write_u8(0); //currentPidProfile->d_max[PID_PITCH]);
+        dst.write_u8(0); //currentPidProfile->d_max[PID_YAW]);
+        dst.write_u8(dmax.gain);
+        dst.write_u8(dmax.advance);
+        dst.write_u8(0); //currentPidProfile->use_integrated_yaw);
+        dst.write_u8(0); //currentPidProfile->integrated_yaw_relax);
+        // Added in MSP API 1.42
+        dst.write_u8(0); //currentPidProfile->iterm_relax_cutoff);
+        // Added in MSP API 1.43
+        dst.write_u8(0); //currentPidProfile->motor_output_limit);
+        dst.write_u8(0); //currentPidProfile->auto_profile_cell_count);
+        dst.write_u8(0); //currentPidProfile->dyn_idle_min_rpm);
+        // Added in MSP API 1.44
+        dst.write_u8(0); //currentPidProfile->feedforward_averaging);
+        dst.write_u8(0); //currentPidProfile->feedforward_smooth_factor);
+        dst.write_u8(0); //currentPidProfile->feedforward_boost);
+        dst.write_u8(0); //currentPidProfile->feedforward_max_rate_limit);
+        dst.write_u8(0); //currentPidProfile->feedforward_jitter_factor);
+        dst.write_u8(0); //currentPidProfile->vbat_sag_compensation);
+        dst.write_u8(0); //currentPidProfile->thrustLinearization);
+        dst.write_u8(0); //currentPidProfile->tpa_mode);
+        dst.write_u8(0); //currentPidProfile->tpa_rate);
+        dst.write_u16(0); //currentPidProfile->tpa_breakpoint);   // was currentControlRateProfile->tpa_breakpoint
+        MspResult::Ack
+    }
+    async fn set_pid_advanced(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
+        if src.bytes_remaining() < 6 {
+            return MspResult::Error;
+        }
+        let mut global_config = GLOBAL_CONFIG.lock().await;
+        let mut dmax = global_config.dmax;
+        let mut iterm_relax = global_config.iterm_relax;
+
+        _ = src.read_u16();
+        _ = src.read_u16();
+        _ = src.read_u16(); // was pidProfile.yaw_p_limit
+        _ = src.read_u8(); // reserved
+        _ = src.read_u8(); // was vbatPidCompensation
+
+        /* currentPidProfile->feedforward_transition = */
+        _ = src.read_u8();
+        _ = src.read_u8(); // was low byte of currentPidProfile->dtermSetpointWeight
+        _ = src.read_u8(); // reserved
+        _ = src.read_u8(); // reserved
+        _ = src.read_u8(); // reserved
+
+        /* currentPidProfile->rateAccelLimit = */
+        _ = src.read_u16();
+        /* currentPidProfile->yawRateAccelLimit = */
+        _ = src.read_u16();
+        if src.bytes_remaining() >= 2 {
+            /* currentPidProfile->angle_limit = */
+            _ = src.read_u8();
+            _ = src.read_u8(); // was pidProfile.levelSensitivity
+        }
+        if src.bytes_remaining() >= 4 {
+            _ = src.read_u16(); // was currentPidProfile->itermThrottleThreshold
+
+            /* currentPidProfile->anti_gravity_gain = */
+            _ = src.read_u16();
+        }
+        if src.bytes_remaining() >= 2 {
+            _ = src.read_u16(); // was currentPidProfile->dtermSetpointWeight
+        }
+        if src.bytes_remaining() >= 14 {
+            // Added in MSP API 1.40
+            /* currentPidProfile->iterm_rotation = */
+            _ = src.read_u8();
+            _ = src.read_u8(); // was currentPidProfile->smart_feedforward
+            // currentPidProfile->iterm_relax =
+            _ = src.read_u8();
+            iterm_relax.relax_type = src.read_u8();
+            /* currentPidProfile->abs_control_gain = */
+            _ = src.read_u8();
+            /* currentPidProfile->throttle_boost = */
+            _ = src.read_u8();
+            /* currentPidProfile->acro_trainer_angle_limit = */
+            _ = src.read_u8();
+            // PID controller feedforward terms
+            /* currentPidProfile->pid[PID_ROLL].F = */
+            _ = src.read_u16();
+            /* currentPidProfile->pid[PID_PITCH].F = */
+            _ = src.read_u16();
+            /* currentPidProfile->pid[PID_YAW].F = */
+            _ = src.read_u16();
+            _ = src.read_u8(); // was currentPidProfile->antiGravityMode
+        }
+        if src.bytes_remaining() >= 7 {
+            // Added in MSP API 1.41
+            /* currentPidProfile->d_max[PID_ROLL] = */
+            _ = src.read_u8();
+            /* currentPidProfile->d_max[PID_PITCH] = */
+            _ = src.read_u8();
+            /* currentPidProfile->d_max[PID_YAW] = */
+            _ = src.read_u8();
+            dmax.gain = src.read_u8();
+            dmax.advance = src.read_u8();
+            /* currentPidProfile->use_integrated_yaw = */
+            _ = src.read_u8();
+            /* currentPidProfile->integrated_yaw_relax = */
+            _ = src.read_u8();
+        }
+        if src.bytes_remaining() >= 1 {
+            // Added in MSP API 1.42
+            /* currentPidProfile->iterm_relax_cutoff = */
+            _ = src.read_u8();
+        }
+        if src.bytes_remaining() >= 3 {
+            // Added in MSP API 1.43
+            /* currentPidProfile->motor_output_limit = */
+            _ = src.read_u8();
+            /* currentPidProfile->auto_profile_cell_count = */
+            _ = src.read_u8();
+            /* currentPidProfile->dyn_idle_min_rpm = */
+            _ = src.read_u8();
+        }
+        if src.bytes_remaining() >= 7 {
+            // Added in MSP API 1.44
+            let i = src.read_u8();
+            if i > 3 {
+                return MspResult::Error;
+            }
+            /* currentPidProfile->feedforward_averaging = i; */
+            /* currentPidProfile->feedforward_smooth_factor = */
+            _ = src.read_u8();
+            /* currentPidProfile->feedforward_boost = */
+            _ = src.read_u8();
+            /* currentPidProfile->feedforward_max_rate_limit = */
+            _ = src.read_u8();
+            /* currentPidProfile->feedforward_jitter_factor = */
+            _ = src.read_u8();
+            /* currentPidProfile->vbat_sag_compensation = */
+            _ = src.read_u8();
+            /* currentPidProfile->thrustLinearization = */
+            _ = src.read_u8();
+        }
+        if src.bytes_remaining() >= 4 {
+            // Added in API 1.45
+            /* currentPidProfile->tpa_mode = */
+            _ = src.read_u8();
+            /* currentPidProfile->tpa_rate = MIN(_ = src.read_u8(), TPA_MAX);*/
+            /* currentPidProfile->tpa_breakpoint = */
+            _ = src.read_u16();
+        }
+
+        if dmax != global_config.dmax {
+            global_config.dmax = dmax;
+            publisher.publish(ConfigItem::DMax(dmax)).await;
+        }
+        if iterm_relax != global_config.iterm_relax {
+            global_config.iterm_relax = iterm_relax;
+            publisher.publish(ConfigItem::ItermRelax(iterm_relax)).await;
         }
 
         MspResult::Ack

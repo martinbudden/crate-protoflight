@@ -139,86 +139,6 @@ impl Default for FlightModeConfig {
     }
 }
 
-/// Configuration data for Throttle PID Attenuation (TPA),
-/// Allows dynamic adjustment of the PID gains according to the throttle value.
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
-pub struct TpaConfig {
-    pub mode: TpaMode,
-    pub rate: u8,
-    pub breakpoint: u16,
-    pub low_rate: i8,
-    pub low_always: u8,
-    pub low_breakpoint: u16,
-}
-
-#[cfg(feature = "storage")]
-impl PostcardValue<'_> for TpaConfig {}
-
-impl Default for TpaConfig {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl TpaConfig {
-    pub const fn new() -> Self {
-        Self { mode: TpaMode::D, rate: 65, breakpoint: 1350, low_rate: 20, low_always: 0, low_breakpoint: 1050 }
-    }
-}
-
-#[repr(u8)]
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
-pub enum TpaMode {
-    P = 0,
-    #[default]
-    D = 1,
-    Pds = 2,
-}
-
-#[cfg(feature = "storage")]
-impl PostcardValue<'_> for TpaMode {}
-
-impl_try_from_u8!(TpaMode);
-
-#[allow(unused)]
-impl TpaMode {
-    /// Forgiving conversion from u8 to `TpaMode`, converts invalid values to default.
-    #[must_use]
-    pub fn from_u8(value: u8) -> Self {
-        match value {
-            0 => Self::P,
-            1 => Self::D,
-            2 => Self::Pds,
-            _ => Self::default(),
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
-pub struct AntiGravityConfig {
-    pub cutoff_hz: u8,
-    pub p_gain: u8,
-    pub i_gain: u8,
-}
-
-#[cfg(feature = "storage")]
-impl PostcardValue<'_> for AntiGravityConfig {}
-
-impl Default for AntiGravityConfig {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl AntiGravityConfig {
-    pub const fn new() -> Self {
-        Self { cutoff_hz: 5, p_gain: 100, i_gain: 80 }
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct CrashFlipConfig {
@@ -311,7 +231,7 @@ impl CrashRecoveryConfig {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct ItermRelaxConfig {
     pub relax_type: u8,                   // not used
-    pub relax: u8,                        // Enable iterm suppression during stick input
+    pub relax: bool,                      // Enable iterm suppression during stick input
     pub relax_setpoint_threshold_dps: u8, // Full iterm suppression once setpoint has exceeded this value (degrees per second)
     pub relax_cutoff: u8, // Cutoff frequency used by low pass filter which predicts average response of the quad to setpoint
 }
@@ -321,10 +241,8 @@ impl PostcardValue<'_> for ItermRelaxConfig {}
 
 impl ItermRelaxConfig {
     #[allow(unused)]
-    pub const RELAX_OFF: u8 = 0;
-    pub const RELAX_ON: u8 = 1;
     pub const fn new() -> Self {
-        Self { relax_type: 0, relax: Self::RELAX_ON, relax_setpoint_threshold_dps: 40, relax_cutoff: 15 }
+        Self { relax_type: 0, relax: false, relax_setpoint_threshold_dps: 40, relax_cutoff: 15 }
     }
 }
 
@@ -447,11 +365,10 @@ impl GyroConfig {
 }
 
 #[cfg(test)]
-mod tests {
+mod test_traits {
     use super::*;
 
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
-    fn is_full_eq<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + Eq + PartialEq>() {}
     #[cfg(feature = "serde")]
     fn is_serde<T: Serialize + MaxSize + for<'a> Deserialize<'a>>() {}
     #[cfg(feature = "storage")]
@@ -459,16 +376,12 @@ mod tests {
 
     #[test]
     fn normal_types() {
-        is_full_eq::<TpaMode>();
         is_full::<PidConfig>();
         is_full::<FlightControllerFiltersConfig>();
         is_full::<FlightModeConfig>();
-        is_full::<TpaConfig>();
         is_full::<CrashFlipConfig>();
-        is_full::<AntiGravityConfig>();
-        is_full::<CrashFlipConfig>();
-        is_full::<YawSpinRecoveryConfig>();
         is_full::<CrashRecoveryConfig>();
+        is_full::<YawSpinRecoveryConfig>();
         is_full::<ItermRelaxConfig>();
         is_full::<DMaxConfig>();
     }
@@ -478,12 +391,9 @@ mod tests {
         is_serde::<PidConfig>();
         is_serde::<FlightControllerFiltersConfig>();
         is_serde::<FlightModeConfig>();
-        is_serde::<TpaConfig>();
         is_serde::<CrashFlipConfig>();
-        is_serde::<AntiGravityConfig>();
-        is_serde::<CrashFlipConfig>();
-        is_serde::<YawSpinRecoveryConfig>();
         is_serde::<CrashRecoveryConfig>();
+        is_serde::<YawSpinRecoveryConfig>();
         is_serde::<ItermRelaxConfig>();
         is_serde::<DMaxConfig>();
     }
@@ -493,15 +403,18 @@ mod tests {
         is_storage::<PidConfig>();
         is_storage::<FlightControllerFiltersConfig>();
         is_storage::<FlightModeConfig>();
-        is_storage::<TpaConfig>();
         is_storage::<CrashFlipConfig>();
-        is_storage::<AntiGravityConfig>();
-        is_storage::<CrashFlipConfig>();
-        is_storage::<YawSpinRecoveryConfig>();
         is_storage::<CrashRecoveryConfig>();
+        is_storage::<YawSpinRecoveryConfig>();
         is_storage::<ItermRelaxConfig>();
         is_storage::<DMaxConfig>();
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
     #[test]
     fn test_new() {
         let config = FlightControllerFiltersConfig::new();

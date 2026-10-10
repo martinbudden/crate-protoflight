@@ -100,7 +100,7 @@ impl PathFollower {
             // If the AB vector and the vector from B to aircraft point in the same
             // direction, we have missed the waypoint. At +- 90 degrees we are just passing it.
         } else if AB_BP_bearing.abs() < 1.5 {
-            //math::radians(100.0F)) {
+            //math::radians(100.0)) {
             // Extension, fly back to waypoint.
             // This corner case is possible if the system was following the AB line from waypoint A to waypoint B,
             // and then is switched to manual mode (or otherwise misses the waypoint)

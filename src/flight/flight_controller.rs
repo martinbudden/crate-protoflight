@@ -1,13 +1,16 @@
 use super::{
+    AntiGravity, DMaxConfig, FlightModeConfig, ItermRelaxConfig, Tpa, VehicleControl,
     rx_message::RcControls,
     vehicle_controller::{VehicleControlInitializing, VehicleController},
-    {FlightModeConfig, VehicleControl},
 };
 
+#[cfg(feature = "debug")]
+use crate::tasks::{DebugMode, GLOBAL_DEBUG};
+
 use motor_mixers::MotorMixer;
-use pidsk_controller::{PdControllerf32, PidskControllerf32};
-use radio_controllers::RcMode;
-use signal_filters::{Pt1FilterVector4f32, Pt1Filterf32, UpdateFilter};
+use pidsk_controller::{PdControllerf32, PidskControllerf32, PidskGainsf32};
+use radio_controllers::{RcMode, RxLinkStatus};
+use signal_filters::{Pt1FilterVector4f32, Pt1Filterf32, SignalFilter, UpdateFilter};
 use simple_bitset::BitSet64;
 use vqm::{Quaternionf32, Vector3f32, Vector4f32};
 
@@ -52,12 +55,20 @@ impl TryFrom<u8> for FlightStabilizationMode {
     }
 }
 
+/// Properties common to the roll and pitch axes.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FcTilt {
     pub rate_pid: PidskControllerf32,
+    /// Value of gains as configured. Used to restore gains after dynamic pid changes.
+    pub rate_gains: PidskGainsf32,
     rate_dterm_filters: [Pt1Filterf32; 2],
     max_rate_dps: f32,
     dmax_multiplier: f32,
+    dmax_percent: f32,
+    dmax_range_filter: Pt1Filterf32,
+    dmax_lpf: Pt1Filterf32,
+    iterm_relax_filter: Pt1Filterf32,
+    setpoint_filter: Pt1Filterf32,
 
     pub angle_pid: PdControllerf32,
     angle_dterm_filter: Pt1Filterf32,
@@ -74,14 +85,41 @@ impl FcTilt {
     pub const fn new() -> Self {
         Self {
             rate_pid: PidskControllerf32::new(),
+            rate_gains: PidskGainsf32::new(),
             rate_dterm_filters: [Pt1Filterf32::new(); 2],
             max_rate_dps: 1000.0,
             dmax_multiplier: 1.0,
+            dmax_percent: 0.5,
+            dmax_range_filter: Pt1Filterf32::new(),
+            dmax_lpf: Pt1Filterf32::new(),
+            iterm_relax_filter: Pt1Filterf32::new(),
+            setpoint_filter: Pt1Filterf32::new(),
 
             angle_pid: PdControllerf32::new(),
             angle_dterm_filter: Pt1Filterf32::new(),
             max_angle_degrees: 60.0,
         }
+    }
+}
+
+impl FcTilt {
+    fn calculate_dmax_multipliers(&mut self, delta_t: f32, dmax_gyro_gain: f32, dmax_setpoint_gain: f32) {
+        //TODO: check using PID error in DMAX, surely this is too easy
+        let gyro_delta_d = delta_t * self.rate_pid.error().d;
+        let gyro_factor = (self.dmax_range_filter.update(gyro_delta_d)).abs() * dmax_gyro_gain;
+        let setpoint_factor = (self.rate_pid.setpoint_delta()).abs() * dmax_setpoint_gain;
+        let boost = gyro_factor.max(setpoint_factor);
+        // boost starts at zero, and by 1.0 we get Dmax, but it can exceed 1.0
+        self.dmax_multiplier += (self.dmax_percent - 1.0) * boost;
+        self.dmax_multiplier = self.dmax_lpf.update(self.dmax_multiplier);
+        // limit the multiplier to dmax_percent
+        self.dmax_multiplier = (self.dmax_multiplier).min(self.dmax_percent);
+    }
+
+    pub fn calculate_rate_iterm_relax_factor(&mut self, setpoint: f32, setpoint_threshold_dps: f32) -> f32 {
+        let setpoint_lp = self.setpoint_filter.update(setpoint);
+        let setpoint_hp = (setpoint - setpoint_lp).abs();
+        (1.0 - setpoint_hp / setpoint_threshold_dps).max(0.0)
     }
 }
 
@@ -94,6 +132,8 @@ pub struct FlightController {
     pub roll: FcTilt,
     pub pitch: FcTilt,
     pub yaw_rate_pid: PidskControllerf32,
+    /// Value of gains as configured. Used to restore gains after dynamic pid changes.
+    pub yaw_rate_gains: PidskGainsf32,
 
     // Copy of pid gains, so that gains can be adjusted by anti-gravity and then set back to their original values
     //pub pid_roll_rate_gains: PidskGainsf32,
@@ -106,6 +146,7 @@ pub struct FlightController {
     use_angle_mode: bool,
     ground_mode: bool,
     use_level_race_mode: bool,
+    use_iterm_relax: bool,
 
     crash_detected: bool,
     yaw_spin_recovery: bool,
@@ -118,7 +159,11 @@ pub struct FlightController {
     controls_tick_count: u32,
     blackbox_active: bool,
 
-    tpa: f32, // Throttle PID Attenuation, reduces DTerm for large throttle values
+    tpa: Tpa,
+    throttle_previous: f32,
+    anti_gravity: AntiGravity,
+    dmax_gyro_gain: f32,
+    dmax_setpoint_gain: f32,
 }
 
 impl FlightController {
@@ -143,6 +188,7 @@ impl FlightController {
             roll: FcTilt::new(),
             pitch: FcTilt::new(),
             yaw_rate_pid: PidskControllerf32::new(),
+            yaw_rate_gains: PidskGainsf32::new(),
             //pid_gains: [PidskGainsf32::new(); Self::PID_COUNT],
             /*pid_pitch_angle_gains: PidskGainsf32::new(),
             pid_roll_angle_gains: PidskGainsf32::new(),
@@ -154,9 +200,10 @@ impl FlightController {
             flight_mode_config: FlightModeConfig::new(),
 
             stabilization_mode: FlightStabilizationMode::Rate,
-            use_angle_mode: false,
             ground_mode: true,
+            use_angle_mode: false,
             use_level_race_mode: false,
+            use_iterm_relax: false,
 
             crash_detected: false,
             yaw_spin_recovery: false,
@@ -169,8 +216,32 @@ impl FlightController {
             controls_tick_count: 0,
             blackbox_active: false,
 
-            tpa: 1.0, // Throttle PID Attenuation, reduces DTerm for large throttle values
+            tpa: Tpa::new(), // Throttle PID Attenuation, reduces DTerm for large throttle values
+            throttle_previous: 0.0,
+            anti_gravity: AntiGravity::new(),
+            dmax_gyro_gain: 0.0,
+            dmax_setpoint_gain: 0.0,
         }
+    }
+}
+
+impl FlightController {
+    #[allow(unused)]
+    pub fn set_iterm_relax_config(&mut self, config: ItermRelaxConfig, delta_t: f32) {
+        self.use_iterm_relax = config.relax;
+        self.roll.iterm_relax_filter.set_cutoff_frequency(f32::from(config.relax_cutoff), delta_t);
+        self.pitch.iterm_relax_filter.set_cutoff_frequency(f32::from(config.relax_cutoff), delta_t);
+    }
+
+    #[allow(unused)]
+    pub fn set_dmax_config(&mut self, config: DMaxConfig) {
+        const D_MAX_RANGE_HZ: f32 = 85.0; // lowpass input cutoff to peak D around propwash frequencies
+        const D_MAX_LOWPASS_HZ: f32 = 35.0; // lowpass cutoff to smooth the boost effect.
+        const D_MAX_GYRO_GAIN_FACTOR: f32 = 0.00008;
+        const D_MAX_SETPOINT_GAIN_FACTOR: f32 = 0.00008; // same DMax gain with either rate of change source; not intended preserve legacy behavior
+
+        self.dmax_gyro_gain = f32::from(config.gain) * D_MAX_GYRO_GAIN_FACTOR / D_MAX_LOWPASS_HZ;
+        self.dmax_setpoint_gain = f32::from(config.advance) * D_MAX_SETPOINT_GAIN_FACTOR / D_MAX_LOWPASS_HZ;
     }
 }
 
@@ -202,6 +273,15 @@ impl VehicleControl for FlightController {
             self.controls_tick_count = controls.tick_count;
             self.update_setpoints(controls, rc_modes);
             setpoints_updated = true;
+            if controls.link_status != RxLinkStatus::Ok
+                || self.crash_detected
+                || self.yaw_spin_recovery
+                || self.crash_flip_mode_active
+            {
+                self.clear_dynamic_pid_adjustments();
+            } else {
+                self.apply_dynamic_pid_adjustments_on_throttle_change(controls.throttle_stick, delta_t);
+            }
         }
 
         if self.crash_flip_mode_active {
@@ -218,7 +298,7 @@ impl VehicleControl for FlightController {
             self.update_rate_setpoints_for_angle_mode(orientation, delta_t);
         }
 
-        self.calculate_dmax_multipliers();
+        self.calculate_dmax_multipliers(delta_t);
 
         // Use the PIDs to calculate the outputs for each axis.
         // Note that the delta-values (ie the DTerms) are filtered:
@@ -236,7 +316,7 @@ impl VehicleControl for FlightController {
             .filter_using(&mut self.roll.rate_dterm_filters[0])
             .filter_using(&mut self.roll.rate_dterm_filters[1])
             * self.roll.dmax_multiplier
-            * self.tpa;
+            * self.tpa.value;
 
         let motor_command_roll_dps =
             self.roll.rate_pid.update_delta_iterm(roll_rate_dps, roll_rate_dterm, roll_rate_iterm_error, delta_t);
@@ -253,7 +333,7 @@ impl VehicleControl for FlightController {
             .filter_using(&mut self.pitch.rate_dterm_filters[0])
             .filter_using(&mut self.pitch.rate_dterm_filters[1])
             * self.pitch.dmax_multiplier
-            * self.tpa;
+            * self.tpa.value;
 
         let motor_command_pitch_dps =
             self.pitch.rate_pid.update_delta_iterm(pitch_rate_dps, pitch_rate_dterm, pitch_rate_iterm_error, delta_t);
@@ -278,6 +358,127 @@ impl VehicleControl for FlightController {
         // This smooths the output, but also accumulates the output in the filter,
         // so the values influence the output even when `output_to_motors` is not called.
         (motor_commands.filter_using(&mut self.motor_commands_filter), setpoints_updated)
+    }
+}
+
+/// Dynamic PID adjustments made when throttle changes:
+/// These include:
+/// Throttle PID Attenuation: lowers the roll rate and pitch rate P and D terms when the throttle is high
+/// Anti-gravity: adjusts the roll rate and pitch rate P and I terms when the throttle is moving quickly
+/// DMAX is not applied here, since it depends on the gyro value and so needs to be calculated in `update_outputs_using_pids()`.
+impl FlightController {
+    fn apply_dynamic_pid_adjustments_on_throttle_change(&mut self, throttle: f32, delta_t: f32) {
+        let throttle_delta = (throttle - self.throttle_previous).abs();
+        self.throttle_previous = throttle;
+        let mut throttle_derivative = throttle_delta / delta_t;
+
+        let throttle_reversed = 1.0 - throttle;
+        throttle_derivative *= throttle_reversed * throttle_reversed;
+        // generally focus on the low throttle period
+        if throttle > self.throttle_previous {
+            throttle_derivative *= throttle_reversed * 0.5;
+            // when increasing throttle, focus even more on the low throttle range
+        }
+        // filtering suppresses peaks relative to troughs and prolongs the anti-gravity effects
+        //throttleDerivative = _sh.anti_gravityThrottleFilter.filter(throttleDerivative);
+
+        // ****
+        // use anti-gravity to adjust the Iterms on roll and pitch
+        // ****
+
+        let i_term_accelerator = throttle_derivative * self.anti_gravity.i_gain * AntiGravity::KI;
+        self.roll.rate_pid.set_ki(self.roll.rate_gains.ki + i_term_accelerator);
+        self.pitch.rate_pid.set_ki(self.pitch.rate_gains.ki + i_term_accelerator);
+
+        // ****
+        // calculate the Throttle PID Attenuation (TPA)
+        // TPA is applied here to the PTerms on roll and pitch, and is used as a multiplier
+        // of the DTERM in update_outputs_using_pids.
+        // ****
+
+        // _TPA is 1.0 (ie no attenuation) if throttle_stick <= _tpaBreakpoint;
+        self.tpa.value = 1.0 - self.tpa.multiplier * (throttle - self.tpa.breakpoint).max(0.0);
+        #[cfg(feature = "debug")]
+        GLOBAL_DEBUG.set_f32(DebugMode::Tpa, 0, self.tpa.value * 1000.0);
+
+        // ****
+        // use TPA and anti-gravity to adjust the PTerms on roll and pitch
+        // ****
+
+        // attenuate roll if setpoint greater than 50 DPS, half at 100 DPS
+        let roll_attenuator = (self.roll.rate_pid.setpoint().abs() / 50.0).min(1.0);
+        let roll_pterm_boost = 1.0 + (throttle_derivative * self.anti_gravity.p_gain / roll_attenuator);
+        self.roll.rate_pid.set_kp(self.roll.rate_gains.kp * roll_pterm_boost * self.tpa.value);
+
+        // attenuate pitch if setpoint greater than 50 DPS, half at 100 DPS
+        let pitch_attenuator = (self.pitch.rate_pid.setpoint().abs() / 50.0).min(1.0);
+        let pitch_pterm_boost = 1.0 + (throttle_derivative * self.anti_gravity.p_gain / pitch_attenuator);
+        self.pitch.rate_pid.set_kp(self.pitch.rate_gains.kp * pitch_pterm_boost * self.tpa.value);
+        #[cfg(feature = "debug")]
+        GLOBAL_DEBUG.set_f32(DebugMode::AntiGravity, 3, pitch_pterm_boost * 1000.0);
+    }
+
+    fn clear_dynamic_pid_adjustments(&mut self) {
+        self.tpa.value = 1.0;
+        self.roll.rate_pid.set_kp(self.roll.rate_gains.kp);
+        self.pitch.rate_pid.set_kp(self.pitch.rate_gains.kp);
+    }
+    /*
+       #[inline]
+       pub fn calculate_dmax_multipliers(&mut self) {
+           self.roll.dmax_multiplier = 1.0;
+           self.pitch.dmax_multiplier = 1.0;
+       }
+    */
+
+    /// Calculate the dmax multipliers.
+    /// These are multipliers that are applied to the roll and pitch axis `Dterms`.
+    /// This means `Dterms` can be low in normal flight but are boosted to a higher value when required.
+    /// They are boosted when the `Dterm` error is small and the setpoint change is also small.
+    fn calculate_dmax_multipliers(&mut self, delta_t: f32) {
+        //TODO: check using PID error in DMAX, surely this is too easy
+        self.roll.calculate_dmax_multipliers(delta_t, self.dmax_gyro_gain, self.dmax_setpoint_gain);
+        self.pitch.calculate_dmax_multipliers(delta_t, self.dmax_gyro_gain, self.dmax_setpoint_gain);
+
+        #[cfg(feature = "debug")]
+        if GLOBAL_DEBUG.mode() == DebugMode::DMax as u8 {
+            //GLOBAL_DEBUG.set_f32(DebugMode::DMax, 0, gyro_factor * 100.0);
+            //GLOBAL_DEBUG.set_f32(DebugMode::DMax, 1, setpoint_factor * 100.0);
+            GLOBAL_DEBUG.set_f32(DebugMode::DMax, 2, self.roll.rate_pid.gains().kd * self.roll.dmax_multiplier * 100.0);
+            GLOBAL_DEBUG.set_f32(
+                DebugMode::DMax,
+                3,
+                self.pitch.rate_pid.gains().kd * self.pitch.dmax_multiplier * 100.0,
+            );
+        }
+    }
+    #[inline]
+    pub fn calculate_roll_rate_iterm_error(&mut self, measurement: f32) -> f32 {
+        let setpoint = self.roll.rate_pid.setpoint();
+        // iterm_error is just `setpoint - measurement`, if there is no iterm relax
+
+        if self.use_iterm_relax {
+            const ITERM_RELAX_SETPOINT_THRESHOLD: f32 = 40.0;
+            let setpoint_threshold_dps =
+                if self.use_angle_mode { ITERM_RELAX_SETPOINT_THRESHOLD * 0.2 } else { ITERM_RELAX_SETPOINT_THRESHOLD };
+            (setpoint - measurement) * self.roll.calculate_rate_iterm_relax_factor(setpoint, setpoint_threshold_dps)
+        } else {
+            setpoint - measurement
+        }
+    }
+
+    #[inline]
+    pub fn calculate_pitch_rate_iterm_error(&mut self, measurement: f32) -> f32 {
+        let setpoint = self.pitch.rate_pid.setpoint();
+        // iterm_error is just `setpoint - measurement`, if there is no iterm relax
+        if self.use_iterm_relax {
+            const ITERM_RELAX_SETPOINT_THRESHOLD: f32 = 40.0;
+            let setpoint_threshold_dps =
+                if self.use_angle_mode { ITERM_RELAX_SETPOINT_THRESHOLD * 0.2 } else { ITERM_RELAX_SETPOINT_THRESHOLD };
+            (setpoint - measurement) * self.pitch.calculate_rate_iterm_relax_factor(setpoint, setpoint_threshold_dps)
+        } else {
+            setpoint - measurement
+        }
     }
 }
 
@@ -397,28 +598,6 @@ impl FlightController {
         Vector4f32::default()
     }
 
-    #[inline]
-    pub fn calculate_dmax_multipliers(&mut self) {
-        self.roll.dmax_multiplier = 1.0;
-        self.pitch.dmax_multiplier = 1.0;
-    }
-
-    // Placeholder for future implementation.
-    #[inline]
-    pub fn calculate_roll_rate_iterm_error(&self, measurement: f32) -> f32 {
-        let setpoint = self.roll.rate_pid.setpoint();
-        // iterm_error is just `setpoint - measurement`, if there is no iterm relax
-        setpoint - measurement
-    }
-
-    // Placeholder for future implementation.
-    #[inline]
-    pub fn calculate_pitch_rate_iterm_error(&self, measurement: f32) -> f32 {
-        let setpoint = self.pitch.rate_pid.setpoint();
-        // iterm_error is just `setpoint - measurement`, if there is no iterm relax
-        setpoint - measurement
-    }
-
     pub fn apply_crash_flip_to_motors(&mut self, _gyro_rps: Vector3f32, _delta_t: f32) -> Vector4f32 {
         _ = self;
         Vector4f32::default()
@@ -432,22 +611,17 @@ impl FlightController {
         // output throttle may be changed by spin recovery
         self.motor_commands_throttle = controls.throttle_stick;
 
-        /*if controls.failsafe == FAILSAFE_ON || self.crash_detected || self.yaw_spin_recovery || self.crash_flip_mode_active {
-            clear_dynamic_pid_adjustments();
-        } else {
-            apply_dynamic_pid_adjustments_on_throttle_change(controls.throttle_stick, controls.tick_count, debug);
-        }*/
-
         //
         // Roll axis
         //
         // Pushing the ROLL stick to the right gives a positive value of roll_stick and we want this to be left side up.
         // For NED left side up is positive roll, so sign of setpoint is same sign as roll_stick.
-        // So sign of _roll_stick is left unchanged.
+        // So sign of roll_stick is left unchanged.
         if !self.use_angle_mode {
             self.roll.rate_pid.set_setpoint(controls.roll_stick_dps);
         }
         self.roll.angle_pid.set_setpoint(controls.roll_stick_degrees);
+
         //
         // Pitch axis
         //
