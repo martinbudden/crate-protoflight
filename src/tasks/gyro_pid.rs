@@ -4,23 +4,21 @@ use embassy_sync::{
     watch::{Receiver, Sender, Watch},
 };
 
-use pidsk_controller::PdGainsf32;
 use static_cell::StaticCell;
+
+use vqm::Vector3f32;
 
 use imu_sensors::{AccFullScale, AccUnits, GyroFullScale, GyroUnits, ImuDevice, ImuError};
 use motor_mixers::MotorMixerMessage;
 use sensor_fusion::{MadgwickFilterf32, SensorFusion};
 use simple_bitset::BitSet64;
 
-#[cfg(feature = "rpm_filters")]
-use motor_mixers::RpmNotchFilterBankConfig;
-
 use crate::{
     boards::targets::BoardImu,
-    config::{FastConfigItem, FastConfigSubscriber, fast_config_subscriber},
+    config::{FastConfigSubscriber, fast_config_subscriber},
     flight::{FilterAccGyro, FlightController, ImuFilterBank, ImuFilterBankConfig, RcControls, VehicleControl},
     tasks::{
-        GyroPidMessage, SetpointMessage,
+        DeltaVMessage, GyroPidMessage, SetpointMessage,
         errors::TaskInitError,
         motor_mixer::MOTOR_MIXER_SIGNAL,
         rx::{RxMessageReceiver, rx_message_receiver},
@@ -41,12 +39,24 @@ pub fn gyro_pid_sender() -> GyroPidSender {
     GYRO_PID_WATCH.sender()
 }
 
-#[allow(unused)]
 pub type GyroPidReceiver = Receiver<'static, CriticalSectionRawMutex, GyroPidMessage, GYRO_PID_WATCH_COUNT>;
-
-#[allow(unused)]
 pub fn gyro_pid_receiver() -> Result<GyroPidReceiver, TaskInitError> {
     GYRO_PID_WATCH.receiver().ok_or(TaskInitError::GyroPidWatchCountTooLow)
+}
+
+const DELTA_V_WATCH_COUNT: usize = 1;
+static DELTA_V_WATCH: Watch<CriticalSectionRawMutex, DeltaVMessage, DELTA_V_WATCH_COUNT> = Watch::new();
+
+type DeltaVSender = Sender<'static, CriticalSectionRawMutex, DeltaVMessage, DELTA_V_WATCH_COUNT>;
+#[allow(unused)]
+pub fn delta_v_sender() -> DeltaVSender {
+    DELTA_V_WATCH.sender()
+}
+
+pub type DeltaVReceiver = Receiver<'static, CriticalSectionRawMutex, DeltaVMessage, DELTA_V_WATCH_COUNT>;
+#[allow(unused)]
+pub fn delta_v_receiver() -> Result<DeltaVReceiver, TaskInitError> {
+    DELTA_V_WATCH.receiver().ok_or(TaskInitError::DeltaVWatchCountTooLow)
 }
 
 const SETPOINT_WATCH_COUNT: usize = 3;
@@ -59,7 +69,6 @@ pub fn setpoint_sender() -> SetpointSender {
 
 pub type SetpointReceiver = Receiver<'static, CriticalSectionRawMutex, SetpointMessage, SETPOINT_WATCH_COUNT>;
 
-#[allow(unused)]
 pub fn setpoint_receiver() -> Result<SetpointReceiver, TaskInitError> {
     SETPOINT_WATCH.receiver().ok_or(TaskInitError::SetpointWatchCountTooLow)
 }
@@ -72,6 +81,8 @@ pub struct GyroPidContext<I: ImuDevice> {
     pub imu: I,
     pub rx_receiver: RxMessageReceiver,
     pub gyro_pid_sender: GyroPidSender,
+    #[cfg(feature = "autopilot")]
+    pub delta_v_sender: DeltaVSender,
     pub setpoint_sender: SetpointSender,
     pub fast_config_subscriber: FastConfigSubscriber,
     pub imu_filters: ImuFilterBank,
@@ -81,18 +92,24 @@ pub struct GyroPidContext<I: ImuDevice> {
     pub rc_modes: BitSet64,
     pub gyro_pid_send_count: u32,
     pub gyro_pid_denominator: u32,
+    pub acc_sum_count: u32,
+    pub acc_sum_denominator: u32,
+    pub acc_sum: Vector3f32,
+    pub delta_t_sum: f32,
 }
 
 pub fn init(
     imu: BoardImu,
     imu_filter_bank_config: ImuFilterBankConfig,
-    #[cfg(feature = "rpm_filters")] rpm_notch_filter_bank_config: RpmNotchFilterBankConfig,
+    #[cfg(feature = "rpm_filters")] rpm_notch_filter_bank_config: motor_mixers::RpmNotchFilterBankConfig,
     #[cfg(feature = "rpm_filters")] looptime_seconds: f32,
 ) -> Result<&'static mut GyroPidContext<BoardImu>, TaskInitError> {
     let ctx = GyroPidContext {
         imu,
         rx_receiver: rx_message_receiver()?,
         gyro_pid_sender: gyro_pid_sender(),
+        #[cfg(feature = "autopilot")]
+        delta_v_sender: delta_v_sender(),
         setpoint_sender: setpoint_sender(),
         fast_config_subscriber: fast_config_subscriber()?,
 
@@ -111,6 +128,10 @@ pub fn init(
         rc_modes: BitSet64::new(),
         gyro_pid_send_count: 0,
         gyro_pid_denominator: 10,
+        acc_sum_count: 0,
+        acc_sum_denominator: 8,
+        delta_t_sum: 0.0,
+        acc_sum: Vector3f32 { x: 0.0, y: 0.0, z: 0.0 },
     };
 
     Ok(GYRO_PID_CTX.init(ctx))
@@ -158,6 +179,32 @@ async fn gyro_pid_loop_iteration(ctx: &mut GyroPidContext<BoardImu>, delta_t: f3
 
     let (acc, gyro_rps) = ctx.imu.read_acc_gyro().await?;
 
+    // Integrate the unfiltered acc values to calculate delta_v for the Kalman filter.
+    #[cfg(feature = "autopilot")]
+    {
+        ctx.acc_sum += acc;
+        ctx.acc_sum_count += 1;
+        ctx.delta_t_sum += delta_t;
+
+        // Send the delta_v message on a denominator
+        if ctx.acc_sum_count >= ctx.acc_sum_denominator {
+            // calculate delta_v from the summed acc values
+            let delta_v_message = DeltaVMessage {
+                delta_v: ctx.acc_sum * ctx.delta_t_sum,
+                delta_t: ctx.delta_t_sum,
+                count: ctx.acc_sum_denominator,
+            };
+            // Send the delta_v message, this will be picked up by the autopilot task.
+            // It's used by the Kalman filter to estimate position and velocity.
+            ctx.delta_v_sender.send(delta_v_message);
+
+            // reset acc integrator for next time round the loop
+            ctx.acc_sum_count = 0;
+            ctx.acc_sum = Vector3f32 { x: 0.0, y: 0.0, z: 0.0 };
+            ctx.delta_t_sum = 0.0;
+        }
+    }
+
     // Save the unfiltered gyro value for telemetry.
     let gyro_rps_unfiltered = gyro_rps;
 
@@ -200,12 +247,6 @@ async fn gyro_pid_loop_iteration(ctx: &mut GyroPidContext<BoardImu>, delta_t: f3
     // This will be picked up by the Blackbox and the OSD.
     ctx.gyro_pid_send_count += 1;
 
-    #[cfg(not(any(feature = "blackbox", feature = "osd")))]
-    {
-        // Use up unused variables.
-        _ = gyro_rps_unfiltered;
-        _ = setpoints_updated;
-    }
     #[cfg(any(feature = "blackbox", feature = "osd"))]
     if ctx.gyro_pid_send_count >= ctx.gyro_pid_denominator {
         ctx.gyro_pid_send_count = 0;
@@ -263,6 +304,12 @@ async fn gyro_pid_loop_iteration(ctx: &mut GyroPidContext<BoardImu>, delta_t: f3
             ctx.setpoint_sender.send(setpoint_message);
         }
     }
+    #[cfg(not(any(feature = "blackbox", feature = "osd")))]
+    {
+        // Use up unused variables.
+        _ = gyro_rps_unfiltered;
+        _ = setpoints_updated;
+    }
 
     // ****
     // Check if there has been in-flight adjustment of the PID gains, if so apply them.
@@ -274,43 +321,8 @@ async fn gyro_pid_loop_iteration(ctx: &mut GyroPidContext<BoardImu>, delta_t: f3
     if let Some(wait_result) = ctx.fast_config_subscriber.try_next_message()
         && let WaitResult::Message(fast_config_item) = wait_result
     {
-        adjust_pid_gains(&mut ctx.flight_controller, fast_config_item);
+        ctx.flight_controller.adjust_pid_gains(fast_config_item);
     }
 
     Ok(())
-}
-
-fn adjust_pid_gains(flight_controller: &mut FlightController, fast_config_item: FastConfigItem) {
-    match fast_config_item {
-        FastConfigItem::RollRate(pid_config) => {
-            let gains = FlightController::calculate_gains(pid_config);
-            flight_controller.roll.rate_pid.set_gains(gains);
-            flight_controller.roll.rate_pid.switch_integration_off();
-            flight_controller.roll.rate_pid.set_setpoint(0.0);
-        }
-        FastConfigItem::PitchRate(pid_config) => {
-            let gains = FlightController::calculate_gains(pid_config);
-            flight_controller.pitch.rate_pid.set_gains(gains);
-            flight_controller.pitch.rate_pid.switch_integration_off();
-            flight_controller.pitch.rate_pid.set_setpoint(0.0);
-        }
-        FastConfigItem::YawRate(pid_config) => {
-            let gains = FlightController::calculate_gains(pid_config);
-            flight_controller.yaw_rate_pid.set_gains(gains);
-            flight_controller.yaw_rate_pid.switch_integration_off();
-            flight_controller.yaw_rate_pid.set_setpoint(0.0);
-        }
-        FastConfigItem::RollAngle(pid_config) => {
-            let gains = FlightController::calculate_gains(pid_config);
-            let pd_gains = PdGainsf32 { kp: gains.kp, kd: gains.kd };
-            flight_controller.roll.angle_pid.set_gains(pd_gains);
-            flight_controller.roll.angle_pid.set_setpoint(0.0);
-        }
-        FastConfigItem::PitchAngle(pid_config) => {
-            let gains = FlightController::calculate_gains(pid_config);
-            let pd_gains = PdGainsf32 { kp: gains.kp, kd: gains.kd };
-            flight_controller.pitch.angle_pid.set_gains(pd_gains);
-            flight_controller.pitch.angle_pid.set_setpoint(0.0);
-        }
-    }
 }

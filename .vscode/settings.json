@@ -112,6 +112,7 @@
         "edop",
         "EEPROM",
         "EGNOS",
+        "elementwise",
         "ELRS",
         "enumset",
         "erpm",

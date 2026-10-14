@@ -4,6 +4,7 @@ use super::{
     vehicle_controller::{VehicleControlInitializing, VehicleController},
 };
 
+use crate::config::FastConfigItem;
 #[cfg(feature = "debug")]
 use crate::tasks::{DebugMode, GLOBAL_DEBUG};
 
@@ -685,6 +686,43 @@ impl FlightController {
             self.stabilization_mode,
             delta_t,
         );
+    }
+
+    /// NOTE: CALLED FROM WITHIN THE GYRO/PID TASK.
+    /// Inflight adjustment of PID gains.
+    pub fn adjust_pid_gains(&mut self, fast_config_item: FastConfigItem) {
+        match fast_config_item {
+            FastConfigItem::RollRate(pid_config) => {
+                let gains = FlightController::calculate_gains(pid_config);
+                self.roll.rate_pid.set_gains(gains);
+                self.roll.rate_pid.switch_integration_off();
+                self.roll.rate_pid.set_setpoint(0.0);
+            }
+            FastConfigItem::PitchRate(pid_config) => {
+                let gains = FlightController::calculate_gains(pid_config);
+                self.pitch.rate_pid.set_gains(gains);
+                self.pitch.rate_pid.switch_integration_off();
+                self.pitch.rate_pid.set_setpoint(0.0);
+            }
+            FastConfigItem::YawRate(pid_config) => {
+                let gains = FlightController::calculate_gains(pid_config);
+                self.yaw_rate_pid.set_gains(gains);
+                self.yaw_rate_pid.switch_integration_off();
+                self.yaw_rate_pid.set_setpoint(0.0);
+            }
+            FastConfigItem::RollAngle(pid_config) => {
+                let gains = FlightController::calculate_gains(pid_config);
+                self.roll.angle_pid.set_kp(gains.kp);
+                self.roll.angle_pid.set_kd(gains.kd);
+                self.roll.angle_pid.set_setpoint(0.0);
+            }
+            FastConfigItem::PitchAngle(pid_config) => {
+                let gains = FlightController::calculate_gains(pid_config);
+                self.pitch.angle_pid.set_kp(gains.kp);
+                self.pitch.angle_pid.set_kd(gains.kd);
+                self.pitch.angle_pid.set_setpoint(0.0);
+            }
+        }
     }
 }
 

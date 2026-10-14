@@ -54,7 +54,6 @@ mod test_traits {
     use super::*;
 
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
-    fn is_full_eq<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + Eq + PartialEq>() {}
     #[cfg(feature = "serde")]
     fn is_serde<T: Serialize + MaxSize + for<'a> Deserialize<'a>>() {}
     #[cfg(feature = "storage")]
@@ -62,7 +61,7 @@ mod test_traits {
 
     #[test]
     fn normal_types() {
-        is_full_eq::<AntiGravity>();
+        is_full::<AntiGravity>();
         is_full::<AntiGravityConfig>();
     }
     #[cfg(feature = "serde")]

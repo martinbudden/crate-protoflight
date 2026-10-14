@@ -12,7 +12,7 @@ use crate::{
     tasks::{
         errors::TaskInitError,
         failsafe::{FailsafeSubscriber, failsafe_subscriber},
-        gyro_pid::{GyroPidReceiver, gyro_pid_receiver},
+        gyro_pid::{DeltaVReceiver, GyroPidReceiver, delta_v_receiver, gyro_pid_receiver},
         rx::{RxMessageReceiver, rx_message_receiver},
     },
 };
@@ -55,6 +55,7 @@ pub fn autopilot_receiver() -> Result<AutopilotReceiver, TaskInitError> {
 #[rustfmt::skip]
 pub struct AutopilotContext {
     pub gyro_pid_receiver: GyroPidReceiver,
+    pub delta_v_receiver: DeltaVReceiver,
     pub rx_receiver: RxMessageReceiver,
     pub failsafe_subscriber: FailsafeSubscriber,
     pub autopilot_sender: AutopilotSender,
@@ -69,6 +70,7 @@ pub fn init() -> Result<&'static mut AutopilotContext, TaskInitError> {
     #[rustfmt::skip]
     let ctx = AutopilotContext {
         gyro_pid_receiver: gyro_pid_receiver()?,
+        delta_v_receiver: delta_v_receiver()?,
         rx_receiver: rx_message_receiver()?,
         failsafe_subscriber: failsafe_subscriber()?,
         autopilot_sender: autopilot_sender(),
@@ -81,6 +83,7 @@ pub fn init() -> Result<&'static mut AutopilotContext, TaskInitError> {
     Ok(AUTOPILOT_CTX.init(ctx))
 }
 
+// TODO: make this run on receipt of the delta_v message, rather than on a timer.
 /// Autopilot Placeholder.
 #[allow(unused)]
 #[embassy_executor::task]
@@ -98,15 +101,19 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
     loop {
         ticker.next().await;
 
+        if let Some(delta_v_message) = ctx.delta_v_receiver.try_get() {
+            let delta_v = delta_v_message.delta_v;
+            // use update the Kalman filter to prediction using the delta_v from the gyro/pid task.
+            ctx.autopilot.altitude_kalman_filter.predict(delta_v.z, delta_t);
+            #[cfg(feature = "gps")]
+            ctx.autopilot.position_kalman_filter.predict(delta_v, delta_t);
+        }
+
         // for the autopilot to provide any functionality, it has to have at least one of: barometer, gps, optical_flow, or rangefinder.
         #[cfg(any(feature = "barometer", feature = "gps", feature = "optical_flow", feature = "rangefinder"))]
         {
             if let Some(gyro_pid_message) = ctx.gyro_pid_receiver.try_get() {
                 use embassy_sync::pubsub::WaitResult;
-
-                let vertical_acceleration = gyro_pid_message.acc.z;
-
-                ctx.autopilot.altitude_kalman_filter.predict(vertical_acceleration, delta_t);
 
                 // Check if the rc_modes have changed.
                 if let Some(rx_message) = ctx.rx_receiver.try_changed() {
@@ -149,9 +156,11 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
         if let Some(wait_result) = ctx.barometer_subscriber.try_next_message()
             && let embassy_sync::pubsub::WaitResult::Message(barometer_message) = wait_result
         {
-            ctx.autopilot.altitude_kalman_filter.correct_altitude_using_barometer(barometer_message.altitude_m);
+            _ = ctx.autopilot.altitude_kalman_filter.correct_altitude_using_barometer(barometer_message.altitude_m);
             #[cfg(feature = "gps")]
-            ctx.autopilot.position_kalman_filter.correct_altitude_using_barometer(barometer_message.altitude_m);
+            {
+                _ = ctx.autopilot.position_kalman_filter.correct_altitude_using_barometer(barometer_message.altitude_m);
+            }
         }
 
         #[cfg(feature = "rangefinder")]
@@ -160,9 +169,11 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
         {
             let rangefinder_base_altitude_m = 0.0_f32;
             let altitude = rangefinder_base_altitude_m + rangefinder_message.distance_m;
-            ctx.autopilot.altitude_kalman_filter.correct_altitude_using_rangefinder(altitude);
+            _ = ctx.autopilot.altitude_kalman_filter.correct_altitude_using_rangefinder(altitude);
             #[cfg(feature = "gps")]
-            ctx.autopilot.position_kalman_filter.correct_altitude_using_rangefinder(altitude);
+            {
+                _ = ctx.autopilot.position_kalman_filter.correct_altitude_using_rangefinder(altitude);
+            }
         }
 
         #[cfg(feature = "gps")]
@@ -172,9 +183,9 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
             // TODO: choose position or altitude kalman filter based on settings
             if let GpsMessage::Position(gps_position) = event {
                 if altitude_hold {
-                    ctx.autopilot.altitude_kalman_filter.correct_altitude_using_gps(gps_position.z);
+                    _ = ctx.autopilot.altitude_kalman_filter.correct_altitude_using_gps(gps_position.z);
                 } else if position_hold {
-                    ctx.autopilot.position_kalman_filter.correct_position_using_gps(gps_position);
+                    _ = ctx.autopilot.position_kalman_filter.correct_position_using_gps(gps_position);
                 }
             } else {
                 // Message type of interest to other subscribers, but not to me so intentionally do nothing,

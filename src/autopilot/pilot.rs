@@ -1,7 +1,7 @@
 #![cfg(feature = "autopilot")]
 
 #[cfg(any(feature = "gps", feature = "optical_flow"))]
-use sensor_fusion::KalmanFilterXYZWithSensorsf32;
+use sensor_fusion::KalmanFilterXyzWithSensorsf32;
 use sensor_fusion::KalmanFilterZWithSensorsf32;
 
 use super::dual_ring_pid_vertical::MultirotorAltitudeDualRingPid;
@@ -11,7 +11,7 @@ pub struct Autopilot {
     pub altitude_controller: MultirotorAltitudeDualRingPid,
     pub altitude_kalman_filter: KalmanFilterZWithSensorsf32,
     #[cfg(any(feature = "gps", feature = "optical_flow"))]
-    pub position_kalman_filter: KalmanFilterXYZWithSensorsf32,
+    pub position_kalman_filter: KalmanFilterXyzWithSensorsf32,
 }
 
 impl Default for Autopilot {
@@ -26,7 +26,7 @@ impl Autopilot {
             altitude_controller: MultirotorAltitudeDualRingPid::new(0.0),
             altitude_kalman_filter: KalmanFilterZWithSensorsf32::new(),
             #[cfg(any(feature = "gps", feature = "optical_flow"))]
-            position_kalman_filter: KalmanFilterXYZWithSensorsf32::new(),
+            position_kalman_filter: KalmanFilterXyzWithSensorsf32::new(),
         }
     }
 }
