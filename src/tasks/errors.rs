@@ -7,7 +7,7 @@ pub enum TaskInitError {
     RxSpawnFailed,
 
     GyroPidWatchCountTooLow,
-    DeltaVWatchCountTooLow,
+    ImuIntegralWatchCountTooLow,
     RxWatchCountTooLow,
     SetpointWatchCountTooLow,
     AutopilotWatchCountTooLow,
@@ -51,7 +51,7 @@ impl TaskInitError {
             Self::RxSpawnFailed => "RxSpawnFailed",
 
             Self::GyroPidWatchCountTooLow => "GyroPidWatchCountTooLow",
-            Self::DeltaVWatchCountTooLow => "DeltaVWatchCountTooLow",
+            Self::ImuIntegralWatchCountTooLow => "ImuIntegralWatchCountTooLow",
             Self::RxWatchCountTooLow => "RxWatchCountTooLow",
             Self::SetpointWatchCountTooLow => "SetpointWatchCountTooLow",
             Self::AutopilotWatchCountTooLow => "AutopilotWatchCountTooLow",

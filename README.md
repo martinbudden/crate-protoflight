@@ -42,6 +42,69 @@ I expect to, at some point, move the barometer, magnetometer, gps etc functional
 
 I'm also considering moving the Board Support Packages into a separate crate.
 
+## Overview
+
+Here's a simplified overview of the system.
+
+```text
+                                                     ┌───────┐
+                                                     │ RADIO │
+                                                     └─┬───┬─┘
+                                                       │   │
+                                            RcCommands ▼   ▼ RcModes
+                                                       │   │
+ ┌─────┐  ┌────────┐              Acc              ┌───┴───┴────┐
+ │     │  │ SIGNAL ├───────────────▶───────────────┤ FLIGHT     │   ┌───────┐
+ │ IMU ├─▶┤ FILTER │ Acc  ┌──────────┐             │ CONTROLLER ├─▶─┤ MOTOR │
+ │     │  │        ├──▶───┤ MADGWICK ├─────▶───────┤ (PIDS)     │   │ MIXER │
+ └──┬──┘  └────────┘ Gyro │ FILTER   │ Orientation └─────┬──────┘   └───┬───┘
+    │                     └────┬─────┘                   │              │
+    ▼ Acc(unfiltered)          │                         │      Torques ▼
+    │                          ▼ Orientation             │              │
+┌───┴────────┐                 │                         │          ┌───┴────┐
+│    IMU     ├────◀────────────┘                Commands ▲          │ MOTORS │
+│ INTEGRATOR |                                           │          │ SERVOS │
+└───┬────────┘                                           │          └────────┘
+    │                                                    │
+  delta_pos                                              │
+  delta_vel         ┌────────┐        Position     ┌─────┴─────┐
+    └───────────▶───┤ KALMAN ├───────────▶─────────┤ AUTOPILOT │
+                    │ FILTER │        Velocity     └───────────┘
+                    └────┬───┘
+                         │
+  GPS, Barometer, etc ─▶─┘
+
+      ┌────────┐      ┌────────┐
+      │ GLOBAL │      │ GLOBAL │
+      │ CONFIG |      │ DEBUG  |
+      └────────┘      └────────┘
+```
+
+GLOBAL CONFIG is protected by a mutex and is accessible by all tasks.
+
+GLOBAL DEBUG is protected by atomics and is accessible by all tasks.
+
+`acc`, `gyro`, `delta_pos`, `delta_vel`, `position`, and `velocity` are all 3D vectors.
+
+`orientation` is a quaternion.
+
+`RcCommand`s are the stick inputs of roll, pitch, yaw, and throttle.
+`RcMode`s are set using the radio's auxiliary channels.
+
+Some subtleties not shown on the diagram:
+
+- Failsafe is not shown. When there is no signal from the radio, failsafe interacts with the Flight Controller and/or the Autopilot
+  to land the aircraft or bring it home.
+- `RcMode`s are shown as inputs to the Flight Controller. This is their main purpose, but they are used as inputs to many parts of the system.
+- The Autopilot receives `RcCommand`s and `RcMode`s from the Radio.
+- If using Dshot, the signal filter dynamically adjusts the filters according to motor RPM.
+- If a magnetometer is present it is used by both the Kalman filter, and the Madgwick filter (to correct the yaw component of orientation).
+- When the aircraft is in motion, the Kalman filter's velocity vector is used to correct the yaw component of the Madgwick filter's orientation.
+
+Integrating the acc and gyro values to produce `delta_pos` and `delta_vel` vectors means we can use a Linear Kalman Filter (LKF)
+with 9x9 state matrices. (Passing acc and gyro values to the Kalman filter directly would require an Extended Kalman Filter (EKF)
+with 15x15 state matrices - this is **much** more computationally expensive.)
+
 ## Board Support Packages
 
 Board Support Packages (BSPs) are in the `boards` module (`src/boards`).

@@ -6,11 +6,9 @@ use embassy_sync::{
 
 use static_cell::StaticCell;
 
-use vqm::Vector3f32;
-
 use imu_sensors::{AccFullScale, AccUnits, GyroFullScale, GyroUnits, ImuDevice, ImuError};
 use motor_mixers::MotorMixerMessage;
-use sensor_fusion::{MadgwickFilterf32, SensorFusion};
+use sensor_fusion::{ImuIntegral, ImuIntegrator, MadgwickFilterf32, SensorFusion};
 use simple_bitset::BitSet64;
 
 use crate::{
@@ -18,7 +16,7 @@ use crate::{
     config::{FastConfigSubscriber, fast_config_subscriber},
     flight::{FilterAccGyro, FlightController, ImuFilterBank, ImuFilterBankConfig, RcControls, VehicleControl},
     tasks::{
-        DeltaVMessage, GyroPidMessage, SetpointMessage,
+        GyroPidMessage, SetpointMessage,
         errors::TaskInitError,
         motor_mixer::MOTOR_MIXER_SIGNAL,
         rx::{RxMessageReceiver, rx_message_receiver},
@@ -39,24 +37,26 @@ pub fn gyro_pid_sender() -> GyroPidSender {
     GYRO_PID_WATCH.sender()
 }
 
+#[allow(unused)]
 pub type GyroPidReceiver = Receiver<'static, CriticalSectionRawMutex, GyroPidMessage, GYRO_PID_WATCH_COUNT>;
+#[allow(unused)]
 pub fn gyro_pid_receiver() -> Result<GyroPidReceiver, TaskInitError> {
     GYRO_PID_WATCH.receiver().ok_or(TaskInitError::GyroPidWatchCountTooLow)
 }
 
-const DELTA_V_WATCH_COUNT: usize = 1;
-static DELTA_V_WATCH: Watch<CriticalSectionRawMutex, DeltaVMessage, DELTA_V_WATCH_COUNT> = Watch::new();
+const IMU_INTEGRAL_WATCH_COUNT: usize = 1;
+static IMU_INTEGRAL_WATCH: Watch<CriticalSectionRawMutex, ImuIntegral, IMU_INTEGRAL_WATCH_COUNT> = Watch::new();
 
-type DeltaVSender = Sender<'static, CriticalSectionRawMutex, DeltaVMessage, DELTA_V_WATCH_COUNT>;
+type ImuIntegralSender = Sender<'static, CriticalSectionRawMutex, ImuIntegral, IMU_INTEGRAL_WATCH_COUNT>;
 #[allow(unused)]
-pub fn delta_v_sender() -> DeltaVSender {
-    DELTA_V_WATCH.sender()
+pub fn imu_integral_sender() -> ImuIntegralSender {
+    IMU_INTEGRAL_WATCH.sender()
 }
 
-pub type DeltaVReceiver = Receiver<'static, CriticalSectionRawMutex, DeltaVMessage, DELTA_V_WATCH_COUNT>;
+pub type ImuIntegralReceiver = Receiver<'static, CriticalSectionRawMutex, ImuIntegral, IMU_INTEGRAL_WATCH_COUNT>;
 #[allow(unused)]
-pub fn delta_v_receiver() -> Result<DeltaVReceiver, TaskInitError> {
-    DELTA_V_WATCH.receiver().ok_or(TaskInitError::DeltaVWatchCountTooLow)
+pub fn imu_integral_receiver() -> Result<ImuIntegralReceiver, TaskInitError> {
+    IMU_INTEGRAL_WATCH.receiver().ok_or(TaskInitError::ImuIntegralWatchCountTooLow)
 }
 
 const SETPOINT_WATCH_COUNT: usize = 3;
@@ -67,8 +67,9 @@ pub fn setpoint_sender() -> SetpointSender {
     SETPOINT_WATCH.sender()
 }
 
+#[allow(unused)]
 pub type SetpointReceiver = Receiver<'static, CriticalSectionRawMutex, SetpointMessage, SETPOINT_WATCH_COUNT>;
-
+#[allow(unused)]
 pub fn setpoint_receiver() -> Result<SetpointReceiver, TaskInitError> {
     SETPOINT_WATCH.receiver().ok_or(TaskInitError::SetpointWatchCountTooLow)
 }
@@ -81,8 +82,6 @@ pub struct GyroPidContext<I: ImuDevice> {
     pub imu: I,
     pub rx_receiver: RxMessageReceiver,
     pub gyro_pid_sender: GyroPidSender,
-    #[cfg(feature = "autopilot")]
-    pub delta_v_sender: DeltaVSender,
     pub setpoint_sender: SetpointSender,
     pub fast_config_subscriber: FastConfigSubscriber,
     pub imu_filters: ImuFilterBank,
@@ -92,10 +91,10 @@ pub struct GyroPidContext<I: ImuDevice> {
     pub rc_modes: BitSet64,
     pub gyro_pid_send_count: u32,
     pub gyro_pid_denominator: u32,
-    pub acc_sum_count: u32,
-    pub acc_sum_denominator: u32,
-    pub acc_sum: Vector3f32,
-    pub delta_t_sum: f32,
+    #[cfg(feature = "autopilot")]
+    pub imu_integral_sender: ImuIntegralSender,
+    #[cfg(feature = "autopilot")]
+    pub imu_integrator: ImuIntegrator,
 }
 
 pub fn init(
@@ -109,7 +108,7 @@ pub fn init(
         rx_receiver: rx_message_receiver()?,
         gyro_pid_sender: gyro_pid_sender(),
         #[cfg(feature = "autopilot")]
-        delta_v_sender: delta_v_sender(),
+        imu_integral_sender: imu_integral_sender(),
         setpoint_sender: setpoint_sender(),
         fast_config_subscriber: fast_config_subscriber()?,
 
@@ -128,10 +127,8 @@ pub fn init(
         rc_modes: BitSet64::new(),
         gyro_pid_send_count: 0,
         gyro_pid_denominator: 10,
-        acc_sum_count: 0,
-        acc_sum_denominator: 8,
-        delta_t_sum: 0.0,
-        acc_sum: Vector3f32 { x: 0.0, y: 0.0, z: 0.0 },
+        #[cfg(feature = "autopilot")]
+        imu_integrator: ImuIntegrator::new(),
     };
 
     Ok(GYRO_PID_CTX.init(ctx))
@@ -144,23 +141,47 @@ pub fn init(
 pub async fn run(ctx: &'static mut GyroPidContext<BoardImu>) {
     log::info!("    GYRO_PID: task started");
 
-    let sample_rates = ctx.imu.init(8000, GyroFullScale::Max, GyroUnits::Rps, AccFullScale::Max, AccUnits::G).await;
+    // Initialize IMU to use radians/s for gyro units and m/s^2 for acc units.
+    let sample_rates = ctx.imu.init(8000, GyroFullScale::Max, GyroUnits::Rps, AccFullScale::Max, AccUnits::Mps2).await;
     let (gyro_rate_hz, _acc_rate_hz) = match sample_rates {
         Ok((gyro_rate_hz, acc_rate_hz)) => (gyro_rate_hz, acc_rate_hz),
         Err(_err) => (1000, 1000),
     };
 
-    #[allow(clippy::cast_precision_loss)]
-    let delta_t: f32 = 1.0 / (gyro_rate_hz as f32);
+    #[cfg(feature = "autopilot")]
+    {
+        // Set the acc_integrator denominator so that the Kalman filter runs at approximately 500 Hz
+        // In practice the IMU runs at one of 1000, 2000, 4000, or 8000 Hz
+        // except for the Bosch BMI270 which runs at one of 800, 1600, or 3200 Hz.
+        let denominator = match gyro_rate_hz {
+            32000.. => 64,
+            16000..32000 => 32,
+            8000..16000 => 16, // 8000 => 500Hz
+            3200..8000 => 8,   // 3200 => 400Hz, 4000 => 500Hz
+            1600..3200 => 4,   // 1600 => 400Hz, 2000 => 500Hz
+            800..1600 => 2,    // 800 => 400Hz, 1000 => 500Hz
+            ..800 => 1,
+        };
+        ctx.imu_integrator.set_denominator(denominator);
+    }
 
     // TODO: this ticker wait should be replaced by an interrupt driven DMA read from the IMU.
     // I'm using a ticker like this during development to keep things simple.
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(u64::from(gyro_rate_hz)));
 
+    let mut time_previous_us = embassy_time::Instant::now().as_micros();
+
     // This is the famous GYRO/PID loop!
     let mut loop_count: u32 = 0;
     loop {
         ticker.next().await;
+
+        let time_now_us = embassy_time::Instant::now().as_micros();
+        let delta_t_us = time_now_us - time_previous_us;
+        time_previous_us = time_now_us;
+        #[allow(clippy::cast_precision_loss)]
+        let delta_t = (delta_t_us as f32) * 1_000_000.0;
+
         if let Err(err) = gyro_pid_loop_iteration(ctx, delta_t).await {
             // We really shouldn't get here, so consider so sort of failsafe handling.
             log::error!("GYRO_PID iteration failed: {err:?}");
@@ -177,39 +198,10 @@ async fn gyro_pid_loop_iteration(ctx: &mut GyroPidContext<BoardImu>, delta_t: f3
     // The GYRO part of the GYRO/PID loop
     // ****
 
-    let (acc, gyro_rps) = ctx.imu.read_acc_gyro().await?;
-
-    // Integrate the unfiltered acc values to calculate delta_v for the Kalman filter.
-    #[cfg(feature = "autopilot")]
-    {
-        ctx.acc_sum += acc;
-        ctx.acc_sum_count += 1;
-        ctx.delta_t_sum += delta_t;
-
-        // Send the delta_v message on a denominator
-        if ctx.acc_sum_count >= ctx.acc_sum_denominator {
-            // calculate delta_v from the summed acc values
-            let delta_v_message = DeltaVMessage {
-                delta_v: ctx.acc_sum * ctx.delta_t_sum,
-                delta_t: ctx.delta_t_sum,
-                count: ctx.acc_sum_denominator,
-            };
-            // Send the delta_v message, this will be picked up by the autopilot task.
-            // It's used by the Kalman filter to estimate position and velocity.
-            ctx.delta_v_sender.send(delta_v_message);
-
-            // reset acc integrator for next time round the loop
-            ctx.acc_sum_count = 0;
-            ctx.acc_sum = Vector3f32 { x: 0.0, y: 0.0, z: 0.0 };
-            ctx.delta_t_sum = 0.0;
-        }
-    }
-
-    // Save the unfiltered gyro value for telemetry.
-    let gyro_rps_unfiltered = gyro_rps;
+    let (acc_unfiltered_mps2, gyro_unfiltered_rps) = ctx.imu.read_acc_gyro().await?;
 
     // Filter the acc and gyro values. This includes RPM notch filtering, if that is enabled.
-    let (acc, gyro_rps) = ctx.imu_filters.update(acc, gyro_rps, delta_t);
+    let (acc_mps2, gyro_rps) = ctx.imu_filters.update(acc_unfiltered_mps2, gyro_unfiltered_rps, delta_t);
 
     // Check if there has been a yaw heading correction from the GPS, if so, apply it.
     #[cfg(feature = "gps")]
@@ -218,7 +210,21 @@ async fn gyro_pid_loop_iteration(ctx: &mut GyroPidContext<BoardImu>, delta_t: f3
     }
 
     // Calculate the orientation quaternion using sensor fusion.
-    let orientation = ctx.sensor_fusion.fuse_acc_gyro(acc, gyro_rps, delta_t);
+    let orientation = ctx.sensor_fusion.fuse_acc_gyro(acc_mps2, gyro_rps, delta_t);
+
+    #[cfg(feature = "autopilot")]
+    {
+        ctx.imu_integrator.integrate(acc_unfiltered_mps2, orientation, delta_t);
+        // Send the integrated_imu message on a denominator
+        if ctx.imu_integrator.integration_complete() {
+            // Send the integrated_imu message, this will be picked up by the autopilot task.
+            // It's used by the Kalman filter to estimate position and velocity.
+            let imu_integral = ctx.imu_integrator.imu_integral();
+            ctx.imu_integral_sender.send(imu_integral);
+            // Reset acc integrator for next time round the loop.
+            ctx.imu_integrator.reset();
+        }
+    }
 
     // ****
     // The PID part of the GYRO/PID loop
@@ -243,71 +249,72 @@ async fn gyro_pid_loop_iteration(ctx: &mut GyroPidContext<BoardImu>, delta_t: f3
     // We signal every time round the GYRO/PID loop since the motor mixer also updates the RPM notch filters on this signal.
     MOTOR_MIXER_SIGNAL.signal(MotorMixerMessage::from(motor_commands));
 
-    // Send the GyroPidMessage on a denominator (e.g., 1/8 = 1kHz)
-    // This will be picked up by the Blackbox and the OSD.
-    ctx.gyro_pid_send_count += 1;
-
     #[cfg(any(feature = "blackbox", feature = "osd"))]
-    if ctx.gyro_pid_send_count >= ctx.gyro_pid_denominator {
-        ctx.gyro_pid_send_count = 0;
+    {
+        // Send the GyroPidMessage on a denominator (e.g., 1/8 = 1kHz)
+        // This will be picked up by the Blackbox and the OSD.
+        ctx.gyro_pid_send_count += 1;
+        if ctx.gyro_pid_send_count >= ctx.gyro_pid_denominator {
+            ctx.gyro_pid_send_count = 0;
 
-        let roll_errors = ctx.flight_controller.roll.rate_pid.error();
-        let pitch_errors = ctx.flight_controller.pitch.rate_pid.error();
-        let yaw_errors = ctx.flight_controller.yaw_rate_pid.error();
-        let pid_errors_p = [roll_errors.p, pitch_errors.p, yaw_errors.p];
-        let pid_errors_i = [roll_errors.i, pitch_errors.i, yaw_errors.i];
-        let pid_errors_d = [roll_errors.d, pitch_errors.d];
+            let roll_errors = ctx.flight_controller.roll.rate_pid.error();
+            let pitch_errors = ctx.flight_controller.pitch.rate_pid.error();
+            let yaw_errors = ctx.flight_controller.yaw_rate_pid.error();
+            let pid_errors_p = [roll_errors.p, pitch_errors.p, yaw_errors.p];
+            let pid_errors_i = [roll_errors.i, pitch_errors.i, yaw_errors.i];
+            let pid_errors_d = [roll_errors.d, pitch_errors.d];
 
-        let time_us = embassy_time::Instant::now().as_micros();
-        let gyro_pid_message = GyroPidMessage {
-            orientation,
-            motor_commands,
-            acc,
-            gyro_rps,
-            gyro_rps_unfiltered,
-            pid_errors_p,
-            pid_errors_i,
-            pid_errors_d,
-            time_us,
-        };
-        ctx.gyro_pid_sender.send(gyro_pid_message);
-
-        if setpoints_updated {
-            // Only send a setpoint_message when the setpoints have actually been updated.
-            // This is picked up by the Blackbox.
-            // TODO fill out missing SetpointMessage fields.
-            let pid_errors_s = [roll_errors.s, pitch_errors.s, yaw_errors.s];
-            let pid_errors_k = [roll_errors.k, pitch_errors.k, yaw_errors.k];
-            let setpoint_message = SetpointMessage {
+            let time_us = embassy_time::Instant::now().as_micros();
+            let gyro_pid_message = GyroPidMessage {
+                orientation,
+                motor_commands,
+                acc: acc_mps2,
+                gyro_rps,
+                gyro_rps_unfiltered: gyro_unfiltered_rps,
+                pid_errors_p,
+                pid_errors_i,
+                pid_errors_d,
                 time_us,
-                rc_modes: ctx.rc_modes,
-                setpoints: [
-                    ctx.rc_controls.roll_stick_dps,
-                    ctx.rc_controls.pitch_stick_dps,
-                    ctx.rc_controls.yaw_stick_dps,
-                    ctx.rc_controls.throttle_stick,
-                ],
-                pid_errors_s,
-                pid_errors_k,
-                rc_commands: ctx.rc_controls.controls_pwm,
-
-                #[cfg(feature = "dshot_telemetry")]
-                motor_rpm_d2: [0i16; SetpointMessage::MAX_SUPPORTED_MOTOR_COUNT],
-                #[cfg(feature = "servos")]
-                servos: [0i16; SetpointMessage::MAX_SUPPORTED_SERVO_COUNT],
-
-                gps_state_flags: 0,
-                failsafe_phase: 0,
-                rx_signal_received: true,
-                rx_flight_channel_is_valid: true,
             };
-            ctx.setpoint_sender.send(setpoint_message);
+            ctx.gyro_pid_sender.send(gyro_pid_message);
+
+            if setpoints_updated {
+                // Only send a setpoint_message when the setpoints have actually been updated.
+                // This is picked up by the Blackbox.
+                // TODO fill out missing SetpointMessage fields.
+                let pid_errors_s = [roll_errors.s, pitch_errors.s, yaw_errors.s];
+                let pid_errors_k = [roll_errors.k, pitch_errors.k, yaw_errors.k];
+                let setpoint_message = SetpointMessage {
+                    time_us,
+                    rc_modes: ctx.rc_modes,
+                    setpoints: [
+                        ctx.rc_controls.roll_stick_dps,
+                        ctx.rc_controls.pitch_stick_dps,
+                        ctx.rc_controls.yaw_stick_dps,
+                        ctx.rc_controls.throttle_stick,
+                    ],
+                    pid_errors_s,
+                    pid_errors_k,
+                    rc_commands: ctx.rc_controls.controls_pwm,
+
+                    #[cfg(feature = "dshot_telemetry")]
+                    motor_rpm_d2: [0i16; SetpointMessage::MAX_SUPPORTED_MOTOR_COUNT],
+                    #[cfg(feature = "servos")]
+                    servos: [0i16; SetpointMessage::MAX_SUPPORTED_SERVO_COUNT],
+
+                    gps_state_flags: 0,
+                    failsafe_phase: 0,
+                    rx_signal_received: true,
+                    rx_flight_channel_is_valid: true,
+                };
+                ctx.setpoint_sender.send(setpoint_message);
+            }
         }
     }
     #[cfg(not(any(feature = "blackbox", feature = "osd")))]
     {
         // Use up unused variables.
-        _ = gyro_rps_unfiltered;
+        _ = gyro_unfiltered_rps;
         _ = setpoints_updated;
     }
 

@@ -59,35 +59,6 @@ impl GyroPidMessage {
     }
 }
 
-/// Blackbox telemetry data, updated at approximately 1kHz.
-/// Limit this to 128 bytes.
-/// On a 32-bit ARM processor, a memcpy of 128 bytes takes roughly 32 to 64 clock cycles.
-/// At 200MHz, that is less than 0.4 microseconds.
-/// Even with the overhead of the Watch mutex (critical section), this is well under 1μs of total time to dispatch that data.
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[repr(C)]
-pub struct DeltaVMessage {
-    pub delta_v: Vector3f32,
-    pub delta_t: f32,
-    pub count: u32,
-}
-
-//#[cfg(not(any(feature = "servos", feature = "eight_motors")))]
-const _: () = assert!(core::mem::size_of::<DeltaVMessage>() == 20);
-
-impl Default for DeltaVMessage {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl DeltaVMessage {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self { delta_v: Vector3f32 { x: 0.0, y: 0.0, z: 0.0 }, delta_t: 0.0, count: 0 }
-    }
-}
-
 /// Message to send setpoint data between tasks.
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(C)]
@@ -152,7 +123,7 @@ impl SetpointMessage {
 }
 
 #[cfg(test)]
-mod tests {
+mod test_traits {
     use super::*;
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
@@ -161,9 +132,14 @@ mod tests {
     #[test]
     fn normal_types() {
         is_full::<GyroPidMessage>();
-        is_full::<DeltaVMessage>();
         is_full::<SetpointMessage>();
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
     #[test]
     fn sizeof() {
         assert_eq!(112, core::mem::size_of::<GyroPidMessage>());

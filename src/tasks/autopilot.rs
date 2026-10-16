@@ -12,7 +12,7 @@ use crate::{
     tasks::{
         errors::TaskInitError,
         failsafe::{FailsafeSubscriber, failsafe_subscriber},
-        gyro_pid::{DeltaVReceiver, GyroPidReceiver, delta_v_receiver, gyro_pid_receiver},
+        gyro_pid::{GyroPidReceiver, ImuIntegralReceiver, gyro_pid_receiver, imu_integral_receiver},
         rx::{RxMessageReceiver, rx_message_receiver},
     },
 };
@@ -55,7 +55,7 @@ pub fn autopilot_receiver() -> Result<AutopilotReceiver, TaskInitError> {
 #[rustfmt::skip]
 pub struct AutopilotContext {
     pub gyro_pid_receiver: GyroPidReceiver,
-    pub delta_v_receiver: DeltaVReceiver,
+    pub integrated_imu_receiver: ImuIntegralReceiver,
     pub rx_receiver: RxMessageReceiver,
     pub failsafe_subscriber: FailsafeSubscriber,
     pub autopilot_sender: AutopilotSender,
@@ -70,7 +70,7 @@ pub fn init() -> Result<&'static mut AutopilotContext, TaskInitError> {
     #[rustfmt::skip]
     let ctx = AutopilotContext {
         gyro_pid_receiver: gyro_pid_receiver()?,
-        delta_v_receiver: delta_v_receiver()?,
+        integrated_imu_receiver: imu_integral_receiver()?,
         rx_receiver: rx_message_receiver()?,
         failsafe_subscriber: failsafe_subscriber()?,
         autopilot_sender: autopilot_sender(),
@@ -83,8 +83,9 @@ pub fn init() -> Result<&'static mut AutopilotContext, TaskInitError> {
     Ok(AUTOPILOT_CTX.init(ctx))
 }
 
-// TODO: make this run on receipt of the delta_v message, rather than on a timer.
+// TODO: make this run on receipt of the integrated_imu message, rather than on a timer.
 /// Autopilot Placeholder.
+#[allow(clippy::too_many_lines)]
 #[allow(unused)]
 #[embassy_executor::task]
 pub async fn run(ctx: &'static mut AutopilotContext) {
@@ -101,12 +102,19 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
     loop {
         ticker.next().await;
 
-        if let Some(delta_v_message) = ctx.delta_v_receiver.try_get() {
-            let delta_v = delta_v_message.delta_v;
+        if let Some(integrated_imu_message) = ctx.integrated_imu_receiver.try_get() {
             // use update the Kalman filter to prediction using the delta_v from the gyro/pid task.
-            ctx.autopilot.altitude_kalman_filter.predict(delta_v.z, delta_t);
+            ctx.autopilot.altitude_kalman_filter.predict(
+                integrated_imu_message.delta_vel.z,
+                integrated_imu_message.delta_pos.z,
+                delta_t,
+            );
             #[cfg(feature = "gps")]
-            ctx.autopilot.position_kalman_filter.predict(delta_v, delta_t);
+            ctx.autopilot.position_kalman_filter.predict(
+                integrated_imu_message.delta_vel,
+                integrated_imu_message.delta_pos,
+                delta_t,
+            );
         }
 
         // for the autopilot to provide any functionality, it has to have at least one of: barometer, gps, optical_flow, or rangefinder.
@@ -130,11 +138,11 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
                     _ = failsafe_message;
                 }
                 if altitude_hold {
-                    let altitude = ctx.autopilot.altitude_kalman_filter.pos();
-                    let vertical_speed = ctx.autopilot.altitude_kalman_filter.vel();
+                    let altitude_m = ctx.autopilot.altitude_kalman_filter.pos_m();
+                    let vertical_speed_mps = ctx.autopilot.altitude_kalman_filter.vel_mps();
                     let throttle_stick = ctx.autopilot.altitude_controller.update(
-                        altitude,
-                        vertical_speed,
+                        altitude_m,
+                        vertical_speed_mps,
                         gyro_pid_message.orientation,
                         delta_t,
                     );

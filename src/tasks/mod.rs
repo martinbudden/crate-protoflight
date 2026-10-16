@@ -27,7 +27,7 @@ mod rx;
 
 pub use errors::TaskInitError;
 pub use init::init;
-pub use messages::{DeltaVMessage, GyroPidMessage, SetpointMessage};
+pub use messages::{GyroPidMessage, SetpointMessage};
 
 #[allow(unused)]
 #[cfg(feature = "debug")]
