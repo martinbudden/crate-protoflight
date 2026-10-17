@@ -251,7 +251,7 @@ async fn gyro_pid_loop_iteration(ctx: &mut GyroPidContext<BoardImu>, delta_t: f3
 
     #[cfg(any(feature = "blackbox", feature = "osd"))]
     {
-        // Send the GyroPidMessage on a denominator (e.g., 1/8 = 1kHz)
+        // Send the GyroPidMessage on a denominator (eg 1/8)
         // This will be picked up by the Blackbox and the OSD.
         ctx.gyro_pid_send_count += 1;
         if ctx.gyro_pid_send_count >= ctx.gyro_pid_denominator {
