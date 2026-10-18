@@ -4,7 +4,7 @@ Protoflight has three realtime tasks (`gyro_pid`, `motor_mixer`, and `rx`) and a
 depending on the configuration.
 
 Protoflight uses the [embassy](https://embassy.dev/book/) framework for task scheduling, task synchronization and inter-task
-messaging.
+messaging. (Embassy derives its name from **Emb**edded **async.)
 
 Embassy has cooperative scheduling within an executor, and pre-emptive scheduling between executors.
 
@@ -14,6 +14,9 @@ Protoflight uses two embassy executors, and three distinct "execution contexts."
 2. Executor B (Core 0 - The "Main" Core): The standard Embassy executor.
 3. Interrupt Context (Core 0): This is for the high-speed logic for the `motor_mixer` and `rx` tasks.
 
+Note: The `motor_mixer` task runs in sync with the `gyro_pid` task. On each loop of the task it updates the RPM notch filters parameters,
+but it only outputs to the motors at typically 1kHz.
+
 | Core   | Context              | Tasks                                            | Priority   |
 | ------ | -------------------- | ------------------------------------------------ | ---------- |
 | Core 1 | Dedicated Executor   | `gyro_pid` (8kHz)                                | Real-time  |
@@ -22,9 +25,6 @@ Protoflight uses two embassy executors, and three distinct "execution contexts."
 
 Each task has an data context defined by a `struct`, so the `gyro_pid` task has `struct GyroPidContext` and so on.
 Data contexts are private to each task.
-
-Note: The `motor_mixer` task runs in sync with the `gyro_pid` task. On each loop of the task it updates the RPM notch filters parameters,
-but it only outputs to the motors at typically 1kHz.
 
 Tasks communicate with each other through Embassy's intercommunication data areas (IDAs) `signal`, `channel`, `watch`, and `pubsub`.
 IDAs are guarded by synchronization primitives (eg mutexes and critical sections), so that only one task can access an IDA at a time.

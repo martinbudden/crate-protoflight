@@ -196,7 +196,7 @@ pub fn init(config: BlackboxConfig) -> Result<&'static mut BlackboxEncoderContex
 
 /// Blackbox encoder task.
 ///```text
-/// REALTIME PRIORITY                         BACKGROUND PRIORITY
+/// REALTIME PRIORITY                   BACKGROUND PRIORITY
 ///
 /// blackbox encoder task
 ///    │
@@ -215,16 +215,16 @@ pub fn init(config: BlackboxConfig) -> Result<&'static mut BlackboxEncoderContex
 /// └──────────────────────────────────────────┬──┘
 ///                                            │
 ///                                            ▼
-///                                        blackbox writer task
+///                                     blackbox writer task
 ///                                            │
 ///                                            ▼
-///                                        batch records
+///                                     batch records
 ///                                            │
 ///                                            ▼
-///                                        512-byte buffer
+///                                     512-byte buffer
 ///                                            │
 ///                                            ▼
-///                                         SD card
+///                                     SD card or Flash
 /// ```
 #[embassy_executor::task]
 pub async fn run(ctx: &'static mut BlackboxEncoderContext) {
