@@ -1727,9 +1727,9 @@ checksum = "20870f649af7073d53e38067b2a84312175d56ea15217e1b15bc83506ec50afb"
 
 [[package]]
 name = "libc"
-version = "0.2.190"
+version = "0.2.191"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce5d3ddc6d3fa000eb1536d85e147bfe31aacaba692ed6a876f95cb7c855be78"
+checksum = "65cd87c9a6d60536580b316ad985726104730a5151c99845f2490428ef91240a"
 
 [[package]]
 name = "libm"
@@ -2424,7 +2424,7 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 [[package]]
 name = "sensor-fusion"
 version = "0.1.11"
-source = "git+https://github.com/martinbudden/crate-sensor-fusion#0c07492535b2a616f98df8bc1b5a52fe3d061c89"
+source = "git+https://github.com/martinbudden/crate-sensor-fusion#d9c71825f2b048270c8b0368930e668e89e3fd68"
 dependencies = [
  "libm",
  "num-traits",
@@ -2986,7 +2986,7 @@ dependencies = [
 [[package]]
 name = "vqm"
 version = "0.1.17"
-source = "git+https://github.com/martinbudden/crate-vector-quaternion-matrix#13b0057053b64ad6329e7efee8efa48e71f42d90"
+source = "git+https://github.com/martinbudden/crate-vector-quaternion-matrix#4fcd5012d4b192a3c5fd1d692e4db19a636ece08"
 dependencies = [
  "derive_more",
  "libm",

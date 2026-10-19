@@ -205,8 +205,8 @@ async fn gyro_pid_loop_iteration(ctx: &mut GyroPidContext<BoardImu>, delta_t: f3
 
     // Check if there has been a yaw heading correction from the GPS, if so, apply it.
     #[cfg(feature = "gps")]
-    if let Some(gps_yaw_heading) = GPS_YAW_HEADING_SIGNAL.try_take() {
-        _ = ctx.sensor_fusion.correct_yaw(gps_yaw_heading.yaw_heading_radians, gps_yaw_heading.delta_t);
+    if let Some(message) = GPS_YAW_HEADING_SIGNAL.try_take() {
+        _ = ctx.sensor_fusion.correct_yaw(message.yaw_heading_radians, message.delta_t);
     }
 
     // Calculate the orientation quaternion using sensor fusion.
@@ -223,6 +223,11 @@ async fn gyro_pid_loop_iteration(ctx: &mut GyroPidContext<BoardImu>, delta_t: f3
             ctx.imu_integral_sender.send(imu_integral);
             // Reset acc integrator for next time round the loop.
             ctx.imu_integrator.reset();
+
+            // If the acc_bias has been updated, then set the new value before the next integration batch.
+            if let Some(message) = super::autopilot::KALMAN_ACC_BIAS_SIGNAL.try_take() {
+                ctx.imu_integrator.set_acc_bias(message.acc_bias_ned_mps2);
+            }
         }
     }
 

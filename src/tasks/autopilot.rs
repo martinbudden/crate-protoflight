@@ -1,7 +1,10 @@
 #![cfg(feature = "autopilot")]
 
+use vqm::Vector3f32;
+
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex,
+    signal::Signal,
     watch::{Receiver, Sender, Watch},
 };
 use static_cell::StaticCell;
@@ -37,6 +40,8 @@ use crate::tasks::optical_flow::{OpticalFlowSubscriber, optical_flow_subscriber}
 #[cfg(feature = "rangefinder")]
 use crate::tasks::rangefinder::{RangefinderSubscriber, rangefinder_subscriber};
 
+pub static KALMAN_ACC_BIAS_SIGNAL: Signal<CriticalSectionRawMutex, KalmanAccBiasNedMessage> = Signal::new();
+
 const AUTOPILOT_WATCH_COUNT: usize = 1;
 static AUTOPILOT_WATCH: Watch<CriticalSectionRawMutex, RxMessage, AUTOPILOT_WATCH_COUNT> = Watch::new();
 
@@ -49,6 +54,25 @@ pub type AutopilotReceiver = Receiver<'static, CriticalSectionRawMutex, RxMessag
 
 pub fn autopilot_receiver() -> Result<AutopilotReceiver, TaskInitError> {
     AUTOPILOT_WATCH.receiver().ok_or(TaskInitError::AutopilotWatchCountTooLow)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "std", derive(derive_more::Display))]
+//#[cfg_attr(feature = "std", display("Gps{{yaw_rate: {yaw_heading_radians}}}"))]
+pub struct KalmanAccBiasNedMessage {
+    pub acc_bias_ned_mps2: Vector3f32,
+}
+
+impl Default for KalmanAccBiasNedMessage {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl KalmanAccBiasNedMessage {
+    pub const fn new() -> Self {
+        Self { acc_bias_ned_mps2: Vector3f32 { x: 0.0, y: 0.0, z: 0.0 } }
+    }
 }
 
 /// Context for Autopilot task.
@@ -103,16 +127,16 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
         ticker.next().await;
 
         if let Some(integrated_imu_message) = ctx.integrated_imu_receiver.try_get() {
-            // use update the Kalman filter to prediction using the delta_v from the gyro/pid task.
+            // call the Kalman filter to predict using delta_vel and delta_pos from the gyro/pid task.
             ctx.autopilot.altitude_kalman_filter.predict(
-                integrated_imu_message.delta_vel.z,
-                integrated_imu_message.delta_pos.z,
+                integrated_imu_message.delta_vel_ned_mps.z,
+                integrated_imu_message.delta_pos_ned_m.z,
                 delta_t,
             );
             #[cfg(feature = "gps")]
             ctx.autopilot.position_kalman_filter.predict(
-                integrated_imu_message.delta_vel,
-                integrated_imu_message.delta_pos,
+                integrated_imu_message.delta_vel_ned_mps,
+                integrated_imu_message.delta_pos_ned_m,
                 delta_t,
             );
         }
@@ -192,8 +216,16 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
             if let GpsMessage::Position(gps_position) = event {
                 if altitude_hold {
                     _ = ctx.autopilot.altitude_kalman_filter.correct_altitude_using_gps(gps_position.z);
+                    // signal the acc bias so the gyro_pid task use it to update the Kalman filter.
+                    KALMAN_ACC_BIAS_SIGNAL.signal(KalmanAccBiasNedMessage {
+                        acc_bias_ned_mps2: ctx.autopilot.position_kalman_filter.acc_bias_mps2(),
+                    });
                 } else if position_hold {
                     _ = ctx.autopilot.position_kalman_filter.correct_position_using_gps(gps_position);
+                    // signal the acc bias so the gyro_pid task use it to update the Kalman filter.
+                    KALMAN_ACC_BIAS_SIGNAL.signal(KalmanAccBiasNedMessage {
+                        acc_bias_ned_mps2: ctx.autopilot.position_kalman_filter.acc_bias_mps2(),
+                    });
                 }
             } else {
                 // Message type of interest to other subscribers, but not to me so intentionally do nothing,

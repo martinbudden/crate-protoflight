@@ -1,7 +1,6 @@
 use core::f32::consts::{FRAC_1_SQRT_2, FRAC_PI_2};
 #[allow(unused)]
-use vqm::MathMethods;
-use vqm::Vector2f32;
+use vqm::{MathMethods, Vector2f32};
 
 #[allow(unused)]
 #[derive(Clone, Copy, Debug, PartialEq)]
