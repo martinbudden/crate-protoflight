@@ -8,7 +8,7 @@ use static_cell::StaticCell;
 
 use imu_sensors::{AccFullScale, AccUnits, GyroFullScale, GyroUnits, ImuDevice, ImuError};
 use motor_mixers::MotorMixerMessage;
-use sensor_fusion::{ImuIntegral, ImuIntegrator, MadgwickFilterf32, SensorFusion};
+use sensor_fusion::{ImuIntegrator, MadgwickFilterf32, SensorFusion};
 use simple_bitset::BitSet64;
 
 use crate::{
@@ -16,7 +16,7 @@ use crate::{
     config::{FastConfigSubscriber, fast_config_subscriber},
     flight::{FilterAccGyro, FlightController, ImuFilterBank, ImuFilterBankConfig, RcControls, VehicleControl},
     tasks::{
-        GyroPidMessage, SetpointMessage,
+        GyroPidMessage, ImuIntegralMessage, SetpointMessage,
         errors::TaskInitError,
         motor_mixer::MOTOR_MIXER_SIGNAL,
         rx::{RxMessageReceiver, rx_message_receiver},
@@ -45,15 +45,15 @@ pub fn gyro_pid_receiver() -> Result<GyroPidReceiver, TaskInitError> {
 }
 
 const IMU_INTEGRAL_WATCH_COUNT: usize = 1;
-static IMU_INTEGRAL_WATCH: Watch<CriticalSectionRawMutex, ImuIntegral, IMU_INTEGRAL_WATCH_COUNT> = Watch::new();
+static IMU_INTEGRAL_WATCH: Watch<CriticalSectionRawMutex, ImuIntegralMessage, IMU_INTEGRAL_WATCH_COUNT> = Watch::new();
 
-type ImuIntegralSender = Sender<'static, CriticalSectionRawMutex, ImuIntegral, IMU_INTEGRAL_WATCH_COUNT>;
+type ImuIntegralSender = Sender<'static, CriticalSectionRawMutex, ImuIntegralMessage, IMU_INTEGRAL_WATCH_COUNT>;
 #[allow(unused)]
 pub fn imu_integral_sender() -> ImuIntegralSender {
     IMU_INTEGRAL_WATCH.sender()
 }
 
-pub type ImuIntegralReceiver = Receiver<'static, CriticalSectionRawMutex, ImuIntegral, IMU_INTEGRAL_WATCH_COUNT>;
+pub type ImuIntegralReceiver = Receiver<'static, CriticalSectionRawMutex, ImuIntegralMessage, IMU_INTEGRAL_WATCH_COUNT>;
 #[allow(unused)]
 pub fn imu_integral_receiver() -> Result<ImuIntegralReceiver, TaskInitError> {
     IMU_INTEGRAL_WATCH.receiver().ok_or(TaskInitError::ImuIntegralWatchCountTooLow)
@@ -220,7 +220,7 @@ async fn gyro_pid_loop_iteration(ctx: &mut GyroPidContext<BoardImu>, delta_t: f3
             // Send the integrated_imu message, this will be picked up by the autopilot task.
             // It's used by the Kalman filter to estimate position and velocity.
             let imu_integral = ctx.imu_integrator.imu_integral();
-            ctx.imu_integral_sender.send(imu_integral);
+            ctx.imu_integral_sender.send(ImuIntegralMessage { imu_integral });
             // Reset acc integrator for next time round the loop.
             ctx.imu_integrator.reset();
 

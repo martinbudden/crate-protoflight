@@ -1,3 +1,4 @@
+use sensor_fusion::ImuIntegral;
 use simple_bitset::BitSet64;
 use vqm::{Quaternionf32, Vector3f32, Vector4f32};
 /*
@@ -10,6 +11,9 @@ MotorCommands (4x u16): 8 bytes
 Setpoints (3x f32): 12 bytes
 PID Errors (3x f32): 12 bytes
  */
+
+const _: () = assert!(core::mem::size_of::<GyroPidMessage>() == 112);
+const _: () = assert!(core::mem::size_of::<ImuIntegralMessage>() == 32);
 
 /// Blackbox telemetry data, updated at approximately 1kHz.
 /// Limit this to 128 bytes.
@@ -29,9 +33,6 @@ pub struct GyroPidMessage {
     pub pid_errors_d: [f32; Self::RP_AXIS_COUNT],
     pub time_us: u64,
 }
-
-//#[cfg(not(any(feature = "servos", feature = "eight_motors")))]
-const _: () = assert!(core::mem::size_of::<GyroPidMessage>() == 112);
 
 impl Default for GyroPidMessage {
     fn default() -> Self {
@@ -122,6 +123,27 @@ impl SetpointMessage {
     }
 }
 
+/// Message to send setpoint data between tasks.
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[repr(C)]
+pub struct ImuIntegralMessage {
+    pub imu_integral: ImuIntegral,
+}
+
+impl Default for ImuIntegralMessage {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[allow(unused)]
+impl ImuIntegralMessage {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { imu_integral: ImuIntegral::new() }
+    }
+}
+
 #[cfg(test)]
 mod test_traits {
     use super::*;
@@ -133,6 +155,7 @@ mod test_traits {
     fn normal_types() {
         is_full::<GyroPidMessage>();
         is_full::<SetpointMessage>();
+        is_full::<ImuIntegralMessage>();
     }
 }
 

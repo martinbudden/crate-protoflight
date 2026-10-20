@@ -213,9 +213,9 @@ checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "cc"
-version = "1.8.0"
+version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6651c9ed80effdc7db0ff72512157f901af5e3549e341e24b1dd4887d836d838"
+checksum = "877bf67ac8e52449eb2f9e98a344ea163beb70dd1f9eebe3cc5357dcfeaee4df"
 dependencies = [
  "find-msvc-tools",
  "shlex",
@@ -1364,9 +1364,9 @@ dependencies = [
 
 [[package]]
 name = "find-msvc-tools"
-version = "0.1.14"
+version = "0.1.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aedcfb3409746eddb02b9e19ebda1c3394f759a152e48ee875a0844d1b955484"
+checksum = "1c66915cc5391097de7a2b0b972e8505aa33c0df401fd3a6811dbdb32881ba48"
 
 [[package]]
 name = "fixed"
@@ -1619,7 +1619,7 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 [[package]]
 name = "imu-sensors"
 version = "0.1.5"
-source = "git+https://github.com/martinbudden/crate-imu-sensors#6670af3bd5e002293826d98f4c55eee985af0b03"
+source = "git+https://github.com/martinbudden/crate-imu-sensors#c56a97b5e85967c9542f9a4f12e1ad22382efc35"
 dependencies = [
  "cfg-if",
  "embassy-time",
@@ -1964,7 +1964,7 @@ checksum = "5be167a7af36ee22fe3115051bc51f6e6c7054c9348e28deb4f49bd6f705a315"
 [[package]]
 name = "pidsk-controller"
 version = "0.1.11"
-source = "git+https://github.com/martinbudden/crate-pid-controller#72612fff4285408bdf1cefeb294c2aea8f4739d7"
+source = "git+https://github.com/martinbudden/crate-pid-controller#93e571d37483f3a39dbe4c77efac0d8e690c03fe"
 dependencies = [
  "num-traits",
  "postcard",
@@ -2171,7 +2171,7 @@ dependencies = [
 [[package]]
 name = "radio-controllers"
 version = "0.1.8"
-source = "git+https://github.com/martinbudden/crate-radio-controllers#bfe6f8bedca93fb7fc6eccbc84148375ca848021"
+source = "git+https://github.com/martinbudden/crate-radio-controllers#0b2e1988d39507ca66c777ef051316c265864c94"
 dependencies = [
  "postcard",
  "rustc_version 0.4.1",
@@ -2384,9 +2384,9 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
 name = "sdio"
-version = "0.5.2"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02f8dcf75e0f6aeeda4819e3adea9a2c0705c2f109970abcc07edcfef372b68a"
+checksum = "7e483c3164ca053d1349be3183b0cf2bd966eb6c1a4623f6d8875cf507649971"
 dependencies = [
  "aligned",
  "block-device-driver",
@@ -2424,7 +2424,7 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 [[package]]
 name = "sensor-fusion"
 version = "0.1.11"
-source = "git+https://github.com/martinbudden/crate-sensor-fusion#d9c71825f2b048270c8b0368930e668e89e3fd68"
+source = "git+https://github.com/martinbudden/crate-sensor-fusion#578b24f21291bc40980cdb4df888bb88c2eeae24"
 dependencies = [
  "libm",
  "num-traits",

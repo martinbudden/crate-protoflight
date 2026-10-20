@@ -5,7 +5,7 @@ use pidsk_controller::{PControllerf32, PidControllerf32};
 /// [Target Position]
 ///       │
 ///       ▼
-///   ( + / - ) <─── [Current Position]
+///   ( + / - ) ◀─── [Current Position]
 ///       │
 ///       ▼
 /// ┌───────────┐
@@ -15,7 +15,7 @@ use pidsk_controller::{PControllerf32, PidControllerf32};
 /// [Target Ground Velocity]
 ///       │
 ///       ▼
-///   ( + / - ) <─── [Current Ground Velocity]
+///   ( + / - ) ◀─── [Current Ground Velocity]
 ///       │
 ///       ▼
 /// ┌───────────┐
@@ -23,11 +23,12 @@ use pidsk_controller::{PControllerf32, PidControllerf32};
 /// └─────┬─────┘
 ///       │
 ///       ▼
-/// [        ]
+///    [Output]
 ///
 /// Since velocity is the first derivative of position the outer loop should be a pure P-controller.
 /// 1. No Dterm is required because the inner velocity loop inherently acts as the "D" (derivative) term for the outer position loop.
-///    (Adding a D-term to the outer loop would mean calculating the derivative of velocity (acceleration), which would introduce severe sensor noise).
+///    (Adding a Dterm to the outer loop would mean calculating the derivative of velocity (acceleration),
+///    which would introduce severe sensor noise).
 /// 2. No Iterm is required because steady-state errors (like wind blowing the aircraft sideways) are handled by the inner speed loop's Iterm.
 ///
 #[derive(Clone, Copy, Debug, PartialEq)]

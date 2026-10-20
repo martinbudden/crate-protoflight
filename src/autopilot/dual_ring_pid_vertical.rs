@@ -21,7 +21,7 @@ use vqm::Quaternionf32;
 /// [Target Altitude]
 ///       │
 ///       ▼
-///   ( + / - ) <─── [Current Altitude]
+///   ( + / - ) ◀─── [Current Altitude]
 ///       │
 ///       ▼
 /// ┌───────────┐
@@ -31,7 +31,7 @@ use vqm::Quaternionf32;
 /// [Target Vertical Speed]
 ///       │
 ///       ▼
-///   ( + / - ) <─── [Current Vertical Speed]
+///   ( + / - ) ◀─── [Current Vertical Speed]
 ///       │
 ///       ▼
 /// ┌───────────┐
@@ -43,8 +43,9 @@ use vqm::Quaternionf32;
 ///
 /// Since vertical speed is the first derivative of altitude the outer loop can be a pure P-controller.
 ///
-/// 1. No Dterm is required because he inner speed loop inherently acts as the "D" (derivative) term for the outer position loop.
-///    (Adding a D-term to the outer loop would mean calculating the derivative of velocity (acceleration), which would introduce severe sensor noise).
+/// 1. No Dterm is required because the inner speed loop inherently acts as the "D" (derivative) term for the outer position loop.
+///    (Adding a Dterm to the outer loop would mean calculating the derivative of velocity (acceleration),
+///    which would introduce severe sensor noise).
 /// 2. No Iterm is required because steady-state errors (like gravity dragging the aircraft down) are handled by the inner speed loop's Iterm (adjusting throttle bias).
 ///    Or, phrased differently, the velocity (inner-loop) integrator provides the integral action required by the cascaded altitude system.
 /// ```

@@ -58,7 +58,6 @@ pub fn autopilot_receiver() -> Result<AutopilotReceiver, TaskInitError> {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "std", derive(derive_more::Display))]
-//#[cfg_attr(feature = "std", display("Gps{{yaw_rate: {yaw_heading_radians}}}"))]
 pub struct KalmanAccBiasNedMessage {
     pub acc_bias_ned_mps2: Vector3f32,
 }
@@ -79,7 +78,7 @@ impl KalmanAccBiasNedMessage {
 #[rustfmt::skip]
 pub struct AutopilotContext {
     pub gyro_pid_receiver: GyroPidReceiver,
-    pub integrated_imu_receiver: ImuIntegralReceiver,
+    pub imu_integral_receiver: ImuIntegralReceiver,
     pub rx_receiver: RxMessageReceiver,
     pub failsafe_subscriber: FailsafeSubscriber,
     pub autopilot_sender: AutopilotSender,
@@ -94,7 +93,7 @@ pub fn init() -> Result<&'static mut AutopilotContext, TaskInitError> {
     #[rustfmt::skip]
     let ctx = AutopilotContext {
         gyro_pid_receiver: gyro_pid_receiver()?,
-        integrated_imu_receiver: imu_integral_receiver()?,
+        imu_integral_receiver: imu_integral_receiver()?,
         rx_receiver: rx_message_receiver()?,
         failsafe_subscriber: failsafe_subscriber()?,
         autopilot_sender: autopilot_sender(),
@@ -126,19 +125,31 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
     loop {
         ticker.next().await;
 
-        if let Some(integrated_imu_message) = ctx.integrated_imu_receiver.try_get() {
+        if let Some(imu_integral_message) = ctx.imu_integral_receiver.try_get() {
+            let imu_integral = imu_integral_message.imu_integral;
             // call the Kalman filter to predict using delta_vel and delta_pos from the gyro/pid task.
-            ctx.autopilot.altitude_kalman_filter.predict(
-                integrated_imu_message.delta_vel_ned_mps.z,
-                integrated_imu_message.delta_pos_ned_m.z,
-                delta_t,
-            );
-            #[cfg(feature = "gps")]
-            ctx.autopilot.position_kalman_filter.predict(
-                integrated_imu_message.delta_vel_ned_mps,
-                integrated_imu_message.delta_pos_ned_m,
-                delta_t,
-            );
+            #[cfg(not(any(feature = "gps", feature = "optical_flow")))]
+            {
+                ctx.autopilot.kalman_filter.predict(
+                    imu_integral.delta_vel_ned_mps.z,
+                    imu_integral.delta_pos_ned_m.z,
+                    delta_t,
+                );
+                // signal the acc bias so the gyro_pid task use it to update the IMU integrator.
+                let acc_bias_ned_mps2 = Vector3f32 { x: 0.0, y: 0.0, z: ctx.autopilot.kalman_filter.acc_bias_mps2() };
+                KALMAN_ACC_BIAS_SIGNAL.signal(KalmanAccBiasNedMessage { acc_bias_ned_mps2 });
+            }
+            #[cfg(any(feature = "gps", feature = "optical_flow"))]
+            {
+                ctx.autopilot.kalman_filter.predict(
+                    imu_integral.delta_vel_ned_mps,
+                    imu_integral.delta_pos_ned_m,
+                    delta_t,
+                );
+                // signal the acc bias so the gyro_pid task use it to update the IMU integrator.
+                let acc_bias_ned_mps2 = ctx.autopilot.kalman_filter.acc_bias_mps2();
+                KALMAN_ACC_BIAS_SIGNAL.signal(KalmanAccBiasNedMessage { acc_bias_ned_mps2 });
+            }
         }
 
         // for the autopilot to provide any functionality, it has to have at least one of: barometer, gps, optical_flow, or rangefinder.
@@ -162,8 +173,13 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
                     _ = failsafe_message;
                 }
                 if altitude_hold {
-                    let altitude_m = ctx.autopilot.altitude_kalman_filter.pos_m();
-                    let vertical_speed_mps = ctx.autopilot.altitude_kalman_filter.vel_mps();
+                    #[cfg(not(any(feature = "gps", feature = "optical_flow")))]
+                    let (altitude_m, vertical_speed_mps) =
+                        (ctx.autopilot.kalman_filter.pos_m(), ctx.autopilot.kalman_filter.vel_mps());
+                    #[cfg(any(feature = "gps", feature = "optical_flow"))]
+                    let (altitude_m, vertical_speed_mps) =
+                        (ctx.autopilot.kalman_filter.pos_m().z, ctx.autopilot.kalman_filter.vel_mps().z);
+
                     let throttle_stick = ctx.autopilot.altitude_controller.update(
                         altitude_m,
                         vertical_speed_mps,
@@ -188,24 +204,17 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
         if let Some(wait_result) = ctx.barometer_subscriber.try_next_message()
             && let embassy_sync::pubsub::WaitResult::Message(barometer_message) = wait_result
         {
-            _ = ctx.autopilot.altitude_kalman_filter.correct_altitude_using_barometer(barometer_message.altitude_m);
-            #[cfg(feature = "gps")]
-            {
-                _ = ctx.autopilot.position_kalman_filter.correct_altitude_using_barometer(barometer_message.altitude_m);
-            }
+            _ = ctx.autopilot.kalman_filter.correct_altitude_using_barometer(barometer_message.altitude_m);
         }
 
         #[cfg(feature = "rangefinder")]
         if let Some(wait_result) = ctx.rangefinder_subscriber.try_next_message()
             && let embassy_sync::pubsub::WaitResult::Message(rangefinder_message) = wait_result
         {
+            // TODO: set rangefinder_base_altitude_m
             let rangefinder_base_altitude_m = 0.0_f32;
             let altitude = rangefinder_base_altitude_m + rangefinder_message.distance_m;
-            _ = ctx.autopilot.altitude_kalman_filter.correct_altitude_using_rangefinder(altitude);
-            #[cfg(feature = "gps")]
-            {
-                _ = ctx.autopilot.position_kalman_filter.correct_altitude_using_rangefinder(altitude);
-            }
+            _ = ctx.autopilot.kalman_filter.correct_altitude_using_rangefinder(altitude);
         }
 
         #[cfg(feature = "gps")]
@@ -215,17 +224,9 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
             // TODO: choose position or altitude kalman filter based on settings
             if let GpsMessage::Position(gps_position) = event {
                 if altitude_hold {
-                    _ = ctx.autopilot.altitude_kalman_filter.correct_altitude_using_gps(gps_position.z);
-                    // signal the acc bias so the gyro_pid task use it to update the Kalman filter.
-                    KALMAN_ACC_BIAS_SIGNAL.signal(KalmanAccBiasNedMessage {
-                        acc_bias_ned_mps2: ctx.autopilot.position_kalman_filter.acc_bias_mps2(),
-                    });
+                    _ = ctx.autopilot.kalman_filter.correct_altitude_using_gps(gps_position.z);
                 } else if position_hold {
-                    _ = ctx.autopilot.position_kalman_filter.correct_position_using_gps(gps_position);
-                    // signal the acc bias so the gyro_pid task use it to update the Kalman filter.
-                    KALMAN_ACC_BIAS_SIGNAL.signal(KalmanAccBiasNedMessage {
-                        acc_bias_ned_mps2: ctx.autopilot.position_kalman_filter.acc_bias_mps2(),
-                    });
+                    _ = ctx.autopilot.kalman_filter.correct_position_using_gps(gps_position);
                 }
             } else {
                 // Message type of interest to other subscribers, but not to me so intentionally do nothing,
