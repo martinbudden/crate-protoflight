@@ -5,6 +5,7 @@ use sensor_fusion::KalmanFilterXyzWithSensorsf32;
 #[cfg(not(any(feature = "gps", feature = "optical_flow")))]
 use sensor_fusion::KalmanFilterZWithSensorsf32;
 
+#[allow(unused)]
 use super::{
     dual_ring_pid_horizontal::HorizontalPositionDualRingPid, dual_ring_pid_vertical::MultirotorAltitudeDualRingPid,
 };

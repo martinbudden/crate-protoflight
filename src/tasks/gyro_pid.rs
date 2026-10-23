@@ -8,7 +8,9 @@ use static_cell::StaticCell;
 
 use imu_sensors::{AccFullScale, AccUnits, GyroFullScale, GyroUnits, ImuDevice, ImuError};
 use motor_mixers::MotorMixerMessage;
-use sensor_fusion::{ImuIntegrator, MadgwickFilterf32, SensorFusion};
+#[cfg(feature = "autopilot")]
+use sensor_fusion::ImuIntegrator;
+use sensor_fusion::{MadgwickFilterf32, SensorFusion};
 use simple_bitset::BitSet64;
 
 use crate::{
