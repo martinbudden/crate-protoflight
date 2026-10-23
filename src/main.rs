@@ -31,25 +31,33 @@ mod rangefinder_sensors;
 mod tasks;
 mod vtx;
 
+// Embedded targets use RTT probe linkages
+#[cfg(feature = "rtt-debug")]
+use defmt_rtt as _;
+
+#[cfg(feature = "rtt-debug")]
+use panic_probe as _;
+
 // =========================================================================
 // MANDATORY EMBEDDED PANIC HANDLER
 // =========================================================================
 
 //#[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb", feature = "stm32f405", feature = "stm32", feature = "esp32"))]
 //#[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb", feature = "esp32"))]
-#[cfg(not(feature = "host"))]
+/*#[cfg(not(feature = "host"))]
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {
         core::hint::spin_loop();
     }
-}
+}*/
 
 #[embassy_executor::main]
 async fn main(spawner: embassy_executor::Spawner) {
     if let Err(e) = crate::tasks::init(spawner).await {
         // {:?} uses the derived Debug name automatically
-        defmt::error!("Init error: {}", e.as_str());
+        _ = e;
+        //defmt::error!("Init error: {}", e.as_str());
         #[allow(clippy::panic)]
         {
             panic!("Initialization failed");

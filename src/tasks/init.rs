@@ -81,7 +81,8 @@ pub async fn init(spawner: Spawner) -> Result<(), TaskInitError> {
     let board = match Board::new(&board_init) {
         Ok(board) => board,
         Err(e) => {
-            defmt::error!("Board initialization error: {}", e as u32);
+            _ = e;
+            //defmt::error!("Board initialization error: {}", e as u32);
             return Err(TaskInitError::BoardInitError);
         }
     };
