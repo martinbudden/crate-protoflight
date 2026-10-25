@@ -7,6 +7,7 @@ use {
 };
 
 use crate::{
+    boards::{UsbReceiver, UsbSender},
     config::{ConfigPublisher, FastConfigPublisher, config_publisher, fast_config_publisher},
     multiwii_serial_protocol::{Msp, MspSensorData, MspStream},
     tasks::errors::TaskInitError,
@@ -54,6 +55,8 @@ pub struct MspContext {
     pub msp: Msp,
     pub read_buf: [u8; Self::READ_BUF_SIZE],
     pub write_buf: [u8; Self::WRITE_BUF_SIZE],
+    pub usb_sender: UsbSender,
+    pub usb_receiver: UsbReceiver,
 }
 
 impl MspContext {
@@ -73,7 +76,7 @@ impl MspContext {
     }
 }
 
-pub fn init() -> Result<&'static mut MspContext, TaskInitError> {
+pub fn init(usb_sender: UsbSender, usb_receiver: UsbReceiver) -> Result<&'static mut MspContext, TaskInitError> {
     #[rustfmt::skip]
     let ctx = MspContext {
         msp: Msp::new(),
@@ -89,11 +92,14 @@ pub fn init() -> Result<&'static mut MspContext, TaskInitError> {
 
         read_buf: [0u8; MspContext::READ_BUF_SIZE],
         write_buf: [0u8; MspContext::WRITE_BUF_SIZE],
+        usb_sender,
+        usb_receiver,
     };
     Ok(MSP_CTX.init(ctx))
 }
 
 /// MSP task Placeholder.
+#[allow(clippy::unused_async)]
 #[embassy_executor::task]
 pub async fn run(ctx: &'static mut MspContext) {
     // for now just wait on a ticker to drive the MSP loop. TODO: change this to wait on an MSP packet instead.
@@ -104,6 +110,35 @@ pub async fn run(ctx: &'static mut MspContext) {
     let mut msp_sensor_data = MspSensorData::new();
 
     log::info!("         MSP: task started");
+    /*#[cfg(feature="usb")]
+    loop {
+        ctx.usb_receiver.wait_connection().await;
+
+        while let Ok(n) = ctx.usb_receiver.read_packet(&mut ctx.read_buf).await {
+            // Feed bytes into the MSP parser state-machine
+            if let Some(msp_packet) = msp_parser.feed(&ctx.read_buf[..n]) {
+                // Process command and serialize response into tx_buf
+                //let response_len = process_msp_command(&msp_packet, &mut ctx.write_buf);
+
+                // Generally, we don't want to store the Reader itself because it tracks a "cursor" (current position).
+                // It's better to store the data and create a fresh reader whenever we start processing a new packet.
+                let mut src = StreamBufReader::new(&ctx.read_buf);
+
+                let cmd_msp = Msp::SET_FAILSAFE_CONFIG;
+                let _result =
+                    Msp::process_read_command(cmd_msp, &mut src, &ctx.config_publisher, &ctx.fast_config_publisher)
+                        .await;
+
+                // Send response immediately
+                if response_len > 0 {
+                    if ctx.usb_sender.write_packet(&ctx.write_buf[..response_len]).await.is_err() {
+                        // Connection dropped, fall back to wait_connection
+                        break;
+                    }
+                }
+            }
+        }
+    }*/
     loop {
         // Wait for msp packet
         // let msp_packet = msp.receive().await;

@@ -1,6 +1,10 @@
 #![cfg(feature = "host")]
 #![allow(unused)]
 
+pub type UsbSender = ();
+pub type UsbReceiver = ();
+pub type UsbDeviceDriver = ();
+
 pub type SdCardVolume = ();
 
 pub type I2cDeviceBlocking = crate::i2c_bus::MockI2c;

@@ -24,6 +24,7 @@ mod optical_flow;
 mod osd;
 mod rangefinder;
 mod rx;
+mod usb;
 
 pub use errors::TaskInitError;
 pub use init::init;

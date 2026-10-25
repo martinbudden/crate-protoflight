@@ -51,6 +51,10 @@ impl Board {
         //let peripherals = esp_hal::init(esp_hal::Config::default());
         let peripherals = esp_hal::init(Default::default());
 
+        let usb_sender = None;
+        let usb_receiver = None;
+        let usb_device = None;
+
         // SPI0
         let spi0_clk = peripherals.GPIO16;
         let spi0_mosi = peripherals.GPIO15;
@@ -136,6 +140,9 @@ impl Board {
             rx_spawner: init.spawner,
             background_spawner: init.spawner,
             imu,
+            usb_device,
+            usb_sender,
+            usb_receiver,
             motor_driver,
             radio_uart_rx,
             radio_uart_tx,

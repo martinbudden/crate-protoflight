@@ -13,6 +13,10 @@ impl Board {
     pub fn new(init: &BoardInit) -> Result<Self, BoardInitError> {
         let imu = ImuMock::new(MockImuBus::new(), init.axis_order);
 
+        let usb_sender = None;
+        let usb_receiver = None;
+        let usb_device = None;
+
         let motor_driver_pwm = MotorDriverPwm::new();
         let motor_driver = MotorDriver::Pwm(motor_driver_pwm);
 
@@ -34,13 +38,15 @@ impl Board {
             rx_spawner: init.spawner,
             background_spawner: init.spawner,
             imu,
+            usb_device,
+            usb_sender,
+            usb_receiver,
             motor_driver,
             radio_uart_rx,
             radio_uart_tx,
             gps_uart_rx,
             gps_uart_tx,
             sdcard_volume,
-
             barometer,
             magnetometer,
             rangefinder,

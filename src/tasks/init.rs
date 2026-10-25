@@ -128,9 +128,18 @@ pub async fn init(spawner: Spawner) -> Result<(), TaskInitError> {
     };
     let failsafe_ctx = if rx_ctx.is_some() { Some(tasks::failsafe::init(&config.failsafe)) } else { None };
 
+    #[cfg(feature = "usb")]
+    let usb_ctx = if let Some(usb_device) = board.usb_device { Some(tasks::usb::init(usb_device)) } else { None };
+
     // TODO: Initialize the MSP task context with the UART provided by the Board Support Package.
     #[cfg(feature = "msp")]
-    let msp_ctx = Some(tasks::msp::init());
+    let msp_ctx = if let Some(usb_sender) = board.usb_sender
+        && let Some(usb_receiver) = board.usb_receiver
+    {
+        Some(tasks::msp::init(usb_sender, usb_receiver))
+    } else {
+        None
+    };
 
     #[cfg(feature = "blackbox")]
     let blackbox_writer_ctx =
@@ -219,6 +228,13 @@ pub async fn init(spawner: Spawner) -> Result<(), TaskInitError> {
     // ======================================================
     // Spawn the background tasks.
     // ======================================================
+
+    #[cfg(feature = "usb")]
+    if let Some(usb_ctx) = usb_ctx {
+        if let Ok(usb_task) = tasks::usb::run(usb_ctx?) {
+            background_spawner.spawn(usb_task);
+        }
+    }
 
     // Always try and spawn the Autopilot, since if we have any sensors at all enabled it can probably
     // perform some sort of assistance.

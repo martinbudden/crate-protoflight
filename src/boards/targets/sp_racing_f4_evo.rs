@@ -91,6 +91,10 @@ impl Board {
         // Take ownership of the hardware peripherals block
         let peripherals = embassy_stm32::init(Stm32Config::default());
 
+        let usb_sender = None;
+        let usb_receiver = None;
+        let usb_device = None;
+
         // SPI1 - IMU
         let spi1_sck = peripherals.PA5;
         let spi1_sdi = peripherals.PA6;
@@ -333,6 +337,9 @@ impl Board {
             rx_spawner: init.spawner,
             background_spawner: init.spawner,
             imu,
+            usb_device,
+            usb_sender,
+            usb_receiver,
             motor_driver,
             radio_uart_rx,
             radio_uart_tx,
@@ -346,6 +353,7 @@ impl Board {
         })
     }
 }
+
 // Binds the global hardware DMA vectors.
 // This creates the type validation struct "Irqs" required by Spi::new.
 bind_interrupts!(struct Irqs {

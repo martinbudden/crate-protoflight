@@ -21,6 +21,11 @@ use embassy_time::Delay;
 // use embedded_hal::delay::DelayNs;
 use embedded_hal_bus::spi::ExclusiveDevice;
 
+use embassy_usb::{
+    Builder as UsbBuilder, Config as UsbConfig,
+    class::cdc_acm::{CdcAcmClass as UsbCdcAcmClass, State as UsbCdcAcmState},
+};
+
 // The `SdMmcSpi` is used for block level access to the card.
 // And the `VolumeManager` gives access to the FAT filesystem functions.
 // use embedded_sdmmc::{SdCard, VolumeIdx, VolumeManager};
@@ -38,6 +43,8 @@ use embassy_rp::{
     spi::{Async as SpiAsync, Config as SpiConfig, Spi},
     uart,
     uart::{Async as UartAsync, Config as UartConfig, Uart, UartRx, UartTx},
+    usb,
+    usb::Driver as UsbDriver,
 };
 
 #[cfg(feature = "multicore")]
@@ -62,10 +69,44 @@ impl Board {
 
         static _RADIO_UART_TX: StaticCell<UartTx<'static, UartAsync>> = StaticCell::new();
         static _RADIO_UART_RX: StaticCell<UartRx<'static, UartAsync>> = StaticCell::new();
+        // USB
+        static USB_CONFIG_DESCRIPTOR_BUF: static_cell::StaticCell<[u8; 256]> = static_cell::StaticCell::new();
+        static USB_BOS_DESCRIPTOR_BUF: static_cell::StaticCell<[u8; 256]> = static_cell::StaticCell::new();
+        static USB_CONTROL_BUF: static_cell::StaticCell<[u8; 64]> = static_cell::StaticCell::new();
+        static USB_CDC_ACM_STATE: static_cell::StaticCell<UsbCdcAcmState> = static_cell::StaticCell::new();
 
         // Take ownership of the hardware peripherals block
         #[allow(clippy::default_trait_access)]
         let peripherals = embassy_rp::init(Default::default());
+
+        let usb_driver = UsbDriver::new(peripherals.USB, Irqs);
+        // Note: VID/PID combinations like 0x16c0/0x05dc are common for testing
+        let mut usb_config = UsbConfig::new(0x16c0, 0x05dc);
+        usb_config.manufacturer = Some("Raspberry Pi");
+        usb_config.product = Some("Pico USB Serial");
+        usb_config.serial_number = Some("12345678"); // Windows can have problems if no serial number is set.
+        usb_config.max_power = 100; // mA
+        // Required for CDC ACM class to function properly
+        usb_config.device_class = 0xEF;
+        usb_config.device_sub_class = 0x02;
+        usb_config.device_protocol = 0x01;
+
+        let usb_cdc_acm_state = USB_CDC_ACM_STATE.init(UsbCdcAcmState::new());
+        let mut usb_builder = UsbBuilder::new(
+            usb_driver,
+            usb_config,
+            USB_CONFIG_DESCRIPTOR_BUF.init([0; 256]),
+            USB_BOS_DESCRIPTOR_BUF.init([0; 256]),
+            &mut [], // No msos descriptors
+            USB_CONTROL_BUF.init([0; 64]),
+        );
+        // Add the CDC ACM Class (Virtual COM Port) to the builder
+        let usb_cdc_acm_class = UsbCdcAcmClass::new(&mut usb_builder, usb_cdc_acm_state, 64);
+        let (sender, receiver) = usb_cdc_acm_class.split();
+        let usb_sender = Some(sender);
+        let usb_receiver = Some(receiver);
+        let usb: embassy_usb::UsbDevice<'_, UsbDriver<'_, peripherals::USB>> = usb_builder.build();
+        let usb_device = Some(usb);
 
         // SPI0, IMU
         let spi0_clk = peripherals.PIN_18;
@@ -253,6 +294,9 @@ impl Board {
             rx_spawner: init.spawner,
             background_spawner: init.spawner,
             imu,
+            usb_device,
+            usb_sender,
+            usb_receiver,
             motor_driver,
             radio_uart_rx,
             radio_uart_tx,
@@ -287,4 +331,5 @@ bind_interrupts!(pub struct Irqs {
     UART0_IRQ => uart::InterruptHandler<peripherals::UART0>;
     UART1_IRQ => uart::InterruptHandler<peripherals::UART1>;
     I2C0_IRQ => i2c::InterruptHandler<peripherals::I2C0>;
+    USBCTRL_IRQ => usb::InterruptHandler<peripherals::USB>;
 });

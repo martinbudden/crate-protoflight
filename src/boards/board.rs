@@ -1,4 +1,4 @@
-use super::{GpsUartRx, GpsUartTx, RadioUartRx, RadioUartTx, SdCardVolume};
+use super::{GpsUartRx, GpsUartTx, RadioUartRx, RadioUartTx, SdCardVolume, UsbDeviceDriver, UsbReceiver, UsbSender};
 
 use crate::barometer_sensors::{Barometer, BarometerType};
 use crate::magnetometer_sensors::{Magnetometer, MagnetometerType};
@@ -45,6 +45,10 @@ pub struct BoardHardware<I: ImuDevice> {
     pub rx_spawner: embassy_executor::Spawner,
 
     pub background_spawner: embassy_executor::Spawner,
+
+    pub usb_device: Option<UsbDeviceDriver>,
+    pub usb_sender: Option<UsbSender>,
+    pub usb_receiver: Option<UsbReceiver>,
 
     pub motor_driver: MotorDriver,
 
