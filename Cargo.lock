@@ -1841,9 +1841,9 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 
 [[package]]
 name = "imu-sensors"
-version = "0.1.6"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d31730f67590d9abe94e90a79f687c8625a1ad4560e51026d7a6b2b1169af60"
+checksum = "40acac18ff6b305d9b1d1ec0841e7628d4b6498f83f3f3fe8a5eae28150c693b"
 dependencies = [
  "cfg-if",
  "embassy-time",
@@ -2131,9 +2131,9 @@ dependencies = [
 
 [[package]]
 name = "motor-mixers"
-version = "0.1.8"
+version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a49eebf03d7693455fb3d87d1a5e040556e6383da9f7afac8a24f52ef8bf4d08"
+checksum = "dc777d5271b9f8aa23c1991eb742f8318f2e2863817537c06d1c6a410e9323a9"
 dependencies = [
  "dshot-codec",
  "embassy-executor",
@@ -2234,9 +2234,9 @@ dependencies = [
 
 [[package]]
 name = "notify-types"
-version = "2.1.0"
+version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42b8cfee0e339a0337359f3c88165702ac6e600dc01c0cc9579a92d62b08477a"
+checksum = "0a437a9308232ce794b1e7fdf540d38ea37efc3c73492640c13b4c8568b8f108"
 dependencies = [
  "bitflags 2.13.2",
 ]
@@ -2439,15 +2439,16 @@ checksum = "5be167a7af36ee22fe3115051bc51f6e6c7054c9348e28deb4f49bd6f705a315"
 
 [[package]]
 name = "pidsk-controller"
-version = "0.1.12"
+version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0fb097377362f2ade822532ea8a8ae090616bfff83f71a5775c960ab65b111b"
+checksum = "894cbd7472950f9ee01908ac8f5cab179f03f287f54066341131601b8f728747"
 dependencies = [
  "num-traits",
  "postcard",
  "rustc_version 0.4.1",
  "sequential-storage",
  "serde",
+ "vqm",
 ]
 
 [[package]]
@@ -2889,9 +2890,9 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "sensor-fusion"
-version = "0.1.12"
+version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3876bdc6862183b713d0aa3fd39e1433b8e251d2b3a878c2146da4da42f9572f"
+checksum = "01a7f75c953d88555fa685bb0164d53c548590f9b72fefc2ae1a713e22db152f"
 dependencies = [
  "libm",
  "num-traits",
@@ -3017,9 +3018,9 @@ checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 
 [[package]]
 name = "signal-filters"
-version = "0.1.15"
+version = "0.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c40ab66ecda98d309442d39094f9925a7476dac3710f3a579fdbd0341f89625a"
+checksum = "2edfc8f04c9f7c7a9f9911afaa69c15f4825791d35d63d17a898eddd89fbb3b4"
 dependencies = [
  "libm",
  "num-traits",
@@ -3652,9 +3653,9 @@ dependencies = [
 
 [[package]]
 name = "vqm"
-version = "0.1.18"
+version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "065d7d056a3627aeb8ab3dc7abdbd8bc590a1bd13ef20b1792217b131683147b"
+checksum = "445c5fa387004577c8c59cca300d79f134c49808ac167de02fd977e01e1bff4f"
 dependencies = [
  "derive_more",
  "libm",

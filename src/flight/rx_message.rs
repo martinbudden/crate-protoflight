@@ -2,6 +2,7 @@ use radio_controllers::RxChannels;
 #[allow(unused)]
 use radio_controllers::{Rates, RcModes, RcSticks, RxFrame, RxLinkStatus};
 use simple_bitset::BitSet64;
+use vqm::Quaternionf32;
 
 /// Message for communicating a radio control command between tasks.<br><br>
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -14,11 +15,12 @@ pub struct RcControls {
     pub yaw_stick_dps: f32,
     pub roll_stick_degrees: f32,
     pub pitch_stick_degrees: f32,
+    pub target_attitude: Quaternionf32,
     pub controls_pwm: [u16; 4],
     pub link_status: RxLinkStatus,
     pub rssi: u8,
 }
-const _: () = assert!(core::mem::size_of::<RcControls>() == 40);
+const _: () = assert!(core::mem::size_of::<RcControls>() == 64);
 
 impl Default for RcControls {
     fn default() -> Self {
@@ -36,6 +38,7 @@ impl RcControls {
             yaw_stick_dps: 0.0,
             roll_stick_degrees: 0.0,
             pitch_stick_degrees: 0.0,
+            target_attitude: Quaternionf32 { w: 1.0, x: 0.0, y: 0.0, z: 0.0 },
             controls_pwm: [0u16; 4],
             link_status: RxLinkStatus::Ok,
             rssi: 0,
@@ -50,7 +53,7 @@ pub struct RxMessage {
     pub rc_modes: BitSet64,
     pub rc_controls: RcControls,
 }
-const _: () = assert!(core::mem::size_of::<RxMessage>() == 48);
+const _: () = assert!(core::mem::size_of::<RxMessage>() == 80);
 
 impl Default for RxMessage {
     fn default() -> Self {
@@ -86,6 +89,9 @@ impl RxMessage {
         let roll_stick_degrees = sticks.roll * rates.max_roll_angle_degrees;
         let pitch_stick_degrees = sticks.pitch * rates.max_pitch_angle_degrees;
 
+        let target_attitude =
+            Quaternionf32::from_roll_pitch_degrees(roll_stick_degrees, pitch_stick_degrees).normalize();
+
         // Get the rc_modes (eg altitude hold, gps home) (used by the autopilot),
         // and the stabilization mode (eg STABILIZATION_MODE_RATE) (used by the flight controller).
 
@@ -102,6 +108,7 @@ impl RxMessage {
                 yaw_stick_dps,
                 roll_stick_degrees,
                 pitch_stick_degrees,
+                target_attitude,
                 controls_pwm,
 
                 link_status,
@@ -124,6 +131,6 @@ mod tests {
     }
     #[test]
     fn sizeof() {
-        assert_eq!(48, core::mem::size_of::<RxMessage>());
+        assert_eq!(80, core::mem::size_of::<RxMessage>());
     }
 }
