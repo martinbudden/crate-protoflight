@@ -1,3 +1,6 @@
+#![allow(unused)]
+use crate::multiwii_serial_protocol::msp_parser::MspPacket;
+
 use super::crc_dvb_s2::CrcDvbS2;
 
 #[derive(Clone, Copy, Default, Debug, PartialEq)]
@@ -16,24 +19,6 @@ pub enum MspPacketType {
 }
 
 /*
-#[derive(Clone, Copy, Default, Debug, PartialEq)]
-pub enum MspStreamState {
-    #[default]
-    Idle,
-    MspPacket,
-    CliActive,
-    CliCmd,
-}
-
-#[derive(Clone, Copy, Default, Debug, PartialEq)]
-pub enum MspPendingSystemRequest {
-    #[default]
-    None,
-    BootloaderRom,
-    Cli,
-    BootloaderFlash,
-}
-
 #[derive(Clone, Copy, Default, Debug, PartialEq)]
 pub struct MspStreamHeaderV2 {
     pub flags: u8,
@@ -61,7 +46,6 @@ impl MspStreamPacketWithHeader {
 pub struct MspStream {
     //pending_request: MspPendingSystemRequest,
     //stream_state: MspStreamState,
-    packet_state: MspPacketState,
     packet_type: MspPacketType,
     msp_version: MspVersion,
     pub cmd_msp: u16,
@@ -74,13 +58,13 @@ pub struct MspStream {
 
 #[allow(unused)]
 impl MspStream {
-    const JUMBO_FRAME_SIZE_LIMIT: usize = 255;
+    //const JUMBO_FRAME_SIZE_LIMIT: usize = 255;
 
-    const MSP_EVALUATE_NON_MSP_DATA: u8 = 0;
-    const MSP_SKIP_NON_MSP_DATA: u8 = 1;
-    const MSP_HEADER_LENGTH: usize = 3;
+    //const MSP_EVALUATE_NON_MSP_DATA: u8 = 0;
+    //const MSP_SKIP_NON_MSP_DATA: u8 = 1;
+    //const MSP_HEADER_LENGTH: usize = 3;
 
-    const MSP_MAX_HEADER_SIZE: usize = 9;
+    //const MSP_MAX_HEADER_SIZE: usize = 9;
 }
 
 impl MspStream {
@@ -88,7 +72,6 @@ impl MspStream {
         Self {
             //pending_request: MspPendingSystemRequest::None,
             //stream_state: MspStreamState::Idle,
-            packet_state: MspPacketState::Idle,
             packet_type: MspPacketType::Command,
             msp_version: MspVersion::V1,
             cmd_msp: 0,
@@ -107,237 +90,54 @@ impl Default for MspStream {
     }
 }
 
-#[derive(Clone, Copy, Default, Debug, PartialEq)]
-pub enum MspPacketState {
-    #[default]
-    Idle,
-    HeaderM,
-    HeaderX,
-    HeaderV1 {
-        offset: usize,
-        checksum: u8,
-    },
-    PayloadV1 {
-        len: usize,
-        cmd: u8,
-        offset: usize,
-        checksum: u8,
-    },
-    HeaderV2 {
-        version: MspVersion,
-        offset: usize,
-        checksum1: u8, // For V2-over-V1
-        checksum2: u8, // CRC8
-    },
-    PayloadV2 {
-        version: MspVersion,
-        len: usize,
-        cmd: u16,
-        flags: u8,
-        offset: usize,
-        checksum1: u8,
-        checksum2: u8,
-    },
-    ChecksumV1 {
-        checksum: u8,
-    },
-    ChecksumV2 {
-        version: MspVersion,
-        checksum1: u8,
-        checksum2: u8,
-    },
-    CommandReceived,
-}
-
 impl MspStream {
-    #[allow(clippy::too_many_lines)]
     #[allow(unused)]
-    pub fn process_received_packet_data(&mut self, buf: &mut [u8], c: u8) {
-        // We take the state out to mutate it, then put it back.
-        // This is a common Rust idiom for state machines.
-        self.packet_state = match core::mem::take(&mut self.packet_state) {
-            MspPacketState::Idle | MspPacketState::CommandReceived => match c {
-                b'M' => MspPacketState::HeaderM,
-                b'X' => MspPacketState::HeaderX,
-                _ => MspPacketState::Idle,
-            },
-            MspPacketState::HeaderM => match c {
-                b'<' | b'>' => {
-                    self.packet_type = if c == b'<' { MspPacketType::Command } else { MspPacketType::Reply };
-                    MspPacketState::HeaderV1 { offset: 0, checksum: 0 }
-                }
-                _ => MspPacketState::Idle,
-            },
-            MspPacketState::HeaderX => match c {
-                b'<' | b'>' => {
-                    self.packet_type = if c == b'<' { MspPacketType::Command } else { MspPacketType::Reply };
-                    MspPacketState::HeaderV2 { version: MspVersion::V2, offset: 0, checksum1: 0, checksum2: 0 }
-                }
-                _ => MspPacketState::Idle,
-            },
-            MspPacketState::HeaderV1 { mut offset, mut checksum } => {
-                buf[offset] = c;
-                checksum ^= c;
-                offset += 1;
-                if offset == 2 {
-                    // Size and Cmd byte
-                    let size = buf[0] as usize;
-                    let cmd = buf[1];
-                    if size > buf.len() {
-                        MspPacketState::Idle
-                    } else if cmd == 255 {
-                        // V2_FRAME_ID
-                        MspPacketState::HeaderV2 {
-                            version: MspVersion::V2overV1,
-                            offset: 2,
-                            checksum1: checksum,
-                            checksum2: 0,
-                        }
-                    } else if size > 0 {
-                        MspPacketState::PayloadV1 { len: size, cmd, offset: 0, checksum }
-                    } else {
-                        MspPacketState::ChecksumV1 { checksum }
-                    }
-                } else {
-                    MspPacketState::HeaderV1 { offset, checksum }
-                }
-            }
-            MspPacketState::PayloadV1 { len, cmd, mut offset, mut checksum } => {
-                buf[offset] = c;
-                checksum ^= c;
-                offset += 1;
-                if offset == len {
-                    self.cmd_msp = u16::from(cmd);
-                    MspPacketState::ChecksumV1 { checksum }
-                } else {
-                    MspPacketState::PayloadV1 { len, cmd, offset, checksum }
-                }
-            }
-            MspPacketState::HeaderV2 { version, mut offset, mut checksum1, mut checksum2 } => {
-                buf[offset] = c;
-                if version == MspVersion::V2overV1 {
-                    checksum1 ^= c;
-                }
-                checksum2 = CrcDvbS2::update(checksum2, c);
-                offset += 1;
-
-                // Header size is 5 bytes.
-                // V2Native: offset 0..5 (ends at 5)
-                // V2overV1: offset 2..7 (ends at 7)
-                //let header_len = 5;
-                let start_index = if version == MspVersion::V2overV1 { 2 } else { 0 };
-                let header_end = start_index + 5;
-
-                if offset == header_end {
-                    // Use the start_index to find the V2 fields
-                    if start_index + 4 > buf.len() {
-                        MspPacketState::Idle
-                    } else {
-                        let flags = buf[start_index];
-                        let cmd = u16::from_le_bytes([buf[start_index + 1], buf[start_index + 2]]);
-                        let size = u16::from_le_bytes([buf[start_index + 3], buf[start_index + 4]]) as usize;
-                        if size > buf.len() {
-                            MspPacketState::Idle
-                        } else {
-                            MspPacketState::PayloadV2 {
-                                version,
-                                len: size,
-                                cmd,
-                                flags,
-                                offset: 0, // Reset to 0 to start filling payload
-                                checksum1,
-                                checksum2,
-                            }
-                        }
-                    }
-                } else {
-                    MspPacketState::HeaderV2 { version, offset, checksum1, checksum2 }
-                }
-            }
-            MspPacketState::PayloadV2 { version, len, cmd, flags, mut offset, mut checksum1, mut checksum2 } => {
-                buf[offset] = c;
-                if version == MspVersion::V2overV1 {
-                    checksum1 ^= c;
-                }
-                checksum2 = CrcDvbS2::update(checksum2, c);
-                offset += 1;
-                if offset == len {
-                    self.cmd_msp = cmd;
-                    self.cmd_flags = flags;
-                    MspPacketState::ChecksumV2 { version, checksum1, checksum2 }
-                } else {
-                    MspPacketState::PayloadV2 { version, len, cmd, flags, offset, checksum1, checksum2 }
-                }
-            }
-            MspPacketState::ChecksumV1 { checksum } => {
-                self.checksum1 = checksum;
-                if checksum == c { MspPacketState::CommandReceived } else { MspPacketState::Idle }
-            }
-            MspPacketState::ChecksumV2 { version, mut checksum1, checksum2 } => {
-                self.checksum2 = checksum2;
-                if version == MspVersion::V2overV1 {
-                    // V2 over V1 has an extra CRC step
-                    if checksum2 == c {
-                        // XOR the CRC byte into the V1 sum before moving to the final check
-                        checksum1 ^= c;
-                        MspPacketState::ChecksumV1 { checksum: checksum1 }
-                    } else {
-                        MspPacketState::Idle
-                    }
-                } else {
-                    if checksum2 == c { MspPacketState::CommandReceived } else { MspPacketState::Idle }
-                }
-            }
-        }
-    }
-
-    #[allow(unused)]
-    pub fn serialize_packet(
-        version: MspVersion,
+    pub fn msp_encode(
+        msp_version: MspVersion,
         packet_type: MspPacketType,
         cmd: u16,
         flags: u8,
         payload: &[u8],
-        dst: &mut [u8], // caller provided buffer
+        output_buf: &mut [u8], // caller provided buffer
     ) -> Result<usize, MspError> {
         let mut offset = 0;
 
         // Helper to push bytes safely into fixed slice
-        let push = |b: u8, dst: &mut [u8], offset: &mut usize| -> Result<(), MspError> {
-            if *offset >= dst.len() {
+        let push = |b: u8, output_buf: &mut [u8], offset: &mut usize| -> Result<(), MspError> {
+            if *offset >= output_buf.len() {
                 return Err(MspError::BufferTooSmall);
             }
-            dst[*offset] = b;
+            output_buf[*offset] = b;
             *offset += 1;
             Ok(())
         };
 
-        match version {
+        match msp_version {
             MspVersion::V1 => {
-                push(b'$', dst, &mut offset)?;
-                push(b'M', dst, &mut offset)?;
-                push(if packet_type == MspPacketType::Command { b'<' } else { b'>' }, dst, &mut offset)?;
+                push(b'$', output_buf, &mut offset)?;
+                push(b'M', output_buf, &mut offset)?;
+                push(if packet_type == MspPacketType::Command { b'<' } else { b'>' }, output_buf, &mut offset)?;
 
                 #[allow(clippy::cast_possible_truncation)]
                 let size = payload.len() as u8;
-                push(size, dst, &mut offset)?;
+                push(size, output_buf, &mut offset)?;
 
                 #[allow(clippy::cast_possible_truncation)]
                 let cmd_u8 = cmd as u8;
-                push(cmd_u8, dst, &mut offset)?;
+                push(cmd_u8, output_buf, &mut offset)?;
 
                 let mut checksum = size ^ cmd_u8;
                 for &byte in payload {
-                    push(byte, dst, &mut offset)?;
+                    push(byte, output_buf, &mut offset)?;
                     checksum ^= byte;
                 }
-                push(checksum, dst, &mut offset)?;
+                push(checksum, output_buf, &mut offset)?;
             }
 
             MspVersion::V2 => {
-                push(b'$', dst, &mut offset)?;
-                push(b'X', dst, &mut offset)?;
-                push(if packet_type == MspPacketType::Command { b'<' } else { b'>' }, dst, &mut offset)?;
+                push(b'$', output_buf, &mut offset)?;
+                push(b'X', output_buf, &mut offset)?;
+                push(if packet_type == MspPacketType::Command { b'<' } else { b'>' }, output_buf, &mut offset)?;
 
                 let mut crc = 0u8;
                 #[allow(clippy::cast_possible_truncation)]
@@ -350,26 +150,26 @@ impl MspStream {
                     Ok(())
                 };
 
-                push_v2(flags, dst, &mut offset, &mut crc)?;
+                push_v2(flags, output_buf, &mut offset, &mut crc)?;
 
                 let cmd_bytes = cmd.to_be_bytes();
-                push_v2(cmd_bytes[0], dst, &mut offset, &mut crc)?;
-                push_v2(cmd_bytes[1], dst, &mut offset, &mut crc)?;
+                push_v2(cmd_bytes[0], output_buf, &mut offset, &mut crc)?;
+                push_v2(cmd_bytes[1], output_buf, &mut offset, &mut crc)?;
 
                 let size_bytes = size.to_be_bytes();
-                push_v2(size_bytes[0], dst, &mut offset, &mut crc)?;
-                push_v2(size_bytes[1], dst, &mut offset, &mut crc)?;
+                push_v2(size_bytes[0], output_buf, &mut offset, &mut crc)?;
+                push_v2(size_bytes[1], output_buf, &mut offset, &mut crc)?;
 
                 for &byte in payload {
-                    push_v2(byte, dst, &mut offset, &mut crc)?;
+                    push_v2(byte, output_buf, &mut offset, &mut crc)?;
                 }
-                push(crc, dst, &mut offset)?;
+                push(crc, output_buf, &mut offset)?;
             }
 
             MspVersion::V2overV1 => {
-                push(b'$', dst, &mut offset)?;
-                push(b'M', dst, &mut offset)?;
-                push(if packet_type == MspPacketType::Command { b'<' } else { b'>' }, dst, &mut offset)?;
+                push(b'$', output_buf, &mut offset)?;
+                push(b'M', output_buf, &mut offset)?;
+                push(if packet_type == MspPacketType::Command { b'<' } else { b'>' }, output_buf, &mut offset)?;
 
                 let v2_payload_len = 5 + payload.len() + 1; // Hdr(5) + Data + CRC(1)
                 #[allow(clippy::cast_possible_truncation)]
@@ -377,8 +177,8 @@ impl MspStream {
                 let v1_cmd = 255u8;
                 let mut xor = v1_size ^ v1_cmd;
 
-                push(v1_size, dst, &mut offset)?;
-                push(v1_cmd, dst, &mut offset)?;
+                push(v1_size, output_buf, &mut offset)?;
+                push(v1_cmd, output_buf, &mut offset)?;
 
                 let mut crc = 0u8;
                 #[allow(clippy::cast_possible_truncation)]
@@ -392,19 +192,19 @@ impl MspStream {
                         Ok(())
                     };
 
-                push_v2_over_v1(flags, dst, &mut offset, &mut crc, &mut xor)?;
-                push_v2_over_v1((cmd & 0xFF) as u8, dst, &mut offset, &mut crc, &mut xor)?;
-                push_v2_over_v1((cmd >> 8) as u8, dst, &mut offset, &mut crc, &mut xor)?;
-                push_v2_over_v1((size_v2 & 0xFF) as u8, dst, &mut offset, &mut crc, &mut xor)?;
-                push_v2_over_v1((size_v2 >> 8) as u8, dst, &mut offset, &mut crc, &mut xor)?;
+                push_v2_over_v1(flags, output_buf, &mut offset, &mut crc, &mut xor)?;
+                push_v2_over_v1((cmd & 0xFF) as u8, output_buf, &mut offset, &mut crc, &mut xor)?;
+                push_v2_over_v1((cmd >> 8) as u8, output_buf, &mut offset, &mut crc, &mut xor)?;
+                push_v2_over_v1((size_v2 & 0xFF) as u8, output_buf, &mut offset, &mut crc, &mut xor)?;
+                push_v2_over_v1((size_v2 >> 8) as u8, output_buf, &mut offset, &mut crc, &mut xor)?;
 
                 for &byte in payload {
-                    push_v2_over_v1(byte, dst, &mut offset, &mut crc, &mut xor)?;
+                    push_v2_over_v1(byte, output_buf, &mut offset, &mut crc, &mut xor)?;
                 }
 
-                push(crc, dst, &mut offset)?;
+                push(crc, output_buf, &mut offset)?;
                 xor ^= crc;
-                push(xor, dst, &mut offset)?;
+                push(xor, output_buf, &mut offset)?;
             }
         }
 
@@ -430,144 +230,68 @@ mod test_traits {
         is_full::<MspVersion>();
         is_full::<MspPacketType>();
         is_full::<MspStream>();
-        is_full::<MspPacketState>();
         is_full::<MspError>();
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    const MSP_IDENT: u16 = 100;
+    const RAW_IMU: u16 = 102;
 
-    const INBUF_SIZE: usize = 192;
-    #[test]
-    fn test_msp_v1_parsing() {
-        let mut buf = [0u8; INBUF_SIZE];
-        let mut stream = MspStream::new();
-        let packet: [u8; 7] = [
-            b'M', b'<', 2,   // Size
-            100, // Cmd
-            1, 2,   // Payload
-            101, // XOR
-        ];
-
-        for &byte in &packet {
-            stream.process_received_packet_data(&mut buf, byte);
-        }
-
-        assert!(matches!(stream.packet_state, MspPacketState::CommandReceived));
-        assert_eq!(stream.cmd_msp, 100);
-        assert_eq!(&buf[0..2], &[1, 2]);
-    }
-    #[test]
-    fn test_msp_v2_native_parsing() {
-        let mut buf = [0u8; INBUF_SIZE];
-        let mut stream = MspStream::new();
-        let packet: [u8; 10] = [
-            b'X', b'<', 0, // Flags
-            2, 1, // Cmd (0x0102)
-            2, 0, // Size (2)
-            0xAA, 0xBB, // Payload
-            19,   // CRC8
-        ];
-
-        for &byte in &packet {
-            stream.process_received_packet_data(&mut buf, byte);
-        }
-
-        assert_eq!(MspPacketState::CommandReceived, stream.packet_state);
-        assert_eq!(19, stream.checksum2);
-        assert_eq!(stream.cmd_msp, 0x0102);
-        assert_eq!(stream.cmd_flags, 0);
-        assert_eq!(&buf[0..2], &[0xAA, 0xBB]);
-    }
-    #[test]
-    fn test_msp_v2_over_v1_parsing() {
-        let mut buf = [0u8; INBUF_SIZE];
-        let mut stream = MspStream::new();
-
-        // Crafted Packet: V2 Command 0x0102, Flags 0, Payload [0xAA, 0xBB]
-        // Encapsulated in V1 (Cmd 255)
-        let packet: [u8; 13] = [
-            b'M', b'<', // Header
-            8,    // V1 Size (5 byte V2 hdr + 2 byte payload + 1 byte V2 CRC)
-            255,  // V1 Cmd (V2_FRAME_ID)
-            0,    // V2 Flags
-            2, 1, // V2 Cmd (0x0102, Little Endian)
-            2, 0, // V2 Payload Size (2, Little Endian)
-            0xAA, 0xBB, // V2 Payload
-            19,   // V2 CRC8 (CRC-8/DVB-S2)
-            244,  // V1 XOR Checksum
-        ];
-
-        for (i, &byte) in packet.iter().enumerate() {
-            stream.process_received_packet_data(&mut buf, byte);
-
-            if i < packet.len() - 1 {
-                // Ensure we haven't reset to Idle prematurely
-                assert!(
-                    !matches!(stream.packet_state, MspPacketState::Idle),
-                    "State machine reset to Idle at byte index {i}",
-                );
-            }
-        }
-
-        // Final Verification
-        assert_eq!(stream.packet_state, MspPacketState::CommandReceived);
-        assert_eq!(244, stream.checksum1);
-        assert_eq!(19, stream.checksum2);
-        assert_eq!(stream.cmd_msp, 0x0102);
-        assert_eq!(stream.cmd_flags, 0);
-        assert_eq!(&buf[0..2], &[0xAA, 0xBB]);
-    }
     #[test]
     fn test_serialize_msp_v1_request() {
-        let mut buf = [0u8; 32];
+        let mut output_buf = [0u8; 32];
 
         // Example: MSP_IDENT (Cmd 100) request with no payload
-        let result = MspStream::serialize_packet(
+        let result = MspStream::msp_encode(
             MspVersion::V1,
             MspPacketType::Command,
             100,
             0,
             &[], // Empty payload
-            &mut buf,
+            &mut output_buf,
         );
         assert!(result.is_ok());
         if let Ok(size) = result {
             // Expected: $M< (3) + Size (0) + Cmd (100) + XOR (100)
             // Checksum: 0 ^ 100 = 100
             let expected = [b'$', b'M', b'<', 0, 100, 100];
-            assert_eq!(&buf[..size], &expected);
+            assert_eq!(&output_buf[..size], &expected);
         }
     }
 
     #[test]
     fn test_serialize_msp_v1_with_payload() {
-        let mut buf = [0u8; 32];
+        let mut output_buf = [0u8; 32];
 
         // Example: Command 100 with payload [1, 2]
-        let payload = [1, 2];
-        let result = MspStream::serialize_packet(MspVersion::V1, MspPacketType::Command, 100, 0, &payload, &mut buf);
+        let payload = [1u8, 2u8];
+        let result =
+            MspStream::msp_encode(MspVersion::V1, MspPacketType::Command, MSP_IDENT, 0, &payload, &mut output_buf);
+
         assert!(result.is_ok());
         if let Ok(size) = result {
             // Expected: $M< (3) + Size (2) + Cmd (100) + Payload (1, 2) + XOR
             // Checksum: 2 ^ 100 ^ 1 ^ 2 = 101
             let expected = [b'$', b'M', b'<', 2, 100, 1, 2, 101];
-            assert_eq!(&buf[..size], &expected);
+            assert_eq!(&output_buf[..size], &expected);
         }
     }
     #[test]
     fn test_serialize_v2_over_v1() {
-        let mut buf = [0u8; 64];
-        let payload = [0xAA, 0xBB];
+        let mut output_buf = [0u8; 64];
 
-        let result = MspStream::serialize_packet(
+        let payload = [0xAAu8, 0xBBu8];
+
+        let result = MspStream::msp_encode(
             MspVersion::V2overV1,
             MspPacketType::Command,
             0x0102, // Cmd
             0,      // Flags
             &payload,
-            &mut buf,
+            &mut output_buf,
         );
 
         assert!(result.is_ok());
@@ -589,7 +313,7 @@ mod tests {
             ];
 
             assert_eq!(size, 14); // 3 (hdr) + 11 (data/checksums) = 14 total bytes
-            assert_eq!(&buf[..size], &expected);
+            assert_eq!(&output_buf[..size], &expected);
         }
     }
 }

@@ -9,7 +9,7 @@ use {
 use crate::{
     boards::{UsbReceiver, UsbSender},
     config::{ConfigPublisher, FastConfigPublisher, config_publisher, fast_config_publisher},
-    multiwii_serial_protocol::{Msp, MspSensorData, MspStream},
+    multiwii_serial_protocol::{Msp, MspParser, MspPort, MspSensorData, MspStream},
     tasks::errors::TaskInitError,
 };
 
@@ -52,34 +52,16 @@ pub struct MspContext {
     pub optical_flow_subscriber: OpticalFlowSubscriber,
     #[cfg(feature = "rangefinder")]
     pub rangefinder_subscriber: RangefinderSubscriber,
-    pub msp: Msp,
-    pub read_buf: [u8; Self::READ_BUF_SIZE],
-    pub write_buf: [u8; Self::WRITE_BUF_SIZE],
-    pub usb_sender: UsbSender,
-    pub usb_receiver: UsbReceiver,
-}
+    pub msp_sensor_data: MspSensorData,
 
-impl MspContext {
-    const READ_BUF_SIZE: usize = 256;
-    const WRITE_BUF_SIZE: usize = 512;
-}
-
-impl MspContext {
-    /// Helper to get a reader for `read_buf`.
-    pub fn reader(&'_ mut self) -> StreamBufReader<'_> {
-        StreamBufReader::new(&self.read_buf)
-    }
-
-    /// Helper to get a writer for `write_buf`.
-    pub fn writer(&'_ mut self) -> StreamBufWriter<'_> {
-        StreamBufWriter::new(&mut self.write_buf)
-    }
+    pub msp_parser: MspParser,
+    pub msp_port: MspPort,
 }
 
 pub fn init(usb_sender: UsbSender, usb_receiver: UsbReceiver) -> Result<&'static mut MspContext, TaskInitError> {
     #[rustfmt::skip]
     let ctx = MspContext {
-        msp: Msp::new(),
+        msp_parser: MspParser::new(),
         fast_config_publisher: fast_config_publisher()?,
         config_publisher: config_publisher()?,
 
@@ -90,10 +72,8 @@ pub fn init(usb_sender: UsbSender, usb_receiver: UsbReceiver) -> Result<&'static
         #[cfg(feature = "optical_flow")] optical_flow_subscriber: optical_flow_subscriber()?,
         #[cfg(feature = "rangefinder")] rangefinder_subscriber: rangefinder_subscriber()?,
 
-        read_buf: [0u8; MspContext::READ_BUF_SIZE],
-        write_buf: [0u8; MspContext::WRITE_BUF_SIZE],
-        usb_sender,
-        usb_receiver,
+        msp_sensor_data:MspSensorData::new(),
+        msp_port: MspPort::new(usb_sender, usb_receiver),
     };
     Ok(MSP_CTX.init(ctx))
 }
@@ -106,36 +86,43 @@ pub async fn run(ctx: &'static mut MspContext) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_millis(200));
     let mut loop_count: u32 = 0;
 
-    // value to pass to Msp::process_write_command
-    let mut msp_sensor_data = MspSensorData::new();
-
     log::info!("         MSP: task started");
-    /*#[cfg(feature="usb")]
+    /*#[cfg(feature = "usb")]
     loop {
         ctx.usb_receiver.wait_connection().await;
 
         while let Ok(n) = ctx.usb_receiver.read_packet(&mut ctx.read_buf).await {
             // Feed bytes into the MSP parser state-machine
-            if let Some(msp_packet) = msp_parser.feed(&ctx.read_buf[..n]) {
+            let mut option = None;
+            for &byte in &ctx.read_buf[..n] {
+                option = ctx.msp_parser.on_data_received(byte);
+                if option.is_some() {
+                    break;
+                }
+            }
+            if let Some(msp_packet) = option {
                 // Process command and serialize response into tx_buf
                 //let response_len = process_msp_command(&msp_packet, &mut ctx.write_buf);
 
-                // Generally, we don't want to store the Reader itself because it tracks a "cursor" (current position).
-                // It's better to store the data and create a fresh reader whenever we start processing a new packet.
-                let mut src = StreamBufReader::new(&ctx.read_buf);
+                // Generally, we don't want to store the StreamBufReader itself because it tracks a "cursor" (current position).
+                // It's better to store the data and create a fresh StreamBufReader whenever we start processing a new packet.
+                let mut src = StreamBufReader::new(&ctx.msp_parser.buf);
 
-                let cmd_msp = Msp::SET_FAILSAFE_CONFIG;
-                let _result =
-                    Msp::process_read_command(cmd_msp, &mut src, &ctx.config_publisher, &ctx.fast_config_publisher)
-                        .await;
+                let _result = Msp::process_read_command(
+                    msp_packet.cmd,
+                    &mut src,
+                    &ctx.config_publisher,
+                    &ctx.fast_config_publisher,
+                )
+                .await;
 
-                // Send response immediately
+                /*// Send response immediately
                 if response_len > 0 {
                     if ctx.usb_sender.write_packet(&ctx.write_buf[..response_len]).await.is_err() {
                         // Connection dropped, fall back to wait_connection
                         break;
                     }
-                }
+                }*/
             }
         }
     }*/
@@ -144,13 +131,16 @@ pub async fn run(ctx: &'static mut MspContext) {
         // let msp_packet = msp.receive().await;
         ticker.next().await; // for now just wait on ticker
 
+        ctx.msp_port.serial_process(&ctx.fast_config_publisher, &ctx.config_publisher, &ctx.msp_sensor_data).await;
+
         #[cfg(feature = "barometer")]
         if let Some(wait_result) = ctx.barometer_subscriber.try_next_message()
             && let embassy_sync::pubsub::WaitResult::Message(barometer_data) = wait_result
         {
             #[allow(clippy::cast_possible_truncation)]
             {
-                msp_sensor_data.barometer_altitude_cm = ((barometer_data.altitude_m * 100.0) as i32).cast_unsigned();
+                ctx.msp_sensor_data.barometer_altitude_cm =
+                    ((barometer_data.altitude_m * 100.0) as i32).cast_unsigned();
             }
         }
 
@@ -160,7 +150,7 @@ pub async fn run(ctx: &'static mut MspContext) {
         {
             #[allow(clippy::cast_possible_truncation)]
             {
-                msp_sensor_data.rangefinder_altitude_cm =
+                ctx.msp_sensor_data.rangefinder_altitude_cm =
                     ((rangefinder_message.distance_m * 100.0) as i32).cast_unsigned();
             }
         }
@@ -170,24 +160,16 @@ pub async fn run(ctx: &'static mut MspContext) {
             && let embassy_sync::pubsub::WaitResult::Message(event) = wait_result
             && let GpsMessage::Data(gps_data) = event
         {
-            msp_sensor_data.gps_solution.longitude_degrees_x1e7 = gps_data.longitude_degrees_x1e7;
-            msp_sensor_data.gps_solution.satellite_count = gps_data.satellite_count;
+            ctx.msp_sensor_data.gps_solution.longitude_degrees_x1e7 = gps_data.longitude_degrees_x1e7;
+            ctx.msp_sensor_data.gps_solution.satellite_count = gps_data.satellite_count;
             // TODO: check sign of gps data
             #[allow(clippy::cast_sign_loss)]
             {
-                msp_sensor_data.gps_solution.ground_speed_cmps = gps_data.ground_speed_cmps as u16;
-                msp_sensor_data.gps_solution.ground_course_degrees_x10 = gps_data.heading_deci_degrees as u16;
+                ctx.msp_sensor_data.gps_solution.ground_speed_cmps = gps_data.ground_speed_cmps as u16;
+                ctx.msp_sensor_data.gps_solution.ground_course_degrees_x10 = gps_data.heading_deci_degrees as u16;
             }
-            msp_sensor_data.gps_solution.pdop = gps_data.pdop_x100;
+            ctx.msp_sensor_data.gps_solution.pdop = gps_data.pdop_x100;
         }
-
-        // Generally, we don't want to store the Reader itself because it tracks a "cursor" (current position).
-        // It's better to store the data and create a fresh reader whenever we start processing a new packet.
-        let mut src = StreamBufReader::new(&ctx.read_buf);
-
-        let cmd_msp = Msp::SET_FAILSAFE_CONFIG;
-        let _result =
-            Msp::process_read_command(cmd_msp, &mut src, &ctx.config_publisher, &ctx.fast_config_publisher).await;
 
         if loop_count.is_multiple_of(10) {
             log::info!("             MSP:      loop {loop_count}");

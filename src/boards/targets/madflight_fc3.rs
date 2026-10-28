@@ -21,10 +21,11 @@ use motor_mixers::{MotorDriver, MotorDriverDshot, MotorDriverPwm, MotorProtocol}
 use static_cell::StaticCell;
 
 use embassy_time::Delay;
-use embedded_hal_bus::spi::ExclusiveDevice;use embassy_usb::{
+use embassy_usb::{
     Builder as UsbBuilder, Config as UsbConfig,
     class::cdc_acm::{CdcAcmClass as UsbCdcAcmClass, State as UsbCdcAcmState},
 };
+use embedded_hal_bus::spi::ExclusiveDevice;
 
 #[allow(unused)]
 use embassy_rp::{
