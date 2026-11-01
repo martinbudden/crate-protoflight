@@ -25,7 +25,7 @@ impl GpsYawHeadingMessage {
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[non_exhaustive]
 pub enum GpsMessage {
-    Data(GpsSolution),
+    Solution(GpsSolution),
     Position(Vector3f32),
     Status(GpsStatus),
 }

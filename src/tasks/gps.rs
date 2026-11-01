@@ -118,7 +118,7 @@ pub async fn run(ctx: &'static mut GpsContext) {
                     process_gps_event(&mut ctx.gps_data, &mut ctx.gps_status_data, event);
 
                     // Publish the gps data for use by (eg) the OSD.
-                    ctx.gps_publisher.publish_immediate(GpsMessage::Data(ctx.gps_data));
+                    ctx.gps_publisher.publish_immediate(GpsMessage::Solution(ctx.gps_data));
                     ctx.gps_publisher.publish_immediate(GpsMessage::Status(ctx.gps_status_data));
 
                     // Convert the gps data position to a `GeographicCoordinate` for use by the autopilot.

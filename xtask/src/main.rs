@@ -61,7 +61,7 @@ fn run_msrv_check() {
     println!("🚀 Running: cargo +1.89.0 check --lib --features serde");
 
     // We invoke cargo, passing the toolchain string as the very first argument
-    let status = Command::new("cargo").arg("+1.89.0").arg("check").arg("--lib").arg("--features").arg("serde").status();
+    let status = Command::new("cargo").arg("+1.89.0").arg("check").arg("--features").arg("serde").status();
 
     check_status(status, "check-msrv");
     println!("✅ MSRV 1.89 check passed!");

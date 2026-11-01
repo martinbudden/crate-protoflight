@@ -1,4 +1,4 @@
-# `protoflight` Rust Crate<br>![License: GPLv3](https://img.shields.io/badge/License-GPLv3_or_later-blue.svg) ![open source](https://badgen.net/badge/open/source/blue?icon=github)
+# `protoflight` Rust Crate<br>[![Crates.io](https://img.shields.io/crates/v/protoflight.svg)](https://crates.io/crates/protoflight) [![Documentation](https://docs.rs/protoflight/badge.svg)](https://docs.rs/protoflight) [![License: GPLv3](https://img.shields.io/badge/License-GPLv3_or_later-blue.svg)](https://opensource.org/licenses/gpl-3.0) ![open source](https://badgen.net/badge/open/source/blue?icon=github)
 
 Protoflight is flight control software.
 
@@ -81,11 +81,11 @@ Here's a simplified overview of the system:
 │  Usb  ├─▶─┤ MULTIWII ├─▶─┤ GLOBAL │        │ GLOBAL │
 │ (Vcp) ├─◀─┤ SERIAL   ├─◀─┤ CONFIG |        │ DEBUG  |
 ╰───────╯   | PROTOCOL |   └──┬───┬─┘        └────────┘
-            └──────────┘      ▲   ▼              
-                           ╭──┴───┴───────╮      
-                           │ Non-Volatile │      
-                           │ Storage      |      
-                           ╰──────────────╯      
+            └──────────┘      ▲   ▼
+                           ╭──┴───┴───────╮
+                           │ Non-Volatile │
+                           │ Storage      |
+                           ╰──────────────╯
 
 ╭───────╮
 │ Boxes | with rounded corners and mixed case letters represent hardware.

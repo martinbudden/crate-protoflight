@@ -265,8 +265,7 @@ pub async fn run(ctx: &'static mut BlackboxEncoderContext) {
 
         #[cfg(feature = "barometer")]
         if let Some(wait_result) = ctx.barometer_subscriber.try_next_message()
-            && let WaitResult::Message(event) = wait_result
-            && let barometer_message = event
+            && let WaitResult::Message(barometer_message) = wait_result
         {
             ctx.barometer_altitude = barometer_message.altitude_m_i32;
         }
@@ -274,8 +273,7 @@ pub async fn run(ctx: &'static mut BlackboxEncoderContext) {
         #[allow(clippy::cast_possible_truncation)]
         #[cfg(feature = "battery")]
         if let Some(wait_result) = ctx.battery_subscriber.try_next_message()
-            && let WaitResult::Message(event) = wait_result
-            && let battery_message = event
+            && let WaitResult::Message(battery_message) = wait_result
         {
             ctx.battery_voltage = battery_message.voltage.unfiltered_x100;
             ctx.battery_current = battery_message.current.amperage_latest_x100 as i16;
@@ -294,10 +292,10 @@ pub async fn run(ctx: &'static mut BlackboxEncoderContext) {
 
         #[cfg(feature = "gps")]
         if let Some(wait_result) = ctx.gps_subscriber.try_next_message()
-            && let WaitResult::Message(event) = wait_result
-            && let GpsMessage::Data(gps_data) = event
+            && let WaitResult::Message(gps_message) = wait_result
+            && let GpsMessage::Solution(gps_solution) = gps_message
         {
-            let gps_data = gps_data_from(gps_data);
+            let gps_data = gps_data_from(gps_solution);
             ctx.blackbox.set_gps_data(gps_data);
         }
 

@@ -135,12 +135,12 @@ pub async fn run(ctx: &'static mut MspContext) {
 
         #[cfg(feature = "barometer")]
         if let Some(wait_result) = ctx.barometer_subscriber.try_next_message()
-            && let embassy_sync::pubsub::WaitResult::Message(barometer_data) = wait_result
+            && let embassy_sync::pubsub::WaitResult::Message(barometer_message) = wait_result
         {
             #[allow(clippy::cast_possible_truncation)]
             {
                 ctx.msp_sensor_data.barometer_altitude_cm =
-                    ((barometer_data.altitude_m * 100.0) as i32).cast_unsigned();
+                    ((barometer_message.altitude_m * 100.0) as i32).cast_unsigned();
             }
         }
 
@@ -157,18 +157,18 @@ pub async fn run(ctx: &'static mut MspContext) {
 
         #[cfg(feature = "gps")]
         if let Some(wait_result) = ctx.gps_subscriber.try_next_message()
-            && let embassy_sync::pubsub::WaitResult::Message(event) = wait_result
-            && let GpsMessage::Data(gps_data) = event
+            && let embassy_sync::pubsub::WaitResult::Message(gps_message) = wait_result
+            && let GpsMessage::Solution(gps_solution) = gps_message
         {
-            ctx.msp_sensor_data.gps_solution.longitude_degrees_x1e7 = gps_data.longitude_degrees_x1e7;
-            ctx.msp_sensor_data.gps_solution.satellite_count = gps_data.satellite_count;
+            ctx.msp_sensor_data.gps_solution.longitude_degrees_x1e7 = gps_solution.longitude_degrees_x1e7;
+            ctx.msp_sensor_data.gps_solution.satellite_count = gps_solution.satellite_count;
             // TODO: check sign of gps data
             #[allow(clippy::cast_sign_loss)]
             {
-                ctx.msp_sensor_data.gps_solution.ground_speed_cmps = gps_data.ground_speed_cmps as u16;
-                ctx.msp_sensor_data.gps_solution.ground_course_degrees_x10 = gps_data.heading_deci_degrees as u16;
+                ctx.msp_sensor_data.gps_solution.ground_speed_cmps = gps_solution.ground_speed_cmps as u16;
+                ctx.msp_sensor_data.gps_solution.ground_course_degrees_x10 = gps_solution.heading_deci_degrees as u16;
             }
-            ctx.msp_sensor_data.gps_solution.pdop = gps_data.pdop_x100;
+            ctx.msp_sensor_data.gps_solution.pdop = gps_solution.pdop_x100;
         }
 
         if loop_count.is_multiple_of(10) {
