@@ -11,7 +11,7 @@ use crate::{
     boards::{GpsUartRx, GpsUartTx},
     config::GLOBAL_CONFIG,
     gps::{
-        Geodetic, GeographicCoordinate, GpsMessage, GpsParser, GpsParserEvent, GpsProvider, GpsSolution, GpsStatus,
+        Geodetic, GpsMessage, GpsParser, GpsParserEvent, GpsProvider, GpsSolution, GpsStatus,
         GpsYawHeadingMessage,
         nmea::{NmeaGga, NmeaGsa, NmeaRecordType, NmeaRmc},
         ubx::{
@@ -67,9 +67,10 @@ pub struct GpsContext {
     pub uart_tx: GpsUartTx,
     pub gps_parser: GpsParser,
     pub gps_publisher: GpsPublisher,
-    pub gps_data: GpsSolution,
-    pub gps_status_data: GpsStatus,
+    pub gps_solution: GpsSolution,
+    pub gps_status: GpsStatus,
     pub home: Geodetic,
+    pub initial_time_of_week_ms: u32,
     pub buf: [u8; Self::BUF_SIZE],
 }
 
@@ -88,9 +89,10 @@ pub fn init(
         uart_tx,
         gps_parser: GpsParser::new_unwrapped(gps_provider),
         gps_publisher: GPS_PUB_SUB_CHANNEL.publisher().map_err(|_| TaskInitError::GpsPublisherFailed)?,
-        gps_data: GpsSolution::new(),
-        gps_status_data: GpsStatus::new(),
+        gps_solution: GpsSolution::new(),
+        gps_status: GpsStatus::new(),
         home: Geodetic::new(),
+        initial_time_of_week_ms: 0,
         buf: [0u8; GpsContext::BUF_SIZE],
     };
     Ok(GPS_CTX.init(ctx))
@@ -108,35 +110,32 @@ pub async fn run(ctx: &'static mut GpsContext) {
     initialize(&mut ctx.uart_tx).await;
 
     loop {
-        // Wait for the next tick. TODO: chang GPS task to run off interrupt
+        // Wait for the next tick. 
+        // TODO: change GPS task to run off interrupt
         ticker.next().await;
         core::future::poll_fn(|_| core::task::Poll::Ready(())).await;
 
         if let Ok(n) = ctx.read_packet().await {
             for &byte in &ctx.buf[..n] {
                 if let Some(event) = ctx.gps_parser.on_data_received(byte) {
-                    process_gps_event(&mut ctx.gps_data, &mut ctx.gps_status_data, event);
+                    process_gps_event(&mut ctx.gps_solution, &mut ctx.gps_status, event);
+        // TODO: set ctx.initial_time_of_week when first GPS reading is obtained.
 
-                    // Publish the gps data for use by (eg) the OSD.
-                    ctx.gps_publisher.publish_immediate(GpsMessage::Solution(ctx.gps_data));
-                    ctx.gps_publisher.publish_immediate(GpsMessage::Status(ctx.gps_status_data));
+                    // Publish the gps solution and status for use by (eg) the blackbox and OSD.
+                    ctx.gps_publisher.publish_immediate(GpsMessage::Solution(ctx.gps_solution));
+                    ctx.gps_publisher.publish_immediate(GpsMessage::Status(ctx.gps_status));
 
-                    // Convert the gps data position to a `GeographicCoordinate` for use by the autopilot.
-                    let geographic_coordinate = GeographicCoordinate::from_long_lat_alt(
-                        ctx.gps_data.longitude_degrees_x1e7,
-                        ctx.gps_data.latitude_degrees_x1e7,
-                        ctx.gps_data.altitude_cm,
-                    );
-                    let gps_position = ctx.home.position_relative_to_home_meters(geographic_coordinate);
-                    ctx.gps_publisher.publish_immediate(GpsMessage::Position(gps_position));
+                    // Publish the gps PositionVelocity message for use by the Autopilot's Kalman filter.
+                    let gps_message = GpsMessage::from_gps_solution(&ctx.gps_solution, ctx.initial_time_of_week_ms, &ctx.home);
+                    ctx.gps_publisher.publish_immediate(gps_message);
 
                     // Only trust GPS heading if moving faster than 1.5 m/s (150 cmps, approx 3 knots)
-                    if ctx.gps_data.ground_speed_cmps > 150 {
+                    if ctx.gps_solution.ground_speed_cmps > 150 {
                         let gps_yaw_heading_message = GpsYawHeadingMessage {
-                            yaw_heading_radians: (f32::from(ctx.gps_data.heading_deci_degrees) * 0.1).to_radians(),
+                            yaw_heading_radians: (f32::from(ctx.gps_solution.heading_deci_degrees) * 0.1).to_radians(),
                             delta_t: 0.1,
                         };
-                        // signal the yaw heading so the gyro_pid task can use it to correct yaw drift in the sensor fusion filter.
+                        // signal the yaw heading so the gyro_pid task can use it to correct yaw drift in the Madgwick sensor fusion filter.
                         GPS_YAW_HEADING_SIGNAL.signal(gps_yaw_heading_message);
                     }
                 }

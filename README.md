@@ -57,39 +57,41 @@ Here's a simplified overview of the system:
 │     │  │        ├──▶───┤ MADGWICK ├─────▶───────┤   (PIDS)   │   │ MIXER │
 ╰──┬──╯  └────────┘ Gyro │  FILTER  │ Orientation └─────┬──────┘   └───┬───┘
    │                     └────┬─────┘                   │       Motor  │
-   ▼ Acc(unfiltered)          │                         │     Commands ▼
+   ▼ Accₛ(unfiltered)         │                         │     Commands ▼
    │                          ▼ Orientation             │              │
 ┌──┴─────────┐                │                         │         ╭────┴───╮
 │    IMU     ├────◀───────────┘                Commands ▲         │ Motors │
-│ INTEGRATOR |                                          │         │ Servos │
+│ INTEGRATOR │                                          │         │ Servos │
 └───┬────────┘                                          │         ╰────────╯
     │                                                   │
-  delta_pos                                             │
-  delta_vel         ┌────────┐       Position     ┌─────┴─────┐
+  delta_posₑ                                            │
+  delta_velₑ        ┌────────┐       Positionₑ    ┌─────┴─────┐
     └───────────▶───┤ KALMAN ├──────────▶─────────┤ AUTOPILOT │
-                    │ FILTER │       Velocity     └───────────┘
+                    │ FILTER │       Velocityₑ    └───────────┘
                     └────┬───┘
                          │
   GPS, Barometer, etc ─▶─┘
 
 ┌──────────┐   ╭────────╮   ┌──────────┐   ╭────────╮
 │ BLACKBOX ├─▶─┤ Memory ├─▶─┤ BLACKBOX ├─▶─┤ SSD or │
-│ ENCODER  |   │ Buffer |   │ WRITER   |   │ Flash  |
+│ ENCODER  │   │ Buffer │   │ WRITER   │   │ Flash  │
 └──────────┘   ╰────────╯   └──────────┘   ╰────────╯
 
 ╭───────╮   ┌──────────┐   ┌────────┐        ┌────────┐
 │  Usb  ├─▶─┤ MULTIWII ├─▶─┤ GLOBAL │        │ GLOBAL │
-│ (Vcp) ├─◀─┤ SERIAL   ├─◀─┤ CONFIG |        │ DEBUG  |
-╰───────╯   | PROTOCOL |   └──┬───┬─┘        └────────┘
+│ (Vcp) ├─◀─┤ SERIAL   ├─◀─┤ CONFIG │        │ DEBUG  │
+╰───────╯   │ PROTOCOL │   └──┬───┬─┘        └────────┘
             └──────────┘      ▲   ▼
                            ╭──┴───┴───────╮
                            │ Non-Volatile │
-                           │ Storage      |
+                           │ Storage      │
                            ╰──────────────╯
 
 ╭───────╮
-│ Boxes | with rounded corners and mixed case letters represent hardware.
+│ Boxes │ with rounded corners and mixed case letters represent hardware.
 ╰───────╯
+The subscript ₛ denotes a value in the sensor frame (body frame)
+The subscript ₑ denotes a value in the earth frame (NED convention is used)
 ```
 
 `GLOBAL_CONFIG` is protected by a mutex and is accessible by all tasks.

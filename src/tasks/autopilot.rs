@@ -222,7 +222,7 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
             && let embassy_sync::pubsub::WaitResult::Message(gps_message) = wait_result
         {
             // TODO: choose position or altitude kalman filter based on settings
-            if let GpsMessage::Position(gps_position) = gps_message {
+            if let GpsMessage::PositionVelocity(timestamp_us, gps_position, gps_velocity) = gps_message {
                 if altitude_hold {
                     _ = ctx.autopilot.kalman_filter.correct_altitude_using_gps(gps_position.z);
                 } else if position_hold {
