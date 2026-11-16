@@ -71,12 +71,13 @@ impl RangefinderType {
 #[cfg_attr(feature = "std", derive(derive_more::Display))]
 #[cfg_attr(feature = "std", display("Range{{d:{distance_m}}}"))]
 pub struct RangefinderMessage {
+    pub timestamp_us: u64,
     pub distance_m: f32,
 }
 
 impl RangefinderMessage {
     pub const fn new() -> Self {
-        Self { distance_m: 0.0 }
+        Self { timestamp_us: 0, distance_m: 0.0 }
     }
 }
 

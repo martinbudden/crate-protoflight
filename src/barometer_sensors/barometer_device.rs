@@ -10,13 +10,14 @@ pub trait BarometerDevice {
     async fn init(&mut self) -> Result<u32, BarometerI2cError>;
 
     async fn make_reading(&mut self);
-    fn message(&self) -> BarometerMessage;
+    fn message(&self, timestamp_us: u64) -> BarometerMessage;
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "host", derive(derive_more::Display))]
 #[cfg_attr(feature = "host", display("Baro{{a:{altitude_m}, p:{pressure_pascals}, t:{temperature_celsius}}}"))]
 pub struct BarometerMessage {
+    pub timestamp_us: u64,
     pub altitude_m: f32,
     pub altitude_m_i32: i32,
     pub pressure_pascals: f32,
@@ -31,7 +32,7 @@ impl Default for BarometerMessage {
 
 impl BarometerMessage {
     pub const fn new() -> Self {
-        Self { altitude_m: 0.0, altitude_m_i32: 0, pressure_pascals: 0.0, temperature_celsius: 0.0 }
+        Self { timestamp_us: 0, altitude_m: 0.0, altitude_m_i32: 0, pressure_pascals: 0.0, temperature_celsius: 0.0 }
     }
 }
 

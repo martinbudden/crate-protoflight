@@ -123,13 +123,13 @@ impl BarometerDevice for Barometer {
         }
     }
 
-    fn message(&self) -> BarometerMessage {
+    fn message(&self, timestamp_us: u64) -> BarometerMessage {
         match self {
-            Self::Mock(barometer) => barometer.message(),
+            Self::Mock(barometer) => barometer.message(timestamp_us),
             #[cfg(feature = "barometer")]
-            Self::Bmp085(barometer) => barometer.message(),
+            Self::Bmp085(barometer) => barometer.message(timestamp_us),
             #[cfg(feature = "barometer")]
-            Self::Dps310(barometer) => barometer.message(),
+            Self::Dps310(barometer) => barometer.message(timestamp_us),
         }
     }
 }

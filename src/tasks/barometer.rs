@@ -4,6 +4,7 @@ use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex,
     pubsub::{PubSubChannel, Publisher, Subscriber},
 };
+use embassy_time::Instant;
 use static_cell::StaticCell;
 
 use crate::{
@@ -81,7 +82,8 @@ pub async fn run(ctx: &'static mut BarometerContext) {
         // Wait for the next tick.
         ticker.next().await;
         ctx.barometer.make_reading().await;
-        let barometer_message = ctx.barometer.message();
+        let time_us = Instant::now().as_micros();
+        let barometer_message = ctx.barometer.message(time_us);
         // Publish a message, but if the queue is full, just kick out the oldest message.
         // This may cause some subscribers to miss a message
         ctx.barometer_publisher.publish_immediate(barometer_message);

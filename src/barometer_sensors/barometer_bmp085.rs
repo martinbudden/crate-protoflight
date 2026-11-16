@@ -198,11 +198,12 @@ impl BarometerBmp085 {
     }
 
     #[allow(unused)]
-    pub fn message(&self) -> BarometerMessage {
+    pub fn message(&self, timestamp_us: u64) -> BarometerMessage {
         let altitude_m =
             BarometerMessage::calculate_altitude_meters(self.pressure_pascals, self.pressure_at_reference_altitude);
         #[allow(clippy::cast_possible_truncation)]
         BarometerMessage {
+            timestamp_us,
             altitude_m,
             altitude_m_i32: altitude_m as i32,
             pressure_pascals: self.pressure_pascals,

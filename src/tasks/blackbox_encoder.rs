@@ -6,6 +6,7 @@ use blackbox_logger::{
     Blackbox, BlackboxConfig, BlackboxDateTime, BlackboxMainData, BlackboxSlowData, BlackboxSysInfo, FieldSelect,
     LoggerState, SliceEncoder,
 };
+use embassy_time::Instant;
 use radio_controllers::RcMode;
 
 use static_cell::StaticCell;
@@ -238,7 +239,7 @@ pub async fn run(ctx: &'static mut BlackboxEncoderContext) {
     #[cfg(not(feature = "debug"))]
     ctx.blackbox.start(0);
     while ctx.blackbox.state() != LoggerState::HeaderWritten {
-        let time_us = 0;
+        let time_us = Instant::now().as_micros();
         let len = ctx.blackbox.update(&mut SliceEncoder::new(&mut ctx.buffer), time_us, false);
         _ = BlackboxWriteBlock::send_data_to_blackbox_writer_task(&ctx.buffer[..len], &mut ctx.overflow_counter);
         //log::info!("BLACKBOX:  hdr {loop_count},{len}");

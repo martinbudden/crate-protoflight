@@ -137,8 +137,9 @@ impl BarometerDps310 {
         core::future::poll_fn(|_| core::task::Poll::Ready(())).await;
     }
 
-    pub fn message(&self) -> BarometerMessage {
+    pub fn message(&self, timestamp_us: u64) -> BarometerMessage {
         _ = self;
+        _ = timestamp_us;
         BarometerMessage::default()
     }
 }

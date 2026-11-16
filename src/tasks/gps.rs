@@ -11,8 +11,7 @@ use crate::{
     boards::{GpsUartRx, GpsUartTx},
     config::GLOBAL_CONFIG,
     gps::{
-        Geodetic, GpsMessage, GpsParser, GpsParserEvent, GpsProvider, GpsSolution, GpsStatus,
-        GpsYawHeadingMessage,
+        Geodetic, GpsMessage, GpsParser, GpsParserEvent, GpsProvider, GpsSolution, GpsStatus, GpsYawHeadingMessage,
         nmea::{NmeaGga, NmeaGsa, NmeaRecordType, NmeaRmc},
         ubx::{
             UbxAckId, UbxCfgId, UbxCfgNav5, UbxCfgPms, UbxCfgRate, UbxClassId, UbxMonId, UbxNavDop, UbxNavId, UbxNavPvt,
@@ -110,7 +109,7 @@ pub async fn run(ctx: &'static mut GpsContext) {
     initialize(&mut ctx.uart_tx).await;
 
     loop {
-        // Wait for the next tick. 
+        // Wait for the next tick.
         // TODO: change GPS task to run off interrupt
         ticker.next().await;
         core::future::poll_fn(|_| core::task::Poll::Ready(())).await;
@@ -119,14 +118,15 @@ pub async fn run(ctx: &'static mut GpsContext) {
             for &byte in &ctx.buf[..n] {
                 if let Some(event) = ctx.gps_parser.on_data_received(byte) {
                     process_gps_event(&mut ctx.gps_solution, &mut ctx.gps_status, event);
-        // TODO: set ctx.initial_time_of_week when first GPS reading is obtained.
+                    // TODO: set ctx.initial_time_of_week when first GPS reading is obtained.
 
                     // Publish the gps solution and status for use by (eg) the blackbox and OSD.
                     ctx.gps_publisher.publish_immediate(GpsMessage::Solution(ctx.gps_solution));
                     ctx.gps_publisher.publish_immediate(GpsMessage::Status(ctx.gps_status));
 
                     // Publish the gps PositionVelocity message for use by the Autopilot's Kalman filter.
-                    let gps_message = GpsMessage::from_gps_solution(&ctx.gps_solution, ctx.initial_time_of_week_ms, &ctx.home);
+                    let gps_message =
+                        GpsMessage::from_gps_solution(&ctx.gps_solution, ctx.initial_time_of_week_ms, &ctx.home);
                     ctx.gps_publisher.publish_immediate(gps_message);
 
                     // Only trust GPS heading if moving faster than 1.5 m/s (150 cmps, approx 3 knots)

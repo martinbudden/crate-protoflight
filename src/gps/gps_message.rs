@@ -36,7 +36,7 @@ pub enum GpsMessage {
 
 impl GpsMessage {
     /// Converts `GpsSolution` velocity in `i16` cmps to `f32` mps.
-    pub fn from_gps_solution(gps_solution: &GpsSolution, initial_time_of_week_ms: u32,home: &Geodetic) -> GpsMessage {
+    pub fn from_gps_solution(gps_solution: &GpsSolution, initial_time_of_week_ms: u32, home: &Geodetic) -> GpsMessage {
         const CMPS_TO_MPS: f32 = 0.01;
 
         let time_us = u64::from(gps_solution.time_of_week_ms.wrapping_sub(initial_time_of_week_ms) * 1000);
