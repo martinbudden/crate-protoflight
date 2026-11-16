@@ -1841,7 +1841,7 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 [[package]]
 name = "imu-sensors"
 version = "0.1.7"
-source = "git+https://github.com/martinbudden/crate-imu-sensors#246755b9394298f5e8ebe06625e265d216eb081b"
+source = "git+https://github.com/martinbudden/crate-imu-sensors#d1574bf970d9b8207f27575e77ee42e0267ce104"
 dependencies = [
  "cfg-if",
  "embassy-time",
@@ -2230,9 +2230,9 @@ dependencies = [
 
 [[package]]
 name = "notify-types"
-version = "2.3.0"
+version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c491a384baf9fec20df565cdb8138a12809d4c7439763b566eb8114c5d59979"
+checksum = "cbd044e85df3d939d8e32a1c35a3b737c7d0a4eeb7acd737bd207644e00f4e5f"
 dependencies = [
  "bitflags 2.13.2",
 ]

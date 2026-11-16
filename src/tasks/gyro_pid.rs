@@ -6,7 +6,7 @@ use embassy_sync::{
 
 use static_cell::StaticCell;
 
-use imu_sensors::{AccFullScale, AccUnits, GyroFullScale, GyroUnits, ImuDevice, ImuError};
+use imu_sensors::{AccSensitivity, AccUnits, GyroSensitivity, GyroUnits, Imu, ImuDevice, ImuError};
 use motor_mixers::MotorMixerMessage;
 #[cfg(feature = "autopilot")]
 use sensor_fusion::ImuIntegrator;
@@ -144,7 +144,8 @@ pub async fn run(ctx: &'static mut GyroPidContext<BoardImu>) {
     log::info!("    GYRO_PID: task started");
 
     // Initialize IMU to use radians/s for gyro units and m/s^2 for acc units.
-    let sample_rates = ctx.imu.init(8000, GyroFullScale::Max, GyroUnits::Rps, AccFullScale::Max, AccUnits::Mps2).await;
+    let sample_rates =
+        ctx.imu.init(8000, GyroSensitivity::Max, GyroUnits::Rps, AccSensitivity::Max, AccUnits::Mps2).await;
     let (gyro_rate_hz, _acc_rate_hz) = match sample_rates {
         Ok((gyro_rate_hz, acc_rate_hz)) => (gyro_rate_hz, acc_rate_hz),
         Err(_err) => (1000, 1000),
