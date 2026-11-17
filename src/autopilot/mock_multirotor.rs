@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use vqm::{Quaternionf32, RollPitchf32, Vector2f32};
+use vqm::{RollPitchf32, UnitQuaternionf32, Vector2f32};
 
 /// A simple physics simulation of a multirotor's vertical motion.
 pub struct MockMultirotorZ {
@@ -47,7 +47,7 @@ impl MockMultirotorXY {
         }
     }
 
-    pub fn step(&mut self, target_angles: RollPitchf32, orientation: Quaternionf32, delta_time: f32) {
+    pub fn step(&mut self, target_angles: RollPitchf32, orientation: UnitQuaternionf32, delta_time: f32) {
         let cos_yaw = orientation.cos_yaw();
         let sin_yaw = orientation.sin_yaw();
 

@@ -1,7 +1,7 @@
 #![cfg(feature = "osd")]
 
 use static_cell::StaticCell;
-use vqm::Quaternionf32;
+use vqm::UnitQuaternionf32;
 
 use super::{
     gyro_pid::{GyroPidReceiver, SetpointReceiver, gyro_pid_receiver, setpoint_receiver},
@@ -37,24 +37,27 @@ static OSD_CTX: StaticCell<OsdContext> = StaticCell::new();
 /// Context for OSD task.
 #[allow(unused)]
 pub struct OsdContext {
-    pub gyro_pid_receiver: GyroPidReceiver,
-    pub setpoint_receiver: SetpointReceiver,
-    pub rx_receiver: RxMessageReceiver,
+    gyro_pid_receiver: GyroPidReceiver,
+    setpoint_receiver: SetpointReceiver,
+    rx_receiver: RxMessageReceiver,
+    rx_message: RxMessage,
     #[cfg(feature = "barometer")]
-    pub barometer_subscriber: BarometerSubscriber,
+    barometer_subscriber: BarometerSubscriber,
     #[cfg(feature = "battery")]
-    pub battery_subscriber: BatterySubscriber,
+    battery_subscriber: BatterySubscriber,
+    #[cfg(feature = "battery")]
+    battery_message: BatteryMessage,
     #[cfg(feature = "gps")]
-    pub gps_subscriber: GpsSubscriber,
+    gps_subscriber: GpsSubscriber,
     #[cfg(feature = "optical_flow")]
-    pub optical_flow_subscriber: OpticalFlowSubscriber,
+    optical_flow_subscriber: OpticalFlowSubscriber,
     #[cfg(feature = "rangefinder")]
-    pub rangefinder_subscriber: RangefinderSubscriber,
-    pub osd: Osd,
-    pub osd_state: OsdState,
+    rangefinder_subscriber: RangefinderSubscriber,
+    osd: Osd,
+    osd_state: OsdState,
     /// Subsystem handling layout, tracking, and rendering of individual OSD items.
-    pub osd_elements: OsdElements,
-    pub display_port_mutex: &'static DisplayPortMutex,
+    osd_elements: OsdElements,
+    display_port_mutex: &'static DisplayPortMutex,
 }
 
 pub async fn init(display_port_mutex: &'static DisplayPortMutex) -> Result<&'static mut OsdContext, TaskInitError> {
@@ -66,8 +69,10 @@ pub async fn init(display_port_mutex: &'static DisplayPortMutex) -> Result<&'sta
         gyro_pid_receiver: gyro_pid_receiver()?,
         setpoint_receiver: setpoint_receiver()?,
         rx_receiver: rx_message_receiver()?,
+        rx_message : RxMessage::new(),
         #[cfg(feature = "barometer")] barometer_subscriber: barometer_subscriber()?,
         #[cfg(feature = "battery")] battery_subscriber: battery_subscriber()?,
+        #[cfg(feature = "battery")] battery_message: BatteryMessage::new(),
         #[cfg(feature = "gps")] gps_subscriber: gps_subscriber()?,
         #[cfg(feature = "optical_flow")] optical_flow_subscriber: optical_flow_subscriber()?,
         #[cfg(feature = "rangefinder")] rangefinder_subscriber: rangefinder_subscriber()?,
@@ -88,10 +93,7 @@ pub async fn run(ctx: &'static mut OsdContext) {
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(TASK_FREQUENCY_HZ));
     let mut loop_count: u32 = 0;
 
-    #[cfg(feature = "battery")]
-    let mut battery_message = BatteryMessage::new();
-    let mut orientation = Quaternionf32::default();
-    let mut rx_message = RxMessage::new();
+    let mut orientation = UnitQuaternionf32::default();
 
     log::info!("         OSD: task started");
     loop {
@@ -106,10 +108,10 @@ pub async fn run(ctx: &'static mut OsdContext) {
             let arming_flags = ArmingFlags::new();
 
             #[cfg(feature = "battery")]
-            if let Some(embassy_sync::pubsub::WaitResult::Message(battery_data)) =
+            if let Some(embassy_sync::pubsub::WaitResult::Message(battery_message)) =
                 ctx.battery_subscriber.try_next_message()
             {
-                battery_message = battery_data;
+                ctx.battery_message = battery_message;
             }
 
             // Get the latest messages without consuming the notifications.
@@ -118,7 +120,7 @@ pub async fn run(ctx: &'static mut OsdContext) {
             }
 
             if let Some(rx) = ctx.rx_receiver.try_get() {
-                rx_message = rx;
+                ctx.rx_message = rx;
             }
 
             if ctx.osd_state.start_frame() {
@@ -126,9 +128,9 @@ pub async fn run(ctx: &'static mut OsdContext) {
                 let draw_context = OsdDrawContext {
                     orientation,
                     arming_flags,
-                    rx_message,
+                    rx_message: ctx.rx_message,
                     #[cfg(feature = "battery")]
-                    battery_message,
+                    battery_message: ctx.battery_message,
                 };
 
                 let osd_config = {
@@ -161,40 +163,3 @@ pub async fn run(ctx: &'static mut OsdContext) {
         loop_count = loop_count.wrapping_add(1);
     }
 }
-
-/*#[embassy_executor::task]
-pub async fn run(ctx: &'static mut OsdContext) {
-    let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(50));
-    let mut loop_count: u32 = 0;
-
-    //println!("OSD: Started at 50Hz.");
-    log::info!("         OSD: task started");
-    loop {
-        // Wait for the next 50Hz tick.
-        ticker.next().await;
-
-        // Get the latest messages without consuming the notifications.
-        let orientation = if let Some(gyro_pid_message) = ctx.gyro_pid_receiver.try_get() {
-            gyro_pid_message.orientation
-        } else {
-            Quaternionf32::default()
-        };
-
-        #[cfg(feature = "max7456")]
-        let mut display_port = DisplayPortMax7456::new();
-        #[cfg(not(feature = "max7456"))]
-        let mut display_port = DisplayPortMock::new();
-
-        let arming_flags = ArmingFlags::new();
-        let mut draw_context = OsdDrawContext { display_port: &mut display_port, orientation, arming_flags };
-        // Update the OSD with the latest data.
-        let time_us = 0_u64;
-        ctx.osd.update_display(&mut draw_context, time_us);
-
-        if loop_count.is_multiple_of(10) {
-            log::info!("        OSD:      loop {loop_count}");
-        }
-        loop_count = loop_count.wrapping_add(1);
-    }
-}
-*/

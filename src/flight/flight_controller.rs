@@ -13,7 +13,7 @@ use pidsk_controller::{PdControllerf32, PidskControllerf32, PidskGainsf32};
 use radio_controllers::{RcMode, RxLinkStatus};
 use signal_filters::{Pt1FilterVector4f32, Pt1Filterf32, SignalFilter, UpdateFilter};
 use simple_bitset::BitSet64;
-use vqm::{Quaternionf32, Vector3f32, Vector4f32};
+use vqm::{UnitQuaternionf32, Vector3f32, Vector4f32};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd)]
 enum FlightStabilizationMode {
@@ -262,7 +262,7 @@ impl VehicleControl for FlightController {
     fn calculate_motor_commands(
         &mut self,
         gyro_rps: Vector3f32,
-        orientation: Quaternionf32,
+        orientation: UnitQuaternionf32,
         delta_t: f32,
         controls: RcControls,
         rc_modes: BitSet64,
@@ -500,36 +500,33 @@ impl FlightController {
         gyro_enu_rps.z.to_degrees()
     }
 
-    // static inline float roll_sin_angle_ned(const Quaternion& orientation) { return orientation.sin_pitch_clipped(); } // sin(x-180) = -sin(x)
-    // static inline float roll_cos_angle_ned(const Quaternion& orientation) { return orientation.cos_pitch(); }
-
     #[inline]
-    pub fn roll_sin_angle_ned(orientation: Quaternionf32) -> f32 {
+    pub fn roll_sin_angle_ned(orientation: UnitQuaternionf32) -> f32 {
         orientation.sin_pitch_clipped()
     }
 
     #[inline]
-    pub fn roll_cos_angle_ned(orientation: Quaternionf32) -> f32 {
+    pub fn roll_cos_angle_ned(orientation: UnitQuaternionf32) -> f32 {
         orientation.cos_pitch()
     }
 
     #[inline]
-    pub fn roll_angle_degrees_ned(orientation: Quaternionf32) -> f32 {
+    pub fn roll_angle_degrees_ned(orientation: UnitQuaternionf32) -> f32 {
         orientation.calculate_pitch_degrees()
     }
 
     #[inline]
-    pub fn pitch_sin_angle_ned(orientation: Quaternionf32) -> f32 {
+    pub fn pitch_sin_angle_ned(orientation: UnitQuaternionf32) -> f32 {
         orientation.sin_roll_clipped()
     }
 
     #[inline]
-    pub fn pitch_cos_angle_ned(orientation: Quaternionf32) -> f32 {
+    pub fn pitch_cos_angle_ned(orientation: UnitQuaternionf32) -> f32 {
         orientation.cos_roll()
     }
 
     #[inline]
-    pub fn pitch_angle_degrees_ned(orientation: Quaternionf32) -> f32 {
+    pub fn pitch_angle_degrees_ned(orientation: UnitQuaternionf32) -> f32 {
         orientation.calculate_roll_degrees()
     }
 }
@@ -678,7 +675,7 @@ impl FlightController {
     /// In angle mode, the roll and pitch angles are used to set the setpoints for the rollRate and pitchRate PIDs.
     /// Level Race Mode (aka NFE(Not Fast Enough) mode) is equivalent to angle mode on roll and acro mode on pitch.
     #[inline]
-    fn update_rate_setpoints_for_angle_mode(&mut self, orientation: Quaternionf32, delta_t: f32) {
+    fn update_rate_setpoints_for_angle_mode(&mut self, orientation: UnitQuaternionf32, delta_t: f32) {
         self.angle_mode_calculation_state.update(
             &mut self.roll,
             &mut self.pitch,
@@ -749,7 +746,7 @@ impl AngleModeCalculationState {
         &mut self,
         roll: &mut FcTilt,
         pitch: &mut FcTilt,
-        orientation: Quaternionf32,
+        orientation: UnitQuaternionf32,
         stabilization_mode: FlightStabilizationMode,
         dt: f32,
     ) {

@@ -358,17 +358,17 @@ pub fn main_data_from(
         #[cfg(feature = "magnetometer")]
         mag: [0i16; BlackboxMainData::XYZ_AXIS_COUNT],
 
-        orientation: if gyro_pid_msg.orientation.w > 0.0 {
+        orientation: if gyro_pid_msg.orientation.q().w > 0.0 {
             [
-                (gyro_pid_msg.orientation.x * TO_I16) as i16,
-                (gyro_pid_msg.orientation.y * TO_I16) as i16,
-                (gyro_pid_msg.orientation.z * TO_I16) as i16,
+                (gyro_pid_msg.orientation.q().x * TO_I16) as i16,
+                (gyro_pid_msg.orientation.q().y * TO_I16) as i16,
+                (gyro_pid_msg.orientation.q().z * TO_I16) as i16,
             ]
         } else {
             [
-                (-gyro_pid_msg.orientation.x * TO_I16) as i16,
-                (-gyro_pid_msg.orientation.y * TO_I16) as i16,
-                (-gyro_pid_msg.orientation.z * TO_I16) as i16,
+                (-gyro_pid_msg.orientation.q().x * TO_I16) as i16,
+                (-gyro_pid_msg.orientation.q().y * TO_I16) as i16,
+                (-gyro_pid_msg.orientation.q().z * TO_I16) as i16,
             ]
         },
 

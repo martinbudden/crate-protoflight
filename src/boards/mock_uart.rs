@@ -22,7 +22,7 @@ impl MockUart {
             return Ok(0);
         }
 
-        core::future::poll_fn(|_| core::task::Poll::Ready(())).await;
+        core::future::ready(()).await;
         // Copy matching slice data across
         let remaining = &self.data[self.position..];
         let bytes_to_copy = core::cmp::min(remaining.len(), buf.len());
@@ -37,7 +37,7 @@ impl MockUart {
         _ = self;
         _ = buf;
 
-        core::future::poll_fn(|_| core::task::Poll::Ready(())).await;
+        core::future::ready(()).await;
         Ok(0)
     }
 }

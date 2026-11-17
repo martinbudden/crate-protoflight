@@ -1,6 +1,6 @@
 #![cfg(feature = "osd")]
 
-use vqm::Quaternionf32;
+use vqm::UnitQuaternionf32;
 
 use crate::flight::{ArmingFlags, RxMessage};
 
@@ -9,7 +9,7 @@ use crate::battery_sensors::BatteryMessage;
 
 #[derive(Debug, PartialEq)]
 pub struct OsdDrawContext {
-    pub orientation: Quaternionf32,
+    pub orientation: UnitQuaternionf32,
     pub arming_flags: ArmingFlags,
     pub rx_message: RxMessage,
     #[cfg(feature = "battery")]

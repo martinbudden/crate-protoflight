@@ -81,22 +81,23 @@ static GYRO_PID_CTX: StaticCell<GyroPidContext<BoardImu>> = StaticCell::new();
 /// Context for `gyro_pid` task.
 #[allow(unused)]
 pub struct GyroPidContext<I: ImuDevice> {
-    pub imu: I,
-    pub rx_receiver: RxMessageReceiver,
-    pub gyro_pid_sender: GyroPidSender,
-    pub setpoint_sender: SetpointSender,
-    pub fast_config_subscriber: FastConfigSubscriber,
-    pub imu_filters: ImuFilterBank,
-    pub sensor_fusion: MadgwickFilterf32,
-    pub flight_controller: FlightController,
-    pub rc_controls: RcControls,
-    pub rc_modes: BitSet64,
-    pub gyro_pid_send_count: u32,
-    pub gyro_pid_denominator: u32,
+    imu: I,
+    imu_previous_read_time_us: u64,
+    rx_receiver: RxMessageReceiver,
+    gyro_pid_sender: GyroPidSender,
+    setpoint_sender: SetpointSender,
+    fast_config_subscriber: FastConfigSubscriber,
+    imu_filters: ImuFilterBank,
+    sensor_fusion: MadgwickFilterf32,
+    flight_controller: FlightController,
+    rc_controls: RcControls,
+    rc_modes: BitSet64,
+    gyro_pid_send_count: u32,
+    gyro_pid_denominator: u32,
     #[cfg(feature = "autopilot")]
-    pub imu_integral_sender: ImuIntegralSender,
+    imu_integral_sender: ImuIntegralSender,
     #[cfg(feature = "autopilot")]
-    pub imu_integrator: ImuIntegrator,
+    imu_integrator: ImuIntegrator,
 }
 
 pub fn init(
@@ -107,6 +108,7 @@ pub fn init(
 ) -> Result<&'static mut GyroPidContext<BoardImu>, TaskInitError> {
     let ctx = GyroPidContext {
         imu,
+        imu_previous_read_time_us: 0,
         rx_receiver: rx_message_receiver()?,
         gyro_pid_sender: gyro_pid_sender(),
         #[cfg(feature = "autopilot")]
@@ -168,25 +170,22 @@ pub async fn run(ctx: &'static mut GyroPidContext<BoardImu>) {
         ctx.imu_integrator.set_denominator(denominator);
     }
 
+    if let Err(err) = ctx.imu.read_acc_gyro().await {
+        log::error!("Initial IMU read failed: {err:?}");
+    }
+    ctx.imu_previous_read_time_us = embassy_time::Instant::now().as_micros();
+
+    let mut loop_count: u32 = 0;
+
     // TODO: this ticker wait should be replaced by an interrupt driven DMA read from the IMU.
     // I'm using a ticker like this during development to keep things simple.
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(u64::from(gyro_rate_hz)));
-
-    let mut time_previous_us = embassy_time::Instant::now().as_micros();
-
     // This is the famous GYRO/PID loop!
-    let mut loop_count: u32 = 0;
     loop {
         ticker.next().await;
 
-        let time_now_us = embassy_time::Instant::now().as_micros();
-        let delta_t_us = time_now_us - time_previous_us;
-        time_previous_us = time_now_us;
-        #[allow(clippy::cast_precision_loss)]
-        let delta_t = (delta_t_us as f32) * 1_000_000.0;
-
-        if let Err(err) = gyro_pid_loop_iteration(ctx, delta_t).await {
-            // We really shouldn't get here, so consider so sort of failsafe handling.
+        if let Err(err) = gyro_pid_loop_iteration(ctx).await {
+            // We really shouldn't get here, so consider this sort of failsafe handling.
             log::error!("GYRO_PID iteration failed: {err:?}");
         }
         if loop_count.is_multiple_of(1000) {
@@ -196,15 +195,21 @@ pub async fn run(ctx: &'static mut GyroPidContext<BoardImu>) {
     }
 }
 
-async fn gyro_pid_loop_iteration(ctx: &mut GyroPidContext<BoardImu>, delta_t: f32) -> Result<(), ImuError> {
+/// Perform one iteration of the GYRO/PID loop.
+async fn gyro_pid_loop_iteration(ctx: &mut GyroPidContext<BoardImu>) -> Result<(), ImuError> {
     // ****
     // The GYRO part of the GYRO/PID loop
     // ****
-
     let (acc_unfiltered_mps2, gyro_unfiltered_rps) = ctx.imu.read_acc_gyro().await?;
 
+    let time_now_us = embassy_time::Instant::now().as_micros();
+    let delta_t_us = time_now_us - ctx.imu_previous_read_time_us;
+    ctx.imu_previous_read_time_us = time_now_us;
+    #[allow(clippy::cast_precision_loss)]
+    let dt = (delta_t_us as f32) * 1_000_000.0;
+
     // Filter the acc and gyro values. This includes RPM notch filtering, if that is enabled.
-    let (acc_mps2, gyro_rps) = ctx.imu_filters.update(acc_unfiltered_mps2, gyro_unfiltered_rps, delta_t);
+    let (acc_mps2, gyro_rps) = ctx.imu_filters.update(acc_unfiltered_mps2, gyro_unfiltered_rps, dt);
 
     // Check if there has been a yaw heading correction from the GPS, if so, apply it.
     #[cfg(feature = "gps")]
@@ -213,11 +218,12 @@ async fn gyro_pid_loop_iteration(ctx: &mut GyroPidContext<BoardImu>, delta_t: f3
     }
 
     // Calculate the orientation quaternion using sensor fusion.
-    let orientation = ctx.sensor_fusion.fuse_acc_gyro(acc_mps2, gyro_rps, delta_t);
+    let orientation = ctx.sensor_fusion.fuse_acc_gyro(acc_mps2, gyro_rps, dt);
 
+    // If the autopilot feature is enabled, then update the IMU integrator, which is in turn used by the Kalman filter.
     #[cfg(feature = "autopilot")]
     {
-        ctx.imu_integrator.integrate(acc_unfiltered_mps2, orientation, delta_t);
+        ctx.imu_integrator.integrate(acc_unfiltered_mps2, orientation, dt);
         // Send the integrated_imu message on a denominator
         if ctx.imu_integrator.integration_complete() {
             // Send the integrated_imu message, this will be picked up by the autopilot task.
@@ -227,7 +233,7 @@ async fn gyro_pid_loop_iteration(ctx: &mut GyroPidContext<BoardImu>, delta_t: f3
             // Reset acc integrator for next time round the loop.
             ctx.imu_integrator.reset();
 
-            // If the acc_bias has been updated, then set the new value before the next integration batch.
+            // If the acc_bias has been updated, then set the IMU integrator to new value before the next integration batch.
             if let Some(message) = super::autopilot::KALMAN_ACC_BIAS_SIGNAL.try_take() {
                 ctx.imu_integrator.set_acc_bias(message.acc_bias_ned_mps2);
             }
@@ -250,7 +256,7 @@ async fn gyro_pid_loop_iteration(ctx: &mut GyroPidContext<BoardImu>, delta_t: f3
     // `setpoints_updated` is set if the setpoints have been updated because of a new radio_control_message,
     // or if the flight controller has updated the setpoints because of crash or spin recovery.
     let (motor_commands, setpoints_updated) =
-        ctx.flight_controller.calculate_motor_commands(gyro_rps, orientation, delta_t, ctx.rc_controls, ctx.rc_modes);
+        ctx.flight_controller.calculate_motor_commands(gyro_rps, orientation, dt, ctx.rc_controls, ctx.rc_modes);
 
     // Convert the motor commands calculated by the flight controller into a motor mixer message and send that message.
     // The signal will be picked up by the motor mixer task.

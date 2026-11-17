@@ -1,5 +1,5 @@
 use pidsk_controller::{PControllerf32, PidskControllerf32};
-use vqm::Quaternionf32;
+use vqm::UnitQuaternionf32;
 
 /// Altitude hold uses a standard **Dual-Ring Cascaded PID Loop**.
 ///
@@ -94,7 +94,7 @@ impl MultirotorAltitudeDualRingPid {
         self.altitude_pid.set_setpoint(altitude_setpoint);
     }
 
-    pub fn update(&mut self, altitude: f32, vertical_speed: f32, orientation: Quaternionf32, delta_t: f32) -> f32 {
+    pub fn update(&mut self, altitude: f32, vertical_speed: f32, orientation: UnitQuaternionf32, delta_t: f32) -> f32 {
         self.hover_throttle + self.calculate_throttle_offset(altitude, vertical_speed, orientation, delta_t)
     }
 
@@ -102,7 +102,7 @@ impl MultirotorAltitudeDualRingPid {
         &mut self,
         altitude: f32,
         vertical_speed: f32,
-        orientation: Quaternionf32,
+        orientation: UnitQuaternionf32,
         delta_t: f32,
     ) -> f32 {
         let cos_tilt = orientation.cos_tilt();
@@ -170,7 +170,7 @@ mod tests {
         let altitude_setpoint = 5.0; // Want to climb to 5 meters
         controller.set_altitude_setpoint(altitude_setpoint);
         let delta_t = 0.001; // 1kHz execution speed
-        let orientation = Quaternionf32::default();
+        let orientation = UnitQuaternionf32::default();
 
         // Simulate 15 seconds of real-time flight execution (15,000 loop cycles)
         let mut converged = false;

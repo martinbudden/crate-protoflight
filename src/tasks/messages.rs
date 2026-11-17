@@ -1,6 +1,7 @@
+use num_traits::ConstOne;
 use sensor_fusion::ImuIntegral;
 use simple_bitset::BitSet64;
-use vqm::{Quaternionf32, Vector3f32, Vector4f32};
+use vqm::{UnitQuaternionf32, Vector3f32, Vector4f32};
 /*
 Current Estimates for GyroPidMessage:
 AccData (4x f32 ): 16 bytes
@@ -23,7 +24,7 @@ const _: () = assert!(core::mem::size_of::<ImuIntegralMessage>() == 32);
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(C)]
 pub struct GyroPidMessage {
-    pub orientation: Quaternionf32,
+    pub orientation: UnitQuaternionf32,
     pub motor_commands: Vector4f32,
     pub acc: Vector3f32,
     pub gyro_rps: Vector3f32,
@@ -47,7 +48,7 @@ impl GyroPidMessage {
     #[must_use]
     pub const fn new() -> Self {
         Self {
-            orientation: Quaternionf32::new(0.0, 0.0, 0.0, 0.0),
+            orientation: UnitQuaternionf32::ONE,
             motor_commands: Vector4f32::new(0.0, 0.0, 0.0, 0.0),
             acc: Vector3f32::new(0.0, 0.0, 0.0),
             gyro_rps: Vector3f32::new(0.0, 0.0, 0.0),

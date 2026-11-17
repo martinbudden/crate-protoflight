@@ -112,7 +112,7 @@ pub async fn run(ctx: &'static mut GpsContext) {
         // Wait for the next tick.
         // TODO: change GPS task to run off interrupt
         ticker.next().await;
-        core::future::poll_fn(|_| core::task::Poll::Ready(())).await;
+        core::future::ready(()).await;
 
         if let Ok(n) = ctx.read_packet().await {
             for &byte in &ctx.buf[..n] {

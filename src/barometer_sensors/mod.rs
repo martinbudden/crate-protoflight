@@ -1,7 +1,7 @@
 #![doc = include_str!("README.md")]
 
 mod barometer;
-mod barometer_bmp085;
+mod barometer_bmp280;
 mod barometer_device;
 mod barometer_dps310;
 mod barometer_mock;

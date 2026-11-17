@@ -452,8 +452,10 @@ impl Msp {
         }
         MspResult::Ack
     }
+}
 
-    #[cfg(feature = "magnetometer")]
+#[cfg(feature = "magnetometer")]
+impl Msp {
     async fn compass_config(dst: &mut StreamBufWriter<'_>) -> MspResult {
         let config = {
             let global_config = GLOBAL_CONFIG.lock().await;
@@ -462,7 +464,6 @@ impl Msp {
         dst.write_u16(config.mag_declination_degrees_x10.cast_unsigned());
         MspResult::Ack
     }
-    #[cfg(feature = "magnetometer")]
     async fn set_compass_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
         let mut global_config = GLOBAL_CONFIG.lock().await;
         let mut config = global_config.imu;
@@ -475,7 +476,9 @@ impl Msp {
         }
         MspResult::Ack
     }
+}
 
+impl Msp {
     async fn rc_controls_config(dst: &mut StreamBufWriter<'_>) -> MspResult {
         let (rc_controls, position_hold) = {
             let global_config = GLOBAL_CONFIG.lock().await;
@@ -681,8 +684,10 @@ impl Msp {
         }
         MspResult::Ack
     }
+}
 
-    #[cfg(feature = "blackbox")]
+#[cfg(feature = "blackbox")]
+impl Msp {
     async fn dataflash_read(_dst: &mut StreamBufWriter<'_>) -> MspResult {
         let blackbox_device = {
             let global_config = GLOBAL_CONFIG.lock().await;
@@ -691,7 +696,6 @@ impl Msp {
         _ = blackbox_device;
         MspResult::Error
     }
-    #[cfg(feature = "blackbox")]
     async fn dataflash_summary(_dst: &mut StreamBufWriter<'_>) -> MspResult {
         let blackbox_device = {
             let global_config = GLOBAL_CONFIG.lock().await;
@@ -700,7 +704,6 @@ impl Msp {
         _ = blackbox_device;
         MspResult::Error
     }
-    #[cfg(feature = "blackbox")]
     async fn dataflash_erase() -> MspResult {
         let blackbox_device = {
             let global_config = GLOBAL_CONFIG.lock().await;
@@ -709,7 +712,6 @@ impl Msp {
         _ = blackbox_device;
         MspResult::Error
     }
-    #[cfg(feature = "blackbox")]
     async fn blackbox_config(dst: &mut StreamBufWriter<'_>) -> MspResult {
         let config = {
             let global_config = GLOBAL_CONFIG.lock().await;
@@ -726,7 +728,6 @@ impl Msp {
 
         MspResult::Ack
     }
-    #[cfg(feature = "blackbox")]
     async fn set_blackbox_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
         // Check if enough data is even present before locking anything
         if src.bytes_remaining() < 8 {
@@ -769,7 +770,9 @@ impl Msp {
         }
         MspResult::Ack
     }
+}
 
+impl Msp {
     async fn advanced_config(dst: &mut StreamBufWriter<'_>) -> MspResult {
         let (gyro, motor, motor_device) = {
             let global_config = GLOBAL_CONFIG.lock().await;
@@ -1464,8 +1467,10 @@ impl Msp {
         // TODO: update the sensor fusion filter with the new heading
         MspResult::Ack
     }
+}
 
-    #[cfg(feature = "battery")]
+#[cfg(feature = "battery")]
+impl Msp {
     async fn battery_config(dst: &mut StreamBufWriter<'_>) -> MspResult {
         let (config, profiles) = {
             let global_config = GLOBAL_CONFIG.lock().await;
@@ -1488,7 +1493,6 @@ impl Msp {
 
         MspResult::Ack
     }
-    #[cfg(feature = "battery")]
     async fn set_battery_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
         use crate::battery_sensors::{CurrentMeterReading, VoltageMeterReading};
 
@@ -1526,8 +1530,10 @@ impl Msp {
         }
         MspResult::Ack
     }
+}
 
-    #[cfg(feature = "gps")]
+#[cfg(feature = "gps")]
+impl Msp {
     fn raw_gps(dst: &mut StreamBufWriter<'_>, sensor_data: &MspSensorData) -> MspResult {
         dst.write_u8(0); //STATE(GPS_FIX));
         dst.write_u8(sensor_data.gps_solution.satellite_count);
@@ -1544,7 +1550,6 @@ impl Msp {
         MspResult::Ack
     }
 
-    #[cfg(feature = "gps")]
     async fn gps_config(dst: &mut StreamBufWriter<'_>) -> MspResult {
         let config = {
             let global_config = GLOBAL_CONFIG.lock().await;
@@ -1560,7 +1565,6 @@ impl Msp {
 
         MspResult::Ack
     }
-    #[cfg(feature = "gps")]
     async fn set_gps_config(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
         use crate::gps::{GpsOffOn, GpsProvider, SbasMode};
 
@@ -1587,7 +1591,6 @@ impl Msp {
         MspResult::Ack
     }
 
-    #[cfg(feature = "gps")]
     async fn gps_rescue(dst: &mut StreamBufWriter<'_>) -> MspResult {
         let (gps_rescue_config, autopilot_config) = {
             let global_config = GLOBAL_CONFIG.lock().await;
@@ -1614,7 +1617,6 @@ impl Msp {
 
         MspResult::Ack
     }
-    #[cfg(feature = "gps")]
     async fn set_gps_rescue(src: &mut StreamBufReader<'_>, publisher: &ConfigPublisher) -> MspResult {
         if src.bytes_remaining() < 18 {
             return MspResult::Error;

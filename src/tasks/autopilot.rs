@@ -137,11 +137,12 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
                 use embassy_futures::yield_now;
 
                 ctx.autopilot.kalman_filter.predict(
+                    time_us,
                     imu_integral.delta_vel_ned_mps.z,
                     imu_integral.delta_pos_ned_m.z,
                     delta_t,
                 );
-                // signal the acc bias so the gyro_pid task use it to update the IMU integrator.
+                // signal the acc bias so the gyro_pid task can use it to update the IMU integrator.
                 let acc_bias_ned_mps2 = Vector3f32 { x: 0.0, y: 0.0, z: ctx.autopilot.kalman_filter.acc_bias_mps2() };
                 KALMAN_ACC_BIAS_SIGNAL.signal(KalmanAccBiasNedMessage { acc_bias_ned_mps2 });
                 yield_now().await;

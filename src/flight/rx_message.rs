@@ -1,8 +1,9 @@
+use num_traits::ConstOne;
 use radio_controllers::RxChannels;
 #[allow(unused)]
 use radio_controllers::{Rates, RcModes, RcSticks, RxFrame, RxLinkStatus};
 use simple_bitset::BitSet64;
-use vqm::Quaternionf32;
+use vqm::UnitQuaternionf32;
 
 /// Message for communicating a radio control command between tasks.<br><br>
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -15,7 +16,7 @@ pub struct RcControls {
     pub yaw_stick_dps: f32,
     pub roll_stick_degrees: f32,
     pub pitch_stick_degrees: f32,
-    pub target_attitude: Quaternionf32,
+    pub target_attitude: UnitQuaternionf32,
     pub controls_pwm: [u16; 4],
     pub link_status: RxLinkStatus,
     pub rssi: u8,
@@ -38,7 +39,7 @@ impl RcControls {
             yaw_stick_dps: 0.0,
             roll_stick_degrees: 0.0,
             pitch_stick_degrees: 0.0,
-            target_attitude: Quaternionf32 { w: 1.0, x: 0.0, y: 0.0, z: 0.0 },
+            target_attitude: UnitQuaternionf32::ONE,
             controls_pwm: [0u16; 4],
             link_status: RxLinkStatus::Ok,
             rssi: 0,
@@ -89,8 +90,7 @@ impl RxMessage {
         let roll_stick_degrees = sticks.roll * rates.max_roll_angle_degrees;
         let pitch_stick_degrees = sticks.pitch * rates.max_pitch_angle_degrees;
 
-        let target_attitude =
-            Quaternionf32::from_roll_pitch_degrees(roll_stick_degrees, pitch_stick_degrees).normalize();
+        let target_attitude = UnitQuaternionf32::from_roll_pitch_degrees(roll_stick_degrees, pitch_stick_degrees);
 
         // Get the rc_modes (eg altitude hold, gps home) (used by the autopilot),
         // and the stabilization mode (eg STABILIZATION_MODE_RATE) (used by the flight controller).
