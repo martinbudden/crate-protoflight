@@ -1,3 +1,4 @@
+#![cfg(feature = "barometer")]
 use super::barometer::BarometerType;
 
 #[cfg(feature = "storage")]

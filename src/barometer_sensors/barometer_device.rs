@@ -1,7 +1,5 @@
-#[allow(unused)]
-use vqm::MathMethods; // for powf
+use crate::i2c_bus::I2cError;
 
-use super::BarometerI2cError;
 /// The common interface for barometer.
 #[allow(unused)]
 pub trait BarometerDevice {
@@ -9,9 +7,20 @@ pub trait BarometerDevice {
     //pub async fn init(&self) -> Result<u32, BarometerI2cError> {
     async fn init(&mut self) -> Result<u32, BarometerI2cError>;
 
-    async fn make_reading(&mut self);
-    fn message(&self, timestamp_us: u64) -> BarometerMessage;
+    async fn make_reading(&mut self) -> Result<(), BarometerI2cError>;
+    fn message(&self) -> BarometerMessage;
 }
+
+#[allow(unused)]
+#[derive(Debug)]
+pub enum BarometerError<E> {
+    I2c(E),
+    InvalidChipId { expected: u8, actual: u8 },
+    InvalidCalibration,
+    InvalidData,
+}
+
+pub type BarometerI2cError = BarometerError<I2cError>;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "host", derive(derive_more::Display))]

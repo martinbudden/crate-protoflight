@@ -7,7 +7,8 @@ mod barometer_dps310;
 mod barometer_mock;
 mod config;
 
-pub use barometer::{Barometer, BarometerI2cError, BarometerType};
-pub use barometer_device::{BarometerDevice, BarometerMessage};
-#[allow(unused)]
+pub use barometer::{Barometer, BarometerType};
+pub use barometer_device::{BarometerDevice, BarometerI2cError, BarometerMessage};
+
+#[cfg(feature = "barometer")]
 pub use config::BarometerConfig;

@@ -18,23 +18,21 @@ impl BarometerMock {
 //impl BarometerDevice for BarometerMock {
 impl BarometerMock {
     pub async fn init(&self) -> Result<u32, BarometerI2cError> {
-        //async fn init(&mut self) -> Result<u32, ()> {
-        // Placeholder: explicitly await an immediately ready inline future
-        core::future::poll_fn(|_| core::task::Poll::Ready(())).await;
+        core::future::ready(()).await;
 
-        Ok(40)
+        let sample_rate_hz = 40;
+        Ok(sample_rate_hz)
     }
 
-    pub async fn make_reading(&mut self) {
-        // Placeholder: explicitly await an immediately ready inline future
-        core::future::poll_fn(|_| core::task::Poll::Ready(())).await;
+    pub async fn make_reading(&mut self) -> Result<(), BarometerI2cError> {
+        core::future::ready(()).await;
         _ = self;
+        Ok(())
     }
 
     #[allow(clippy::trivially_copy_pass_by_ref)]
-    pub fn message(&self, timestamp_us: u64) -> BarometerMessage {
+    pub fn message(&self) -> BarometerMessage {
         _ = self;
-        _ = timestamp_us;
         BarometerMessage::default()
     }
 }

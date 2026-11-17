@@ -1,10 +1,8 @@
-//#[cfg(feature = "barometer")]
-#[allow(unused)]
-use super::{
-    BarometerDevice, BarometerMessage, barometer_bmp085::BarometerBmp085, barometer_dps310::BarometerDps310,
-    barometer_mock::BarometerMock,
-};
-use crate::i2c_bus::{I2cError, SharedI2cBus};
+#[cfg(feature = "barometer")]
+use super::{barometer_bmp085::BarometerBmp085, barometer_dps310::BarometerDps310};
+
+use super::{BarometerDevice, BarometerI2cError, BarometerMessage, barometer_mock::BarometerMock};
+use crate::i2c_bus::SharedI2cBus;
 
 #[cfg(feature = "storage")]
 use sequential_storage::map::PostcardValue;
@@ -15,7 +13,6 @@ use {
 };
 
 #[allow(missing_docs)]
-#[allow(unused)]
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
@@ -64,20 +61,6 @@ impl BarometerType {
     }
 }
 
-#[allow(unused)]
-#[derive(Debug)]
-pub enum BarometerError<E> {
-    I2c(E),
-    InvalidChipId { expected: u8, actual: u8 },
-    InvalidCalibration,
-    InvalidData,
-}
-
-//pub type Dps310Error = BarometerError<<I2cDeviceBlocking as embedded_hal::i2c::ErrorType>::Error>;
-//pub type Bmp085Error = BarometerError<<I2cDeviceBlocking as embedded_hal::i2c::ErrorType>::Error>;
-
-pub type BarometerI2cError = BarometerError<I2cError>;
-
 pub enum Barometer {
     Mock(BarometerMock),
     #[cfg(feature = "barometer")]
@@ -113,7 +96,7 @@ impl BarometerDevice for Barometer {
             Self::Dps310(barometer) => barometer.init().await,
         }
     }
-    async fn make_reading(&mut self) {
+    async fn make_reading(&mut self) -> Result<(), BarometerI2cError> {
         match self {
             Self::Mock(barometer) => barometer.make_reading().await,
             #[cfg(feature = "barometer")]
@@ -123,13 +106,13 @@ impl BarometerDevice for Barometer {
         }
     }
 
-    fn message(&self, timestamp_us: u64) -> BarometerMessage {
+    fn message(&self) -> BarometerMessage {
         match self {
-            Self::Mock(barometer) => barometer.message(timestamp_us),
+            Self::Mock(barometer) => barometer.message(),
             #[cfg(feature = "barometer")]
-            Self::Bmp085(barometer) => barometer.message(timestamp_us),
+            Self::Bmp085(barometer) => barometer.message(),
             #[cfg(feature = "barometer")]
-            Self::Dps310(barometer) => barometer.message(timestamp_us),
+            Self::Dps310(barometer) => barometer.message(),
         }
     }
 }

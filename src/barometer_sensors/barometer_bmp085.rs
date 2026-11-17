@@ -1,11 +1,12 @@
-//#![cfg(feature = "barometer")]
+#![cfg(feature = "barometer")]
+
+use embassy_time::Instant;
 
 use crate::{
     barometer_sensors::{BarometerI2cError, BarometerMessage},
-    i2c_bus::SharedI2cBus,
+    i2c_bus::{SharedI2cBus, SharedI2cExt},
 };
 
-#[allow(unused)]
 struct Reg;
 
 impl Reg {
@@ -21,25 +22,25 @@ impl Reg {
     const _DIG_P7: u8 = 0x9A;
     const _DIG_P8: u8 = 0x9C;
     const _DIG_P9: u8 = 0x9E;
-    const _CHIPID: u8 = 0xD0;
+    const CHIPID: u8 = 0xD0;
     const _VERSION: u8 = 0xD1;
     const _SOFTRESET: u8 = 0xE0;
     const _CAL26: u8 = 0xE1; // R calibration:u8 = 0xE1-0xF0
     const _STATUS: u8 = 0xF3;
     const _CONTROL: u8 = 0xF4;
     const _CONFIG: u8 = 0xF5;
-    const _PRESSURE_MSB: u8 = 0xF7;
+    const PRESSURE_MSB: u8 = 0xF7;
     const _PRESSURE_LSB: u8 = 0xF8;
     const _PRESSURE_XLSB: u8 = 0xF9;
-    const _TEMPERATURE_MSB: u8 = 0xFA;
+    const TEMPERATURE_MSB: u8 = 0xFA;
     const _TEMPERATURE_LSB: u8 = 0xFB;
     const _TEMPERATURE_XLSB: u8 = 0xFC;
 }
 
-#[allow(unused)]
 pub struct BarometerBmp085 {
-    #[allow(unused)]
-    pub i2c_bus: &'static SharedI2cBus,
+    pub bus: &'static SharedI2cBus,
+    address: u8,
+    timestamp_us: u64,
     temperature_calibration: TemperatureCalibration,
     temperature_fine: i32,
     temperature_celsius: f32,
@@ -48,16 +49,16 @@ pub struct BarometerBmp085 {
     pressure_at_reference_altitude: f32,
 }
 
-#[allow(unused)]
 impl BarometerBmp085 {
     const I2C_ADDRESS: u8 = 0x76;
     const I2C_ADDRESS_ALTERNATIVE: u8 = 0x77;
-    const CHIP_ID: u8 = 0x58;
-    const MAX_SPI_FREQUENCY_HZ: u32 = 10_000_000;
+    const CHIP_ID: u8 = 0x55;
 
-    pub const fn new(i2c_bus: &'static SharedI2cBus) -> Self {
+    pub const fn new(bus: &'static SharedI2cBus) -> Self {
         Self {
-            i2c_bus,
+            bus,
+            address: Self::I2C_ADDRESS,
+            timestamp_us: 0,
             temperature_calibration: TemperatureCalibration::new(),
             temperature_fine: 0,
             temperature_celsius: 0.0,
@@ -66,13 +67,22 @@ impl BarometerBmp085 {
             pressure_at_reference_altitude: 0.0,
         }
     }
+
+    /// Set a newly constructed `BarometerBmp085` to use it's alternative I2C address.
+    #[allow(unused)]
+    #[must_use]
+    pub const fn with_alternative_address(mut self) -> Self {
+        self.address = Self::I2C_ADDRESS_ALTERNATIVE;
+        self
+    }
 }
 
 impl BarometerBmp085 {
-    #[allow(unused)]
     fn calculate_temperature(&mut self, temperature: MsbLsbXlsb, calibration: TemperatureCalibration) {
         let adc_t: i32 =
-            ((((temperature.msb) << 16) | ((temperature.lsb) << 8) | (temperature.xlsb)) >> 4).cast_signed();
+            (((u32::from(temperature.msb) << 16) | (u32::from(temperature.lsb) << 8) | u32::from(temperature.xlsb))
+                >> 4)
+                .cast_signed();
         let vt1 = ((adc_t >> 3) - (calibration.t1 << 1)) * calibration.t2;
         let vt2 = ((((adc_t >> 4) - calibration.t1) * ((adc_t >> 4) - calibration.t1)) >> 12) * calibration.t3;
         self.temperature_fine = (vt1 >> 11) + (vt2 >> 14);
@@ -82,7 +92,6 @@ impl BarometerBmp085 {
         }
     }
 
-    #[allow(unused)]
     fn calculate_pressure(&mut self, pressure: MsbLsbXlsb, calibration: PressureCalibration) {
         let mut vp1 = i64::from(self.temperature_fine) - 128_000;
         let mut vp2 = vp1 * vp1 * i64::from(calibration.p6);
@@ -94,7 +103,9 @@ impl BarometerBmp085 {
         if vp1 == 0 {
             return; // avoid division by zero
         }
-        let adc_p: i32 = ((((pressure.msb) << 16) | ((pressure.lsb) << 8) | (pressure.xlsb)) >> 4).cast_signed();
+        let adc_p: i32 =
+            (((u32::from(pressure.msb) << 16) | (u32::from(pressure.lsb) << 8) | u32::from(pressure.xlsb)) >> 4)
+                .cast_signed();
 
         let mut p: i64 = 1_048_576 - i64::from(adc_p);
         p = (((p << 31) - vp2) * 3125) / vp1;
@@ -154,10 +165,11 @@ impl PressureCalibration {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct MsbLsbXlsb {
-    pub msb: u32,
-    pub lsb: u32,
-    pub xlsb: u32,
+    pub msb: u8,
+    pub lsb: u8,
+    pub xlsb: u8,
 }
+
 impl Default for MsbLsbXlsb {
     fn default() -> Self {
         Self::new()
@@ -172,38 +184,64 @@ impl MsbLsbXlsb {
 
 //impl BarometerDevice for BarometerBmp085 {
 impl BarometerBmp085 {
-    #[allow(unused)]
-    pub async fn init(&self) -> Result<u32, BarometerI2cError> {
-        //async fn init(&mut self) -> Result<u32, ()> {
-        // Placeholder: explicitly await an immediately ready inline future
-        core::future::poll_fn(|_| core::task::Poll::Ready(())).await;
-
-        Ok(40)
+    async fn read_register(&self, register: u8) -> Result<u8, BarometerI2cError> {
+        self.bus.read_reg(self.address, register).await.map_err(BarometerI2cError::I2c)
     }
 
-    #[allow(unused)]
-    pub async fn make_reading(&mut self) {
+    async fn _write_register(&self, register: u8, value: u8) -> Result<(), BarometerI2cError> {
+        self.bus.write_reg(self.address, register, value).await.map_err(BarometerI2cError::I2c)
+    }
+
+    async fn read_registers<const N: usize>(&self, register: u8) -> Result<[u8; N], BarometerI2cError> {
+        self.bus.read_regs::<N>(self.address, register).await.map_err(BarometerI2cError::I2c)
+    }
+
+    pub async fn init(&self) -> Result<u32, BarometerI2cError> {
+        let chip_id = self.read_register(Reg::CHIPID).await?;
+
+        if chip_id != Self::CHIP_ID {
+            return Err(BarometerI2cError::InvalidChipId { expected: Self::CHIP_ID, actual: chip_id });
+        }
+        //async fn init(&mut self) -> Result<u32, ()> {
         // Placeholder: explicitly await an immediately ready inline future
-        core::future::poll_fn(|_| core::task::Poll::Ready(())).await;
+        //core::future::poll_fn(|_| core::task::Poll::Ready(())).await;
+        core::future::ready(()).await;
+
+        let sample_rate_hz = 40;
+        Ok(sample_rate_hz)
+    }
+
+    async fn read_raw_pressure(&self) -> Result<MsbLsbXlsb, BarometerI2cError> {
+        let data = self.read_registers::<3>(Reg::PRESSURE_MSB).await?;
+        Ok(MsbLsbXlsb { msb: data[0], lsb: data[1], xlsb: data[2] })
+    }
+
+    async fn read_raw_temperature(&self) -> Result<MsbLsbXlsb, BarometerI2cError> {
+        let data = self.read_registers::<3>(Reg::TEMPERATURE_MSB).await?;
+        Ok(MsbLsbXlsb { msb: data[0], lsb: data[1], xlsb: data[2] })
+    }
+
+    pub async fn make_reading(&mut self) -> Result<(), BarometerI2cError> {
+        let pressure = self.read_raw_pressure().await?;
+        let temperature = self.read_raw_temperature().await?;
+        self.timestamp_us = Instant::now().as_micros();
 
         //self.bus.write_register(CONTROL, MEASUREMENT_MODE);
         // read together in burst so data is consistent, as specified in datasheet
         // pressure_temperature_data_u pt;
         // self.bus.read_register(PRESSURE_MSB, &pt.data[0], sizeof(pt));
 
-        let temperature = MsbLsbXlsb::default();
-        let pressure = MsbLsbXlsb::default();
         self.calculate_temperature(temperature, self.temperature_calibration);
         self.calculate_pressure(pressure, self.pressure_calibration);
+        Ok(())
     }
 
-    #[allow(unused)]
-    pub fn message(&self, timestamp_us: u64) -> BarometerMessage {
+    pub fn message(&self) -> BarometerMessage {
         let altitude_m =
             BarometerMessage::calculate_altitude_meters(self.pressure_pascals, self.pressure_at_reference_altitude);
         #[allow(clippy::cast_possible_truncation)]
         BarometerMessage {
-            timestamp_us,
+            timestamp_us: self.timestamp_us,
             altitude_m,
             altitude_m_i32: altitude_m as i32,
             pressure_pascals: self.pressure_pascals,

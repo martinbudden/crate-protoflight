@@ -339,6 +339,7 @@
         "wasi",
         "wasip",
         "wasmparser",
+        "wideband",
         "winapi",
         "wincon",
         "XLSB",

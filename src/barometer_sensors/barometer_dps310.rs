@@ -1,7 +1,9 @@
-//#![cfg(feature = "barometer")]
-#![allow(unused)]
+#![cfg(feature = "barometer")]
+
+use embassy_time::Instant;
+
 use crate::{
-    barometer_sensors::{BarometerI2cError, BarometerMessage, barometer::BarometerError},
+    barometer_sensors::{BarometerI2cError, BarometerMessage},
     i2c_bus::{SharedI2cBus, SharedI2cExt},
 };
 
@@ -28,80 +30,63 @@ impl Reg {
 }
 
 pub struct BarometerDps310 {
-    pub i2c_bus: &'static SharedI2cBus,
+    pub bus: &'static SharedI2cBus,
+    address: u8,
+    timestamp_us: u64,
+    temperature_raw: i32,
+    temperature_celsius: f32,
+    pressure_raw: i32,
+    pressure_pascals: f32,
+    pressure_at_reference_altitude: f32,
 }
 
 impl BarometerDps310 {
-    const I2C_ADDRESS: u8 = 0x76;
-    const CHIP_ID: u8 = 0x11;
-    const MAX_SPI_FREQUENCY_HZ: u32 = 10_000_000;
+    pub const I2C_ADDRESS: u8 = 0x76;
+    pub const I2C_ADDRESS_ALTERNATIVE: u8 = 0x77;
+    const CHIP_ID_DPS310: u8 = 0x10;
+    const CHIP_ID_SPL07_003: u8 = 0x10;
+    const _MAX_SPI_FREQUENCY_HZ: u32 = 10_000_000;
 
-    pub const fn new(i2c_bus: &'static SharedI2cBus) -> Self {
-        Self { i2c_bus }
+    pub const fn new(bus: &'static SharedI2cBus) -> Self {
+        Self {
+            bus,
+            address: Self::I2C_ADDRESS,
+            timestamp_us: 0,
+            temperature_raw: 0,
+            temperature_celsius: 0.0,
+            pressure_raw: 0,
+            pressure_pascals: 0.0,
+            pressure_at_reference_altitude: 0.0,
+        }
+    }
+
+    /// Set a newly constructed `BarometerDps310` to use it's alternative I2C address.
+    #[allow(unused)]
+    #[must_use]
+    pub const fn with_alternative_address(mut self) -> Self {
+        self.address = Self::I2C_ADDRESS_ALTERNATIVE;
+        self
     }
 }
-
-/*impl BarometerDps310 {
-    async fn read_register(&self, register: u8) -> Result<u8, ()> {
-        let mut data = [0u8; 1];
-
-        let mut i2c = self.i2c_bus.lock().await;
-        i2c.blocking_write_read(Self::I2C_ADDRESS, &[register], &mut data);
-
-        Ok(data[0])
-    }
-
-    async fn read_registers(&self, register: u8, data: &mut [u8]) -> Result<(), ()> {
-        let mut i2c = self.i2c_bus.lock().await;
-        i2c.blocking_write_read(Self::I2C_ADDRESS, &[register], data);
-
-        Ok(())
-    }
-
-    async fn write_register(&self, register: u8, value: u8) -> Result<(), ()> {
-        let mut i2c = self.i2c_bus.lock().await;
-        i2c.blocking_write(Self::I2C_ADDRESS, &[register, value]);
-
-        Ok(())
-    }
-}
-
-impl BarometerDevice for BarometerDps310 {
-    async fn init(&mut self) -> Result<u32, ()> {
-        // Placeholder: explicitly await an immediately ready inline future
-        core::future::poll_fn(|_| core::task::Poll::Ready(())).await;
-
-        Ok(0)
-    }
-
-    async fn make_reading(&mut self) {
-        // Placeholder: explicitly await an immediately ready inline future
-        core::future::poll_fn(|_| core::task::Poll::Ready(())).await;
-        _ = self;
-    }
-    fn message(&self) -> BarometerMessage {
-        BarometerMessage::default()
-    }
-}*/
 
 impl BarometerDps310 {
     async fn read_register(&self, register: u8) -> Result<u8, BarometerI2cError> {
-        self.i2c_bus.read_reg(Self::I2C_ADDRESS, register).await.map_err(BarometerError::I2c)
+        self.bus.read_reg(self.address, register).await.map_err(BarometerI2cError::I2c)
     }
 
     async fn write_register(&self, register: u8, value: u8) -> Result<(), BarometerI2cError> {
-        self.i2c_bus.write_reg(Self::I2C_ADDRESS, register, value).await.map_err(BarometerError::I2c)
+        self.bus.write_reg(self.address, register, value).await.map_err(BarometerI2cError::I2c)
     }
 
     async fn read_registers<const N: usize>(&self, register: u8) -> Result<[u8; N], BarometerI2cError> {
-        self.i2c_bus.read_regs::<N>(Self::I2C_ADDRESS, register).await.map_err(BarometerError::I2c)
+        self.bus.read_regs::<N>(self.address, register).await.map_err(BarometerI2cError::I2c)
     }
 
     pub async fn init(&self) -> Result<u32, BarometerI2cError> {
         let chip_id = self.read_register(Reg::ID).await?;
 
-        if chip_id != Self::CHIP_ID {
-            return Err(BarometerError::InvalidChipId { expected: Self::CHIP_ID, actual: chip_id });
+        if chip_id != Self::CHIP_ID_DPS310 && chip_id != Self::CHIP_ID_SPL07_003 {
+            return Err(BarometerI2cError::InvalidChipId { expected: Self::CHIP_ID_DPS310, actual: chip_id });
         }
 
         // Reset the DPS310.
@@ -116,7 +101,8 @@ impl BarometerDps310 {
         // self.write_register(Self::REG_TMP_CFG, ...).await?;
         // self.write_register(Self::REG_MEAS_CFG, ...).await?;
 
-        Ok(40)
+        let sample_rate_hz = 40;
+        Ok(sample_rate_hz)
     }
 
     pub async fn read_raw_pressure(&self) -> Result<i32, BarometerI2cError> {
@@ -132,14 +118,23 @@ impl BarometerDps310 {
         Ok(if raw & 0x80_0000 != 0 { raw | !0xFF_FFFF } else { raw })
     }
 
-    pub async fn make_reading(&mut self) {
-        // Placeholder: explicitly await an immediately ready inline future
-        core::future::poll_fn(|_| core::task::Poll::Ready(())).await;
+    pub async fn make_reading(&mut self) -> Result<(), BarometerI2cError> {
+        self.pressure_raw = self.read_raw_pressure().await?;
+        self.temperature_raw = self.read_raw_temperature().await?;
+        self.timestamp_us = Instant::now().as_micros();
+        Ok(())
     }
 
-    pub fn message(&self, timestamp_us: u64) -> BarometerMessage {
-        _ = self;
-        _ = timestamp_us;
-        BarometerMessage::default()
+    pub fn message(&self) -> BarometerMessage {
+        let altitude_m =
+            BarometerMessage::calculate_altitude_meters(self.pressure_pascals, self.pressure_at_reference_altitude);
+        #[allow(clippy::cast_possible_truncation)]
+        BarometerMessage {
+            timestamp_us: self.timestamp_us,
+            altitude_m,
+            altitude_m_i32: altitude_m as i32,
+            pressure_pascals: self.pressure_pascals,
+            temperature_celsius: self.temperature_celsius,
+        }
     }
 }
