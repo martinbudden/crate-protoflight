@@ -182,7 +182,6 @@ impl MsbLsbXlsb {
     }
 }
 
-//impl BarometerDevice for BarometerBmp085 {
 impl BarometerBmp085 {
     async fn read_register(&self, register: u8) -> Result<u8, BarometerI2cError> {
         self.bus.read_reg(self.address, register).await.map_err(BarometerI2cError::I2c)
@@ -202,10 +201,6 @@ impl BarometerBmp085 {
         if chip_id != Self::CHIP_ID {
             return Err(BarometerI2cError::InvalidChipId { expected: Self::CHIP_ID, actual: chip_id });
         }
-        //async fn init(&mut self) -> Result<u32, ()> {
-        // Placeholder: explicitly await an immediately ready inline future
-        //core::future::poll_fn(|_| core::task::Poll::Ready(())).await;
-        core::future::ready(()).await;
 
         let sample_rate_hz = 40;
         Ok(sample_rate_hz)
@@ -225,11 +220,6 @@ impl BarometerBmp085 {
         let pressure = self.read_raw_pressure().await?;
         let temperature = self.read_raw_temperature().await?;
         self.timestamp_us = Instant::now().as_micros();
-
-        //self.bus.write_register(CONTROL, MEASUREMENT_MODE);
-        // read together in burst so data is consistent, as specified in datasheet
-        // pressure_temperature_data_u pt;
-        // self.bus.read_register(PRESSURE_MSB, &pt.data[0], sizeof(pt));
 
         self.calculate_temperature(temperature, self.temperature_calibration);
         self.calculate_pressure(pressure, self.pressure_calibration);

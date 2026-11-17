@@ -1,5 +1,5 @@
 #[cfg(feature = "barometer")]
-use super::{barometer_bmp085::BarometerBmp085, barometer_dps310::BarometerDps310};
+use super::{barometer_bmp280::BarometerBmp280, barometer_dps310::BarometerDps310};
 
 use super::{BarometerDevice, BarometerI2cError, BarometerMessage, barometer_mock::BarometerMock};
 use crate::i2c_bus::SharedI2cBus;

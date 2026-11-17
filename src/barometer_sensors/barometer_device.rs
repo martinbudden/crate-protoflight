@@ -3,9 +3,8 @@ use crate::i2c_bus::I2cError;
 /// The common interface for barometer.
 #[allow(unused)]
 pub trait BarometerDevice {
-    /// Returns sample rate or error.
-    //pub async fn init(&self) -> Result<u32, BarometerI2cError> {
-    async fn init(&mut self) -> Result<u32, BarometerI2cError>;
+    /// Initializes the sensor and returns the actual configured output data rate (ODR) in Hz.
+    async fn init(&mut self) -> Result<f32, BarometerI2cError>;
 
     async fn make_reading(&mut self) -> Result<(), BarometerI2cError>;
     fn message(&self) -> BarometerMessage;
@@ -51,6 +50,7 @@ impl BarometerMessage {
         44330.0 * (1.0 - (pressure / pressure_at_reference_altitude).powf(0.1903))
     }
 }
+
 #[cfg(test)]
 mod test_traits {
     use super::*;
