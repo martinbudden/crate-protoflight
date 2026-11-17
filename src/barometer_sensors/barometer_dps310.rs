@@ -1,6 +1,6 @@
 #![cfg(feature = "barometer")]
 
-use embassy_time::Instant;
+use embassy_time::{Duration, Instant};
 
 use crate::{
     barometer_sensors::{BarometerI2cError, BarometerMessage},
@@ -32,12 +32,13 @@ impl Reg {
 pub struct BarometerDps310 {
     pub bus: &'static SharedI2cBus,
     address: u8,
-    timestamp_us: u64,
+    timestamp: Instant,
     temperature_raw: i32,
     temperature_celsius: f32,
     pressure_raw: i32,
     pressure_pascals: f32,
     pressure_at_reference_altitude: f32,
+    measurement_interval: Duration,
 }
 
 impl BarometerDps310 {
@@ -51,12 +52,13 @@ impl BarometerDps310 {
         Self {
             bus,
             address: Self::I2C_ADDRESS,
-            timestamp_us: 0,
+            timestamp: Instant::MIN,
             temperature_raw: 0,
             temperature_celsius: 0.0,
             pressure_raw: 0,
             pressure_pascals: 0.0,
             pressure_at_reference_altitude: 0.0,
+            measurement_interval: Duration::MIN,
         }
     }
 
@@ -82,7 +84,7 @@ impl BarometerDps310 {
         self.bus.read_regs::<N>(self.address, register).await.map_err(BarometerI2cError::I2c)
     }
 
-    pub async fn init(&self) -> Result<u32, BarometerI2cError> {
+    pub async fn init(&self) -> Result<Duration, BarometerI2cError> {
         let chip_id = self.read_register(Reg::ID).await?;
 
         if chip_id != Self::CHIP_ID_DPS310 && chip_id != Self::CHIP_ID_SPL07_003 {
@@ -101,8 +103,7 @@ impl BarometerDps310 {
         // self.write_register(Self::REG_TMP_CFG, ...).await?;
         // self.write_register(Self::REG_MEAS_CFG, ...).await?;
 
-        let sample_rate_hz = 40;
-        Ok(sample_rate_hz)
+        Ok(self.measurement_interval)
     }
 
     pub async fn read_raw_pressure(&self) -> Result<i32, BarometerI2cError> {
@@ -121,7 +122,7 @@ impl BarometerDps310 {
     pub async fn make_reading(&mut self) -> Result<(), BarometerI2cError> {
         self.pressure_raw = self.read_raw_pressure().await?;
         self.temperature_raw = self.read_raw_temperature().await?;
-        self.timestamp_us = Instant::now().as_micros();
+        self.timestamp = Instant::now();
         Ok(())
     }
 
@@ -130,7 +131,7 @@ impl BarometerDps310 {
             BarometerMessage::calculate_altitude_meters(self.pressure_pascals, self.pressure_at_reference_altitude);
         #[allow(clippy::cast_possible_truncation)]
         BarometerMessage {
-            timestamp_us: self.timestamp_us,
+            timestamp: self.timestamp,
             altitude_m,
             altitude_m_i32: altitude_m as i32,
             pressure_pascals: self.pressure_pascals,

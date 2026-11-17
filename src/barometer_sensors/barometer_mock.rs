@@ -1,3 +1,5 @@
+use embassy_time::Duration;
+
 use super::{BarometerI2cError, BarometerMessage};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -17,11 +19,10 @@ impl BarometerMock {
 
 //impl BarometerDevice for BarometerMock {
 impl BarometerMock {
-    pub async fn init(&self) -> Result<u32, BarometerI2cError> {
+    pub async fn init(&self) -> Result<Duration, BarometerI2cError> {
         core::future::ready(()).await;
 
-        let sample_rate_hz = 40;
-        Ok(sample_rate_hz)
+        Ok(Duration::MIN)
     }
 
     pub async fn make_reading(&mut self) -> Result<(), BarometerI2cError> {

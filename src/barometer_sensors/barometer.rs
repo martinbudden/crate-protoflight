@@ -4,6 +4,7 @@ use super::{barometer_bmp280::BarometerBmp280, barometer_dps310::BarometerDps310
 use super::{BarometerDevice, BarometerI2cError, BarometerMessage, barometer_mock::BarometerMock};
 use crate::i2c_bus::SharedI2cBus;
 
+use embassy_time::Duration;
 #[cfg(feature = "storage")]
 use sequential_storage::map::PostcardValue;
 #[cfg(feature = "serde")]
@@ -64,7 +65,7 @@ impl BarometerType {
 pub enum Barometer {
     Mock(BarometerMock),
     #[cfg(feature = "barometer")]
-    Bmp085(BarometerBmp085),
+    Bmp280(BarometerBmp280),
     #[cfg(feature = "barometer")]
     Dps310(BarometerDps310),
 }
@@ -78,7 +79,7 @@ impl Barometer {
             //#[cfg(feature = "barometer")]
             //BarometerType::Default => Some(Self::Mock(BarometerMock::new(i2c_bus))),
             #[cfg(feature = "barometer")]
-            BarometerType::Bmp085 => Some(Self::Bmp085(BarometerBmp085::new(i2c_bus))),
+            BarometerType::Bmp280 => Some(Self::Bmp280(BarometerBmp280::new(i2c_bus))),
             #[cfg(feature = "barometer")]
             BarometerType::Dsp310 => Some(Self::Dps310(BarometerDps310::new(i2c_bus))),
             _ => None,
@@ -87,11 +88,11 @@ impl Barometer {
 }
 
 impl BarometerDevice for Barometer {
-    async fn init(&mut self) -> Result<u32, BarometerI2cError> {
+    async fn init(&mut self) -> Result<Duration, BarometerI2cError> {
         match self {
             Self::Mock(barometer) => barometer.init().await,
             #[cfg(feature = "barometer")]
-            Self::Bmp085(barometer) => barometer.init().await,
+            Self::Bmp280(barometer) => barometer.init().await,
             #[cfg(feature = "barometer")]
             Self::Dps310(barometer) => barometer.init().await,
         }
@@ -100,7 +101,7 @@ impl BarometerDevice for Barometer {
         match self {
             Self::Mock(barometer) => barometer.make_reading().await,
             #[cfg(feature = "barometer")]
-            Self::Bmp085(barometer) => barometer.make_reading().await,
+            Self::Bmp280(barometer) => barometer.make_reading().await,
             #[cfg(feature = "barometer")]
             Self::Dps310(barometer) => barometer.make_reading().await,
         }
@@ -110,7 +111,7 @@ impl BarometerDevice for Barometer {
         match self {
             Self::Mock(barometer) => barometer.message(),
             #[cfg(feature = "barometer")]
-            Self::Bmp085(barometer) => barometer.message(),
+            Self::Bmp280(barometer) => barometer.message(),
             #[cfg(feature = "barometer")]
             Self::Dps310(barometer) => barometer.message(),
         }

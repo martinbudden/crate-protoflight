@@ -1,10 +1,12 @@
+use embassy_time::{Duration, Instant};
+
 use crate::i2c_bus::I2cError;
 
 /// The common interface for barometer.
 #[allow(unused)]
 pub trait BarometerDevice {
     /// Initializes the sensor and returns the actual configured output data rate (ODR) in Hz.
-    async fn init(&mut self) -> Result<f32, BarometerI2cError>;
+    async fn init(&mut self) -> Result<Duration, BarometerI2cError>;
 
     async fn make_reading(&mut self) -> Result<(), BarometerI2cError>;
     fn message(&self) -> BarometerMessage;
@@ -25,7 +27,7 @@ pub type BarometerI2cError = BarometerError<I2cError>;
 #[cfg_attr(feature = "host", derive(derive_more::Display))]
 #[cfg_attr(feature = "host", display("Baro{{a:{altitude_m}, p:{pressure_pascals}, t:{temperature_celsius}}}"))]
 pub struct BarometerMessage {
-    pub timestamp_us: u64,
+    pub timestamp: Instant,
     pub altitude_m: f32,
     pub altitude_m_i32: i32,
     pub pressure_pascals: f32,
@@ -40,7 +42,7 @@ impl Default for BarometerMessage {
 
 impl BarometerMessage {
     pub const fn new() -> Self {
-        Self { timestamp_us: 0, altitude_m: 0.0, altitude_m_i32: 0, pressure_pascals: 0.0, temperature_celsius: 0.0 }
+        Self { timestamp: Instant::MIN, altitude_m: 0.0, altitude_m_i32: 0, pressure_pascals: 0.0, temperature_celsius: 0.0 }
     }
 }
 

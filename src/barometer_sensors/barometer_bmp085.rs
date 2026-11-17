@@ -40,7 +40,7 @@ impl Reg {
 pub struct BarometerBmp085 {
     pub bus: &'static SharedI2cBus,
     address: u8,
-    timestamp_us: u64,
+    timestamp: Instant,
     temperature_calibration: TemperatureCalibration,
     temperature_fine: i32,
     temperature_celsius: f32,

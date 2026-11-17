@@ -69,11 +69,12 @@ pub fn init(barometer: Barometer) -> Result<&'static mut BarometerContext, TaskI
 pub async fn run(ctx: &'static mut BarometerContext) {
     // If initialization fails, then we just return.
     log::info!("   BAROMETER: task started");
-    let Ok(sample_rate_hz) = ctx.barometer.init().await else {
+    let Ok(measurement_interval) = ctx.barometer.init().await else {
         return;
     };
 
-    let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(u64::from(sample_rate_hz)));
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let mut ticker = embassy_time::Ticker::every(measurement_interval);
     let mut loop_count: u32 = 0;
 
     log::info!("   BAROMETER: loop started");

@@ -138,7 +138,7 @@ pub trait FilterAccGyro {
     fn state_mut(&mut self) -> &mut ImuFilterBank;
     fn config(&self) -> &ImuFilterBankConfig;
 
-    fn update(&mut self, acc: Vector3f32, gyro_rps: Vector3f32, delta_t: f32) -> (Vector3f32, Vector3f32);
+    fn update(&mut self, acc: Vector3f32, gyro_rps: Vector3f32, dt: f32) -> (Vector3f32, Vector3f32);
 }
 
 impl FilterAccGyro for ImuFilterBank {
@@ -152,7 +152,7 @@ impl FilterAccGyro for ImuFilterBank {
         &self.state().config
     }
 
-    fn update(&mut self, mut acc: Vector3f32, mut gyro_rps: Vector3f32, _delta_t: f32) -> (Vector3f32, Vector3f32) {
+    fn update(&mut self, mut acc: Vector3f32, mut gyro_rps: Vector3f32, _dt: f32) -> (Vector3f32, Vector3f32) {
         if self.config().acc_lpf_hz != 0 {
             acc = self.state_mut().acc_lpf.update(acc);
         }

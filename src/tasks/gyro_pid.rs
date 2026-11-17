@@ -4,6 +4,7 @@ use embassy_sync::{
     watch::{Receiver, Sender, Watch},
 };
 
+use embassy_time::Instant;
 use static_cell::StaticCell;
 
 use imu_sensors::{AccSensitivity, AccUnits, GyroSensitivity, GyroUnits, Imu, ImuDevice, ImuError};
@@ -82,7 +83,7 @@ static GYRO_PID_CTX: StaticCell<GyroPidContext<BoardImu>> = StaticCell::new();
 #[allow(unused)]
 pub struct GyroPidContext<I: ImuDevice> {
     imu: I,
-    imu_previous_read_time_us: u64,
+    imu_previous_measurement_timestamp: Instant,
     rx_receiver: RxMessageReceiver,
     gyro_pid_sender: GyroPidSender,
     setpoint_sender: SetpointSender,
@@ -108,7 +109,7 @@ pub fn init(
 ) -> Result<&'static mut GyroPidContext<BoardImu>, TaskInitError> {
     let ctx = GyroPidContext {
         imu,
-        imu_previous_read_time_us: 0,
+        imu_previous_measurement_timestamp: Instant::MIN,
         rx_receiver: rx_message_receiver()?,
         gyro_pid_sender: gyro_pid_sender(),
         #[cfg(feature = "autopilot")]
@@ -173,7 +174,7 @@ pub async fn run(ctx: &'static mut GyroPidContext<BoardImu>) {
     if let Err(err) = ctx.imu.read_acc_gyro().await {
         log::error!("Initial IMU read failed: {err:?}");
     }
-    ctx.imu_previous_read_time_us = embassy_time::Instant::now().as_micros();
+    ctx.imu_previous_measurement_timestamp = embassy_time::Instant::now();
 
     let mut loop_count: u32 = 0;
 
@@ -200,13 +201,12 @@ async fn gyro_pid_loop_iteration(ctx: &mut GyroPidContext<BoardImu>) -> Result<(
     // ****
     // The GYRO part of the GYRO/PID loop
     // ****
-    let (acc_unfiltered_mps2, gyro_unfiltered_rps) = ctx.imu.read_acc_gyro().await?;
+    let (acc_unfiltered_mps2, gyro_unfiltered_rps, measurement_timestamp) = ctx.imu.read_acc_gyro().await?;
 
-    let time_now_us = embassy_time::Instant::now().as_micros();
-    let delta_t_us = time_now_us - ctx.imu_previous_read_time_us;
-    ctx.imu_previous_read_time_us = time_now_us;
+    let delta_t = measurement_timestamp.duration_since(ctx.imu_previous_measurement_timestamp);
+    ctx.imu_previous_measurement_timestamp = measurement_timestamp;
     #[allow(clippy::cast_precision_loss)]
-    let dt = (delta_t_us as f32) * 1_000_000.0;
+    let dt = (delta_t.as_nanos() as f32) * 1_000_000_000.0;
 
     // Filter the acc and gyro values. This includes RPM notch filtering, if that is enabled.
     let (acc_mps2, gyro_rps) = ctx.imu_filters.update(acc_unfiltered_mps2, gyro_unfiltered_rps, dt);

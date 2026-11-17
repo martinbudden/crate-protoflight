@@ -216,7 +216,7 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
             _ = ctx
                 .autopilot
                 .kalman_filter
-                .correct_altitude_using_barometer(barometer_message.timestamp_us, barometer_message.altitude_m);
+                .correct_altitude_using_barometer(barometer_message.timestamp.as_micros(), barometer_message.altitude_m);
             yield_now().await;
         }
 
@@ -230,7 +230,7 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
             _ = ctx
                 .autopilot
                 .kalman_filter
-                .correct_altitude_using_rangefinder(rangefinder_message.timestamp_us, altitude);
+                .correct_altitude_using_rangefinder(rangefinder_message.timestamp.as_micros(), altitude);
             yield_now().await;
         }
 
