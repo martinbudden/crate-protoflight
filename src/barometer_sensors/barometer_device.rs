@@ -42,7 +42,13 @@ impl Default for BarometerMessage {
 
 impl BarometerMessage {
     pub const fn new() -> Self {
-        Self { timestamp: Instant::MIN, altitude_m: 0.0, altitude_m_i32: 0, pressure_pascals: 0.0, temperature_celsius: 0.0 }
+        Self {
+            timestamp: Instant::MIN,
+            altitude_m: 0.0,
+            altitude_m_i32: 0,
+            pressure_pascals: 0.0,
+            temperature_celsius: 0.0,
+        }
     }
 }
 

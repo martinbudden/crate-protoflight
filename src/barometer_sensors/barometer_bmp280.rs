@@ -8,12 +8,13 @@ use crate::{
     i2c_bus::{SharedI2cBus, SharedI2cExt},
 };
 
+#[derive(Clone, Copy, Debug)]
 pub struct BarometerBmp280 {
     pub bus: &'static SharedI2cBus,
-
     address: u8,
 
     timestamp: Instant,
+    config: Bmp280Config,
 
     temperature_calibration: TemperatureCalibration,
     temperature_fine: i32,
@@ -21,16 +22,11 @@ pub struct BarometerBmp280 {
 
     pressure_calibration: PressureCalibration,
     pressure_pascals: f32,
-
-    pressure_at_reference_altitude: f32,
-
-    // Minimum sensor measurement cycle interval, not guaranteed application sampling interval.
-    measurement_interval: Duration,
+    reference_pressure: f32,
 }
 
 struct Reg;
 
-#[allow(unused)]
 impl Reg {
     const CALIBRATION: u8 = 0x88;
     //const _DIG_T1: u8 = 0x88;
@@ -61,72 +57,11 @@ impl Reg {
     const _TEMPERATURE_XLSB: u8 = 0xFC;
 }
 
-#[derive(Clone, Copy)]
-struct StandbySetting {
-    register_value: u8,
-    duration_ms: f32,
-}
-
-impl StandbySetting {
-    const ALL: [Self; 8] = [
-        Self { register_value: 0b000, duration_ms: 0.5 },
-        Self { register_value: 0b001, duration_ms: 62.5 },
-        Self { register_value: 0b010, duration_ms: 125.0 },
-        Self { register_value: 0b011, duration_ms: 250.0 },
-        Self { register_value: 0b100, duration_ms: 500.0 },
-        Self { register_value: 0b101, duration_ms: 1000.0 },
-        Self { register_value: 0b110, duration_ms: 2000.0 },
-        Self { register_value: 0b111, duration_ms: 4000.0 },
-    ];
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-struct TemperatureCalibration {
-    t1: u16,
-    t2: i16,
-    t3: i16,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-struct PressureCalibration {
-    p1: u16,
-    p2: i16,
-    p3: i16,
-    p4: i16,
-    p5: i16,
-    p6: i16,
-    p7: i16,
-    p8: i16,
-    p9: i16,
-}
-
-#[derive(Clone, Copy, Debug)]
-struct RawMeasurements {
-    pressure: u32,
-    temperature: u32,
-}
-
 impl BarometerBmp280 {
     const I2C_ADDRESS: u8 = 0x76;
     const I2C_ADDRESS_ALTERNATIVE: u8 = 0x77;
-
     const CHIP_ID: u8 = 0x58;
-
-    // Oversampling:
-    // Temperature x2 = 010
-    // Pressure x16 = 101
-    //
-    // Mode:
-    // Normal = 11
-    const CTRL_MEAS_VALUE: u8 = 0b_0101_0111;
-
-    // IIR filter x4 = 010.
-    const FILTER_VALUE: u8 = 0b010;
-
-    // Temperature x2 and pressure x16 measurement time:
-    // 1.25 + 2.3 * 2 + (2.3 * 16 + 0.575)
-    // = 43.225 ms
-    const MEASUREMENT_TIME_MS: f32 = 43.225;
+    pub const STANDARD_PRESSURE_AT_SEA_LEVEL:f32 = 101_325.0;
 
     pub const fn new(bus: &'static SharedI2cBus) -> Self {
         Self {
@@ -134,6 +69,7 @@ impl BarometerBmp280 {
             address: Self::I2C_ADDRESS,
 
             timestamp: Instant::MIN,
+            config: Bmp280Config::new(),
 
             temperature_calibration: TemperatureCalibration { t1: 0, t2: 0, t3: 0 },
             temperature_fine: 0,
@@ -142,9 +78,7 @@ impl BarometerBmp280 {
             pressure_calibration: PressureCalibration { p1: 0, p2: 0, p3: 0, p4: 0, p5: 0, p6: 0, p7: 0, p8: 0, p9: 0 },
             pressure_pascals: 0.0,
 
-            pressure_at_reference_altitude: 101_325.0,
-
-            measurement_interval: Duration::MIN,
+            reference_pressure: Self::STANDARD_PRESSURE_AT_SEA_LEVEL,
         }
     }
 
@@ -156,13 +90,44 @@ impl BarometerBmp280 {
     }
 
     #[allow(unused)]
-    pub fn measurement_interval(&self) -> Duration {
-        self.measurement_interval
+    #[must_use]
+    pub const fn with_temperature_oversampling(mut self, temperature_oversampling: Bmp280Oversampling) -> Self {
+        self.config.temperature_oversampling = temperature_oversampling;
+        self
     }
 
-    #[allow(unused)]
+    #[must_use]
+    pub const fn with_config(mut self, config: Bmp280Config) -> Self {
+        self.config = config;
+        self
+    }
+
+    #[must_use]
+    pub const fn with_pressure_oversampling(mut self, pressure_oversampling: Bmp280Oversampling) -> Self {
+        self.config.pressure_oversampling = pressure_oversampling;
+        self
+    }
+
+    #[must_use]
+    pub const fn with_standby_duration(mut self, standby_duration: Bmp280StandbyDuration) -> Self {
+        self.config.standby_duration = standby_duration;
+        self
+    }
+
+    #[must_use]
+    pub const fn with_filter(mut self, filter: Bmp280Filter) -> Self {
+        self.config.filter = filter;
+        self
+    }
+
+    #[must_use]
+    pub const fn with_mode(mut self, mode: Bmp280OperatingMode) -> Self {
+        self.config.mode = mode;
+        self
+    }
+
     pub fn set_reference_pressure(&mut self, pressure_pa: f32) {
-        self.pressure_at_reference_altitude = pressure_pa;
+        self.reference_pressure = pressure_pa;
     }
 
     async fn read_register(&self, register: u8) -> Result<u8, BarometerI2cError> {
@@ -177,10 +142,6 @@ impl BarometerBmp280 {
         self.bus.read_regs::<N>(self.address, register).await.map_err(BarometerI2cError::I2c)
     }
 
-    // ---------------------------------------------------------
-    // Initialization
-    // ---------------------------------------------------------
-
     pub async fn init(&mut self) -> Result<Duration, BarometerI2cError> {
         let chip_id = self.read_register(Reg::CHIP_ID).await?;
 
@@ -189,12 +150,10 @@ impl BarometerBmp280 {
         }
 
         self.soft_reset().await?;
-
         self.read_calibration().await?;
+        self.configure().await?;
 
-        //self.configure().await?;
-
-        Ok(self.measurement_interval)
+        Ok(Duration::from_micros(u64::from(self.config.measurement_interval_us())))
     }
 
     async fn soft_reset(&self) -> Result<(), BarometerI2cError> {
@@ -214,11 +173,10 @@ impl BarometerBmp280 {
 
             Timer::after(Duration::from_millis(1)).await;
         }
-
         Err(BarometerI2cError::InvalidData)
     }
 
-    async fn configure(&self, config: &Bmp280Config) -> Result<(), BarometerI2cError> {
+    async fn configure(&self) -> Result<(), BarometerI2cError> {
         // Put sensor into sleep mode before changing CONFIG.
         const CTRL_MEAS_SLEEP: u8 = 0b00;
         self.write_register(Reg::CTRL_MEAS, CTRL_MEAS_SLEEP).await?;
@@ -226,29 +184,17 @@ impl BarometerBmp280 {
         // [7:5] standby duration
         // [4:2] IIR filter
         // [1]   SPI 3-wire enable
-        let config_reg = (config.standby_duration.register_value() << 5) | (config.filter.register_value() << 2);
+        let config_reg =
+            (self.config.standby_duration.register_value() << 5) | (self.config.filter.register_value() << 2);
         self.write_register(Reg::CONFIG, config_reg).await?;
         // CTRL_MEAS register:
         // [7:5] temperature oversampling
         // [4:2] pressure oversampling
         // [1:0] operating mode
-        let ctrl_meas = (config.temperature_oversampling.register_value() << 5)
-            | (config.pressure_oversampling.register_value() << 2)
-            | config.mode.register_value();
+        let ctrl_meas = (self.config.temperature_oversampling.register_value() << 5)
+            | (self.config.pressure_oversampling.register_value() << 2)
+            | self.config.mode.register_value();
         self.write_register(Reg::CTRL_MEAS, ctrl_meas).await?;
-        Ok(())
-    }
-    async fn configure2(&self, standby: StandbySetting) -> Result<(), BarometerI2cError> {
-        // Put sensor in sleep mode before changing CONFIG.
-        self.write_register(Reg::CTRL_MEAS, 0b_0101_0100).await?;
-        // CONFIG:
-        // standby time = selected setting
-        // IIR filter = x4
-        // SPI 3-wire = disabled
-        let config = (standby.register_value << 5) | (Self::FILTER_VALUE << 2);
-        self.write_register(Reg::CONFIG, config).await?;
-        // Enable normal mode.
-        self.write_register(Reg::CTRL_MEAS, Self::CTRL_MEAS_VALUE).await?;
         Ok(())
     }
 
@@ -272,7 +218,6 @@ impl BarometerBmp280 {
             p8: decode_signed(20),
             p9: decode_signed(22),
         };
-
         // P1 must be nonzero for pressure compensation.
         if self.pressure_calibration.p1 == 0 {
             return Err(BarometerI2cError::InvalidCalibration);
@@ -281,18 +226,21 @@ impl BarometerBmp280 {
         Ok(())
     }
 
-    async fn read_raw_measurements(&self) -> Result<RawMeasurements, BarometerI2cError> {
+    // Returns `(temperature, pressure)`
+    async fn read_raw_measurements(&mut self) -> Result<(u32, u32), BarometerI2cError> {
         // Read all pressure and temperature registers in
         // one transaction.
         let data = self.read_registers::<6>(Reg::PRESSURE_MSB).await?;
+        self.timestamp = Instant::now();
+
         let pressure = (u32::from(data[0]) << 12) | (u32::from(data[1]) << 4) | (u32::from(data[2]) >> 4);
         let temperature = (u32::from(data[3]) << 12) | (u32::from(data[4]) << 4) | (u32::from(data[5]) >> 4);
 
-        Ok(RawMeasurements { pressure, temperature })
+        Ok((pressure, temperature))
     }
 
-    fn calculate_temperature(&mut self, adc_t: u32) {
-        let adc_t = adc_t.cast_signed();
+    fn calculate_temperature(&mut self, temperature_reading: u32) {
+        let temperature = temperature_reading.cast_signed();
 
         let calibration = self.temperature_calibration;
 
@@ -300,8 +248,8 @@ impl BarometerBmp280 {
         let t2 = i32::from(calibration.t2);
         let t3 = i32::from(calibration.t3);
 
-        let var1 = (adc_t >> 3) - (t1 << 1);
-        let var2 = (adc_t >> 4) - t1;
+        let var1 = (temperature >> 3) - (t1 << 1);
+        let var2 = (temperature >> 4) - t1;
         let vt1 = var1 * t2;
         let vt2 = ((var2 * var2) >> 12) * t3;
 
@@ -312,7 +260,7 @@ impl BarometerBmp280 {
         }
     }
 
-    fn calculate_pressure(&mut self, adc_p: u32) -> Result<(), BarometerI2cError> {
+    fn calculate_pressure(&mut self, pressure_reading: u32) -> Result<(), BarometerI2cError> {
         let calibration = self.pressure_calibration;
 
         let mut vp1 = i64::from(self.temperature_fine) - 128_000;
@@ -327,7 +275,7 @@ impl BarometerBmp280 {
             return Err(BarometerI2cError::InvalidData);
         }
 
-        let mut p = 1_048_576_i64 - i64::from(adc_p);
+        let mut p = 1_048_576_i64 - i64::from(pressure_reading);
         p = (((p << 31) - vp2) * 3125) / vp1;
         let vp1 = (i64::from(calibration.p9) * (p >> 13) * (p >> 13)) >> 25;
         let vp2 = (i64::from(calibration.p8) * p) >> 19;
@@ -345,44 +293,54 @@ impl BarometerBmp280 {
         Ok(())
     }
 
-    // ---------------------------------------------------------
-    // Measurement
-    // ---------------------------------------------------------
+    async fn trigger_forced_measurement(&self) -> Result<(), BarometerI2cError> {
+        let ctrl_meas = (self.config.temperature_oversampling.register_value() << 5)
+            | (self.config.pressure_oversampling.register_value() << 2)
+            | Bmp280OperatingMode::Forced.register_value();
 
-    pub async fn make_reading(&mut self) -> Result<(), BarometerI2cError> {
-        let raw = self.read_raw_measurements().await?;
+        self.write_register(Reg::CTRL_MEAS, ctrl_meas).await?;
 
-        self.calculate_temperature(raw.temperature);
-
-        self.calculate_pressure(raw.pressure)?;
-
-        self.timestamp = Instant::now();
+        // Wait for the conversion to finish.
+        Timer::after(Duration::from_micros(u64::from(self.config.measurement_duration_us()))).await;
 
         Ok(())
     }
 
-    // ---------------------------------------------------------
-    // Message
-    // ---------------------------------------------------------
+    pub async fn make_reading(&mut self) -> Result<(), BarometerI2cError> {
+        if self.config.mode == Bmp280OperatingMode::Forced {
+            self.trigger_forced_measurement().await?;
+        }
 
+        let (temperature, pressure) = self.read_raw_measurements().await?;
+
+        if self.config.temperature_oversampling != Bmp280Oversampling::Skipped {
+            self.calculate_temperature(temperature);
+        }
+        if self.config.pressure_oversampling != Bmp280Oversampling::Skipped {
+            self.calculate_pressure(pressure)?;
+        }
+
+        Ok(())
+    }
+
+    /// Creates a `BarometerMessage` from the last reading.
+    ///
+    /// # Preconditions
+    ///
+    /// The user must have already called `make_reading`.
     pub fn message(&self) -> BarometerMessage {
-        let altitude_m =
-            BarometerMessage::calculate_altitude_meters(self.pressure_pascals, self.pressure_at_reference_altitude);
+        let altitude_m = BarometerMessage::calculate_altitude_meters(self.pressure_pascals, self.reference_pressure);
 
         BarometerMessage {
             timestamp: self.timestamp,
             altitude_m,
             #[allow(clippy::cast_possible_truncation)]
-            altitude_m_i32: altitude_m as i32,
+            altitude_m_i32: altitude_m as i32, // used by Blackbox
             pressure_pascals: self.pressure_pascals,
             temperature_celsius: self.temperature_celsius,
         }
     }
 }
-
-// -------------------------------------------------------------
-// Common interface
-// -------------------------------------------------------------
 
 impl BarometerDevice for BarometerBmp280 {
     async fn init(&mut self) -> Result<Duration, BarometerI2cError> {
@@ -398,25 +356,80 @@ impl BarometerDevice for BarometerBmp280 {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct Bmp280Config {
-    pub temperature_oversampling: Oversampling,
-    pub pressure_oversampling: Oversampling,
-    pub standby_duration: StandbyDuration,
-    pub filter: IirFilter,
-    pub mode: OperatingMode,
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct TemperatureCalibration {
+    t1: u16,
+    t2: i16,
+    t3: i16,
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum Oversampling {
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct PressureCalibration {
+    p1: u16,
+    p2: i16,
+    p3: i16,
+    p4: i16,
+    p5: i16,
+    p6: i16,
+    p7: i16,
+    p8: i16,
+    p9: i16,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Bmp280Config {
+    pub temperature_oversampling: Bmp280Oversampling,
+    pub pressure_oversampling: Bmp280Oversampling,
+    pub standby_duration: Bmp280StandbyDuration,
+    pub filter: Bmp280Filter,
+    pub mode: Bmp280OperatingMode,
+}
+
+impl Default for Bmp280Config {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Bmp280Config {
+    pub const fn new() -> Self {
+        Self {
+            temperature_oversampling: Bmp280Oversampling::X1,
+            pressure_oversampling: Bmp280Oversampling::X8,
+            standby_duration: Bmp280StandbyDuration::Ms0_5,
+            filter: Bmp280Filter::X8,
+            mode: Bmp280OperatingMode::Normal,
+        }
+    }
+}
+
+impl Bmp280Config {
+    pub fn measurement_duration_us(self) -> u32 {
+        let t_multiplier = self.temperature_oversampling.multiplier();
+        let p_multiplier = self.pressure_oversampling.multiplier();
+        1_250 + 2_300 * t_multiplier + 2_300 * p_multiplier + if p_multiplier > 0 { 575 } else { 0 }
+    }
+
+    pub fn measurement_interval_us(self) -> u32 {
+        match self.mode {
+            Bmp280OperatingMode::Sleep => 0,
+            Bmp280OperatingMode::Forced => self.measurement_duration_us(),
+            Bmp280OperatingMode::Normal => self.measurement_duration_us() + self.standby_duration.as_microseconds(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum Bmp280Oversampling {
     Skipped,
+    #[default]
     X1,
     X2,
     X4,
     X8,
     X16,
 }
-impl Oversampling {
+impl Bmp280Oversampling {
     const fn multiplier(self) -> u32 {
         match self {
             Self::Skipped => 0,
@@ -439,8 +452,9 @@ impl Oversampling {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum StandbyDuration {
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum Bmp280StandbyDuration {
+    #[default]
     Ms0_5,
     Ms62_5,
     Ms125,
@@ -451,17 +465,17 @@ pub enum StandbyDuration {
     Ms4000,
 }
 
-impl StandbyDuration {
-    pub const fn as_duration(self) -> Duration {
+impl Bmp280StandbyDuration {
+    pub const fn as_microseconds(self) -> u32 {
         match self {
-            Self::Ms0_5 => Duration::from_micros(500),
-            Self::Ms62_5 => Duration::from_micros(62_500),
-            Self::Ms125 => Duration::from_millis(125),
-            Self::Ms250 => Duration::from_millis(250),
-            Self::Ms500 => Duration::from_millis(500),
-            Self::Ms1000 => Duration::from_millis(1_000),
-            Self::Ms2000 => Duration::from_millis(2_000),
-            Self::Ms4000 => Duration::from_millis(4_000),
+            Self::Ms0_5 => 500,
+            Self::Ms62_5 => 62_500,
+            Self::Ms125 => 125_000,
+            Self::Ms250 => 250_000,
+            Self::Ms500 => 500_000,
+            Self::Ms1000 => 1_000_000,
+            Self::Ms2000 => 2_000_000,
+            Self::Ms4000 => 4_000_000,
         }
     }
     const fn register_value(self) -> u8 {
@@ -478,16 +492,17 @@ impl StandbyDuration {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default)]
-pub enum IirFilter {
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum Bmp280Filter {
     Off,
     X2,
-    #[default]
     X4,
+    #[default]
     X8,
     X16,
 }
-impl IirFilter {
+
+impl Bmp280Filter {
     const fn register_value(self) -> u8 {
         match self {
             Self::Off => 0b000,
@@ -499,14 +514,14 @@ impl IirFilter {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default)]
-pub enum OperatingMode {
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum Bmp280OperatingMode {
     Sleep,
     Forced,
     #[default]
     Normal,
 }
-impl OperatingMode {
+impl Bmp280OperatingMode {
     const fn register_value(self) -> u8 {
         match self {
             Self::Sleep => 0b00,
@@ -516,40 +531,66 @@ impl OperatingMode {
     }
 }
 
-impl Default for Bmp280Config {
-    fn default() -> Self {
-        Self::new()
+#[cfg(test)]
+mod test_traits {
+    use super::*;
+
+    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+    fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+
+    #[test]
+    fn normal_types() {
+        //is_normal::<BarometerBmp280>();
+        is_normal::<TemperatureCalibration>();
+        is_normal::<PressureCalibration>();
+        is_full::<Bmp280Config>();
+        is_full::<Bmp280Oversampling>();
+        is_full::<Bmp280StandbyDuration>();
+        is_full::<Bmp280Filter>();
+        is_full::<Bmp280OperatingMode>();
     }
 }
 
-impl Bmp280Config {
-    pub const ENVIRONMENTAL: Self = Self {
-        temperature_oversampling: Oversampling::X2,
-        pressure_oversampling: Oversampling::X16,
-        standby_duration: StandbyDuration::Ms125,
-        filter: IirFilter::X4,
-        mode: OperatingMode::Normal,
-    };
-    pub const fn new() -> Self {
-        Self {
-            temperature_oversampling: Oversampling::X2,
-            pressure_oversampling: Oversampling::X16,
-            standby_duration: StandbyDuration::Ms125,
-            filter: IirFilter::X4,
-            mode: OperatingMode::Normal,
-        }
-    }
-}
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::barometer_sensors::barometer;
+    use crate::i2c_bus::MockI2c;
+    use embassy_sync::{blocking_mutex::raw::NoopRawMutex, mutex::Mutex};
 
-impl Bmp280Config {
-    pub fn measurement_duration(self) -> Duration {
-        let temperature = self.temperature_oversampling.multiplier();
-        let pressure = self.pressure_oversampling.multiplier();
-        let duration_us = 1_250 + 2_300 * temperature + 2_300 * pressure + if pressure > 0 { 575 } else { 0 };
-        Duration::from_micros(u64::from(duration_us))
-    }
+    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+    fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
 
-    pub fn measurement_interval(self) -> Duration {
-        self.measurement_duration() + self.standby_duration.as_duration()
+    #[test]
+    fn measurement_interval() {
+        let config = Bmp280Config::new();
+        let measurement_interval_us = config.measurement_interval_us();
+        assert_eq!(measurement_interval_us, 23025); // 43.43Hz
+    }
+    #[test]
+    fn calculations() {
+        // Test taken from example in section 3.12 of BMP280 datasheet.
+        use static_cell::StaticCell;
+        static I2C_BUS: StaticCell<SharedI2cBus> = StaticCell::new();
+        let bus = I2C_BUS.init(Mutex::new(MockI2c::new()));
+
+        let mut barometer = BarometerBmp280::new(bus);
+        barometer.temperature_calibration = TemperatureCalibration { t1: 27504, t2: 26435, t3: -1000 };
+        barometer.calculate_temperature(519888);
+        assert_eq!(barometer.temperature_fine, 128_422);
+        assert_eq!(barometer.temperature_celsius, 25.08);
+        barometer.pressure_calibration = PressureCalibration {
+            p1: 36477,
+            p2: -10685,
+            p3: 3024,
+            p4: 2855,
+            p5: 140,
+            p6: -7,
+            p7: 15500,
+            p8: -14600,
+            p9: 6000,
+        };
+        barometer.calculate_pressure(415148);
+        assert_eq!(barometer.pressure_pascals, 100653.25);
     }
 }
