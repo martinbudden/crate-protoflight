@@ -1,6 +1,5 @@
-use super::{BarometerCommon, BarometerDevice, BarometerI2cError};
+use super::{BarometerCommon, BarometerDevice, BarometerI2cError, SharedI2cBus};
 
-use crate::i2c_bus::SharedI2cBus;
 use embassy_time::{Duration, Instant, Timer};
 
 #[derive(Clone, Copy, Debug)]

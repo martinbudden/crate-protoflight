@@ -1,5 +1,6 @@
-use crate::barometer_sensors::{BarometerBmp280, BarometerDevice, BarometerDps310, BarometerI2cError, BarometerMock};
-use crate::i2c_bus::SharedI2cBus;
+use crate::barometer_sensors::{
+    BarometerBmp280, BarometerDevice, BarometerDps310, BarometerI2cError, BarometerMock, SharedI2cBus,
+};
 
 use embassy_time::{Duration, Instant};
 #[cfg(feature = "storage")]
