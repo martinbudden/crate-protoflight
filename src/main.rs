@@ -14,6 +14,7 @@ mod macros;
 
 mod autopilot;
 mod barometer_sensors;
+mod barometers;
 mod battery_sensors;
 mod boards;
 mod config;

@@ -89,7 +89,7 @@ fetch_item
 generate_config_handlers!(radio_controllers, Rates, Key::RATES, 256);
 
 #[cfg(all(feature = "storage", feature = "barometer"))]
-generate_config_handlers!(crate::barometer_sensors, Barometer, Key::BAROMETER_CONFIG, 256);
+generate_config_handlers!(crate::barometers, Barometer, Key::BAROMETER_CONFIG, 256);
 
 #[cfg(all(feature = "storage", feature = "battery"))]
 generate_config_handlers!(crate::battery_sensors, Battery, Key::BATTERY_CONFIG, 256);

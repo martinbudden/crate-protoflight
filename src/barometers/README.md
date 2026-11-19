@@ -1,4 +1,4 @@
-# Barometer Sensors
+# Barometer
 
 Placeholder.
 
@@ -40,7 +40,7 @@ I2cDeviceBlocking
 ```
 
 The important benefit is that contention for the shared bus is asynchronous, while the actual hardware transaction remains blocking.
-That fits your decision to sacrifice the I²C DMA streams while keeping the UART/SPI DMA resources available for the higher-priority work.
+That fits the decision to sacrifice the I²C DMA streams while keeping the UART/SPI DMA resources available for the higher-priority work.
 
 ```text
                          BackgroundExecutor

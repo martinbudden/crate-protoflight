@@ -6,8 +6,9 @@ use embassy_sync::{
 };
 use static_cell::StaticCell;
 
+use crate::barometer_sensors::BarometerDevice;
 use crate::{
-    barometer_sensors::{Barometer, BarometerDevice, BarometerMessage},
+    barometers::{Barometer, BarometerMessage},
     tasks::errors::TaskInitError,
 };
 
@@ -50,8 +51,9 @@ pub fn barometer_subscriber() -> Result<BarometerSubscriber, TaskInitError> {
 
 /// Context for Barometer task.
 pub struct BarometerContext {
-    pub barometer: Barometer,
-    pub barometer_publisher: BarometerPublisher,
+    barometer: Barometer,
+    barometer_publisher: BarometerPublisher,
+    reference_pressure: f32,
 }
 
 pub fn init(barometer: Barometer) -> Result<&'static mut BarometerContext, TaskInitError> {
@@ -60,6 +62,7 @@ pub fn init(barometer: Barometer) -> Result<&'static mut BarometerContext, TaskI
         barometer_publisher: BAROMETER_PUB_SUB_CHANNEL
             .publisher()
             .map_err(|_| TaskInitError::BarometerPublisherFailed)?,
+        reference_pressure: BarometerMessage::STANDARD_PRESSURE_AT_SEA_LEVEL,
     };
     Ok(BAROMETER_CTX.init(ctx))
 }
@@ -82,8 +85,8 @@ pub async fn run(ctx: &'static mut BarometerContext) {
         // Wait for the next tick.
         ticker.next().await;
         let result = ctx.barometer.make_reading().await;
-        if let Ok(()) = result {
-            let barometer_message = ctx.barometer.message();
+        if let Ok((timestamp, _temperature_celsius, pressure_pascals)) = result {
+            let barometer_message = BarometerMessage::new(timestamp, pressure_pascals, ctx.reference_pressure);
             // Publish a message, but if the queue is full, just kick out the oldest message.
             // This may cause some subscribers to miss a message
             ctx.barometer_publisher.publish_immediate(barometer_message);

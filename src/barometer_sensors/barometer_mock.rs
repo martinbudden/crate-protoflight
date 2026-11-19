@@ -1,6 +1,6 @@
-use embassy_time::Duration;
+use embassy_time::{Duration, Instant};
 
-use super::{BarometerI2cError, BarometerMessage};
+use super::BarometerI2cError;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BarometerMock {}
@@ -17,7 +17,6 @@ impl BarometerMock {
     }
 }
 
-//impl BarometerDevice for BarometerMock {
 impl BarometerMock {
     pub async fn init(&self) -> Result<Duration, BarometerI2cError> {
         core::future::ready(()).await;
@@ -25,15 +24,9 @@ impl BarometerMock {
         Ok(Duration::MIN)
     }
 
-    pub async fn make_reading(&mut self) -> Result<(), BarometerI2cError> {
+    pub async fn make_reading(&mut self) -> Result<(Instant, f32, f32), BarometerI2cError> {
         core::future::ready(()).await;
         _ = self;
-        Ok(())
-    }
-
-    #[allow(clippy::trivially_copy_pass_by_ref)]
-    pub fn message(&self) -> BarometerMessage {
-        _ = self;
-        BarometerMessage::default()
+        Ok((Instant::MIN, 0.0, 0.0))
     }
 }

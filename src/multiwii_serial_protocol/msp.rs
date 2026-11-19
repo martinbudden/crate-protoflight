@@ -16,7 +16,7 @@ use crate::config::{
 };
 
 #[cfg(feature = "barometer")]
-use crate::barometer_sensors::BarometerType;
+use crate::barometers::BarometerType;
 
 #[cfg(feature = "gps")]
 use crate::gps::GpsSolutionAbridged;

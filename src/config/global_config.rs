@@ -23,7 +23,7 @@ use crate::{
 };
 
 #[cfg(feature = "barometer")]
-use crate::barometer_sensors::BarometerConfig;
+use crate::barometers::BarometerConfig;
 
 #[cfg(feature = "battery")]
 use crate::battery_sensors::{BatteryConfig, BatteryProfiles};

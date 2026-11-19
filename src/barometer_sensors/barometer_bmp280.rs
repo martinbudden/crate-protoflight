@@ -1,12 +1,10 @@
 #![allow(unused)]
 #![cfg(feature = "barometer")]
 
+use super::{BarometerDevice, BarometerI2cError};
 use embassy_time::{Duration, Instant, Timer};
 
-use crate::{
-    barometer_sensors::{BarometerDevice, BarometerI2cError, BarometerMessage},
-    i2c_bus::{SharedI2cBus, SharedI2cExt},
-};
+use crate::i2c_bus::{SharedI2cBus, SharedI2cExt};
 
 #[derive(Clone, Copy, Debug)]
 pub struct BarometerBmp280 {
@@ -18,11 +16,8 @@ pub struct BarometerBmp280 {
 
     temperature_calibration: TemperatureCalibration,
     temperature_fine: i32,
-    temperature_celsius: f32,
 
     pressure_calibration: PressureCalibration,
-    pressure_pascals: f32,
-    reference_pressure: f32,
 }
 
 struct Reg;
@@ -61,7 +56,6 @@ impl BarometerBmp280 {
     const I2C_ADDRESS: u8 = 0x76;
     const I2C_ADDRESS_ALTERNATIVE: u8 = 0x77;
     const CHIP_ID: u8 = 0x58;
-    pub const STANDARD_PRESSURE_AT_SEA_LEVEL:f32 = 101_325.0;
 
     pub const fn new(bus: &'static SharedI2cBus) -> Self {
         Self {
@@ -71,25 +65,19 @@ impl BarometerBmp280 {
             timestamp: Instant::MIN,
             config: Bmp280Config::new(),
 
-            temperature_calibration: TemperatureCalibration { t1: 0, t2: 0, t3: 0 },
+            temperature_calibration: TemperatureCalibration::new(),
+            pressure_calibration: PressureCalibration::new(),
+
             temperature_fine: 0,
-            temperature_celsius: 0.0,
-
-            pressure_calibration: PressureCalibration { p1: 0, p2: 0, p3: 0, p4: 0, p5: 0, p6: 0, p7: 0, p8: 0, p9: 0 },
-            pressure_pascals: 0.0,
-
-            reference_pressure: Self::STANDARD_PRESSURE_AT_SEA_LEVEL,
         }
     }
 
-    #[allow(unused)]
     #[must_use]
     pub const fn with_alternative_address(mut self) -> Self {
         self.address = Self::I2C_ADDRESS_ALTERNATIVE;
         self
     }
 
-    #[allow(unused)]
     #[must_use]
     pub const fn with_temperature_oversampling(mut self, temperature_oversampling: Bmp280Oversampling) -> Self {
         self.config.temperature_oversampling = temperature_oversampling;
@@ -124,10 +112,6 @@ impl BarometerBmp280 {
     pub const fn with_mode(mut self, mode: Bmp280OperatingMode) -> Self {
         self.config.mode = mode;
         self
-    }
-
-    pub fn set_reference_pressure(&mut self, pressure_pa: f32) {
-        self.reference_pressure = pressure_pa;
     }
 
     async fn read_register(&self, register: u8) -> Result<u8, BarometerI2cError> {
@@ -239,7 +223,10 @@ impl BarometerBmp280 {
         Ok((pressure, temperature))
     }
 
-    fn calculate_temperature(&mut self, temperature_reading: u32) {
+    fn calculate_temperature(&mut self, temperature_reading: u32) -> Result<(f32), BarometerI2cError> {
+        if self.config.temperature_oversampling == Bmp280Oversampling::Skipped {
+            return Err(BarometerI2cError::TemperatureOversamplingNotSet);
+        }
         let temperature = temperature_reading.cast_signed();
 
         let calibration = self.temperature_calibration;
@@ -255,12 +242,15 @@ impl BarometerBmp280 {
 
         self.temperature_fine = (vt1 >> 11) + (vt2 >> 14);
         #[allow(clippy::cast_precision_loss)]
-        {
-            self.temperature_celsius = ((self.temperature_fine * 5 + 128) >> 8) as f32 / 100.0;
-        }
+        let temperature_celsius = ((self.temperature_fine * 5 + 128) >> 8) as f32 / 100.0;
+        Ok(temperature_celsius)
     }
 
-    fn calculate_pressure(&mut self, pressure_reading: u32) -> Result<(), BarometerI2cError> {
+    fn calculate_pressure(&mut self, pressure_reading: u32) -> Result<(f32), BarometerI2cError> {
+        if self.config.pressure_oversampling == Bmp280Oversampling::Skipped {
+            return Err(BarometerI2cError::PressureOversamplingNotSet);
+        }
+
         let calibration = self.pressure_calibration;
 
         let mut vp1 = i64::from(self.temperature_fine) - 128_000;
@@ -282,15 +272,13 @@ impl BarometerBmp280 {
 
         p = ((p + vp1 + vp2) >> 8) + (i64::from(calibration.p7) << 4);
         #[allow(clippy::cast_precision_loss)]
-        {
-            self.pressure_pascals = p as f32 / 256.0;
-        }
+        let pressure_pascals = p as f32 / 256.0;
 
-        if !self.pressure_pascals.is_finite() || self.pressure_pascals <= 0.0 {
+        if !pressure_pascals.is_finite() || pressure_pascals <= 0.0 {
             return Err(BarometerI2cError::InvalidData);
         }
 
-        Ok(())
+        Ok(pressure_pascals)
     }
 
     async fn trigger_forced_measurement(&self) -> Result<(), BarometerI2cError> {
@@ -306,39 +294,17 @@ impl BarometerBmp280 {
         Ok(())
     }
 
-    pub async fn make_reading(&mut self) -> Result<(), BarometerI2cError> {
+    pub async fn make_reading(&mut self) -> Result<(Instant, f32, f32), BarometerI2cError> {
         if self.config.mode == Bmp280OperatingMode::Forced {
             self.trigger_forced_measurement().await?;
         }
 
-        let (temperature, pressure) = self.read_raw_measurements().await?;
+        let (temperature_raw, pressure_raw) = self.read_raw_measurements().await?;
 
-        if self.config.temperature_oversampling != Bmp280Oversampling::Skipped {
-            self.calculate_temperature(temperature);
-        }
-        if self.config.pressure_oversampling != Bmp280Oversampling::Skipped {
-            self.calculate_pressure(pressure)?;
-        }
+        let temperature = self.calculate_temperature(temperature_raw)?;
+        let pressure = self.calculate_pressure(pressure_raw)?;
 
-        Ok(())
-    }
-
-    /// Creates a `BarometerMessage` from the last reading.
-    ///
-    /// # Preconditions
-    ///
-    /// The user must have already called `make_reading`.
-    pub fn message(&self) -> BarometerMessage {
-        let altitude_m = BarometerMessage::calculate_altitude_meters(self.pressure_pascals, self.reference_pressure);
-
-        BarometerMessage {
-            timestamp: self.timestamp,
-            altitude_m,
-            #[allow(clippy::cast_possible_truncation)]
-            altitude_m_i32: altitude_m as i32, // used by Blackbox
-            pressure_pascals: self.pressure_pascals,
-            temperature_celsius: self.temperature_celsius,
-        }
+        Ok((self.timestamp, temperature, pressure))
     }
 }
 
@@ -347,12 +313,8 @@ impl BarometerDevice for BarometerBmp280 {
         BarometerBmp280::init(self).await
     }
 
-    async fn make_reading(&mut self) -> Result<(), BarometerI2cError> {
+    async fn make_reading(&mut self) -> Result<(Instant, f32, f32), BarometerI2cError> {
         BarometerBmp280::make_reading(self).await
-    }
-
-    fn message(&self) -> BarometerMessage {
-        BarometerBmp280::message(self)
     }
 }
 
@@ -361,6 +323,12 @@ struct TemperatureCalibration {
     t1: u16,
     t2: i16,
     t3: i16,
+}
+
+impl TemperatureCalibration {
+    const fn new() -> Self {
+        Self { t1: 0, t2: 0, t3: 0 }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -374,6 +342,12 @@ struct PressureCalibration {
     p7: i16,
     p8: i16,
     p9: i16,
+}
+
+impl PressureCalibration {
+    const fn new() -> Self {
+        Self { p1: 0, p2: 0, p3: 0, p4: 0, p5: 0, p6: 0, p7: 0, p8: 0, p9: 0 }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -429,6 +403,7 @@ pub enum Bmp280Oversampling {
     X8,
     X16,
 }
+
 impl Bmp280Oversampling {
     const fn multiplier(self) -> u32 {
         match self {
@@ -552,14 +527,11 @@ mod test_traits {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
-    use crate::barometer_sensors::barometer;
+    use crate::barometers::Barometer;
     use crate::i2c_bus::MockI2c;
     use embassy_sync::{blocking_mutex::raw::NoopRawMutex, mutex::Mutex};
-
-    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
-    fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
 
     #[test]
     fn measurement_interval() {
@@ -576,9 +548,13 @@ mod test {
 
         let mut barometer = BarometerBmp280::new(bus);
         barometer.temperature_calibration = TemperatureCalibration { t1: 27504, t2: 26435, t3: -1000 };
-        barometer.calculate_temperature(519888);
-        assert_eq!(barometer.temperature_fine, 128_422);
-        assert_eq!(barometer.temperature_celsius, 25.08);
+        let result = barometer.calculate_temperature(519888);
+        assert!(result.is_ok());
+        if let Ok(temperature_celsius) = result {
+            assert_eq!(barometer.temperature_fine, 128_422);
+            assert_eq!(temperature_celsius, 25.08);
+        }
+
         barometer.pressure_calibration = PressureCalibration {
             p1: 36477,
             p2: -10685,
@@ -590,7 +566,10 @@ mod test {
             p8: -14600,
             p9: 6000,
         };
-        barometer.calculate_pressure(415148);
-        assert_eq!(barometer.pressure_pascals, 100653.25);
+        let result = barometer.calculate_pressure(415148);
+        assert!(result.is_ok());
+        if let Ok(pressure_pascals) = result {
+            assert_eq!(pressure_pascals, 100653.25);
+        }
     }
 }

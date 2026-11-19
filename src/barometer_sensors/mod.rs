@@ -1,14 +1,13 @@
-#![doc = include_str!("README.md")]
+#![allow(unused)]
 
-mod barometer;
 mod barometer_bmp280;
 mod barometer_device;
 mod barometer_dps310;
+mod barometer_error;
 mod barometer_mock;
-mod config;
 
-pub use barometer::{Barometer, BarometerType};
-pub use barometer_device::{BarometerDevice, BarometerI2cError, BarometerMessage};
-
-#[cfg(feature = "barometer")]
-pub use config::BarometerConfig;
+pub use barometer_bmp280::BarometerBmp280;
+pub use barometer_device::BarometerDevice;
+pub use barometer_dps310::BarometerDps310;
+pub use barometer_error::BarometerI2cError;
+pub use barometer_mock::BarometerMock;
