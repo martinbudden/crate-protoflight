@@ -1,9 +1,24 @@
 #![cfg(feature = "magnetometer")]
 
-use crate::{
-    i2c_bus::SharedI2cBus,
-    magnetometer_sensors::{MagnetometerMessage, magnetometer::RxMagnetometer},
-};
+use super::{MagnetometerCommon, MagnetometerDevice, MagnetometerI2cError};
+use crate::i2c_bus::SharedI2cBus;
+
+use embassy_time::{Duration, Instant, Timer};
+
+#[derive(Clone, Copy, Debug)]
+pub struct MagnetometerHmc5883 {
+    pub common: MagnetometerCommon,
+}
+
+impl MagnetometerDevice for MagnetometerHmc5883 {
+    async fn init(&mut self) -> Result<Duration, MagnetometerI2cError> {
+        MagnetometerHmc5883::init(self).await
+    }
+
+    async fn make_reading(&mut self) -> Result<(Instant, [i16; 3]), MagnetometerI2cError> {
+        MagnetometerHmc5883::make_reading(self).await
+    }
+}
 
 struct Reg;
 
@@ -15,21 +30,44 @@ impl Reg {
     const _IDA: u8 = 0x0A;
 }
 
-pub struct MagnetometerHmc5883 {
-    pub i2c_bus: &'static SharedI2cBus,
-}
-
 impl MagnetometerHmc5883 {
+    // The HMC5883 only supports a single I2C address.
     const I2C_ADDRESS: u8 = 0x1E;
     const CHIP_ID: u8 = 0x48;
 
-    pub const fn new(i2c_bus: &'static SharedI2cBus) -> Self {
-        Self { i2c_bus }
+    pub const fn new(bus: &'static SharedI2cBus) -> Self {
+        Self { common: MagnetometerCommon::new(bus, Self::I2C_ADDRESS) }
+    }
+    pub async fn init(&mut self) -> Result<Duration, MagnetometerI2cError> {
+        core::future::ready(()).await;
+        /*let chip_id = self.common.read_register(Reg::CHIP_ID).await?;
+
+        if chip_id != Self::CHIP_ID {
+            return Err(BarometerI2cError::InvalidChipId { expected: Self::CHIP_ID, actual: chip_id });
+        }
+
+        self.soft_reset().await?;
+        self.read_calibration().await?;
+        self.configure().await?;*/
+
+        Ok(Duration::from_micros(25_000))
+    }
+
+    pub async fn make_reading(&mut self) -> Result<(Instant, [i16; 3]), MagnetometerI2cError> {
+        core::future::ready(()).await;
+        self.common.timestamp = Instant::now();
+        Ok((self.common.timestamp, [0; 3]))
     }
 }
 
-impl RxMagnetometer for MagnetometerHmc5883 {
-    fn message(&self) -> MagnetometerMessage {
-        MagnetometerMessage::default()
+#[cfg(test)]
+mod test_traits {
+    use super::*;
+
+    fn is_sized<T: Sized + Unpin>() {}
+
+    #[test]
+    fn normal_types() {
+        is_sized::<MagnetometerHmc5883>();
     }
 }

@@ -14,6 +14,7 @@ impl BarometerCommon {
     pub const fn new(bus: &'static SharedI2cBus, address: u8) -> Self {
         Self { bus, address, timestamp: Instant::MIN }
     }
+
     pub async fn read_register(&self, register: u8) -> Result<u8, BarometerI2cError> {
         let mut bus = self.bus.lock().await;
         let mut value = [0u8; 1];
@@ -35,5 +36,17 @@ impl BarometerCommon {
 
         Ok(value)
         //self.bus.read_regs::<N>(self.address, register).await.map_err(BarometerI2cError::I2c)
+    }
+}
+
+#[cfg(test)]
+mod test_traits {
+    use super::*;
+
+    fn is_sized<T: Sized + Unpin>() {}
+
+    #[test]
+    fn normal_types() {
+        is_sized::<BarometerCommon>();
     }
 }

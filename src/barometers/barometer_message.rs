@@ -42,7 +42,6 @@ impl BarometerMessage {
 mod test_traits {
     use super::*;
 
-    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
 
     #[test]

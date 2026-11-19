@@ -16,6 +16,16 @@ pub struct BarometerDps310 {
     temperature_sensor_external: bool,
 }
 
+impl BarometerDevice for BarometerDps310 {
+    async fn init(&mut self) -> Result<Duration, BarometerI2cError> {
+        BarometerDps310::init(self).await
+    }
+
+    async fn make_reading(&mut self) -> Result<(Instant, f32, f32), BarometerI2cError> {
+        BarometerDps310::make_reading(self).await
+    }
+}
+
 struct Reg;
 
 impl Reg {
@@ -95,15 +105,18 @@ impl BarometerDps310 {
     }
 
     async fn soft_reset(&self) -> Result<(), BarometerI2cError> {
+        const RESET_TIMEOUT_MS: u32 = 60;
+        const RESET_POLL_INTERVAL_MS: u64 = 1;
         const STATUS_COEFFICIENTS_READY: u8 = 1 << 7;
         const STATUS_SENSOR_READY: u8 = 1 << 6;
+
         self.common.write_register(Reg::SOFT_RESET, 0x09).await?;
-        for _ in 0..60 {
+        for _ in 0..RESET_TIMEOUT_MS {
             let status = self.common.read_register(Reg::MEASUREMENT_CONFIG).await?;
             if status & STATUS_SENSOR_READY != 0 && status & STATUS_COEFFICIENTS_READY != 0 {
                 return Ok(());
             }
-            Timer::after(Duration::from_millis(1)).await;
+            Timer::after(Duration::from_millis(RESET_POLL_INTERVAL_MS)).await;
         }
         Err(BarometerI2cError::InvalidData)
     }
@@ -266,16 +279,6 @@ impl BarometerDps310 {
     }
 }
 
-impl BarometerDevice for BarometerDps310 {
-    async fn init(&mut self) -> Result<Duration, BarometerI2cError> {
-        BarometerDps310::init(self).await
-    }
-
-    async fn make_reading(&mut self) -> Result<(Instant, f32, f32), BarometerI2cError> {
-        BarometerDps310::make_reading(self).await
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct TemperatureCalibration {
     c0: i16,
@@ -394,12 +397,13 @@ impl Dps310Oversampling {
 mod test_traits {
     use super::*;
 
+    fn is_sized<T: Sized + Unpin>() {}
     fn is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
 
     #[test]
     fn normal_types() {
-        //is_normal::<BarometerDps310>();
+        is_sized::<BarometerDps310>();
         is_normal::<TemperatureCalibration>();
         is_normal::<PressureCalibration>();
         is_full::<Dps310Config>();

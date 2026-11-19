@@ -1,8 +1,7 @@
-#![allow(unused)]
+use crate::barometer_sensors::SharedI2cBus;
+use crate::magnetometer_sensors::{MagnetometerDevice, MagnetometerHmc5883, MagnetometerI2cError, MagnetometerMock};
 
-#[cfg(feature = "magnetometer")]
-use super::magnetometer_hmc5883::MagnetometerHmc5883;
-use crate::{i2c_bus::SharedI2cBus, magnetometer_sensors::magnetometer_mock::MagnetometerMock};
+use embassy_time::{Duration, Instant};
 
 #[cfg(feature = "storage")]
 use sequential_storage::map::PostcardValue;
@@ -14,7 +13,6 @@ use {
 
 // Type of magnetometer used/detected
 #[allow(missing_docs)]
-#[allow(unused)]
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
@@ -59,40 +57,16 @@ impl MagnetometerType {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "std", derive(derive_more::Display))]
-pub struct MagnetometerMessage {
-    pub quality: u16,
-}
-
-impl MagnetometerMessage {
-    pub const fn new() -> Self {
-        Self { quality: 0 }
-    }
-}
-
-impl Default for MagnetometerMessage {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// The common interface for magnetometer.
-pub trait RxMagnetometer {
-    fn message(&self) -> MagnetometerMessage;
-}
-
 pub enum Magnetometer {
     Mock(MagnetometerMock),
-    #[cfg(feature = "magnetometer")]
     Hmc5883(MagnetometerHmc5883),
 }
 
 impl Magnetometer {
+    #[allow(unused)]
     #[must_use]
     pub const fn new(magnetometer_type: MagnetometerType, i2c_bus: &'static SharedI2cBus) -> Option<Magnetometer> {
         match magnetometer_type {
-            #[cfg(feature = "magnetometer")]
             MagnetometerType::Hmc5883 => Some(Self::Hmc5883(MagnetometerHmc5883::new(i2c_bus))),
             MagnetometerType::Mock => Some(Self::Mock(MagnetometerMock::new())),
             _ => None,
@@ -100,21 +74,24 @@ impl Magnetometer {
     }
 }
 
-impl RxMagnetometer for Magnetometer {
-    fn message(&self) -> MagnetometerMessage {
+impl MagnetometerDevice for Magnetometer {
+    async fn init(&mut self) -> Result<Duration, MagnetometerI2cError> {
         match self {
-            Self::Mock(magnetometer) => magnetometer.message(),
-            #[cfg(feature = "magnetometer")]
-            Self::Hmc5883(magnetometer) => magnetometer.message(),
+            Self::Mock(magnetometer) => magnetometer.init().await,
+            Self::Hmc5883(magnetometer) => magnetometer.init().await,
+        }
+    }
+    async fn make_reading(&mut self) -> Result<(Instant, [i16; 3]), MagnetometerI2cError> {
+        match self {
+            Self::Mock(magnetometer) => magnetometer.make_reading().await,
+            Self::Hmc5883(magnetometer) => magnetometer.make_reading().await,
         }
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     fn is_full_eq<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + Eq + PartialEq>() {}
     #[cfg(feature = "serde")]
     fn is_serde<T: Serialize + MaxSize + for<'a> Deserialize<'a>>() {}
@@ -123,9 +100,10 @@ mod tests {
 
     #[test]
     fn normal_types() {
-        is_full::<MagnetometerMessage>();
         is_full_eq::<MagnetometerType>();
         #[cfg(feature = "serde")]
         is_serde::<MagnetometerType>();
+        #[cfg(feature = "storage")]
+        is_storage::<MagnetometerType>();
     }
 }

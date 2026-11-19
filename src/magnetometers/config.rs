@@ -1,5 +1,6 @@
 use super::MagnetometerType;
 
+use imu_sensors::ImuAxisOrder;
 #[cfg(feature = "storage")]
 use sequential_storage::map::PostcardValue;
 #[cfg(feature = "serde")]
@@ -35,8 +36,7 @@ impl Default for FlightDynamicsTrims {
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct MagnetometerConfig {
-    /// Magnetic alignment.
-    pub alignment: u8,
+    pub axis_order: ImuAxisOrder,
     pub hardware: MagnetometerType,
     pub i2c_address: u8,
     pub zero: FlightDynamicsTrims,
@@ -54,7 +54,7 @@ impl Default for MagnetometerConfig {
 impl MagnetometerConfig {
     pub const fn new() -> Self {
         Self {
-            alignment: 0, // mag alignment
+            axis_order: ImuAxisOrder::XPOS_YPOS_ZPOS,
             hardware: MagnetometerType::NoMagnetometer,
             i2c_address: 0,
             zero: FlightDynamicsTrims::new(),
@@ -78,5 +78,7 @@ mod tests {
         is_full::<MagnetometerConfig>();
         #[cfg(feature = "serde")]
         is_serde::<MagnetometerConfig>();
+        #[cfg(feature = "storage")]
+        is_storage::<MagnetometerConfig>();
     }
 }

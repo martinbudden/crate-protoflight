@@ -15,6 +15,16 @@ pub struct BarometerBmp280 {
     pressure_calibration: PressureCalibration,
 }
 
+impl BarometerDevice for BarometerBmp280 {
+    async fn init(&mut self) -> Result<Duration, BarometerI2cError> {
+        BarometerBmp280::init(self).await
+    }
+
+    async fn make_reading(&mut self) -> Result<(Instant, f32, f32), BarometerI2cError> {
+        BarometerBmp280::make_reading(self).await
+    }
+}
+
 struct Reg;
 
 impl Reg {
@@ -123,6 +133,9 @@ impl BarometerBmp280 {
     }
 
     async fn soft_reset(&self) -> Result<(), BarometerI2cError> {
+        const RESET_TIMEOUT_MS: u32 = 10;
+        const RESET_POLL_INTERVAL_MS: u64 = 1;
+
         self.common.write_register(Reg::SOFT_RESET, 0xB6).await?;
 
         // Allow the device to reset and reload calibration data.
@@ -130,14 +143,14 @@ impl BarometerBmp280 {
 
         // STATUS.im_update is bit 0.
         // Wait for NVM calibration update to finish.
-        for _ in 0..10 {
+        for _ in 0..RESET_TIMEOUT_MS {
             let status = self.common.read_register(Reg::STATUS).await?;
 
             if status & 0x01 == 0 {
                 return Ok(());
             }
 
-            Timer::after(Duration::from_millis(1)).await;
+            Timer::after(Duration::from_millis(RESET_POLL_INTERVAL_MS)).await;
         }
         Err(BarometerI2cError::InvalidData)
     }
@@ -287,16 +300,6 @@ impl BarometerBmp280 {
         let pressure = self.calculate_pressure(pressure_raw)?;
 
         Ok((self.common.timestamp, temperature, pressure))
-    }
-}
-
-impl BarometerDevice for BarometerBmp280 {
-    async fn init(&mut self) -> Result<Duration, BarometerI2cError> {
-        BarometerBmp280::init(self).await
-    }
-
-    async fn make_reading(&mut self) -> Result<(Instant, f32, f32), BarometerI2cError> {
-        BarometerBmp280::make_reading(self).await
     }
 }
 
@@ -496,12 +499,13 @@ impl Bmp280OperatingMode {
 mod test_traits {
     use super::*;
 
+    fn is_sized<T: Sized + Unpin>() {}
     fn is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
 
     #[test]
     fn normal_types() {
-        //is_normal::<BarometerBmp280>();
+        is_sized::<BarometerBmp280>();
         is_normal::<TemperatureCalibration>();
         is_normal::<PressureCalibration>();
         is_full::<Bmp280Config>();

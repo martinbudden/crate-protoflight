@@ -1,7 +1,7 @@
 use super::{GpsUartRx, GpsUartTx, RadioUartRx, RadioUartTx, SdCardVolume, UsbDeviceDriver, UsbReceiver, UsbSender};
 
 use crate::barometers::{Barometer, BarometerType};
-use crate::magnetometer_sensors::{Magnetometer, MagnetometerType};
+use crate::magnetometers::{Magnetometer, MagnetometerType};
 use crate::optical_flow_sensors::{OpticalFlow, OpticalFlowType};
 use crate::rangefinder_sensors::{Rangefinder, RangefinderType};
 

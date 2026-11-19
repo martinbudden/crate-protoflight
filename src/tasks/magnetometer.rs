@@ -5,9 +5,11 @@ use embassy_sync::{
     pubsub::{PubSubChannel, Publisher, Subscriber},
 };
 use static_cell::StaticCell;
+use vqm::{Matrix3x3f32, Vector3f32};
 
 use crate::{
-    magnetometer_sensors::{Magnetometer, MagnetometerMessage, RxMagnetometer},
+    magnetometer_sensors::MagnetometerDevice,
+    magnetometers::{Magnetometer, MagnetometerMessage},
     tasks::errors::TaskInitError,
 };
 
@@ -50,8 +52,9 @@ pub fn magnetometer_subscriber() -> Result<MagnetometerSubscriber, TaskInitError
 
 /// Context for Magnetometer task.
 pub struct MagnetometerContext {
-    pub magnetometer: Magnetometer,
-    pub magnetometer_publisher: MagnetometerPublisher,
+    magnetometer: Magnetometer,
+    magnetometer_publisher: MagnetometerPublisher,
+    calibration_matrix: Matrix3x3f32,
 }
 
 pub fn init(magnetometer: Magnetometer) -> Result<&'static mut MagnetometerContext, TaskInitError> {
@@ -60,6 +63,7 @@ pub fn init(magnetometer: Magnetometer) -> Result<&'static mut MagnetometerConte
         magnetometer_publisher: MAGNETOMETER_PUB_SUB_CHANNEL
             .publisher()
             .map_err(|_| TaskInitError::MagnetometerPublisherFailed)?,
+        calibration_matrix: Matrix3x3f32::identity(),
     };
     Ok(MAGNETOMETER_CTX.init(ctx))
 }
@@ -67,18 +71,29 @@ pub fn init(magnetometer: Magnetometer) -> Result<&'static mut MagnetometerConte
 /// Magnetometer Task Placeholder.
 #[embassy_executor::task]
 pub async fn run(ctx: &'static mut MagnetometerContext) {
-    const TASK_FREQUENCY_HZ: u64 = 40;
-    let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(TASK_FREQUENCY_HZ));
+    // If initialization fails, then we just return.
+    log::info!("MAGNETOMETER: task started");
+    let Ok(measurement_interval) = ctx.magnetometer.init().await else {
+        return;
+    };
+
+    let mut ticker = embassy_time::Ticker::every(measurement_interval);
     let mut loop_count: u32 = 0;
 
-    log::info!("MAGNETOMETER: task started");
     loop {
         // Wait for the next tick.
         ticker.next().await;
-        let magnetometer_message = ctx.magnetometer.message();
-        // Publish a message, but if the queue is full, just kick out the oldest message.
-        // This may cause some subscribers to miss a message
-        ctx.magnetometer_publisher.publish_immediate(magnetometer_message);
+        let result = ctx.magnetometer.make_reading().await;
+        if let Ok((timestamp, reading)) = result {
+            let reading = Vector3f32 { x: f32::from(reading[0]), y: f32::from(reading[1]), z: f32::from(reading[2]) };
+            let reading = ctx.calibration_matrix * reading;
+            let magnetometer_message = MagnetometerMessage::new(timestamp, reading);
+            // Publish a message, but if the queue is full, just kick out the oldest message.
+            // This may cause some subscribers to miss a message
+            ctx.magnetometer_publisher.publish_immediate(magnetometer_message);
+        } else {
+            log::error!("Magnetometer make reading failed: {result:?}");
+        }
 
         if loop_count.is_multiple_of(10) {
             log::info!("    MAG:      loop {loop_count}");

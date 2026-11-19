@@ -35,7 +35,7 @@ use blackbox_logger::BlackboxConfig;
 use crate::gps::{GpsConfig, GpsRescueConfig};
 
 #[cfg(feature = "magnetometer")]
-use crate::magnetometer_sensors::MagnetometerConfig;
+use crate::magnetometers::MagnetometerConfig;
 
 #[cfg(feature = "optical_flow")]
 use crate::optical_flow_sensors::OpticalFlowConfig;

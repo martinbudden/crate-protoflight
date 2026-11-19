@@ -1,3 +1,0 @@
-# Magnetometer Sensors
-
-Placeholder.

@@ -76,7 +76,6 @@ pub async fn run(ctx: &'static mut BarometerContext) {
         return;
     };
 
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let mut ticker = embassy_time::Ticker::every(measurement_interval);
     let mut loop_count: u32 = 0;
 
