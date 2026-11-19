@@ -1,15 +1,11 @@
-#![allow(unused)]
-use super::{BarometerDevice, BarometerI2cError};
+use super::{BarometerCommon, BarometerDevice, BarometerI2cError};
 
-use crate::i2c_bus::{SharedI2cBus, SharedI2cExt};
+use crate::i2c_bus::SharedI2cBus;
 use embassy_time::{Duration, Instant, Timer};
 
 #[derive(Clone, Copy, Debug)]
 pub struct BarometerDps310 {
-    pub bus: &'static SharedI2cBus,
-    address: u8,
-
-    timestamp: Instant,
+    pub common: BarometerCommon,
     config: Dps310Config,
 
     temperature_calibration: TemperatureCalibration,
@@ -39,6 +35,7 @@ impl Reg {
     const COEFFICIENT_SOURCE: u8 = 0x28;
 }
 
+#[allow(unused)]
 impl BarometerDps310 {
     const I2C_ADDRESS: u8 = 0x77;
     const I2C_ADDRESS_ALTERNATIVE: u8 = 0x76;
@@ -46,10 +43,7 @@ impl BarometerDps310 {
 
     pub const fn new(bus: &'static SharedI2cBus) -> Self {
         Self {
-            bus,
-            address: Self::I2C_ADDRESS,
-
-            timestamp: Instant::MIN,
+            common: BarometerCommon::new(bus, Self::I2C_ADDRESS),
             config: Dps310Config::new(),
 
             temperature_calibration: TemperatureCalibration::new(),
@@ -64,7 +58,7 @@ impl BarometerDps310 {
 
     #[must_use]
     pub const fn with_alternative_address(mut self) -> Self {
-        self.address = Self::I2C_ADDRESS_ALTERNATIVE;
+        self.common.address = Self::I2C_ADDRESS_ALTERNATIVE;
         self
     }
 
@@ -86,20 +80,8 @@ impl BarometerDps310 {
         self
     }
 
-    async fn read_register(&self, register: u8) -> Result<u8, BarometerI2cError> {
-        self.bus.read_reg(self.address, register).await.map_err(BarometerI2cError::I2c)
-    }
-
-    async fn write_register(&self, register: u8, value: u8) -> Result<(), BarometerI2cError> {
-        self.bus.write_reg(self.address, register, value).await.map_err(BarometerI2cError::I2c)
-    }
-
-    async fn read_registers<const N: usize>(&self, register: u8) -> Result<[u8; N], BarometerI2cError> {
-        self.bus.read_regs::<N>(self.address, register).await.map_err(BarometerI2cError::I2c)
-    }
-
     pub async fn init(&mut self) -> Result<Duration, BarometerI2cError> {
-        let chip_id = self.read_register(Reg::CHIP_ID).await?;
+        let chip_id = self.common.read_register(Reg::CHIP_ID).await?;
         let product_id = chip_id & 0x0F;
 
         if product_id != Self::CHIP_ID {
@@ -116,9 +98,9 @@ impl BarometerDps310 {
     async fn soft_reset(&self) -> Result<(), BarometerI2cError> {
         const STATUS_COEFFICIENTS_READY: u8 = 1 << 7;
         const STATUS_SENSOR_READY: u8 = 1 << 6;
-        self.write_register(Reg::SOFT_RESET, 0x09).await?;
+        self.common.write_register(Reg::SOFT_RESET, 0x09).await?;
         for _ in 0..60 {
-            let status = self.read_register(Reg::MEASUREMENT_CONFIG).await?;
+            let status = self.common.read_register(Reg::MEASUREMENT_CONFIG).await?;
             if status & STATUS_SENSOR_READY != 0 && status & STATUS_COEFFICIENTS_READY != 0 {
                 return Ok(());
             }
@@ -128,14 +110,14 @@ impl BarometerDps310 {
     }
 
     async fn read_calibration(&mut self) -> Result<(), BarometerI2cError> {
-        let data = self.read_registers::<18>(Reg::CALIBRATION).await?;
+        let data = self.common.read_registers::<18>(Reg::CALIBRATION).await?;
 
         let (temperature_calibration, pressure_calibration) = Self::decode_calibration(data);
 
         self.temperature_calibration = temperature_calibration;
         self.pressure_calibration = pressure_calibration;
 
-        let coefficient_source = self.read_register(Reg::COEFFICIENT_SOURCE).await?;
+        let coefficient_source = self.common.read_register(Reg::COEFFICIENT_SOURCE).await?;
 
         self.temperature_sensor_external = coefficient_source & 0x80 != 0;
 
@@ -175,12 +157,12 @@ impl BarometerDps310 {
         let pressure_osr = self.config.pressure_oversampling;
         let temperature_osr = self.config.temperature_oversampling;
 
-        self.write_register(Reg::PRESSURE_CONFIG, pressure_osr.register_value()).await?;
+        self.common.write_register(Reg::PRESSURE_CONFIG, pressure_osr.register_value()).await?;
 
         let temperature_config = (if self.temperature_sensor_external { TEMPERATURE_EXTERNAL_ENABLE } else { 0 })
             | temperature_osr.register_value();
 
-        self.write_register(Reg::TEMPERATURE_CONFIG, temperature_config).await?;
+        self.common.write_register(Reg::TEMPERATURE_CONFIG, temperature_config).await?;
 
         let mut config_reg = 0;
 
@@ -192,7 +174,7 @@ impl BarometerDps310 {
             config_reg |= TEMPERATURE_SHIFT_ENABLE;
         }
 
-        self.write_register(Reg::CONFIG, config_reg).await?;
+        self.common.write_register(Reg::CONFIG, config_reg).await?;
         self.temperature_scale_factor = temperature_osr.scale_factor();
         self.pressure_scale_factor = pressure_osr.scale_factor();
 
@@ -201,7 +183,7 @@ impl BarometerDps310 {
 
     async fn wait_for_measurement(&self, ready_mask: u8, timeout_ms: u32) -> Result<(), BarometerI2cError> {
         for _ in 0..timeout_ms {
-            let status = self.read_register(Reg::MEASUREMENT_CONFIG).await?;
+            let status = self.common.read_register(Reg::MEASUREMENT_CONFIG).await?;
             if status & ready_mask != 0 {
                 return Ok(());
             }
@@ -213,7 +195,7 @@ impl BarometerDps310 {
     async fn trigger_temperature_measurement(&self) -> Result<(), BarometerI2cError> {
         const STATUS_TEMPERATURE_READY: u8 = 1 << 5;
         const COMMAND_TEMPERATURE: u8 = 0b010;
-        self.write_register(Reg::MEASUREMENT_CONFIG, COMMAND_TEMPERATURE).await?;
+        self.common.write_register(Reg::MEASUREMENT_CONFIG, COMMAND_TEMPERATURE).await?;
 
         self.wait_for_measurement(
             STATUS_TEMPERATURE_READY,
@@ -225,7 +207,7 @@ impl BarometerDps310 {
     async fn trigger_pressure_measurement(&self) -> Result<(), BarometerI2cError> {
         const STATUS_PRESSURE_READY: u8 = 1 << 4;
         const COMMAND_PRESSURE: u8 = 0b001;
-        self.write_register(Reg::MEASUREMENT_CONFIG, COMMAND_PRESSURE).await?;
+        self.common.write_register(Reg::MEASUREMENT_CONFIG, COMMAND_PRESSURE).await?;
 
         self.wait_for_measurement(STATUS_PRESSURE_READY, self.config.pressure_oversampling.measurement_time_ms() + 10)
             .await
@@ -233,11 +215,11 @@ impl BarometerDps310 {
 
     async fn read_raw_measurements(&mut self) -> Result<(i32, i32), BarometerI2cError> {
         self.trigger_temperature_measurement().await?;
-        let temperature_data = self.read_registers::<3>(Reg::TEMPERATURE_MSB).await?;
+        let temperature_data = self.common.read_registers::<3>(Reg::TEMPERATURE_MSB).await?;
 
         self.trigger_pressure_measurement().await?;
-        let pressure_data = self.read_registers::<3>(Reg::PRESSURE_MSB).await?;
-        self.timestamp = Instant::now();
+        let pressure_data = self.common.read_registers::<3>(Reg::PRESSURE_MSB).await?;
+        self.common.timestamp = Instant::now();
 
         let temperature = Self::decode_raw_measurement(temperature_data);
         let pressure = Self::decode_raw_measurement(pressure_data);
@@ -281,7 +263,7 @@ impl BarometerDps310 {
             return Err(BarometerI2cError::InvalidData);
         }
 
-        Ok((self.timestamp, temperature, pressure))
+        Ok((self.common.timestamp, temperature, pressure))
     }
 }
 
@@ -346,6 +328,7 @@ impl Dps310Config {
     }
 }
 
+#[allow(unused)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Dps310Oversampling {
     #[default]

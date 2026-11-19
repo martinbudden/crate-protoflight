@@ -1,17 +1,13 @@
-#![allow(unused)]
 #![cfg(feature = "barometer")]
 
-use super::{BarometerDevice, BarometerI2cError};
-use embassy_time::{Duration, Instant, Timer};
+use super::{BarometerCommon, BarometerDevice, BarometerI2cError};
 
-use crate::i2c_bus::{SharedI2cBus, SharedI2cExt};
+use crate::i2c_bus::SharedI2cBus;
+use embassy_time::{Duration, Instant, Timer};
 
 #[derive(Clone, Copy, Debug)]
 pub struct BarometerBmp280 {
-    pub bus: &'static SharedI2cBus,
-    address: u8,
-
-    timestamp: Instant,
+    pub common: BarometerCommon,
     config: Bmp280Config,
 
     temperature_calibration: TemperatureCalibration,
@@ -52,6 +48,7 @@ impl Reg {
     const _TEMPERATURE_XLSB: u8 = 0xFC;
 }
 
+#[allow(unused)]
 impl BarometerBmp280 {
     const I2C_ADDRESS: u8 = 0x76;
     const I2C_ADDRESS_ALTERNATIVE: u8 = 0x77;
@@ -59,10 +56,8 @@ impl BarometerBmp280 {
 
     pub const fn new(bus: &'static SharedI2cBus) -> Self {
         Self {
-            bus,
-            address: Self::I2C_ADDRESS,
+            common: BarometerCommon::new(bus, Self::I2C_ADDRESS),
 
-            timestamp: Instant::MIN,
             config: Bmp280Config::new(),
 
             temperature_calibration: TemperatureCalibration::new(),
@@ -74,7 +69,7 @@ impl BarometerBmp280 {
 
     #[must_use]
     pub const fn with_alternative_address(mut self) -> Self {
-        self.address = Self::I2C_ADDRESS_ALTERNATIVE;
+        self.common.address = Self::I2C_ADDRESS_ALTERNATIVE;
         self
     }
 
@@ -114,20 +109,8 @@ impl BarometerBmp280 {
         self
     }
 
-    async fn read_register(&self, register: u8) -> Result<u8, BarometerI2cError> {
-        self.bus.read_reg(self.address, register).await.map_err(BarometerI2cError::I2c)
-    }
-
-    async fn write_register(&self, register: u8, value: u8) -> Result<(), BarometerI2cError> {
-        self.bus.write_reg(self.address, register, value).await.map_err(BarometerI2cError::I2c)
-    }
-
-    async fn read_registers<const N: usize>(&self, register: u8) -> Result<[u8; N], BarometerI2cError> {
-        self.bus.read_regs::<N>(self.address, register).await.map_err(BarometerI2cError::I2c)
-    }
-
     pub async fn init(&mut self) -> Result<Duration, BarometerI2cError> {
-        let chip_id = self.read_register(Reg::CHIP_ID).await?;
+        let chip_id = self.common.read_register(Reg::CHIP_ID).await?;
 
         if chip_id != Self::CHIP_ID {
             return Err(BarometerI2cError::InvalidChipId { expected: Self::CHIP_ID, actual: chip_id });
@@ -141,7 +124,7 @@ impl BarometerBmp280 {
     }
 
     async fn soft_reset(&self) -> Result<(), BarometerI2cError> {
-        self.write_register(Reg::SOFT_RESET, 0xB6).await?;
+        self.common.write_register(Reg::SOFT_RESET, 0xB6).await?;
 
         // Allow the device to reset and reload calibration data.
         Timer::after(Duration::from_millis(2)).await;
@@ -149,7 +132,7 @@ impl BarometerBmp280 {
         // STATUS.im_update is bit 0.
         // Wait for NVM calibration update to finish.
         for _ in 0..10 {
-            let status = self.read_register(Reg::STATUS).await?;
+            let status = self.common.read_register(Reg::STATUS).await?;
 
             if status & 0x01 == 0 {
                 return Ok(());
@@ -163,14 +146,14 @@ impl BarometerBmp280 {
     async fn configure(&self) -> Result<(), BarometerI2cError> {
         // Put sensor into sleep mode before changing CONFIG.
         const CTRL_MEAS_SLEEP: u8 = 0b00;
-        self.write_register(Reg::CTRL_MEAS, CTRL_MEAS_SLEEP).await?;
+        self.common.write_register(Reg::CTRL_MEAS, CTRL_MEAS_SLEEP).await?;
         // CONFIG register:
         // [7:5] standby duration
         // [4:2] IIR filter
         // [1]   SPI 3-wire enable
         let config_reg =
             (self.config.standby_duration.register_value() << 5) | (self.config.filter.register_value() << 2);
-        self.write_register(Reg::CONFIG, config_reg).await?;
+        self.common.write_register(Reg::CONFIG, config_reg).await?;
         // CTRL_MEAS register:
         // [7:5] temperature oversampling
         // [4:2] pressure oversampling
@@ -178,12 +161,12 @@ impl BarometerBmp280 {
         let ctrl_meas = (self.config.temperature_oversampling.register_value() << 5)
             | (self.config.pressure_oversampling.register_value() << 2)
             | self.config.mode.register_value();
-        self.write_register(Reg::CTRL_MEAS, ctrl_meas).await?;
+        self.common.write_register(Reg::CTRL_MEAS, ctrl_meas).await?;
         Ok(())
     }
 
     async fn read_calibration(&mut self) -> Result<(), BarometerI2cError> {
-        let data = self.read_registers::<24>(Reg::CALIBRATION).await?;
+        let data = self.common.read_registers::<24>(Reg::CALIBRATION).await?;
 
         let decode_unsigned = |index: usize| u16::from_le_bytes([data[index], data[index + 1]]);
         let decode_signed = |index: usize| i16::from_le_bytes([data[index], data[index + 1]]);
@@ -214,8 +197,8 @@ impl BarometerBmp280 {
     async fn read_raw_measurements(&mut self) -> Result<(u32, u32), BarometerI2cError> {
         // Read all pressure and temperature registers in
         // one transaction.
-        let data = self.read_registers::<6>(Reg::PRESSURE_MSB).await?;
-        self.timestamp = Instant::now();
+        let data = self.common.read_registers::<6>(Reg::PRESSURE_MSB).await?;
+        self.common.timestamp = Instant::now();
 
         let pressure = (u32::from(data[0]) << 12) | (u32::from(data[1]) << 4) | (u32::from(data[2]) >> 4);
         let temperature = (u32::from(data[3]) << 12) | (u32::from(data[4]) << 4) | (u32::from(data[5]) >> 4);
@@ -286,7 +269,7 @@ impl BarometerBmp280 {
             | (self.config.pressure_oversampling.register_value() << 2)
             | Bmp280OperatingMode::Forced.register_value();
 
-        self.write_register(Reg::CTRL_MEAS, ctrl_meas).await?;
+        self.common.write_register(Reg::CTRL_MEAS, ctrl_meas).await?;
 
         // Wait for the conversion to finish.
         Timer::after(Duration::from_micros(u64::from(self.config.measurement_duration_us()))).await;
@@ -304,7 +287,7 @@ impl BarometerBmp280 {
         let temperature = self.calculate_temperature(temperature_raw)?;
         let pressure = self.calculate_pressure(pressure_raw)?;
 
-        Ok((self.timestamp, temperature, pressure))
+        Ok((self.common.timestamp, temperature, pressure))
     }
 }
 
@@ -393,6 +376,7 @@ impl Bmp280Config {
     }
 }
 
+#[allow(unused)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Bmp280Oversampling {
     Skipped,
@@ -427,6 +411,7 @@ impl Bmp280Oversampling {
     }
 }
 
+#[allow(unused)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Bmp280StandbyDuration {
     #[default]
@@ -467,6 +452,7 @@ impl Bmp280StandbyDuration {
     }
 }
 
+#[allow(unused)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Bmp280Filter {
     Off,
@@ -489,6 +475,7 @@ impl Bmp280Filter {
     }
 }
 
+#[allow(unused)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Bmp280OperatingMode {
     Sleep,
@@ -529,8 +516,8 @@ mod test_traits {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::barometers::Barometer;
     use crate::i2c_bus::MockI2c;
+    #[allow(unused)]
     use embassy_sync::{blocking_mutex::raw::NoopRawMutex, mutex::Mutex};
 
     #[test]
