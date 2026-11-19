@@ -5,6 +5,12 @@
 // and <https://github.com/betaflight/unified-targets/blob/master/configs/default/SPBE-SPEEDYBEEF405V4.config>
 // and <https://betaflight.com/docs/wiki/boards/current/SPEEDYBEEF405V4>.
 
+// MCU STM32F405
+// IMU ICM42688P
+// OSD AT7456E
+// BARO DPS310
+// Blackbox SD Card
+
 use crate::boards::{BoardHardware, BoardInit, BoardInitError, SharedI2cBus, open_volume};
 
 use crate::barometer_sensors::Barometer;

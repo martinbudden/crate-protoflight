@@ -1,7 +1,9 @@
 #![cfg(feature = "stamp_s3_fly")]
 #![allow(unused)]
 
-// ESP32 S3
+// MCU ESP32 S3
+// IMU BMI270
+// BARO BMP280
 
 use crate::boards::{BoardHardware, BoardInit, BoardInitError, SharedI2cBus};
 

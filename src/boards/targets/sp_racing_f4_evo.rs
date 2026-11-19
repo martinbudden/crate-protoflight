@@ -4,6 +4,8 @@
 // see <https://github.com/betaflight/unified-targets/blob/master/configs/default/SPRO-SPRACINGF4EVO.config>,
 // and <https://github.com/betaflight/config/blob/master/configs/SPRO/SPRACINGF4EVO/config.h>.
 
+// MCU STM32F405
+
 use crate::boards::{BoardHardware, BoardInit, BoardInitError, SharedI2cBus, open_volume};
 
 use crate::barometer_sensors::Barometer;

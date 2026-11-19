@@ -7,6 +7,9 @@
 // For Betaflight configuration files:
 // see <https://github.com/betaflight/config/blob/749fff19942fd7b44fa8020a086e1b566054cae9/configs/MADF/MADFLIGHT_FC3/config.h>
 
+// BARO BMP580 barometer,
+// MAG MMC5603
+
 use crate::boards::{BoardHardware, BoardInit, BoardInitError, SharedI2cBus, open_volume};
 
 use crate::barometer_sensors::Barometer;

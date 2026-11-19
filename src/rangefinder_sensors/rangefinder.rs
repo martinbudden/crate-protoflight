@@ -78,7 +78,7 @@ pub struct RangefinderMessage {
 
 impl RangefinderMessage {
     pub const fn new() -> Self {
-        Self { timestamp:Instant::MIN, distance_m: 0.0 }
+        Self { timestamp: Instant::MIN, distance_m: 0.0 }
     }
 }
 

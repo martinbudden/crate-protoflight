@@ -213,10 +213,10 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
         if let Some(wait_result) = ctx.barometer_subscriber.try_next_message()
             && let embassy_sync::pubsub::WaitResult::Message(barometer_message) = wait_result
         {
-            _ = ctx
-                .autopilot
-                .kalman_filter
-                .correct_altitude_using_barometer(barometer_message.timestamp.as_micros(), barometer_message.altitude_m);
+            _ = ctx.autopilot.kalman_filter.correct_altitude_using_barometer(
+                barometer_message.timestamp.as_micros(),
+                barometer_message.altitude_m,
+            );
             yield_now().await;
         }
 

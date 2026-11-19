@@ -7,6 +7,8 @@
 // This board has onboard flash and no SD card slot.
 // The Omnibus F4 SD has an SD card slot, but no MAX7465 chip.
 
+// MCU STM32F405
+// BARO BMP280 on SPI
 use crate::boards::{BoardHardware, BoardInit, BoardInitError, SharedI2cBus, open_volume};
 
 use crate::barometer_sensors::Barometer;
