@@ -4,6 +4,7 @@ use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex,
     pubsub::{PubSubChannel, Publisher, Subscriber},
 };
+use embassy_time::Duration;
 use static_cell::StaticCell;
 
 use crate::barometer_sensors::BarometerDevice;
@@ -72,11 +73,20 @@ pub fn init(barometer: Barometer) -> Result<&'static mut BarometerContext, TaskI
 pub async fn run(ctx: &'static mut BarometerContext) {
     // If initialization fails, then we just return.
     log::info!("   BAROMETER: task started");
-    let Ok(measurement_interval) = ctx.barometer.init().await else {
-        return;
+    let measurement_interval = match ctx.barometer.init().await {
+        Ok(interval) => interval,
+        Err(error) => {
+            log::error!("BAROMETER: initialization failed: {error:?}");
+            return;
+        }
     };
-
-    let mut ticker = embassy_time::Ticker::every(measurement_interval);
+    if measurement_interval.as_micros() == 0 {
+        log::error!("BAROMETER: invalid zero measurement interval");
+        return;
+    }
+    // Add some margin to allow for I2C transactions and scheduling.
+    let tick_interval = measurement_interval + Duration::from_millis(2);
+    let mut ticker = embassy_time::Ticker::every(tick_interval);
     let mut loop_count: u32 = 0;
 
     log::info!("   BAROMETER: loop started");
@@ -93,9 +103,9 @@ pub async fn run(ctx: &'static mut BarometerContext) {
             log::error!("Barometer make reading failed: {result:?}");
         }
 
+        loop_count = loop_count.wrapping_add(1);
         if loop_count.is_multiple_of(10) {
             log::info!("       BAROMETER:loop {loop_count}");
         }
-        loop_count = loop_count.wrapping_add(1);
     }
 }

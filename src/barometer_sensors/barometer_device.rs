@@ -15,6 +15,8 @@ pub enum BarometerError<E> {
     InvalidData,
     TemperatureOversamplingNotSet,
     PressureOversamplingNotSet,
+    InSleepMode,
+    IdleTimeout,
 }
 
 pub type BarometerI2cError = BarometerError<I2cError>;

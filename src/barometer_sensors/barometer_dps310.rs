@@ -4,7 +4,7 @@ use embassy_time::{Duration, Instant, Timer};
 
 #[derive(Clone, Copy, Debug)]
 pub struct BarometerDps310 {
-    pub common: BarometerCommon,
+    common: BarometerCommon,
     config: Dps310Config,
 
     temperature_calibration: TemperatureCalibration,
@@ -29,19 +29,25 @@ impl BarometerDevice for BarometerDps310 {
 struct Reg;
 
 impl Reg {
-    const PRESSURE_MSB: u8 = 0x00;
-    const TEMPERATURE_MSB: u8 = 0x03;
+    const PSR_B2: u8 = 0x00;
+    const _PSR_B1: u8 = 0x01;
+    const _PSR_B0: u8 = 0x02;
+    const TMP_B2: u8 = 0x03;
+    const _TMP_B1: u8 = 0x04;
+    const _TMP_B0: u8 = 0x05;
 
-    const PRESSURE_CONFIG: u8 = 0x06;
-    const TEMPERATURE_CONFIG: u8 = 0x07;
-    const MEASUREMENT_CONFIG: u8 = 0x08;
-    const CONFIG: u8 = 0x09;
+    const PRS_CFG: u8 = 0x06;
+    const TMP_CFG: u8 = 0x07;
+    const MEAS_CFG: u8 = 0x08;
+    const CFG_REG: u8 = 0x09;
+    const _INT_STS: u8 = 0x0A;
+    const _FIFO_STS: u8 = 0x0B;
 
-    const SOFT_RESET: u8 = 0x0C;
-    const CHIP_ID: u8 = 0x0D;
+    const RESET: u8 = 0x0C;
+    const PROD_ID: u8 = 0x0D;
 
-    const CALIBRATION: u8 = 0x10;
-    const COEFFICIENT_SOURCE: u8 = 0x28;
+    const COEF: u8 = 0x10; // 0x10 - 0x21
+    const COEF_SRCE: u8 = 0x28;
 }
 
 #[allow(unused)]
@@ -89,30 +95,42 @@ impl BarometerDps310 {
         self
     }
 
+    #[must_use]
+    pub const fn with_pressure_measurement_rate(mut self, rate: Dps310MeasurementRate) -> Self {
+        self.config.pressure_measurement_rate = rate;
+        self
+    }
+
+    #[must_use]
+    pub const fn with_temperature_measurement_rate(mut self, rate: Dps310MeasurementRate) -> Self {
+        self.config.temperature_measurement_rate = rate;
+        self
+    }
+
     pub async fn init(&mut self) -> Result<Duration, BarometerI2cError> {
-        let chip_id = self.common.read_register(Reg::CHIP_ID).await?;
+        let chip_id = self.common.read_register(Reg::PROD_ID).await?;
         let product_id = chip_id & 0x0F;
 
         if product_id != Self::CHIP_ID {
             return Err(BarometerI2cError::InvalidChipId { expected: Self::CHIP_ID, actual: product_id });
         }
 
-        self.soft_reset().await?;
+        self.reset().await?;
         self.read_calibration().await?;
         self.configure().await?;
 
-        Ok(Duration::from_micros(u64::from(self.config.measurement_duration_us())))
+        Ok(Duration::from_micros(u64::from(self.config.measurement_time_us())))
     }
 
-    async fn soft_reset(&self) -> Result<(), BarometerI2cError> {
+    async fn reset(&self) -> Result<(), BarometerI2cError> {
         const RESET_TIMEOUT_MS: u32 = 60;
         const RESET_POLL_INTERVAL_MS: u64 = 1;
         const STATUS_COEFFICIENTS_READY: u8 = 1 << 7;
         const STATUS_SENSOR_READY: u8 = 1 << 6;
 
-        self.common.write_register(Reg::SOFT_RESET, 0x09).await?;
+        self.common.write_register(Reg::RESET, 0x09).await?;
         for _ in 0..RESET_TIMEOUT_MS {
-            let status = self.common.read_register(Reg::MEASUREMENT_CONFIG).await?;
+            let status = self.common.read_register(Reg::MEAS_CFG).await?;
             if status & STATUS_SENSOR_READY != 0 && status & STATUS_COEFFICIENTS_READY != 0 {
                 return Ok(());
             }
@@ -122,14 +140,14 @@ impl BarometerDps310 {
     }
 
     async fn read_calibration(&mut self) -> Result<(), BarometerI2cError> {
-        let data = self.common.read_registers::<18>(Reg::CALIBRATION).await?;
+        let data = self.common.read_registers::<18>(Reg::COEF).await?;
 
         let (temperature_calibration, pressure_calibration) = Self::decode_calibration(data);
 
         self.temperature_calibration = temperature_calibration;
         self.pressure_calibration = pressure_calibration;
 
-        let coefficient_source = self.common.read_register(Reg::COEFFICIENT_SOURCE).await?;
+        let coefficient_source = self.common.read_register(Reg::COEF_SRCE).await?;
 
         self.temperature_sensor_external = coefficient_source & 0x80 != 0;
 
@@ -169,12 +187,12 @@ impl BarometerDps310 {
         let pressure_osr = self.config.pressure_oversampling;
         let temperature_osr = self.config.temperature_oversampling;
 
-        self.common.write_register(Reg::PRESSURE_CONFIG, pressure_osr.register_value()).await?;
+        self.common.write_register(Reg::PRS_CFG, pressure_osr.register_value()).await?;
 
         let temperature_config = (if self.temperature_sensor_external { TEMPERATURE_EXTERNAL_ENABLE } else { 0 })
             | temperature_osr.register_value();
 
-        self.common.write_register(Reg::TEMPERATURE_CONFIG, temperature_config).await?;
+        self.common.write_register(Reg::TMP_CFG, temperature_config).await?;
 
         let mut config_reg = 0;
 
@@ -186,16 +204,17 @@ impl BarometerDps310 {
             config_reg |= TEMPERATURE_SHIFT_ENABLE;
         }
 
-        self.common.write_register(Reg::CONFIG, config_reg).await?;
+        self.common.write_register(Reg::CFG_REG, config_reg).await?;
         self.temperature_scale_factor = temperature_osr.scale_factor();
         self.pressure_scale_factor = pressure_osr.scale_factor();
 
         Ok(())
     }
 
+    #[inline]
     async fn wait_for_measurement(&self, ready_mask: u8, timeout_ms: u32) -> Result<(), BarometerI2cError> {
         for _ in 0..timeout_ms {
-            let status = self.common.read_register(Reg::MEASUREMENT_CONFIG).await?;
+            let status = self.common.read_register(Reg::MEAS_CFG).await?;
             if status & ready_mask != 0 {
                 return Ok(());
             }
@@ -204,34 +223,27 @@ impl BarometerDps310 {
         Err(BarometerI2cError::InvalidData)
     }
 
-    async fn trigger_temperature_measurement(&self) -> Result<(), BarometerI2cError> {
-        const STATUS_TEMPERATURE_READY: u8 = 1 << 5;
-        const COMMAND_TEMPERATURE: u8 = 0b010;
-        self.common.write_register(Reg::MEASUREMENT_CONFIG, COMMAND_TEMPERATURE).await?;
-
-        self.wait_for_measurement(
-            STATUS_TEMPERATURE_READY,
-            self.config.temperature_oversampling.measurement_time_ms() + 10,
-        )
-        .await
-    }
-
-    async fn trigger_pressure_measurement(&self) -> Result<(), BarometerI2cError> {
-        const STATUS_PRESSURE_READY: u8 = 1 << 4;
-        const COMMAND_PRESSURE: u8 = 0b001;
-        self.common.write_register(Reg::MEASUREMENT_CONFIG, COMMAND_PRESSURE).await?;
-
-        self.wait_for_measurement(STATUS_PRESSURE_READY, self.config.pressure_oversampling.measurement_time_ms() + 10)
-            .await
-    }
-
+    #[inline]
     async fn read_raw_measurements(&mut self) -> Result<(i32, i32), BarometerI2cError> {
-        self.trigger_temperature_measurement().await?;
-        let temperature_data = self.common.read_registers::<3>(Reg::TEMPERATURE_MSB).await?;
+        const COMMAND_TEMPERATURE: u8 = 0b010;
+        const COMMAND_PRESSURE: u8 = 0b001;
 
-        self.trigger_pressure_measurement().await?;
-        let pressure_data = self.common.read_registers::<3>(Reg::PRESSURE_MSB).await?;
+        const STATUS_TEMPERATURE_READY: u8 = 1 << 5;
+        const STATUS_PRESSURE_READY: u8 = 1 << 4;
+
+        // Temperature measurement.
+        let temperature_timeout = self.config.temperature_oversampling.measurement_time_ms() + 10;
+        self.common.write_register(Reg::MEAS_CFG, COMMAND_TEMPERATURE).await?;
+        self.wait_for_measurement(STATUS_TEMPERATURE_READY, temperature_timeout).await?;
+        let temperature_data = self.common.read_registers::<3>(Reg::TMP_B2).await?;
+
+        // Pressure measurement.
+        let pressure_timeout = self.config.pressure_oversampling.measurement_time_ms() + 10;
+        self.common.write_register(Reg::MEAS_CFG, COMMAND_PRESSURE).await?;
+        self.wait_for_measurement(STATUS_PRESSURE_READY, pressure_timeout).await?;
         self.common.timestamp = Instant::now();
+
+        let pressure_data = self.common.read_registers::<3>(Reg::PSR_B2).await?;
 
         let temperature = Self::decode_raw_measurement(temperature_data);
         let pressure = Self::decode_raw_measurement(pressure_data);
@@ -240,16 +252,19 @@ impl BarometerDps310 {
     }
 
     #[allow(clippy::cast_possible_wrap)]
+    #[inline]
     fn sign_extend(value: u32, bits: u32) -> i32 {
         let shift = 32 - bits;
         ((value << shift) as i32) >> shift
     }
 
+    #[inline]
     fn decode_raw_measurement(data: [u8; 3]) -> i32 {
         let value = u32::from_be_bytes([0, data[0], data[1], data[2]]);
         Self::sign_extend(value, 24)
     }
 
+    #[inline]
     #[allow(clippy::cast_precision_loss)]
     fn calculate_temperature_and_pressure(&self, temperature_raw: i32, pressure_raw: i32) -> (f32, f32) {
         let t_scaled = temperature_raw as f32 / self.temperature_scale_factor;
@@ -286,6 +301,7 @@ struct TemperatureCalibration {
 }
 
 impl TemperatureCalibration {
+    #[inline]
     const fn new() -> Self {
         Self { c0: 0, c1: 0 }
     }
@@ -303,6 +319,7 @@ struct PressureCalibration {
 }
 
 impl PressureCalibration {
+    #[inline]
     const fn new() -> Self {
         Self { c00: 0, c10: 0, c01: 0, c11: 0, c20: 0, c21: 0, c30: 0 }
     }
@@ -312,6 +329,8 @@ impl PressureCalibration {
 pub struct Dps310Config {
     pub temperature_oversampling: Dps310Oversampling,
     pub pressure_oversampling: Dps310Oversampling,
+    pub temperature_measurement_rate: Dps310MeasurementRate,
+    pub pressure_measurement_rate: Dps310MeasurementRate,
 }
 
 impl Default for Dps310Config {
@@ -321,11 +340,18 @@ impl Default for Dps310Config {
 }
 
 impl Dps310Config {
+    #[inline]
     pub const fn new() -> Self {
-        Self { temperature_oversampling: Dps310Oversampling::X4, pressure_oversampling: Dps310Oversampling::X16 }
+        Self {
+            temperature_oversampling: Dps310Oversampling::X1,
+            pressure_oversampling: Dps310Oversampling::X4,
+            temperature_measurement_rate: Dps310MeasurementRate::Hz1,
+            pressure_measurement_rate: Dps310MeasurementRate::Hz1,
+        }
     }
 
-    pub fn measurement_duration_us(self) -> u32 {
+    #[inline]
+    pub fn measurement_time_us(self) -> u32 {
         self.temperature_oversampling.measurement_time_us() + self.pressure_oversampling.measurement_time_us()
     }
 }
@@ -393,6 +419,38 @@ impl Dps310Oversampling {
     }
 }
 
+#[allow(unused)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum Dps310MeasurementRate {
+    #[default]
+    Hz1,
+    Hz2,
+    Hz4,
+    Hz8,
+    Hz16,
+    Hz32,
+    Hz64,
+    Hz128,
+}
+
+#[allow(unused)]
+impl Dps310MeasurementRate {
+    const fn register_value(self) -> u8 {
+        match self {
+            Self::Hz1 => 0,
+            Self::Hz2 => 1,
+            Self::Hz4 => 2,
+            Self::Hz8 => 3,
+            Self::Hz16 => 4,
+            Self::Hz32 => 5,
+            Self::Hz64 => 6,
+            Self::Hz128 => 7,
+        }
+    }
+    const fn register_bits(self) -> u8 {
+        self.register_value() << 4
+    }
+}
 #[cfg(test)]
 mod test_traits {
     use super::*;
@@ -489,8 +547,6 @@ mod tests {
     fn test_measurement_duration() {
         let config = Dps310Config::new();
 
-        // X4 temperature = 9 ms
-        // X16 pressure = 28 ms
-        assert_eq!(config.measurement_duration_us(), 37_000);
+        assert_eq!(config.measurement_time_us(), 13_000);
     }
 }
