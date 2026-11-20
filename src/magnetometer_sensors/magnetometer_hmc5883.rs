@@ -1,7 +1,7 @@
 #![allow(unused)]
 #![cfg(feature = "magnetometer")]
 
-use crate::magnetometer_sensors::magnetometer_device::SharedI2cBus;
+use crate::barometer_sensors::SharedI2cBus;
 
 use super::{MagnetometerCommon, MagnetometerDevice, MagnetometerI2cError};
 

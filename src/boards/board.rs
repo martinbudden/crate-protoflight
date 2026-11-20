@@ -5,7 +5,7 @@ use crate::magnetometers::{Magnetometer, MagnetometerType};
 use crate::optical_flow_sensors::{OpticalFlow, OpticalFlowType};
 use crate::rangefinder_sensors::{Rangefinder, RangefinderType};
 
-use imu_sensors::{ImuAxisOrder, ImuDevice};
+use imu_sensors::{AxisOrder, ImuDevice};
 use motor_mixers::{MotorDriver, MotorProtocol};
 
 //#[cfg(all(feature = "rp2350xa", feature = "rp2350xb"))]
@@ -15,7 +15,7 @@ use motor_mixers::{MotorDriver, MotorProtocol};
 #[allow(unused)]
 pub struct BoardInit {
     pub spawner: embassy_executor::Spawner,
-    pub axis_order: ImuAxisOrder,
+    pub axis_order: AxisOrder,
     pub barometer_type: Option<BarometerType>,
     pub magnetometer_type: Option<MagnetometerType>,
     pub rangefinder_type: Option<RangefinderType>,

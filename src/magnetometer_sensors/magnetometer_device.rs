@@ -1,10 +1,6 @@
-use embassy_sync::{blocking_mutex::raw::NoopRawMutex, mutex::Mutex};
 use embassy_time::{Duration, Instant};
 
-use crate::barometer_sensors::I2cDeviceBlocking;
-
-pub type SharedI2cBus = Mutex<NoopRawMutex, I2cDeviceBlocking>;
-pub type I2cError = <I2cDeviceBlocking as embedded_hal::i2c::ErrorType>::Error;
+use crate::barometer_sensors::I2cError;
 
 #[allow(unused)]
 #[derive(Debug)]

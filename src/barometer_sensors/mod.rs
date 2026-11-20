@@ -8,7 +8,7 @@ mod barometer_mock;
 
 pub use barometer_common::BarometerCommon;
 pub use barometer_device::BarometerI2cError;
-pub use shared_i2c_bus::{I2cDeviceBlocking, SharedI2cBus};
+pub use shared_i2c_bus::{I2cError, SharedI2cBus};
 
 pub use barometer_bmp280::BarometerBmp280;
 pub use barometer_device::BarometerDevice;

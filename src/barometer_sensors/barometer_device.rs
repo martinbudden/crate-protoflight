@@ -1,7 +1,5 @@
-use super::I2cDeviceBlocking;
+use super::I2cError;
 use embassy_time::{Duration, Instant};
-
-pub type I2cError = <I2cDeviceBlocking as embedded_hal::i2c::ErrorType>::Error;
 
 #[allow(unused)]
 #[derive(Debug)]
