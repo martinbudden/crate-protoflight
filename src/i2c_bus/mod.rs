@@ -1,10 +1,10 @@
 #![doc = include_str!("README.md")]
 #![allow(unused)]
 
-mod i2c;
+//mod i2c;
 mod mock_i2c;
 
-pub use i2c::{I2cError, SharedI2cBus, SharedI2cExt};
+//pub use i2c::{I2cError, SharedI2cBus, SharedI2cExt};
 
 #[cfg(any(feature = "host", feature = "esp32s3"))]
 pub use mock_i2c::{MockI2c, MockI2cError};

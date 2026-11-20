@@ -7,10 +7,11 @@
 // This board has onboard flash and no SD card slot.
 // The Omnibus F4 SD has an SD card slot, but no MAX7465 chip.
 
-use crate::boards::{BoardHardware, BoardInit, BoardInitError, SharedI2cBus};
+use crate::boards::{BoardHardware, BoardInit, BoardInitError};
 
-use crate::barometer_sensors::Barometer;
-use crate::magnetometer_sensors::Magnetometer;
+use crate::barometer_sensors::SharedI2cBus;
+use crate::barometers::Barometer;
+use crate::magnetometers::Magnetometer;
 use crate::optical_flow_sensors::OpticalFlow;
 use crate::rangefinder_sensors::Rangefinder;
 

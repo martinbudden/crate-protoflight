@@ -5,7 +5,6 @@ pub type UsbSender = ();
 pub type UsbReceiver = ();
 pub type UsbDeviceDriver = ();
 
-pub type I2cDeviceBlocking = crate::i2c_bus::MockI2c;
 pub type SharedI2cBus = ();
 
 pub type RadioUartRx = ();

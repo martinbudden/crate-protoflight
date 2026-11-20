@@ -1,5 +1,5 @@
 use embassy_time::Instant;
-
+use num_traits::Pow;
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "host", derive(derive_more::Display))]
 #[cfg_attr(feature = "host", display("Baro{{a:{altitude_m}, p:{pressure_pascals}}}"))]
@@ -34,7 +34,7 @@ impl BarometerMessage {
 impl BarometerMessage {
     #[allow(unused)]
     pub fn calculate_altitude_meters(pressure: f32, pressure_at_reference_altitude: f32) -> f32 {
-        44330.0 * (1.0 - (pressure / pressure_at_reference_altitude).powf(0.1903_f32))
+        44330.0 * (1.0 - (pressure / pressure_at_reference_altitude).pow(0.1903_f32))
     }
 }
 

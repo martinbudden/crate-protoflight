@@ -11,7 +11,6 @@ use {
     serde::{Deserialize, Serialize},
 };
 
-// Type of magnetometer used/detected
 #[allow(missing_docs)]
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -89,7 +88,7 @@ impl MagnetometerDevice for Magnetometer {
     }
 }
 #[cfg(test)]
-mod tests {
+mod test_traits {
     use super::*;
 
     fn is_full_eq<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + Eq + PartialEq>() {}

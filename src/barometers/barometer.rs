@@ -3,6 +3,7 @@ use crate::barometer_sensors::{
 };
 
 use embassy_time::{Duration, Instant};
+
 #[cfg(feature = "storage")]
 use sequential_storage::map::PostcardValue;
 #[cfg(feature = "serde")]

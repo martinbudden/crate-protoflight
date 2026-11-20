@@ -5,8 +5,10 @@
 // IMU BMI270
 // BARO BMP280
 
-use crate::boards::{BoardHardware, BoardInit, BoardInitError, SharedI2cBus};
+use crate::boards::{BoardHardware, BoardInit, BoardInitError};
 
+use crate::barometer_sensors::SharedI2cBus;
+use crate::barometers::Barometer;
 use dshot_codec::DshotSpeed;
 use imu_sensors::{ImuMock, MockImuBus};
 // use imu_sensors::{Imu426xx, ImuSpiBus};

@@ -4,7 +4,7 @@ use super::{BarometerCommon, BarometerDevice, BarometerI2cError, SharedI2cBus};
 
 use embassy_time::{Duration, Instant, Timer};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 pub struct BarometerBmp280 {
     common: BarometerCommon,
     config: Bmp280Config,

@@ -3,7 +3,7 @@ use embassy_time::Instant;
 use super::{BarometerI2cError, SharedI2cBus};
 use embedded_hal::i2c::I2c;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 pub struct BarometerCommon {
     pub(crate) bus: &'static SharedI2cBus,
     pub(crate) address: u8,

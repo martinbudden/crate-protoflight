@@ -30,27 +30,18 @@ pub use sd_card::{SdCardBlockDevice, SdCardTimeSource, SdCardVolume, StorageErro
 pub use no_sdcard::SdCardVolume;
 
 #[cfg(feature = "host")]
-pub use platform_host::{
-    GpsUartRx, GpsUartTx, I2cDeviceBlocking, RadioUartRx, RadioUartTx, UsbDeviceDriver, UsbReceiver, UsbSender,
-};
+pub use platform_host::{GpsUartRx, GpsUartTx, RadioUartRx, RadioUartTx, UsbDeviceDriver, UsbReceiver, UsbSender};
 
 #[allow(unused)]
 #[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
 pub use platform_rp::{
-    BufferedRadioUartRx, GpsUartRx, GpsUartTx, I2cDeviceBlocking, RadioUartRx, RadioUartTx, SharedI2cBus,
-    UsbDeviceDriver, UsbReceiver, UsbSender,
+    BufferedRadioUartRx, GpsUartRx, GpsUartTx, RadioUartRx, RadioUartTx, UsbDeviceDriver, UsbReceiver, UsbSender,
 };
 
 #[allow(unused)]
 #[cfg(feature = "stm32")]
-pub use platform_stm32::{
-    GpsUartRx, GpsUartTx, I2cDeviceBlocking, RadioUartRx, RadioUartTx, SharedI2cBus, UsbDeviceDriver, UsbReceiver,
-    UsbSender,
-};
+pub use platform_stm32::{GpsUartRx, GpsUartTx, RadioUartRx, RadioUartTx, UsbDeviceDriver, UsbReceiver, UsbSender};
 
 #[allow(unused)]
 #[cfg(feature = "esp32s3")]
-pub use platform_esp32s3::{
-    GpsUartRx, GpsUartTx, I2cDeviceBlocking, RadioUartRx, RadioUartTx, SharedI2cBus, UsbDeviceDriver, UsbReceiver,
-    UsbSender,
-};
+pub use platform_esp32s3::{GpsUartRx, GpsUartTx, RadioUartRx, RadioUartTx, UsbDeviceDriver, UsbReceiver, UsbSender};

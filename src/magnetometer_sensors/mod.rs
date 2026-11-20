@@ -1,4 +1,3 @@
-#![allow(unused)]
 mod magnetometer_common;
 mod magnetometer_device;
 

@@ -1,9 +1,6 @@
-use embassy_sync::{blocking_mutex::raw::NoopRawMutex, mutex::Mutex};
+use super::I2cDeviceBlocking;
 use embassy_time::{Duration, Instant};
 
-use crate::boards::I2cDeviceBlocking;
-
-pub type SharedI2cBus = Mutex<NoopRawMutex, I2cDeviceBlocking>;
 pub type I2cError = <I2cDeviceBlocking as embedded_hal::i2c::ErrorType>::Error;
 
 #[allow(unused)]

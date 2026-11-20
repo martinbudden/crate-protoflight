@@ -80,7 +80,7 @@ pub async fn run(ctx: &'static mut BarometerContext) {
             return;
         }
     };
-    if measurement_interval.as_micros() == 0 {
+    if measurement_interval == Duration::MIN {
         log::error!("BAROMETER: invalid zero measurement interval");
         return;
     }

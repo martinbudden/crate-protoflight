@@ -1,10 +1,6 @@
 #![cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
 
-use embassy_sync::{blocking_mutex::raw::NoopRawMutex, mutex::Mutex};
-
 use embassy_rp::{
-    i2c::{Blocking, I2c},
-    peripherals,
     peripherals::USB,
     uart::{Async, UartRx, UartTx},
     usb::Driver as UsbDriver,
@@ -14,10 +10,6 @@ pub type UsbSender = embassy_usb::class::cdc_acm::Sender<'static, UsbDriver<'sta
 pub type UsbReceiver = embassy_usb::class::cdc_acm::Receiver<'static, UsbDriver<'static, USB>>;
 pub type UsbDeviceDriver = embassy_usb::UsbDevice<'static, UsbDriver<'static, USB>>;
 
-// Bus = raw hardware peripheral
-// Device = bus + chip select + transaction locking
-pub type I2cDeviceBlocking = I2c<'static, peripherals::I2C0, Blocking>;
-pub type SharedI2cBus = Mutex<NoopRawMutex, I2cDeviceBlocking>;
 //pub type I2cDevice0Async = I2c<'static, peripherals::I2C0, Async>;
 //pub type AuxiliaryPioSpiDevice = ExclusiveDevice<PioSpi<'static, peripherals::PIO0, 0>, Output<'static>, Delay>;
 

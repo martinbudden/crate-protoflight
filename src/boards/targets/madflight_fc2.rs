@@ -6,8 +6,9 @@
 // pins: https://github.com/qqqlab/madflight/blob/main/src/brd/madflight_FC2.h
 // schematic: https://madflight.com/img/madflight-ESP-FC2.pdf
 
-use crate::boards::{BoardHardware, BoardInit, BoardInitError, SharedI2cBus};
+use crate::boards::{BoardHardware, BoardInit, BoardInitError};
 
+use crate::barometer_sensors::SharedI2cBus;
 use dshot_codec::DshotSpeed;
 use imu_sensors::{Imu426xx, ImuMock, ImuSpiBus, MockImuBus};
 use motor_mixers::{MotorDriver, MotorDriverDshot, MotorDriverPwm, MotorProtocol};

@@ -1,11 +1,13 @@
+#![allow(unused)]
 #![cfg(feature = "magnetometer")]
 
+use crate::magnetometer_sensors::magnetometer_device::SharedI2cBus;
+
 use super::{MagnetometerCommon, MagnetometerDevice, MagnetometerI2cError};
-use crate::i2c_bus::SharedI2cBus;
 
-use embassy_time::{Duration, Instant, Timer};
+use embassy_time::{Duration, Instant};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 pub struct MagnetometerHmc5883 {
     pub common: MagnetometerCommon,
 }

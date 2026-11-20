@@ -2,7 +2,7 @@ use super::{BarometerCommon, BarometerDevice, BarometerI2cError, SharedI2cBus};
 
 use embassy_time::{Duration, Instant, Timer};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 pub struct BarometerDps310 {
     common: BarometerCommon,
     config: Dps310Config,

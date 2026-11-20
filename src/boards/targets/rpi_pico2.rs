@@ -1,9 +1,10 @@
 #![cfg(feature = "rpi_pico2")]
 
-use crate::boards::{BoardHardware, BoardInit, BoardInitError, SharedI2cBus, open_volume};
+use crate::boards::{BoardHardware, BoardInit, BoardInitError, open_volume};
 
-use crate::barometer_sensors::Barometer;
-use crate::magnetometer_sensors::Magnetometer;
+use crate::barometer_sensors::SharedI2cBus;
+use crate::barometers::Barometer;
+use crate::magnetometers::Magnetometer;
 use crate::optical_flow_sensors::OpticalFlow;
 use crate::rangefinder_sensors::Rangefinder;
 
