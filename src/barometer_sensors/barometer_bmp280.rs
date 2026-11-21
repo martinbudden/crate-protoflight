@@ -563,7 +563,7 @@ mod tests {
 
         let mut barometer = BarometerBmp280::new(bus);
         barometer.temperature_calibration = TemperatureCalibration { t1: 27504, t2: 26435, t3: -1000 };
-        let result = barometer.calculate_temperature(519888);
+        let result = barometer.calculate_temperature(519_888);
         assert!(result.is_ok());
         if let Ok((temperature_celsius, temperature_fine)) = result {
             assert_eq!(temperature_celsius, 25.08);
@@ -581,10 +581,10 @@ mod tests {
             p8: -14600,
             p9: 6000,
         };
-        let result = barometer.calculate_pressure(415148, 128_422);
+        let result = barometer.calculate_pressure(415_148, 128_422);
         assert!(result.is_ok());
         if let Ok(pressure_pascals) = result {
-            assert_eq!(pressure_pascals, 100653.25);
+            assert_eq!(pressure_pascals, 100_653.25);
         }
     }
     #[test]
@@ -594,7 +594,7 @@ mod tests {
             0x7E, 0xED, 0x00, // Temperature: 519888
         ];
         let (temperature, pressure) = BarometerBmp280::decode_raw(data);
-        assert_eq!(pressure, 415148);
-        assert_eq!(temperature, 519888);
+        assert_eq!(pressure, 415_148);
+        assert_eq!(temperature, 519_888);
     }
 }

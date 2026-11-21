@@ -479,8 +479,8 @@ mod tests {
         assert_eq!(BarometerDps310::sign_extend(0x800, 12), -2048);
         assert_eq!(BarometerDps310::sign_extend(0xFFF, 12), -1);
 
-        assert_eq!(BarometerDps310::sign_extend(0x7FFFF, 20), 524287);
-        assert_eq!(BarometerDps310::sign_extend(0x80000, 20), -524288);
+        assert_eq!(BarometerDps310::sign_extend(0x7FFFF, 20), 524_287);
+        assert_eq!(BarometerDps310::sign_extend(0x80000, 20), -524_288);
         assert_eq!(BarometerDps310::sign_extend(0xFFFFF, 20), -1);
     }
 
