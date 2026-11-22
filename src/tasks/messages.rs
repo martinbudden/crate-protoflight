@@ -14,7 +14,7 @@ PID Errors (3x f32): 12 bytes
  */
 
 const _: () = assert!(core::mem::size_of::<GyroPidMessage>() == 112);
-const _: () = assert!(core::mem::size_of::<ImuIntegralMessage>() == 32);
+const _: () = assert!(core::mem::size_of::<ImuIntegralMessage>() == 112);
 
 /// Blackbox telemetry data, updated at approximately 1kHz.
 /// Limit this to 128 bytes.

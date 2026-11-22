@@ -1,5 +1,7 @@
 #![cfg(feature = "autopilot")]
 
+#[allow(unused)]
+use embassy_sync::pubsub::WaitResult;
 use embassy_time::Instant;
 use vqm::Vector3f32;
 
@@ -25,8 +27,10 @@ use crate::{
 
 static AUTOPILOT_CTX: StaticCell<AutopilotContext> = StaticCell::new();
 
-#[cfg(any(feature = "barometer", feature = "gps", feature = "optical_flow", feature = "rangefinder"))]
-use {crate::flight::RcControls, radio_controllers::RcMode};
+#[cfg(any(feature = "gps", feature = "optical_flow"))]
+use sensor_fusion::KalmanFilterXyzWithSensorsf32;
+#[cfg(not(any(feature = "gps", feature = "optical_flow")))]
+use sensor_fusion::KalmanFilterZWithSensorsf32;
 
 #[cfg(feature = "barometer")]
 use crate::tasks::barometer::{BarometerSubscriber, barometer_subscriber};
@@ -80,16 +84,23 @@ impl KalmanAccBiasNedMessage {
 /// Context for Autopilot task.
 #[rustfmt::skip]
 pub struct AutopilotContext {
-    pub gyro_pid_receiver: GyroPidReceiver,
-    pub imu_integral_receiver: ImuIntegralReceiver,
-    pub rx_receiver: RxMessageReceiver,
-    pub failsafe_subscriber: FailsafeSubscriber,
-    pub autopilot_sender: AutopilotSender,
-    pub autopilot: Autopilot,
+    gyro_pid_receiver: GyroPidReceiver,
+    imu_integral_receiver: ImuIntegralReceiver,
+    rx_receiver: RxMessageReceiver,
+    failsafe_subscriber: FailsafeSubscriber,
+    autopilot_sender: AutopilotSender,
+    autopilot: Autopilot,
     #[cfg(feature = "barometer")] pub barometer_subscriber: BarometerSubscriber,
     #[cfg(feature = "gps")] pub gps_subscriber: GpsSubscriber,
     #[cfg(feature = "optical_flow")] pub optical_flow_subscriber: OpticalFlowSubscriber,
     #[cfg(feature = "rangefinder")] pub rangefinder_subscriber: RangefinderSubscriber,
+    // If we have GPS or optical flow, then use a `KalmanFilterXyz`.
+    #[cfg(any(feature = "gps", feature = "optical_flow"))]
+    pub kalman_filter: KalmanFilterXyzWithSensorsf32,
+    // If we don't have either gps or optical flow, then we can't correct position in the xy plane,
+    // so there is no point in having the overhead of a full 3D Kalman filter, so we just use a `KalmanFilterZ`.
+    #[cfg(not(any(feature = "gps", feature = "optical_flow")))]
+    pub kalman_filter: KalmanFilterZWithSensorsf32,
 }
 
 pub fn init() -> Result<&'static mut AutopilotContext, TaskInitError> {
@@ -105,6 +116,10 @@ pub fn init() -> Result<&'static mut AutopilotContext, TaskInitError> {
         #[cfg(feature = "gps")] gps_subscriber: gps_subscriber()?,
         #[cfg(feature = "optical_flow")] optical_flow_subscriber: optical_flow_subscriber()?,
         #[cfg(feature = "rangefinder")] rangefinder_subscriber: rangefinder_subscriber()?,
+        #[cfg(any(feature = "gps", feature = "optical_flow"))]
+        kalman_filter: KalmanFilterXyzWithSensorsf32::new(),
+        #[cfg(not(any(feature = "gps", feature = "optical_flow")))]
+        kalman_filter: KalmanFilterZWithSensorsf32::new(),
     };
     Ok(AUTOPILOT_CTX.init(ctx))
 }
@@ -115,105 +130,41 @@ pub fn init() -> Result<&'static mut AutopilotContext, TaskInitError> {
 #[allow(unused)]
 #[embassy_executor::task]
 pub async fn run(ctx: &'static mut AutopilotContext) {
-    let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_millis(1));
-    let delta_t = 0.001;
+    let delta_t = 0.002;
+    #[allow(clippy::cast_possible_truncation,clippy::cast_sign_loss)]
+    let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_millis((1000.0*delta_t) as u64));
     let mut loop_count: u32 = 0;
-
-    #[allow(unused)]
-    let mut altitude_hold = false;
-    #[cfg(feature = "gps")]
-    let mut position_hold = false;
 
     log::info!("   AUTOPILOT: task started");
     loop {
         ticker.next().await;
         let time_us = Instant::now().as_micros();
 
+        // *********************
+        // Kalman Filter Predict
+        // *********************
+
         if let Some(imu_integral_message) = ctx.imu_integral_receiver.try_get() {
             let imu_integral = imu_integral_message.imu_integral;
-            // call the Kalman filter to predict using delta_vel and delta_pos from the gyro/pid task.
-            #[cfg(not(any(feature = "gps", feature = "optical_flow")))]
-            {
-                use embassy_futures::yield_now;
-
-                ctx.autopilot.kalman_filter.predict(
-                    time_us,
-                    imu_integral.delta_vel_ned_mps.z,
-                    imu_integral.delta_pos_ned_m.z,
-                    delta_t,
-                );
-                // signal the acc bias so the gyro_pid task can use it to update the IMU integrator.
-                let acc_bias_ned_mps2 = Vector3f32 { x: 0.0, y: 0.0, z: ctx.autopilot.kalman_filter.acc_bias_mps2() };
-                KALMAN_ACC_BIAS_SIGNAL.signal(KalmanAccBiasNedMessage { acc_bias_ned_mps2 });
-                yield_now().await;
-            }
-            #[cfg(any(feature = "gps", feature = "optical_flow"))]
-            {
-                ctx.autopilot.kalman_filter.predict(
-                    time_us,
-                    imu_integral.delta_vel_ned_mps,
-                    imu_integral.delta_pos_ned_m,
-                    delta_t,
-                );
-                // signal the acc bias so the gyro_pid task use it to update the IMU integrator.
-                let acc_bias_ned_mps2 = ctx.autopilot.kalman_filter.acc_bias_mps2();
-                KALMAN_ACC_BIAS_SIGNAL.signal(KalmanAccBiasNedMessage { acc_bias_ned_mps2 });
-            }
+            ctx.kalman_filter.predict(time_us, &imu_integral, delta_t);
+            // signal the acc bias so the gyro_pid task use it to update the IMU integrator.
+            let acc_bias_ned_mps2 = ctx.kalman_filter.state().acc_bias_ned_mps2();
+            KALMAN_ACC_BIAS_SIGNAL.signal(KalmanAccBiasNedMessage { acc_bias_ned_mps2 });
+            yield_now().await;
         }
 
-        // for the autopilot to provide any functionality, it has to have at least one of: barometer, gps, optical_flow, or rangefinder.
-        #[cfg(any(feature = "barometer", feature = "gps", feature = "optical_flow", feature = "rangefinder"))]
-        {
-            if let Some(gyro_pid_message) = ctx.gyro_pid_receiver.try_get() {
-                use embassy_sync::pubsub::WaitResult;
-
-                // Check if the rc_modes have changed.
-                if let Some(rx_message) = ctx.rx_receiver.try_changed() {
-                    let rc_modes = rx_message.rc_modes;
-                    altitude_hold = rc_modes.test(RcMode::ALTITUDE_HOLD);
-                    #[cfg(feature = "gps")]
-                    {
-                        position_hold = rc_modes.test(RcMode::POSITION_HOLD)
-                            | rc_modes.test(RcMode::GPS_RESCUE)
-                            | rc_modes.test(RcMode::AUTOPILOT);
-                    }
-                }
-                if let Some(WaitResult::Message(failsafe_message)) = ctx.failsafe_subscriber.try_next_message() {
-                    _ = failsafe_message;
-                }
-                if altitude_hold {
-                    #[cfg(not(any(feature = "gps", feature = "optical_flow")))]
-                    let (altitude_m, vertical_speed_mps) =
-                        (ctx.autopilot.kalman_filter.pos_m(), ctx.autopilot.kalman_filter.vel_mps());
-                    #[cfg(any(feature = "gps", feature = "optical_flow"))]
-                    let (altitude_m, vertical_speed_mps) =
-                        (ctx.autopilot.kalman_filter.pos_m().z, ctx.autopilot.kalman_filter.vel_mps().z);
-
-                    let throttle_stick = ctx.autopilot.altitude_controller.update(
-                        altitude_m,
-                        vertical_speed_mps,
-                        gyro_pid_message.orientation,
-                        delta_t,
-                    );
-
-                    // Send the flight control message. This will be picked by the radio task.
-                    let rx_message = RxMessage {
-                        rc_controls: RcControls { throttle_stick, ..Default::default() },
-                        ..Default::default()
-                    };
-                    ctx.autopilot_sender.send(rx_message);
-                }
-            }
-        }
+        // *********************
+        // Kalman Filter Correct
+        // *********************
 
         // Note: `try_next_message` is the non-blocking polling form.
         // If there is a message, it is removed and processed immediately.
         // Lagged (missed) messages are ignored.
         #[cfg(feature = "barometer")]
         if let Some(wait_result) = ctx.barometer_subscriber.try_next_message()
-            && let embassy_sync::pubsub::WaitResult::Message(barometer_message) = wait_result
+            && let WaitResult::Message(barometer_message) = wait_result
         {
-            _ = ctx.autopilot.kalman_filter.correct_altitude_using_barometer(
+            _ = ctx.kalman_filter.correct_altitude_using_barometer(
                 barometer_message.timestamp.as_micros(),
                 barometer_message.altitude_m,
             );
@@ -222,13 +173,12 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
 
         #[cfg(feature = "rangefinder")]
         if let Some(wait_result) = ctx.rangefinder_subscriber.try_next_message()
-            && let embassy_sync::pubsub::WaitResult::Message(rangefinder_message) = wait_result
+            && let WaitResult::Message(rangefinder_message) = wait_result
         {
             // TODO: set rangefinder_base_altitude_m
             let rangefinder_base_altitude_m = 0.0_f32;
             let altitude = rangefinder_base_altitude_m + rangefinder_message.distance_m;
             _ = ctx
-                .autopilot
                 .kalman_filter
                 .correct_altitude_using_rangefinder(rangefinder_message.timestamp.as_micros(), altitude);
             yield_now().await;
@@ -236,17 +186,12 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
 
         #[cfg(feature = "gps")]
         if let Some(wait_result) = ctx.gps_subscriber.try_next_message()
-            && let embassy_sync::pubsub::WaitResult::Message(gps_message) = wait_result
+            && let WaitResult::Message(gps_message) = wait_result
         {
             // TODO: choose position or altitude kalman filter based on settings
             if let GpsMessage::PositionVelocity(timestamp_us, gps_position, gps_velocity) = gps_message {
-                if altitude_hold {
-                    _ = ctx.autopilot.kalman_filter.correct_altitude_using_gps(timestamp_us, gps_position.z);
-                    yield_now().await;
-                } else if position_hold {
-                    _ = ctx.autopilot.kalman_filter.correct_position_using_gps(timestamp_us, gps_position);
-                    yield_now().await;
-                }
+                _ = ctx.kalman_filter.correct_position_and_velocity_using_gps(timestamp_us, gps_position, gps_velocity);
+                yield_now().await;
             } else {
                 // Message type of interest to other subscribers, but not to me so intentionally do nothing,
                 // this consumes the message and removes it from the queue.
@@ -255,9 +200,40 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
 
         #[cfg(feature = "optical_flow")]
         if let Some(wait_result) = ctx.optical_flow_subscriber.try_next_message()
-            && let embassy_sync::pubsub::WaitResult::Message(optical_flow_message) = wait_result
+            && let WaitResult::Message(optical_flow_message) = wait_result
         {
-            _ = optical_flow_message;
+            _ = ctx.kalman_filter.correct_velocity_using_optical_flow(
+                optical_flow_message.timestamp.as_micros(),
+                optical_flow_message.velocity,
+            );
+            yield_now().await;
+        }
+
+        // ****************
+        // Autopilot Update
+        // ****************
+
+        // for the autopilot to provide any functionality, it has to have at least one of: barometer, gps, optical_flow, or rangefinder.
+        #[cfg(any(feature = "barometer", feature = "gps", feature = "optical_flow", feature = "rangefinder"))]
+        {
+            if let Some(gyro_pid_message) = ctx.gyro_pid_receiver.try_get() {
+                let rx_message = ctx.rx_receiver.try_changed();
+                let mut failsafe_state = crate::tasks::FailsafeState::Idle;
+                if let Some(WaitResult::Message(failsafe_message)) = ctx.failsafe_subscriber.try_next_message() {
+                    failsafe_state = failsafe_message.state;
+                }
+                if let Some(rc_controls) = ctx.autopilot.update(
+                    rx_message,
+                    failsafe_state,
+                    &ctx.kalman_filter.state(),
+                    gyro_pid_message.orientation,
+                    delta_t,
+                ) {
+                    // Send the flight control message. This will be picked by the radio task.
+                    let rx_message = RxMessage { rc_controls, ..Default::default() };
+                    ctx.autopilot_sender.send(rx_message);
+                }
+            }
         }
 
         if loop_count.is_multiple_of(200) {

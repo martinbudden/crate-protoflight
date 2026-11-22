@@ -27,6 +27,7 @@ mod rx;
 mod usb;
 
 pub use errors::TaskInitError;
+pub use failsafe::FailsafeState;
 pub use init::init;
 pub use messages::{GyroPidMessage, ImuIntegralMessage, SetpointMessage};
 

@@ -4,8 +4,10 @@ use super::optical_flow_mock::OpticalFlowMock;
 #[cfg(feature = "optical_flow")]
 use super::optical_flow_mt::OpticalFlowMt;
 
+use embassy_time::Duration;
 #[cfg(feature = "storage")]
 use sequential_storage::map::PostcardValue;
+use vqm::Vector2f32;
 #[cfg(feature = "serde")]
 use {
     postcard::experimental::max_size::MaxSize,
@@ -47,13 +49,16 @@ impl PostcardValue<'_> for OpticalFlowType {}
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "std", derive(derive_more::Display))]
+#[cfg_attr(feature = "host", display("Vel{{x:velocity.x,y:velocity.y,z:velocity.z}}"))]
 pub struct OpticalFlowMessage {
+    pub timestamp: Duration,
+    pub velocity: Vector2f32,
     pub quality: u16,
 }
 
 impl OpticalFlowMessage {
     pub const fn new() -> Self {
-        Self { quality: 0 }
+        Self { timestamp: Duration::MIN, velocity: Vector2f32 { x: 0.0, y: 0.0 }, quality: 0 }
     }
 }
 
