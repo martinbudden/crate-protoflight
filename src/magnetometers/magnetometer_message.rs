@@ -11,7 +11,7 @@ pub struct MagnetometerMessage {
 
 impl Default for MagnetometerMessage {
     fn default() -> Self {
-        Self::new(Instant::MIN, Vector3f32 { x: 0.0, y: 0.0, z: 0.0 })
+        Self::new(Instant::MIN, Vector3f32::new(0.0, 0.0, 0.0 ))
     }
 }
 

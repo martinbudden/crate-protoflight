@@ -85,7 +85,7 @@ pub async fn run(ctx: &'static mut MagnetometerContext) {
         ticker.next().await;
         let result = ctx.magnetometer.make_reading().await;
         if let Ok((timestamp, reading)) = result {
-            let reading = Vector3f32 { x: f32::from(reading[0]), y: f32::from(reading[1]), z: f32::from(reading[2]) };
+            let reading = Vector3f32::new(f32::from(reading[0]), f32::from(reading[1]), f32::from(reading[2]) );
             let reading = ctx.calibration_matrix * reading;
             let magnetometer_message = MagnetometerMessage::new(timestamp, reading);
             // Publish a message, but if the queue is full, just kick out the oldest message.

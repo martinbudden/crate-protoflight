@@ -58,7 +58,7 @@ pub struct OpticalFlowMessage {
 
 impl OpticalFlowMessage {
     pub const fn new() -> Self {
-        Self { timestamp: Duration::MIN, velocity: Vector2f32 { x: 0.0, y: 0.0 }, quality: 0 }
+        Self { timestamp: Duration::MIN, velocity: Vector2f32::new( 0.0, 0.0 ), quality: 0 }
     }
 }
 

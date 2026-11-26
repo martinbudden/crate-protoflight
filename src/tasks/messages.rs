@@ -14,7 +14,7 @@ PID Errors (3x f32): 12 bytes
  */
 
 const _: () = assert!(core::mem::size_of::<GyroPidMessage>() == 112);
-const _: () = assert!(core::mem::size_of::<ImuIntegralMessage>() == 112);
+const _: () = assert!(core::mem::size_of::<ImuIntegralMessage>() == 116);
 
 /// Blackbox telemetry data, updated at approximately 1kHz.
 /// Limit this to 128 bytes.
@@ -124,7 +124,7 @@ impl SetpointMessage {
     }
 }
 
-/// Message to send setpoint data between tasks.
+/// Message to send IMU integral from `gyro_pid` task to `autopilot` task..
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(C)]
 pub struct ImuIntegralMessage {

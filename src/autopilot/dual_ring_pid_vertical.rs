@@ -74,9 +74,9 @@ impl MultirotorAltitudeDualRingPid {
     pub fn new(hover_throttle: f32) -> Self {
         Self {
             // Initialize altitude controller (Outer Loop)
-            // Only needs Proportional (kp) to map distance error to speed:
-            // because the inner loop handles the physics of acceleration,
-            // the outer loop only needs Kp to calculate the vertical speed setpoint
+            // Only needs Proportional (Kp) to map distance error to speed:
+            // because the inner loop handles the physics of acceleration, the outer loop only needs Kp to calculate
+            // the vertical speed setpoint
             altitude_pid: PControllerf32::new(),
             // Initialize vertical speed controller (Inner Loop)
             // TODO: check default PID gains.

@@ -17,11 +17,11 @@ Protoflight uses two embassy executors, and three distinct "execution contexts."
 Note: The `motor_mixer` task runs in sync with the `gyro_pid` task. On each loop of the task it updates the RPM notch filters parameters,
 but it only outputs to the motors at typically 1kHz.
 
-| Core   | Context              | Tasks                                            | Priority   |
-| ------ | -------------------- | ------------------------------------------------ | ---------- |
-| Core 1 | Dedicated Executor   | `gyro_pid` (8kHz)                                | Real-time  |
-| Core 0 | Interrupt Executor   | `motor_mixer` (8kHz*),<br> `rx` (~50Hz to 500Hz) | Real-time  |
-| Core 0 | Main Thread Executor | Other tasks (< 100Hz )                           | Background |
+| Core   | Context              | Tasks                                           | Priority   |
+| ------ | -------------------- | ----------------------------------------------- | ---------- |
+| Core 1 | Dedicated Executor   | `gyro_pid` (8kHz)                               | Real-time  |
+| Core 0 | Interrupt Executor   | `motor_mixer` (8kHz*)<br> `rx` (~50Hz to 500Hz) | Real-time  |
+| Core 0 | Main Thread Executor | `autopilot` (~500Hz)<br>Other tasks (< 100Hz )  | Background |
 
 Each task has an data context defined by a `struct`, so the `gyro_pid` task has `struct GyroPidContext` and so on.
 Data contexts are private to each task.
@@ -41,17 +41,22 @@ The `embassy-sync` crate provides the following structures to facilitate asynchr
 
 Protoflight uses them in the following way:
 
-| IDA                          | Type   | Message              | Max Subscribers | Sending task(s) | Receiving Task(s)             |
-| ---------------------------- | ------ | -------------------- | --------------- | --------------- | ----------------------------- |
-| MOTOR_MIXER_SIGNAL           | Signal | MotorMixerMessage    | 1               | gyro_pid        | motor_mixer                   |
-| GPS_YAW_HEADING_SIGNAL       | Signal | GpsYawHeadingMessage | 1               | gps             | gyro_pid                      |
-| RX_WATCH                     | Watch  | RxMessage            | 2               | rx              | gyro_pid, autopilot           |
-| GYRO_PID_WATCH               | Watch  | GyroPidMessage       | 3               | gyro_pid        | blackbox, osd, autopilot      |
-| SETPOINT_WATCH               | Watch  | SetpointMessage      | 3               | gyro_pid        | blackbox, osd                 |
-| AUTOPILOT_WATCH              | Watch  | RxMessage            | 1               | autopilot       | rx                            |
-| FAST_CONFIG_PUB_SUB_CHANNEL  | PubSub | FastConfigItem       | 1               | msp, rx         | gyro_pid                      |
-| CONFIG_PUB_SUB_CHANNEL       | PubSub | ConfigItem           | 8               | msp, rx         | all except gyro_pid           |
-| BAROMETER_PUB_SUB_CHANNEL    | PubSub | BarometerMessage     | 4               | barometer       | autopilot, msp, osd           |
-| GPS_PUB_SUB_CHANNEL          | PubSub | GpsMessage           | 4               | gps             | autopilot, blackbox, msp, osd |
-| OPTICAL_FLOW_PUB_SUB_CHANNEL | PubSub | OpticalFlowMessage   | 4               | optical_flow    | autopilot, msp, osd           |
-| RANGEFINDER_PUB_SUB_CHANNEL  | PubSub | RangefinderMessage   | 4               | rangefinder     | autopilot, msp, osd           |
+| IDA                            | Type     | Message                | Max Subscribers | Sending task(s) | Receiving Task(s)             |
+| ------------------------------ | -------- | ---------------------- | --------------- | --------------- | ----------------------------- |
+| `MOTOR_MIXER_SIGNAL`           | `Signal` | `MotorMixerMessage`    | 1               | gyro/pid        | motor mixer                   |
+| `GPS_YAW_HEADING_SIGNAL`       | `Signal` | `GpsYawHeadingMessage` | 1               | gps             | gyro/pid                      |
+| `IMU_INTEGRAL_SIGNAL`          | `Signal` | `ImuIntegralMessage`   | 1               | gyro/pid        | autopilot                     |
+| `KALMAN_ACC_BIAS_SIGNAL`       | `Signal` | `KalmanAccBiasMessage` | 1               | autopilot       | gyro/pid                      |
+| `RX_WATCH`                     | `Watch`  | `RxMessage`            | 2               | rx              | gyro/pid, autopilot           |
+| `gyro/pid_WATCH`               | `Watch`  | `GyroPidMessage`       | 3               | gyro/pid        | blackbox, osd, autopilot      |
+| `SETPOINT_WATCH`               | `Watch`  | `SetpointMessage`      | 3               | gyro/pid        | blackbox, osd                 |
+| `AUTOPILOT_WATCH`              | `Watch`  | `RxMessage`            | 1               | autopilot       | rx                            |
+| `FAST_CONFIG_PUB_SUB_CHANNEL`  | `PubSub` | `FastConfigItem`       | 1               | msp, rx         | gyro/pid                      |
+| `CONFIG_PUB_SUB_CHANNEL`       | `PubSub` | `ConfigItem`           | 8               | msp, rx         | all except gyro/pid           |
+| `BAROMETER_PUB_SUB_CHANNEL`    | `PubSub` | `BarometerMessage`     | 4               | barometer       | autopilot, msp, osd           |
+| `GPS_PUB_SUB_CHANNEL`          | `PubSub` | `GpsMessage`           | 4               | gps             | autopilot, blackbox, msp, osd |
+| `OPTICAL_FLOW_PUB_SUB_CHANNEL` | `PubSub` | `OpticalFlowMessage`   | 4               | optical flow    | autopilot, msp, osd           |
+| `RANGEFINDER_PUB_SUB_CHANNEL`  | `PubSub` | `RangefinderMessage`   | 4               | rangefinder     | autopilot, msp, osd           |
+| `FAILSAFE_PUB_SUB_CHANNEL`     | `PubSub` | `FailsafeMessage`      | 3               | failsafe        | rx, autopilot                 |
+
+`FastConfigItem` and `ConfigItem` are normally sent by the `msp` task, but can also be sent by the `rx` task for in-flight adjustments.

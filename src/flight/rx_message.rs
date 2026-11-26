@@ -21,7 +21,7 @@ pub struct RcControls {
     pub link_status: RxLinkStatus,
     pub rssi: u8,
 }
-const _: () = assert!(core::mem::size_of::<RcControls>() == 64);
+const _: () = assert!(core::mem::size_of::<RcControls>() == 56);
 
 impl Default for RcControls {
     fn default() -> Self {
@@ -54,7 +54,7 @@ pub struct RxMessage {
     pub rc_modes: BitSet64,
     pub rc_controls: RcControls,
 }
-const _: () = assert!(core::mem::size_of::<RxMessage>() == 80);
+const _: () = assert!(core::mem::size_of::<RxMessage>() == 64);
 
 impl Default for RxMessage {
     fn default() -> Self {
@@ -131,6 +131,6 @@ mod tests {
     }
     #[test]
     fn sizeof() {
-        assert_eq!(80, core::mem::size_of::<RxMessage>());
+        assert_eq!(64, core::mem::size_of::<RxMessage>());
     }
 }

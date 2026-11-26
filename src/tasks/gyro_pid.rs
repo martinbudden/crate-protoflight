@@ -1,6 +1,7 @@
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex,
     pubsub::WaitResult,
+    signal::Signal,
     watch::{Receiver, Sender, Watch},
 };
 
@@ -40,27 +41,17 @@ pub fn gyro_pid_sender() -> GyroPidSender {
     GYRO_PID_WATCH.sender()
 }
 
-#[allow(unused)]
 pub type GyroPidReceiver = Receiver<'static, CriticalSectionRawMutex, GyroPidMessage, GYRO_PID_WATCH_COUNT>;
 #[allow(unused)]
 pub fn gyro_pid_receiver() -> Result<GyroPidReceiver, TaskInitError> {
     GYRO_PID_WATCH.receiver().ok_or(TaskInitError::GyroPidWatchCountTooLow)
 }
 
-const IMU_INTEGRAL_WATCH_COUNT: usize = 1;
-static IMU_INTEGRAL_WATCH: Watch<CriticalSectionRawMutex, ImuIntegralMessage, IMU_INTEGRAL_WATCH_COUNT> = Watch::new();
-
-type ImuIntegralSender = Sender<'static, CriticalSectionRawMutex, ImuIntegralMessage, IMU_INTEGRAL_WATCH_COUNT>;
-#[allow(unused)]
-pub fn imu_integral_sender() -> ImuIntegralSender {
-    IMU_INTEGRAL_WATCH.sender()
-}
-
-pub type ImuIntegralReceiver = Receiver<'static, CriticalSectionRawMutex, ImuIntegralMessage, IMU_INTEGRAL_WATCH_COUNT>;
-#[allow(unused)]
-pub fn imu_integral_receiver() -> Result<ImuIntegralReceiver, TaskInitError> {
-    IMU_INTEGRAL_WATCH.receiver().ok_or(TaskInitError::ImuIntegralWatchCountTooLow)
-}
+// --- IMU_INTEGRAL_SIGNAL ---
+// Triggers Autopilot, used by Autopilot Kalman filter
+// no watch count, since a signal can only have one watcher.
+#[cfg(feature = "autopilot")]
+pub static IMU_INTEGRAL_SIGNAL: Signal<CriticalSectionRawMutex, ImuIntegralMessage> = Signal::new();
 
 const SETPOINT_WATCH_COUNT: usize = 3;
 static SETPOINT_WATCH: Watch<CriticalSectionRawMutex, SetpointMessage, SETPOINT_WATCH_COUNT> = Watch::new();
@@ -96,8 +87,6 @@ pub struct GyroPidContext<I: ImuDevice> {
     gyro_pid_send_count: u32,
     gyro_pid_denominator: u32,
     #[cfg(feature = "autopilot")]
-    imu_integral_sender: ImuIntegralSender,
-    #[cfg(feature = "autopilot")]
     imu_integrator: ImuIntegrator,
 }
 
@@ -112,8 +101,6 @@ pub fn init(
         imu_previous_measurement_timestamp: Instant::MIN,
         rx_receiver: rx_message_receiver()?,
         gyro_pid_sender: gyro_pid_sender(),
-        #[cfg(feature = "autopilot")]
-        imu_integral_sender: imu_integral_sender(),
         setpoint_sender: setpoint_sender(),
         fast_config_subscriber: fast_config_subscriber()?,
 
@@ -178,7 +165,7 @@ pub async fn run(ctx: &'static mut GyroPidContext<BoardImu>) {
 
     let mut loop_count: u32 = 0;
 
-    // TODO: this ticker wait should be replaced by an interrupt driven DMA read from the IMU.
+    // TODO: this ticker wait should be replaced by an interrupt from the IMU.
     // I'm using a ticker like this during development to keep things simple.
     let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_hz(u64::from(gyro_rate_hz)));
     // This is the famous GYRO/PID loop!
@@ -201,12 +188,13 @@ async fn gyro_pid_loop_iteration(ctx: &mut GyroPidContext<BoardImu>) -> Result<(
     // ****
     // The GYRO part of the GYRO/PID loop
     // ****
+
     let (acc_unfiltered_mps2, gyro_unfiltered_rps, measurement_timestamp) = ctx.imu.read_acc_gyro().await?;
 
-    let delta_t = measurement_timestamp.duration_since(ctx.imu_previous_measurement_timestamp);
+    let delta_duration = measurement_timestamp.duration_since(ctx.imu_previous_measurement_timestamp);
     ctx.imu_previous_measurement_timestamp = measurement_timestamp;
     #[allow(clippy::cast_precision_loss)]
-    let dt = (delta_t.as_nanos() as f32) * 1_000_000_000.0;
+    let dt = (delta_duration.as_nanos() as f32) * 1_000_000_000.0;
 
     // Filter the acc and gyro values. This includes RPM notch filtering, if that is enabled.
     let (acc_mps2, gyro_rps) = ctx.imu_filters.update(acc_unfiltered_mps2, gyro_unfiltered_rps, dt);
@@ -229,7 +217,7 @@ async fn gyro_pid_loop_iteration(ctx: &mut GyroPidContext<BoardImu>) -> Result<(
             // Send the integrated_imu message, this will be picked up by the autopilot task.
             // It's used by the Kalman filter to estimate position and velocity.
             let imu_integral = ctx.imu_integrator.imu_integral();
-            ctx.imu_integral_sender.send(ImuIntegralMessage { imu_integral });
+            IMU_INTEGRAL_SIGNAL.signal(ImuIntegralMessage { imu_integral });
             // Reset acc integrator for next time round the loop.
             ctx.imu_integrator.reset();
 

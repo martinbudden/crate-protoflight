@@ -22,8 +22,8 @@ pub struct ImuData {
 impl ImuData {
     pub const fn new() -> Self {
         Self {
-            acc: Vector3f32 { x: 0.0, y: 0.0, z: 0.0 },
-            gyro_rps: Vector3f32 { x: 0.0, y: 0.0, z: 0.0 },
+            acc: Vector3f32::new( 0.0, 0.0, 0.0 ),
+            gyro_rps: Vector3f32::new( 0.0, 0.0, 0.0 ),
             delta_t: 0.1,
         }
     }
@@ -58,7 +58,7 @@ pub async fn run(ctx: &'static mut ImuContext<BoardImu>) {
         ticker.next().await;
 
         // For now we are just faking some gyro and acc values.
-        /*let acc_rnd = Vector3f32 { x: 1.0, y: 0.5, z: 0.25 };
+        /*let acc_rnd = Vector3f32::new(1.0, 0.5, 0.25);
         ctx.imu.set_acc(acc_rnd).await;
         x_base += rand.next_range(0..5_u32).cast_signed() - 2;
 
@@ -66,7 +66,7 @@ pub async fn run(ctx: &'static mut ImuContext<BoardImu>) {
         let gyro_y = rand.next_range(0..11_u32).cast_signed() - 5;
         let gyro_z = rand.next_range(0..11_u32).cast_signed() - 5;
         #[allow(clippy::cast_precision_loss)]
-        let gyro_dps_rnd = Vector3f32 { x: gyro_x as f32, y: gyro_y as f32, z: gyro_z as f32 };
+        let gyro_dps_rnd = Vector3f32::new(gyro_x as f32, gyro_y as f32, gyro_z as f32);
         ctx.imu.set_gyro(gyro_dps_rnd).await;*/
 
         // ctx.drdy.wait_for_rising_edge().await; // Synchronized to IMU

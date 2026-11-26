@@ -178,6 +178,7 @@
         "itertools",
         "itoa",
         "itow",
+        "Jacobians",
         "Kalman",
         "katex",
         "keccak",
@@ -361,6 +362,7 @@
         "XNEG",
         "xtask",
         "xtensa",
+        "Yawf",
         "YNEG",
         "zerocopy",
         "zmij"

@@ -1,6 +1,6 @@
 use radio_controllers::{ModeActivationConditions, Rates, RcMode, RcModeDescriptor, RcModeLogic, RxChannel};
 use stream_buf::{StreamBufReader, StreamBufWriter};
-use vqm::Quaternion;
+use vqm::{Quaternion,Vector3};
 
 #[cfg(feature = "storage")]
 use sequential_storage::map::PostcardValue;
@@ -41,24 +41,17 @@ pub enum MspResult {
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct Vector3i16 {
-    pub x: i16,
-    pub y: i16,
-    pub z: i16,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct MspSensorData {
     #[cfg(feature = "barometer")]
     pub barometer_altitude_cm: u32,
     #[cfg(feature = "rangefinder")]
     pub rangefinder_altitude_cm: u32,
-    pub attitude: Vector3i16,
+    pub attitude: Vector3::<i16>,
     // an unexpected use of generic - I didn't expect it might be used this way when I wrote the quaternion code!.
     pub attitude_quaternion: Quaternion<u16>,
-    pub acc: Vector3i16,
-    pub gyro: Vector3i16,
-    pub mag: Vector3i16,
+    pub acc: Vector3::<i16>,
+    pub gyro: Vector3::<i16>,
+    pub mag: Vector3::<i16>,
     #[cfg(feature = "gps")]
     pub gps_solution: GpsSolutionAbridged,
 }
@@ -70,11 +63,11 @@ impl MspSensorData {
             barometer_altitude_cm: 0,
             #[cfg(feature = "rangefinder")]
             rangefinder_altitude_cm: 0,
-            attitude: Vector3i16 { x: 0, y: 0, z: 0 },
-            attitude_quaternion: Quaternion::<u16> { w: 0, x: 0, y: 0, z: 0 },
-            acc: Vector3i16 { x: 0, y: 0, z: 0 },
-            gyro: Vector3i16 { x: 0, y: 0, z: 0 },
-            mag: Vector3i16 { x: 0, y: 0, z: 0 },
+            attitude: Vector3::<i16>::new(0, 0, 0),
+            attitude_quaternion: Quaternion::<u16>::new(0, 0, 0, 0),
+            acc: Vector3::<i16>::new(0, 0, 0),
+            gyro: Vector3::<i16>::new(0, 0, 0),
+            mag: Vector3::<i16>::new(0, 0, 0),
             #[cfg(feature = "gps")]
             gps_solution: GpsSolutionAbridged::new(),
         }
@@ -1673,7 +1666,6 @@ mod tests {
     #[test]
     fn normal_types() {
         is_full::<MspResult>();
-        is_full::<Vector3i16>();
         is_full::<MspSensorData>();
     }
 }

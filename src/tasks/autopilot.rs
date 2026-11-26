@@ -19,8 +19,8 @@ use crate::{
     flight::RxMessage,
     tasks::{
         errors::TaskInitError,
-        failsafe::{FailsafeSubscriber, failsafe_subscriber},
-        gyro_pid::{GyroPidReceiver, ImuIntegralReceiver, gyro_pid_receiver, imu_integral_receiver},
+        failsafe::{FailsafeState, FailsafeSubscriber, failsafe_subscriber},
+        gyro_pid::{GyroPidReceiver, IMU_INTEGRAL_SIGNAL, gyro_pid_receiver},
         rx::{RxMessageReceiver, rx_message_receiver},
     },
 };
@@ -47,7 +47,7 @@ use crate::tasks::optical_flow::{OpticalFlowSubscriber, optical_flow_subscriber}
 #[cfg(feature = "rangefinder")]
 use crate::tasks::rangefinder::{RangefinderSubscriber, rangefinder_subscriber};
 
-pub static KALMAN_ACC_BIAS_SIGNAL: Signal<CriticalSectionRawMutex, KalmanAccBiasNedMessage> = Signal::new();
+pub static KALMAN_ACC_BIAS_SIGNAL: Signal<CriticalSectionRawMutex, KalmanAccBiasMessage> = Signal::new();
 
 const AUTOPILOT_WATCH_COUNT: usize = 1;
 static AUTOPILOT_WATCH: Watch<CriticalSectionRawMutex, RxMessage, AUTOPILOT_WATCH_COUNT> = Watch::new();
@@ -65,19 +65,19 @@ pub fn autopilot_receiver() -> Result<AutopilotReceiver, TaskInitError> {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "std", derive(derive_more::Display))]
-pub struct KalmanAccBiasNedMessage {
+pub struct KalmanAccBiasMessage {
     pub acc_bias_ned_mps2: Vector3f32,
 }
 
-impl Default for KalmanAccBiasNedMessage {
+impl Default for KalmanAccBiasMessage {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl KalmanAccBiasNedMessage {
+impl KalmanAccBiasMessage {
     pub const fn new() -> Self {
-        Self { acc_bias_ned_mps2: Vector3f32 { x: 0.0, y: 0.0, z: 0.0 } }
+        Self { acc_bias_ned_mps2: Vector3f32::new( 0.0, 0.0,  0.0 ) }
     }
 }
 
@@ -85,11 +85,12 @@ impl KalmanAccBiasNedMessage {
 #[rustfmt::skip]
 pub struct AutopilotContext {
     gyro_pid_receiver: GyroPidReceiver,
-    imu_integral_receiver: ImuIntegralReceiver,
     rx_receiver: RxMessageReceiver,
     failsafe_subscriber: FailsafeSubscriber,
     autopilot_sender: AutopilotSender,
     autopilot: Autopilot,
+    time_previous_us: u64,
+    failsafe_state:FailsafeState,
     #[cfg(feature = "barometer")] pub barometer_subscriber: BarometerSubscriber,
     #[cfg(feature = "gps")] pub gps_subscriber: GpsSubscriber,
     #[cfg(feature = "optical_flow")] pub optical_flow_subscriber: OpticalFlowSubscriber,
@@ -107,11 +108,12 @@ pub fn init() -> Result<&'static mut AutopilotContext, TaskInitError> {
     #[rustfmt::skip]
     let ctx = AutopilotContext {
         gyro_pid_receiver: gyro_pid_receiver()?,
-        imu_integral_receiver: imu_integral_receiver()?,
         rx_receiver: rx_message_receiver()?,
         failsafe_subscriber: failsafe_subscriber()?,
         autopilot_sender: autopilot_sender(),
         autopilot: Autopilot::new(),
+        time_previous_us: 0,
+        failsafe_state:FailsafeState::Idle,
         #[cfg(feature = "barometer")] barometer_subscriber: barometer_subscriber()?,
         #[cfg(feature = "gps")] gps_subscriber: gps_subscriber()?,
         #[cfg(feature = "optical_flow")] optical_flow_subscriber: optical_flow_subscriber()?,
@@ -130,28 +132,31 @@ pub fn init() -> Result<&'static mut AutopilotContext, TaskInitError> {
 #[allow(unused)]
 #[embassy_executor::task]
 pub async fn run(ctx: &'static mut AutopilotContext) {
-    let delta_t = 0.002;
-    #[allow(clippy::cast_possible_truncation,clippy::cast_sign_loss)]
-    let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_millis((1000.0*delta_t) as u64));
+    log::info!("   AUTOPILOT: task started");
     let mut loop_count: u32 = 0;
 
-    log::info!("   AUTOPILOT: task started");
+    // wait for the first imu integral signal from the gyro_pid task, and set the previous time from it.
+    _ = IMU_INTEGRAL_SIGNAL.wait().await;
+    ctx.time_previous_us = Instant::now().as_micros();
+
     loop {
-        ticker.next().await;
+        // wait for the imu integral signal from the gyro_pid task
+        let imu_integral_message = IMU_INTEGRAL_SIGNAL.wait().await;
         let time_us = Instant::now().as_micros();
+        #[allow(clippy::cast_precision_loss)]
+        let delta_t = (ctx.time_previous_us - time_us) as f32 * 1e-6;
+        ctx.time_previous_us = time_us;
 
         // *********************
         // Kalman Filter Predict
         // *********************
 
-        if let Some(imu_integral_message) = ctx.imu_integral_receiver.try_get() {
-            let imu_integral = imu_integral_message.imu_integral;
-            ctx.kalman_filter.predict(time_us, &imu_integral, delta_t);
-            // signal the acc bias so the gyro_pid task use it to update the IMU integrator.
-            let acc_bias_ned_mps2 = ctx.kalman_filter.state().acc_bias_ned_mps2();
-            KALMAN_ACC_BIAS_SIGNAL.signal(KalmanAccBiasNedMessage { acc_bias_ned_mps2 });
-            yield_now().await;
-        }
+        let imu_integral = imu_integral_message.imu_integral;
+        ctx.kalman_filter.predict(time_us, &imu_integral, delta_t);
+        // signal the acc bias so the gyro_pid task use it to update the IMU integrator.
+        let acc_bias_ned_mps2 = ctx.kalman_filter.state().acc_bias_ned_mps2();
+        KALMAN_ACC_BIAS_SIGNAL.signal(KalmanAccBiasMessage { acc_bias_ned_mps2 });
+        yield_now().await;
 
         // *********************
         // Kalman Filter Correct
@@ -218,18 +223,17 @@ pub async fn run(ctx: &'static mut AutopilotContext) {
         {
             if let Some(gyro_pid_message) = ctx.gyro_pid_receiver.try_get() {
                 let rx_message = ctx.rx_receiver.try_changed();
-                let mut failsafe_state = crate::tasks::FailsafeState::Idle;
                 if let Some(WaitResult::Message(failsafe_message)) = ctx.failsafe_subscriber.try_next_message() {
-                    failsafe_state = failsafe_message.state;
+                    ctx.failsafe_state = failsafe_message.state;
                 }
                 if let Some(rc_controls) = ctx.autopilot.update(
                     rx_message,
-                    failsafe_state,
+                    ctx.failsafe_state,
                     &ctx.kalman_filter.state(),
                     gyro_pid_message.orientation,
                     delta_t,
                 ) {
-                    // Send the flight control message. This will be picked by the radio task.
+                    // Send the flight control message. This will be picked by the rx task.
                     let rx_message = RxMessage { rc_controls, ..Default::default() };
                     ctx.autopilot_sender.send(rx_message);
                 }
