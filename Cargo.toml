@@ -358,7 +358,7 @@ radio-controllers = { version = "0.1.9", default-features = false }
 #radio-controllers = { git = "https://github.com/martinbudden/crate-radio-controllers", default-features = false}
 #radio-controllers = { path = "../radio-controllers", default-features = false }
 #imu-sensors = { version = "0.1.7", default-features = false }
-imu-sensors = { git = "https://github.com/martinbudden/crate-imu-sensors", default-features = false }
+imu-sensors = { git = "https://github.com/martinbudden/crate-imu-sensors", default-features = false, features = ["vqm"]}
 #imu-sensors = { path = "../imu-sensors", default-features = false }
 
 paste = { version = "1.0.15", default-features = false }

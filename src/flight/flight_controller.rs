@@ -83,7 +83,7 @@ impl Default for FcTilt {
 }
 
 impl FcTilt {
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             rate_pid: PidskControllerf32::new(),
             rate_gains: PidskGainsf32::new(),
@@ -181,7 +181,7 @@ impl Default for FlightController {
 }
 
 impl FlightController {
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             vehicle_controller: VehicleController::new(),
             angle_mode_calculation_state: AngleModeCalculationState::new(),
